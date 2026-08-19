@@ -15,11 +15,10 @@
 // secrets (`supabase secrets set ...`), never in a file that ships to a
 // browser.
 //
-// Values below are PLACEHOLDERS — this round's spec explicitly did not
-// provide a real new Supabase project yet. Fill these in once you've
-// created the fresh UStorE Supabase project (see the final report's
-// deploy-order section for exactly which value comes from where in the
-// Supabase dashboard).
+// Values below are the REAL, deployed UStorE production Supabase project.
+// (Phase 1 shipped this file with placeholders; it's since been filled in
+// with the actual project's URL/publishable key.) A fresh placeholder
+// template — for a new clone/deployment — lives in config.public.example.js.
 window.APP_CONFIG = {
   SUPABASE_URL: "https://jzdpogwxonvaagxotgyi.supabase.co",
   SUPABASE_KEY: "sb_publishable_tTKrRO3jWBa2MfRBJb73NQ_JP8EtkFZ",

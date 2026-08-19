@@ -315,7 +315,6 @@
     // so Shop A's cart/profile/cache can never bleed into Shop B's when
     // both are opened from the same browser.
     const BOT_ID = new URLSearchParams(window.location.search).get('bot_id') || '';
-    let currentShopId = null; // filled in by boot() — see setupRealtime()
     function scopedKey(name) { return `ustore:${BOT_ID}:${name}`; }
 
     // ============ DB <-> JS MAPPERS ============
@@ -7487,12 +7486,11 @@
       }
     }
 
-    // ============ REAL-TIME SINXRONIZATSIYA ============
-    // Tovar/katalog o'zgarishlari hamma ochiq sessiyalarga to'g'ridan-to'g'ri
-    // (bular maxfiy ma'lumot emas, hammaga ochiq o'qish bilan). Buyurtma/savat/
-    // adminlar o'zgarishi esa faqat "signal" (Broadcast) orqali — signalni
-    // olganimizdan keyin tegishli ma'lumotni serverdan qayta so'raymiz, hech
-    // qachon maxfiy ma'lumot to'g'ridan-to'g'ri broadcast orqali kelmaydi.
+    // ============ FON YANGILANISHI (polling — pastga qarang) ============
+    // Bu ikkita helper hozir ham ishlatiladi: shu clientning O'Z amali (masalan
+    // admin add_product/edit_category chaqirgach) natijasini local state'ga
+    // darhol yozish uchun — server javobidan olingan qatorni to'g'ridan-to'g'ri
+    // qo'yadi, boshqa hech qanday kanal/signal orqali emas.
     function upsertLocalProduct(row) {
       const mapped = mapProductFromDB(row);
       if (mapped.status === 'DELETED') {
@@ -7514,66 +7512,66 @@
       if (idx >= 0) categories[idx] = mapped; else categories.push(mapped);
     }
 
-    // 16-band: no more unscoped postgres_changes on products/categories —
-    // that subscription had no way to filter by shop, so on a shared
-    // multi-tenant origin it would leak every shop's catalog writes to
-    // every open tab. The old realtime handlers ALSO doubled as "see my own
-    // just-made edit come back" (this client's own add_product etc. relied
-    // on that echo to update local state) — since upsertLocalProduct/
-    // upsertLocalCategory are already called directly at each of those
-    // call sites too, removing the echo path doesn't lose that; it only
-    // removes the OTHER-clients'-writes-arrive-live behavior, which this
-    // catalog_changed broadcast (carrying no business data, just an
-    // invalidation signal — 16-band's explicit requirement) now covers via
-    // a full loadCatalog() refetch instead of a per-row echo.
-    function setupRealtime() {
-      if (!currentShopId) { startOrdersPolling(); return; }
-      sb.channel(`shop-events:${currentShopId}`)
-        .on('broadcast', { event: 'catalog_changed' }, async () => {
-          await loadCatalog();
-          if (currentTab === 'home' || currentTab === 'categories' || currentTab === 'warehouse' || selectedProductModal) render();
-        })
-        .on('broadcast', { event: 'orders_changed' }, async () => {
-          // Agar ${tr("buyurtma", "заказов")}lar hali ochilmagan bo'lsa, keraksiz katta so'rov yubormaymiz.
-          if (ordersLoaded) await loadOrdersLazy(true);
-          if (isUserAnAdmin && usersLoaded) await loadUsersLazy(true);
-        })
-        .on('broadcast', { event: 'admins_changed' }, async () => {
-          if (isSuperAdmin && adminsLoaded) await loadAdminsLazy(true);
-        })
-        // 10-band: yangi support xabari — mavjud kanalning o'zi kengaytirildi,
-        // yangi kanal/polling loop ochilmagan. Ro'yxat (agar yuklangan bo'lsa)
-        // va hozir ochiq chat (agar shu ticket bo'lsa) qayta yuklanadi.
-        .on('broadcast', { event: 'support_changed' }, async (msg) => {
-          const ticketId = msg?.payload?.ticketId;
-          if (isUserAnAdmin && adminSupportTicketsLoaded) await loadAdminSupportTicketsLazy(true);
-          if (supportTicketsLoaded) await loadMySupportTicketsLazy(true);
-          if (ticketId && (openSupportTicketId === ticketId || adminSupportSelectedTicketId === ticketId)) {
-            await loadSupportMessages(ticketId, true);
-          }
-        })
-        .subscribe();
-
-      startOrdersPolling();
+    // 3.2-band (Phase 2 security hardening): the old shop-events:<shopId>
+    // Supabase Realtime broadcast channel was PUBLIC — any client holding
+    // just the publishable key could subscribe to, or worse SEND on, any
+    // shop's channel by knowing/guessing its UUID. Building real Realtime
+    // Authorization (private channels + RLS on realtime.messages) is real
+    // extra complexity for marginal benefit on a shop this size, so — as
+    // explicitly permitted — this is now tenant-safe POLLING instead: no
+    // channel exists at all, so there is nothing to spoof or eavesdrop on.
+    // Every poll target still only fires if that data section is actually
+    // loaded/visible (same "don't send needless requests" guard the old
+    // orders-only poller already had) — this just generalizes that pattern
+    // to catalog/admins/support too, on the same shared interval.
+    //
+    // This client's OWN edits still update local state immediately at each
+    // call site (upsertLocalProduct/upsertLocalCategory etc.) — polling
+    // only covers "someone ELSE (another admin, another session) changed
+    // something," which is inherently a slower-than-instant, eventually-
+    // consistent signal now, matching what the spec explicitly allowed.
+    function setupPolling() {
+      startBackgroundPolling();
     }
 
-    // Realtime asosiy, polling esa faqat zaxira: tab ochilgan bo'lsa va ilova faol bo'lsa 90 soniyada.
     let ordersSnapshot = JSON.stringify(orders.map(o => [o.id, o.status]));
-    let ordersPollTimer = null;
-    function startOrdersPolling() {
-      if (ordersPollTimer) clearInterval(ordersPollTimer);
-      ordersPollTimer = setInterval(async () => {
-        if (!ordersLoaded || document.visibilityState !== 'visible') return;
-        try {
-          const data = isUserAnAdmin && isAdminMode ? await callApi('get_all_orders', {}) : await callApi('get_my_orders', {});
-          const freshOrders = (data.orders || []).map(formatOrderForUi);
-          const freshSnapshot = JSON.stringify(freshOrders.map(o => [o.id, o.status]));
-          if (freshSnapshot !== ordersSnapshot) {
-            ordersSnapshot = freshSnapshot;
-            orders = freshOrders;
-            if (currentTab === 'orders') render();
-          }
-        } catch (e) { console.error('Fon tekshiruvi xatosi:', e); }
+    let pollTimer = null;
+    function startBackgroundPolling() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        if (document.visibilityState !== 'visible') return;
+
+        if (ordersLoaded) {
+          try {
+            const data = isUserAnAdmin && isAdminMode ? await callApi('get_all_orders', {}) : await callApi('get_my_orders', {});
+            const freshOrders = (data.orders || []).map(formatOrderForUi);
+            const freshSnapshot = JSON.stringify(freshOrders.map(o => [o.id, o.status]));
+            if (freshSnapshot !== ordersSnapshot) {
+              ordersSnapshot = freshSnapshot;
+              orders = freshOrders;
+              if (currentTab === 'orders') render();
+            }
+          } catch (e) { console.error('Buyurtmalarni fon tekshiruvi xatosi:', e); }
+        }
+        if (isUserAnAdmin && usersLoaded) {
+          try { await loadUsersLazy(true); } catch (e) { console.error('Foydalanuvchilarni fon tekshiruvi xatosi:', e); }
+        }
+        if (currentTab === 'home' || currentTab === 'categories' || currentTab === 'warehouse' || selectedProductModal) {
+          try { await loadCatalog(); render(); } catch (e) { console.error('Katalogni fon tekshiruvi xatosi:', e); }
+        }
+        if (isSuperAdmin && adminsLoaded) {
+          try { await loadAdminsLazy(true); } catch (e) { console.error('Adminlarni fon tekshiruvi xatosi:', e); }
+        }
+        if (isUserAnAdmin && adminSupportTicketsLoaded) {
+          try { await loadAdminSupportTicketsLazy(true); } catch (e) { console.error('Support ro\'yxatini fon tekshiruvi xatosi:', e); }
+        }
+        if (supportTicketsLoaded) {
+          try { await loadMySupportTicketsLazy(true); } catch (e) { console.error('Support ro\'yxatini fon tekshiruvi xatosi:', e); }
+        }
+        const activeTicketId = openSupportTicketId || adminSupportSelectedTicketId;
+        if (activeTicketId) {
+          try { await loadSupportMessages(activeTicketId, true); } catch (e) { console.error('Support xabarlarini fon tekshiruvi xatosi:', e); }
+        }
       }, 90000);
     }
 
@@ -7641,7 +7639,6 @@
       try {
         // boot endi faqat auth + foydalanuvchi holati + shop settings. Orders/users/admins bu yerda yuklanmaydi.
         const bootData = await callApi('boot', {});
-        currentShopId = bootData.shopId || null;
         currentTgId = bootData.tgId;
         isSuperAdmin = bootData.isSuperAdmin;
         isUserAnAdmin = bootData.isAdmin;
@@ -7675,7 +7672,7 @@
         return;
       }
 
-      setupRealtime();
+      setupPolling();
       switchTab('home');
       catalogPromise.catch(e => console.error('Katalogni yangilash xatosi:', e));
 
