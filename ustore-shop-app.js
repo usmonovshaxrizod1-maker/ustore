@@ -1505,17 +1505,39 @@
     }
 
     async function decodeImageSource(blob) {
+      const DECODE_TIMEOUT_MS = 8000;
       if (typeof createImageBitmap === 'function') {
         try {
-          const bitmap = await createImageBitmap(blob);
+          const bitmap = await Promise.race([
+            createImageBitmap(blob),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('create_image_bitmap_timeout')), DECODE_TIMEOUT_MS)),
+          ]);
           return { source: bitmap, width: bitmap.width, height: bitmap.height, close: () => bitmap.close?.() };
-        } catch (_) {}
+        } catch (e) {
+          imageIO.logStage('CREATE_IMAGE_BITMAP_FAILED', { mime: blob?.type, size: blob?.size, name: e?.name, message: e?.message, level: 'warn' });
+        }
       }
       return new Promise((resolve, reject) => {
-        const img = new Image();
+        let settled = false;
         const url = URL.createObjectURL(blob);
-        img.onload = () => resolve({ source: img, width: img.naturalWidth || img.width, height: img.naturalHeight || img.height, close: () => URL.revokeObjectURL(url) });
+        const timer = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          URL.revokeObjectURL(url);
+          imageIO.logStage('DECODE_FAILED', { mime: blob?.type, size: blob?.size, name: 'TimeoutError', message: 'image_decode_timeout', level: 'warn' });
+          reject(new Error('image_decode_timeout'));
+        }, DECODE_TIMEOUT_MS);
+        const img = new Image();
+        img.onload = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          resolve({ source: img, width: img.naturalWidth || img.width, height: img.naturalHeight || img.height, close: () => URL.revokeObjectURL(url) });
+        };
         img.onerror = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           URL.revokeObjectURL(url);
           imageIO.logStage('DECODE_FAILED', { mime: blob?.type, size: blob?.size, level: 'warn' });
           reject(new Error('image_decode_failed'));
