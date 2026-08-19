@@ -9,8 +9,12 @@
 
   const VERSION = 1;
   const DELIVERY_KINDS = Object.freeze(['FREE', 'FIXED', 'TAXI', 'POST']);
-  const PAYMENT_IDS = Object.freeze(['CASH', 'CARD']);
+  const PAYMENT_IDS = Object.freeze(['CASH', 'CARD', 'QR']);
   const POST_PROVIDER_IDS = Object.freeze(['BTS', 'EMU', 'OTHER']);
+  // 17-band: qattiq belgilangan (yopiq) QR provayderlar ro'yxati — kelajakda
+  // kengaytirishga mos, lekin hozircha faqat shu to'rttasi.
+  const QR_PROVIDER_IDS = Object.freeze(['CLICK', 'PAYME', 'PAYNET', 'UZUM']);
+  const QR_PROVIDER_NAMES = Object.freeze({ CLICK: 'Click', PAYME: 'Payme', PAYNET: 'Paynet', UZUM: 'Uzum' });
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -33,7 +37,7 @@
       delivery: {
         free: { enabled: true, regions: freeRegions },
         fixed: { enabled: false, regions: {} },
-        taxi: { enabled: false, regions: {} },
+        taxi: { enabled: false, general: { exactFee: null, minFee: null, maxFee: null, comment: null }, regions: {} },
         post: {
           enabled: false,
           providers: [
@@ -47,6 +51,7 @@
         methods: [
           { id: 'CASH', name: 'Naqd', enabled: true, regions: cashRegions },
           { id: 'CARD', name: 'Karta orqali', enabled: false, regions: {}, cardNumber: '', cardHolder: '', receiptRequired: false },
+          { id: 'QR', name: 'QR orqali', enabled: false, regions: {}, providers: QR_PROVIDER_IDS.map(id => ({ id, name: QR_PROVIDER_NAMES[id], enabled: false, qrImageUrl: null, paymentUrl: null })) },
         ],
       },
     };
@@ -61,6 +66,15 @@
     return Number.isFinite(number) && number >= 0 ? Math.round(number) : fallback;
   }
 
+  // Phase 3, 7-band: taxi narxi (aniq narx VA/YOKI diapazon) endi to'liq
+  // ixtiyoriy — "kiritilmagan" (null) va "0 kiritilgan" (haqiqiy nol narx)
+  // aniq ajratilishi shart, shu sabab bu yerda 0'ga sukut qilinmaydi.
+  function nonNegativeIntOrNull(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? Math.round(number) : null;
+  }
+
   function normalizeRegions(rawRegions, regionIds, kind) {
     const allowed = new Set(cleanRegionIds(regionIds));
     const result = {};
@@ -69,8 +83,9 @@
       const entry = { enabled: true };
       if (kind === 'FIXED') entry.fee = nonNegativeInt(raw.fee);
       if (kind === 'TAXI') {
-        entry.minFee = nonNegativeInt(raw.minFee);
-        entry.maxFee = Math.max(entry.minFee, nonNegativeInt(raw.maxFee, entry.minFee));
+        entry.exactFee = nonNegativeIntOrNull(raw.exactFee);
+        entry.minFee = nonNegativeIntOrNull(raw.minFee);
+        entry.maxFee = nonNegativeIntOrNull(raw.maxFee);
       }
       if (kind === 'POST') entry.payer = raw.payer === 'SELLER' ? 'SELLER' : 'CUSTOMER';
       // 13-band: yetkazib berish usuliga admin izohi — ixtiyoriy, faqat
@@ -84,6 +99,17 @@
     return result;
   }
 
+  // Phase 3, 7-band: taxi uchun umumiy (region'ga bog'liq bo'lmagan)
+  // narx/izoh — mavjud region'lar hech narsa kiritmagan bo'lsa fallback.
+  function normalizeTaxiGeneral(raw) {
+    return {
+      exactFee: nonNegativeIntOrNull(raw?.exactFee),
+      minFee: nonNegativeIntOrNull(raw?.minFee),
+      maxFee: nonNegativeIntOrNull(raw?.maxFee),
+      comment: (String(raw?.comment || '').trim().slice(0, 200)) || null,
+    };
+  }
+
   function normalizeConfig(raw, regionIds) {
     const ids = cleanRegionIds(regionIds);
     const base = defaultConfig(ids);
@@ -95,6 +121,7 @@
     base.delivery.fixed.enabled = bool(delivery.fixed?.enabled);
     base.delivery.fixed.regions = normalizeRegions(delivery.fixed?.regions, ids, 'FIXED');
     base.delivery.taxi.enabled = bool(delivery.taxi?.enabled);
+    base.delivery.taxi.general = normalizeTaxiGeneral(delivery.taxi?.general);
     base.delivery.taxi.regions = normalizeRegions(delivery.taxi?.regions, ids, 'TAXI');
     base.delivery.post.enabled = bool(delivery.post?.enabled);
 
@@ -125,9 +152,37 @@
         method.cardHolder = String(source.cardHolder || '').trim().slice(0, 120);
         method.receiptRequired = bool(source.receiptRequired);
       }
+      if (id === 'QR') {
+        method.providers = normalizeQrProviders(source.providers);
+      }
       return method;
     });
     return base;
+  }
+
+  // 17-band: xavfsizlik uchun AKS holda serverda (shop-api) qat'iy tekshiriladi
+  // — bu yerda faqat admin formasi uchun engil, foydalanuvchiga qulay tozalash.
+  function safeLinkUrlOrNull(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+    try {
+      const url = new URL(raw);
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+      return url.href;
+    } catch (_) { return null; }
+  }
+  function normalizeQrProviders(rawProviders) {
+    const list = Array.isArray(rawProviders) ? rawProviders : [];
+    return QR_PROVIDER_IDS.map(id => {
+      const source = list.find(p => p && p.id === id) || {};
+      return {
+        id,
+        name: QR_PROVIDER_NAMES[id],
+        enabled: bool(source.enabled),
+        qrImageUrl: safeLinkUrlOrNull(source.qrImageUrl),
+        paymentUrl: safeLinkUrlOrNull(source.paymentUrl),
+      };
+    });
   }
 
   function deliveryOptions(config, regionId) {
@@ -144,9 +199,15 @@
     }
     const taxi = delivery.taxi?.regions?.[regionId];
     if (delivery.taxi?.enabled && taxi?.enabled) {
-      const minFee = nonNegativeInt(taxi.minFee);
-      const maxFee = Math.max(minFee, nonNegativeInt(taxi.maxFee, minFee));
-      result.push({ id: 'TAXI', kind: 'TAXI', fee: 0, payableFee: 0, minFee, maxFee, payer: 'CUSTOMER_DIRECT', comment: taxi.comment || null });
+      // 7-band: barcha uch maydon ham ixtiyoriy — region'da yo'q bo'lsa
+      // umumiy (general) qiymatga tushiladi, u ham bo'lmasa null qoladi
+      // (chaqiruvchi taraf buni "narx yo'q" deb aniq talqin qiladi, 0 emas).
+      const general = delivery.taxi?.general || {};
+      const exactFee = taxi.exactFee ?? general.exactFee ?? null;
+      const minFee = taxi.minFee ?? general.minFee ?? null;
+      const maxFee = taxi.maxFee ?? general.maxFee ?? null;
+      const comment = taxi.comment ?? general.comment ?? null;
+      result.push({ id: 'TAXI', kind: 'TAXI', fee: 0, payableFee: 0, exactFee, minFee, maxFee, payer: 'CUSTOMER_DIRECT', comment });
     }
     if (delivery.post?.enabled) {
       for (const provider of delivery.post.providers || []) {
@@ -183,12 +244,26 @@
     for (const [regionId, entry] of Object.entries(normalized.delivery.fixed.regions)) {
       if (entry.enabled && entry.fee <= 0) issues.push({ code: 'FIXED_FEE_REQUIRED', regionId });
     }
+    // 7-band: narx to'liq ixtiyoriy bo'lgani uchun endi FAQAT haqiqiy
+    // nomuvofiqlik (ikkalasi ham kiritilgan-u max < min) xato hisoblanadi —
+    // narxning umuman yo'qligi endi yaroqli holat (izoh yoki standart matn
+    // bilan ko'rsatiladi).
+    const taxiGeneral = normalized.delivery.taxi.general || {};
+    if (taxiGeneral.minFee !== null && taxiGeneral.maxFee !== null && taxiGeneral.maxFee < taxiGeneral.minFee) {
+      issues.push({ code: 'TAXI_RANGE_INVALID', regionId: null });
+    }
     for (const [regionId, entry] of Object.entries(normalized.delivery.taxi.regions)) {
-      if (entry.enabled && (entry.minFee <= 0 || entry.maxFee < entry.minFee)) issues.push({ code: 'TAXI_RANGE_INVALID', regionId });
+      if (entry.enabled && entry.minFee !== null && entry.maxFee !== null && entry.maxFee < entry.minFee) {
+        issues.push({ code: 'TAXI_RANGE_INVALID', regionId });
+      }
     }
     const card = normalized.payments.methods.find(method => method.id === 'CARD');
     if (card?.enabled && Object.keys(card.regions).length && (!/^\d[\d ]{10,30}\d$/.test(card.cardNumber) || !card.cardHolder)) {
       issues.push({ code: 'CARD_DETAILS_REQUIRED' });
+    }
+    const qr = normalized.payments.methods.find(method => method.id === 'QR');
+    if (qr?.enabled && Object.keys(qr.regions).length && !(qr.providers || []).some(p => p.enabled && p.paymentUrl)) {
+      issues.push({ code: 'QR_PROVIDER_REQUIRED' });
     }
     return { config: normalized, issues };
   }

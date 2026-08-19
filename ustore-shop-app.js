@@ -17,7 +17,7 @@
       const el = document.getElementById('action-toast');
       if (!el) return;
       if (actionToastTimer) { clearTimeout(actionToastTimer); actionToastTimer = null; }
-      el.textContent = text || '';
+      el.innerHTML = text || '';
       el.dataset.state = state;
       el.classList.remove('hidden');
       if (duration > 0) {
@@ -557,7 +557,8 @@
     let usersSummary = [];
     let shopLogoUrl = null;
     let botUsername = null; // 1.10: "Telegramda ko'rish" uchun — hardcode emas, boot() javobidan
-    let shopContact = { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null };
+    let shopContact = { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
+    let shopLowStockThreshold = 5;
     let fulfillmentConfig = commerce.defaultConfig(TOP_LEVEL_REGION_IDS);
     let fulfillmentDraft = null;
 
@@ -571,6 +572,7 @@
     let fulfillmentExpandedPayment = null; // CASH | CARD | null (faqat PAYMENTS bo'limida, 1.2: yonma-yon + inline ochilish)
     let selectedDeliveryMethodId = checkoutDraft.deliveryMethodId || null;
     let selectedPayMethod = checkoutDraft.paymentMethodId || null;
+    let selectedQrProviderId = null;
     let checkoutReceiptFile = null;
     let checkoutReceiptPreparing = null;
     let checkoutReceiptPreviewUrl = null; // 1.8: local preview uchun object URL
@@ -2569,7 +2571,7 @@
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
-            <h4 class="font-bold text-sm text-gray-800 mt-1 leading-tight line-clamp-1">${escapeHtml(productName(p))}</h4>
+            <h4 class="font-bold text-sm text-gray-800 mt-1 leading-tight line-clamp-2">${escapeHtml(productName(p))}</h4>
 
             <div class="mt-1">
               ${hasDiscount ? `
@@ -2945,16 +2947,36 @@
     function deliveryOptionLabel(option) {
       if (option.kind === 'FREE') return tr('🆓 Bepul yetkazib berish', '🆓 Бесплатная доставка');
       if (option.kind === 'FIXED') return `${tr('🚚 Uyigacha', '🚚 До дома')} · ${money(option.fee)}`;
-      if (option.kind === 'TAXI') return `${tr('🚕 Taksi orqali', '🚕 На такси')} · ${formatNumber(option.minFee)}–${formatNumber(option.maxFee)} ${tr("so'm", 'сум')}`;
+      if (option.kind === 'TAXI') {
+        if (option.exactFee !== null && option.exactFee !== undefined) return `${tr('🚕 Taksi orqali', '🚕 На такси')} · ${formatNumber(option.exactFee)} ${tr("so'm", 'сум')}`;
+        if (option.minFee !== null && option.minFee !== undefined && option.maxFee !== null && option.maxFee !== undefined) return `${tr('🚕 Taksi orqali', '🚕 На такси')} · ${formatNumber(option.minFee)}–${formatNumber(option.maxFee)} ${tr("so'm", 'сум')}`;
+        return tr('🚕 Taksi orqali', '🚕 На такси');
+      }
       return `📦 ${escapeHtml(option.providerName || tr('Pochta', 'Почта'))}`;
     }
 
     function deliveryOptionNotice(option) {
       if (!option) return '';
-      if (option.kind === 'TAXI') return tr(
-        `Yetkazib berish taxminan ${formatNumber(option.minFee)}–${formatNumber(option.maxFee)} so'm. Bu summa buyurtmaga qo'shilmaydi; olganda haydovchiga alohida to'laysiz. ${formatNumber(option.maxFee)} so'm — siz tasdiqlagan maksimal limit.`,
-        `Доставка ориентировочно ${formatNumber(option.minFee)}–${formatNumber(option.maxFee)} сум. Сумма не включается в заказ и оплачивается водителю отдельно. ${formatNumber(option.maxFee)} сум — подтверждённый вами максимум.`
-      );
+      if (option.kind === 'TAXI') {
+        const hasExact = option.exactFee !== null && option.exactFee !== undefined;
+        const hasRange = option.minFee !== null && option.minFee !== undefined && option.maxFee !== null && option.maxFee !== undefined;
+        if (hasExact) return tr(
+          `Yetkazib berish taxminan ${formatNumber(option.exactFee)} so'm. Bu summa buyurtmaga qo'shilmaydi; olganda haydovchiga alohida to'laysiz.`,
+          `Доставка ориентировочно ${formatNumber(option.exactFee)} сум. Сумма не включается в заказ и оплачивается водителю отдельно.`
+        );
+        if (hasRange) return tr(
+          `Yetkazib berish taxminan ${formatNumber(option.minFee)}–${formatNumber(option.maxFee)} so'm. Bu summa buyurtmaga qo'shilmaydi; olganda haydovchiga alohida to'laysiz. ${formatNumber(option.maxFee)} so'm — siz tasdiqlagan maksimal limit.`,
+          `Доставка ориентировочно ${formatNumber(option.minFee)}–${formatNumber(option.maxFee)} сум. Сумма не включается в заказ и оплачивается водителю отдельно. ${formatNumber(option.maxFee)} сум — подтверждённый вами максимум.`
+        );
+        // 7-band: narx umuman kiritilmagan — faqat admin izohi bo'lsa uni
+        // (tashqi kod orqali) ko'rsatish uchun bo'sh qatorni qaytaramiz,
+        // izoh ham bo'lmasa aniq belgilangan standart matn ko'rsatiladi.
+        if (option.comment) return '';
+        return tr(
+          "Buyurtma taksi orqali yetkaziladi. Buyurtma summasi mijoz tomonidan to'lanadi.",
+          'Заказ будет доставлен на такси. Сумма заказа оплачивается клиентом.'
+        );
+      }
       if (option.kind === 'POST' && option.payer === 'CUSTOMER') return tr(
         "Yetkazib berish narxi tovar hajmi/og'irligi va pochta xizmatining amaldagi tariflariga muvofiq hisoblanadi. To'lov pochta xizmatiga alohida amalga oshiriladi.",
         'Стоимость доставки рассчитывается по габаритам/весу и действующим тарифам почты. Оплата производится почтовой службе отдельно.'
@@ -2995,7 +3017,7 @@
       if (!wrap) return;
       const regionKey = document.getElementById('chk-region-key')?.value || checkoutDraft.regionKey || 'tashkent_city';
       const selectedPayment = commerce.paymentOptions(fulfillmentConfig, regionKey).find(m => m.id === selectedPayMethod);
-      wrap.innerHTML = renderReceiptPicker(!!selectedPayment?.receiptRequired);
+      wrap.innerHTML = renderReceiptPicker(!!selectedPayment?.receiptRequired || selectedPayment?.id === 'QR');
     }
 
     function openCheckoutForm() {
@@ -3222,10 +3244,25 @@
     }
 
     function selectPayment(type) {
+      if (type !== selectedPayMethod) selectedQrProviderId = null;
       selectedPayMethod = type;
-      if (type !== 'CARD') clearCheckoutReceipt();
+      if (type !== 'CARD' && type !== 'QR') clearCheckoutReceipt();
       renderCheckoutOptions();
       saveCheckoutDraft();
+    }
+    // 17-band: QR to'lov ikkinchi bosqichi — provayder tanlash, keyin uning
+    // QR rasmi/"to'lov sahifasiga o'tish" tugmasi + mavjud chek yuklash
+    // ko'rinishi (CARD bilan bir xil) chiqadi.
+    function selectQrProvider(providerId) {
+      selectedQrProviderId = providerId;
+      renderCheckoutOptions();
+    }
+    function openSafeExternalUrl(url) {
+      let parsed;
+      try { parsed = new URL(String(url || '')); } catch (_) { return; }
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return;
+      if (tg?.openLink) tg.openLink(parsed.href);
+      else window.open(parsed.href, '_blank', 'noopener');
     }
 
     function renderCheckoutOptions() {
@@ -3263,7 +3300,7 @@
         // 13-band: admin izohi bo'lsa, standart bildirishnoma ostida
         // qo'shimcha qator sifatida chiqadi; bo'lmasa hech narsa qo'shilmaydi.
         const noticeText = escapeHtml(deliveryOptionNotice(selectedDelivery));
-        const comment = selectedDelivery?.comment ? `<br><b>${escapeHtml(selectedDelivery.comment)}</b>` : '';
+        const comment = selectedDelivery?.comment ? `${noticeText ? '<br>' : ''}<b>${escapeHtml(selectedDelivery.comment)}</b>` : '';
         notice.innerHTML = noticeText + comment;
         notice.classList.toggle('hidden', !selectedDelivery);
       }
@@ -3280,7 +3317,7 @@
       const payWrap = document.getElementById('pay-method-wrap');
       if (payWrap) payWrap.innerHTML = paymentOptions.length ? paymentOptions.map(method => `
         <button type="button" onclick="selectPayment('${method.id}')" class="p-2.5 border rounded-xl font-bold text-xs ${method.id === selectedPayMethod ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-white text-gray-700'}">
-          ${method.id === 'CASH' ? '💵' : '💳'} ${escapeHtml(method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.name)}
+          ${method.id === 'CASH' ? '💵' : method.id === 'CARD' ? '💳' : '🔳'} ${escapeHtml(method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.id === 'QR' ? tr('QR orqali', 'По QR') : method.name)}
         </button>`).join('') : `<div class="col-span-2 fc-bg-danger-soft border fc-border-danger fc-text-danger p-3 rounded-xl font-bold">${tr("Bu hudud uchun to'lov usuli yoqilmagan.", 'Для этого региона способы оплаты не настроены.')}</div>`;
 
       const cardDetails = document.getElementById('card-payment-details');
@@ -3295,6 +3332,26 @@
               <p class="text-[10px] text-blue-700">${tr(`CVV, PIN, SMS kod yoki amal qilish muddatini hech kimga bermang — ${escapeHtml(shopDisplayName())} ularni so'ramaydi.`, `Никому не сообщайте CVV, PIN, SMS-код или срок действия — ${escapeHtml(shopDisplayName())} их не запрашивает.`)}</p>
             </div>
             <div id="chk-receipt-wrap">${renderReceiptPicker(selectedPayment.receiptRequired)}</div>`;
+        } else if (selectedPayment?.id === 'QR') {
+          cardDetails.classList.remove('hidden');
+          const enabledProviders = (selectedPayment.providers || []).filter(p => p.enabled && p.paymentUrl);
+          const activeProvider = enabledProviders.find(p => p.id === selectedQrProviderId) || null;
+          cardDetails.innerHTML = `
+            <div class="space-y-2">
+              <p class="font-bold text-gray-700 text-xs">${tr('Provayderni tanlang', 'Выберите провайдера')}</p>
+              <div class="grid grid-cols-2 gap-2">
+                ${enabledProviders.map(p => `<button type="button" onclick="selectQrProvider('${p.id}')" class="p-2.5 border rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 ${p.id === selectedQrProviderId ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-white text-gray-700'}">🔳 ${escapeHtml(p.name)}</button>`).join('')}
+              </div>
+              ${!enabledProviders.length ? `<p class="text-[11px] fc-text-danger font-bold">${tr("Hozircha QR provayder sozlanmagan.", "QR-провайдер пока не настроен.")}</p>` : ''}
+              ${activeProvider ? `
+                <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2 text-center">
+                  ${activeProvider.qrImageUrl ? `<img src="${escapeHtml(activeProvider.qrImageUrl)}" class="w-40 h-40 object-contain rounded-xl border bg-white mx-auto">` : ''}
+                  <p class="font-bold text-blue-900">${escapeHtml(activeProvider.name)}</p>
+                  <button type="button" onclick="openSafeExternalUrl('${escapeHtml(activeProvider.paymentUrl)}')" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">🔗 ${tr("To'lov sahifasiga o'tish", "Перейти к оплате")}</button>
+                </div>
+                <div id="chk-receipt-wrap">${renderReceiptPicker(true)}</div>
+              ` : ''}
+            </div>`;
         } else {
           cardDetails.classList.add('hidden');
           cardDetails.innerHTML = '';
@@ -3417,7 +3474,11 @@
       if (!selectedDelivery) return alert(tr('Bu hudud uchun yetkazib berish usulini tanlang.', 'Выберите доступный способ доставки.'));
       if (isPostDelivery && !checkoutSelectedBranch) return alert(tr('Iltimos, pochta filialini tanlang.', 'Пожалуйста, выберите отделение почты.'));
       if (!selectedPayment) return alert(tr("Bu hudud uchun to'lov usuli mavjud emas.", 'Для этого региона нет доступного способа оплаты.'));
-      if (selectedPayment.id === 'CARD' && selectedPayment.receiptRequired && !checkoutReceiptFile && !checkoutReceiptPreparing) {
+      const selectedQrProvider = selectedPayment.id === 'QR' ? (selectedPayment.providers || []).find(p => p.id === selectedQrProviderId && p.enabled && p.paymentUrl) : null;
+      if (selectedPayment.id === 'QR' && !selectedQrProvider) {
+        return alert(tr("Iltimos, QR to'lov provayderini tanlang.", 'Пожалуйста, выберите QR-провайдера оплаты.'));
+      }
+      if ((selectedPayment.id === 'CARD' && selectedPayment.receiptRequired || selectedPayment.id === 'QR') && !checkoutReceiptFile && !checkoutReceiptPreparing) {
         return alert(tr("Buyurtmani yuborish uchun to'lov chekini yuklang.", 'Чтобы отправить заказ, загрузите чек оплаты.'));
       }
 
@@ -3457,7 +3518,8 @@
 
         const result = await callApi('create_order', {
           items: itemsPayload, fullname, phone, regionKey, district, address,
-          deliveryMethodId: selectedDeliveryMethodId, paymentMethodId: selectedPayMethod,
+          deliveryMethodId: selectedDeliveryMethodId,
+          paymentMethodId: selectedPayment.id === 'QR' ? `QR:${selectedQrProvider.id}` : selectedPayMethod,
           receiptImageUpload, branchId: isPostDelivery ? checkoutSelectedBranch?.id : undefined,
         });
         const newOrder = formatOrderForUi(result.order);
@@ -3634,7 +3696,7 @@
               ` : ''}
               <div class="border-t pt-2 flex justify-between items-center font-bold text-sm">
                 <span class="text-green-600">${money(o.payableTotal ?? o.totalPrice)}</span>
-                ${o.status === 'NEW' ? `
+                ${(o.status === 'NEW' && !isReceiptPendingReview(o)) ? `
                   <button onclick="cancelUserOrder(${o.id}, event)" class="text-xs fc-bg-danger-soft fc-text-danger border fc-border-danger px-2.5 py-1 rounded-lg font-bold">
                     ❌ ${tr("Bekor qilish", "Отмена")}
                   </button>
@@ -3702,6 +3764,12 @@
       const missingImageCount = getMissingImageProducts().length;
       const importMissingImageCount = products.filter(p => p.status !== 'DELETED' && !hasProductImage(p) && p.importBatchId).length;
       return `
+        ${(isUserAnAdmin && isAdminMode) ? `
+          <button type="button" onclick="activePopupModal='LOW_STOCK_SETTINGS'; render();" class="w-full flex items-center justify-between text-[11px] text-gray-500 bg-white px-3 py-2 rounded-xl border mb-2">
+            <span>⚙️ ${tr("Kam qolgan chegarasi", "Порог «заканчивается»")}: <b class="text-gray-800">${Number.isFinite(s.lowStockThreshold) ? s.lowStockThreshold : shopLowStockThreshold}</b></span>
+            <span class="text-blue-600 font-bold">${tr("O'zgartirish", "Изменить")}</span>
+          </button>
+        ` : ''}
         <div class="grid grid-cols-2 gap-2">
           <button type="button" onclick="openWarehouseStockFilter('LOW')" class="fc-card fc-border-warning text-left"><p class="text-gray-500 text-[11px]">${tr('Kam qolgan', 'Заканчивается')}</p><b class="text-xl block fc-text-warning">${s.lowStock}</b></button>
           <button type="button" onclick="openWarehouseStockFilter('OUT')" class="fc-card fc-border-danger text-left"><p class="text-gray-500 text-[11px]">${tr('Tugagan', 'Нет в наличии')}</p><b class="text-xl block fc-text-danger">${s.outOfStock}</b></button>
@@ -4523,7 +4591,7 @@
 
     function shopInfoIsEmpty() {
       return !shopContact.address && !shopContact.coordinates && !shopContact.phone && !shopContact.phone2 &&
-        !shopContact.phone3 && !shopContact.instagram && !shopContact.telegram && !shopContact.facebook;
+        !shopContact.phone3 && !shopContact.instagram && !shopContact.telegram && !shopContact.facebook && !shopContact.workHours;
     }
 
     const DELIVERY_CONFIG_KEYS = { FREE: 'free', FIXED: 'fixed', TAXI: 'taxi' };
@@ -4743,7 +4811,7 @@
 
     function defaultRegionSetting(kind) {
       if (kind === 'FIXED') return { enabled: true, fee: 40000 };
-      if (kind === 'TAXI') return { enabled: true, minFee: 50000, maxFee: 80000 };
+      if (kind === 'TAXI') return { enabled: true, exactFee: null, minFee: null, maxFee: null };
       return { enabled: true };
     }
 
@@ -4756,11 +4824,16 @@
       rerenderFulfillmentBody();
     }
 
+    // 7-band: bo'sh qoldirilgan maydon endi 0'ga emas, null'ga tushadi —
+    // "narx kiritilmagan" va "narx 0 deb kiritilgan" aniq ajratiladi.
     function setDeliveryRegionNumber(kind, encodedId, field, value) {
       const key = DELIVERY_CONFIG_KEYS[kind];
       const regionId = decodedRegionId(encodedId);
       if (!key || !fulfillmentDraft.delivery[key].regions[regionId]) return;
-      fulfillmentDraft.delivery[key].regions[regionId][field] = Math.max(0, Math.round(Number(value) || 0));
+      const raw = String(value ?? '').trim();
+      if (raw === '') { fulfillmentDraft.delivery[key].regions[regionId][field] = null; return; }
+      const n = Number(raw);
+      fulfillmentDraft.delivery[key].regions[regionId][field] = (Number.isFinite(n) && n >= 0) ? Math.round(n) : null;
     }
 
     // 13-band: har bir yetkazib berish usuli/region uchun ixtiyoriy admin
@@ -4770,6 +4843,20 @@
       const regionId = decodedRegionId(encodedId);
       if (!key || !fulfillmentDraft.delivery[key].regions[regionId]) return;
       fulfillmentDraft.delivery[key].regions[regionId].comment = String(value || '').slice(0, 200);
+    }
+
+    // 7-band: TAXI uchun "umumiy" (region'ga bog'liq bo'lmagan) narx/izoh —
+    // biror region o'zining qiymatini kiritmagan bo'lsa shu fallback bo'ladi.
+    function setTaxiGeneralNumber(field, value) {
+      if (!fulfillmentDraft.delivery.taxi.general) fulfillmentDraft.delivery.taxi.general = { exactFee: null, minFee: null, maxFee: null, comment: null };
+      const raw = String(value ?? '').trim();
+      if (raw === '') { fulfillmentDraft.delivery.taxi.general[field] = null; return; }
+      const n = Number(raw);
+      fulfillmentDraft.delivery.taxi.general[field] = (Number.isFinite(n) && n >= 0) ? Math.round(n) : null;
+    }
+    function setTaxiGeneralComment(value) {
+      if (!fulfillmentDraft.delivery.taxi.general) fulfillmentDraft.delivery.taxi.general = { exactFee: null, minFee: null, maxFee: null, comment: null };
+      fulfillmentDraft.delivery.taxi.general.comment = String(value || '').slice(0, 200) || null;
     }
 
     function bulkDeliveryRegions(kind, enabled) {
@@ -4862,7 +4949,11 @@
         return `<div class="border rounded-xl p-2.5 space-y-2">
           <label class="flex items-center justify-between gap-2 font-bold"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setDeliveryRegionEnabled('${kind}','${encoded}',this.checked)"></label>
           ${entry?.enabled && kind === 'FIXED' ? `<div class="flex items-center gap-2"><input type="number" min="0" value="${entry.fee || ''}" oninput="setDeliveryRegionNumber('FIXED','${encoded}','fee',this.value)" class="flex-1 p-2 border rounded-xl"><span>${tr("so'm",'сум')}</span></div>` : ''}
-          ${entry?.enabled && kind === 'TAXI' ? `<div class="grid grid-cols-2 gap-2"><input type="number" min="0" value="${entry.minFee || ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','minFee',this.value)" placeholder="Min" class="p-2 border rounded-xl"><input type="number" min="0" value="${entry.maxFee || ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','maxFee',this.value)" placeholder="Max" class="p-2 border rounded-xl"></div>` : ''}
+          ${entry?.enabled && kind === 'TAXI' ? `
+            <input type="number" min="0" value="${entry.exactFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','exactFee',this.value)" placeholder="${tr('Aniq narx (ixtiyoriy)', 'Точная цена (необязательно)')}" class="w-full p-2 border rounded-xl">
+            <div class="grid grid-cols-2 gap-2"><input type="number" min="0" value="${entry.minFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','minFee',this.value)" placeholder="Min" class="p-2 border rounded-xl"><input type="number" min="0" value="${entry.maxFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','maxFee',this.value)" placeholder="Max" class="p-2 border rounded-xl"></div>
+            <p class="text-[9px] text-gray-400">${tr("Bo'sh qoldirilsa, umumiy qiymat yoki standart matn ishlatiladi.", "Если оставить пустым, используется общее значение или стандартный текст.")}</p>
+          ` : ''}
           ${entry?.enabled ? `<input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setDeliveryRegionComment('${kind}','${encoded}',this.value)" placeholder="${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}" maxlength="200" class="w-full p-2 border rounded-xl text-[11px]">` : ''}
         </div>`;
       }).join('');
@@ -4879,10 +4970,84 @@
       </div>`;
     }
 
+    function qrProvidersOf() {
+      return fulfillmentDraft?.payments.methods.find(m => m.id === 'QR')?.providers || [];
+    }
+    function setQrProviderEnabled(providerId, enabled) {
+      const p = qrProvidersOf().find(x => x.id === providerId);
+      if (p) p.enabled = !!enabled;
+      rerenderFulfillmentBody();
+    }
+    function setQrProviderPaymentUrl(providerId, value) {
+      const p = qrProvidersOf().find(x => x.id === providerId);
+      if (p) p.paymentUrl = String(value || '').trim().slice(0, 2048) || null;
+    }
+    // 17-band: brauzer-native BarcodeDetector mavjud bo'lsa, yuklangan QR
+    // rasmdagi linkni avtomatik o'qishga urinadi — mavjud bo'lmasa yoki
+    // decode qila olmasa, jim o'tkazib yuboriladi (admin qo'lda kiritadi,
+    // hech narsa bloklanmaydi).
+    async function tryAutoFillQrPaymentUrlFromFile(providerId, file) {
+      try {
+        if (typeof BarcodeDetector === 'undefined') return;
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        const bitmap = await createImageBitmap(file);
+        let results;
+        try { results = await detector.detect(bitmap); } finally { bitmap.close?.(); }
+        const raw = results && results[0] && results[0].rawValue;
+        if (!raw) return;
+        let url;
+        try { url = new URL(raw); } catch (_) { return; }
+        if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
+        const p = qrProvidersOf().find(x => x.id === providerId);
+        if (p && !p.paymentUrl) { p.paymentUrl = url.href; rerenderFulfillmentBody(); }
+      } catch (_) { /* decode ishlamasa ham upload rad etilmaydi */ }
+    }
+    async function pickQrProviderImage(event, providerId) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try { validatePickedImageFile(file); }
+      catch (e) { event.target.value = ''; return alert(pickedImageErrorMessage(e, file)); }
+      let prepared;
+      try { prepared = await captureAndPrepareImageV2(file, TARGET_PRODUCT_IMAGE_BYTES, 800, 0.85); }
+      catch (e) { event.target.value = ''; return alert(tr("Rasmni o'qib bo'lmadi. Qaytadan tanlang.", "Не удалось прочитать изображение. Попробуйте снова.")); }
+      showActionToast(tr("⏳ QR rasm yuklanmoqda...", "⏳ QR-изображение загружается..."), 'saving');
+      try {
+        const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, null, true);
+        const p = qrProvidersOf().find(x => x.id === providerId);
+        if (p) p.qrImageUrl = url;
+        await tryAutoFillQrPaymentUrlFromFile(providerId, file);
+        showActionToast(tr("✅ Yuklandi", "✅ Загружено"), 'success', 1200);
+        rerenderFulfillmentBody();
+      } catch (e) {
+        console.error(e);
+        showActionToast(tr("❌ Yuklanmadi", "❌ Не загружено"), 'error', 1800);
+        alert(tr("QR rasmni yuklab bo'lmadi: ", "Не удалось загрузить QR-изображение: ") + (e.message || e));
+      } finally {
+        event.target.value = '';
+      }
+    }
+    function renderQrProviderSettings(provider) {
+      return `<div class="border rounded-xl p-2.5 space-y-2 bg-white">
+        <label class="flex items-center justify-between font-bold"><span>${escapeHtml(provider.name)}</span><input type="checkbox" ${provider.enabled ? 'checked' : ''} onchange="setQrProviderEnabled('${provider.id}',this.checked)"></label>
+        ${provider.enabled ? `
+          <div class="flex items-center gap-3">
+            ${provider.qrImageUrl ? `<img src="${escapeHtml(provider.qrImageUrl)}" class="w-16 h-16 object-contain rounded-lg border bg-white">` : ''}
+            <label class="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">${provider.qrImageUrl ? tr('QR almashtirish', 'Заменить QR') : tr('QR rasm yuklash', 'Загрузить QR')}
+              <input type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')">
+            </label>
+          </div>
+          <input type="url" inputmode="url" value="${escapeHtml(provider.paymentUrl || '')}" oninput="setQrProviderPaymentUrl('${provider.id}',this.value)" placeholder="${tr("To'lov sahifasi/link URL", "URL страницы оплаты")}" class="w-full p-2 border rounded-xl text-[11px]">
+          <p class="text-[9px] text-gray-400">${tr("QR rasm yuklaganda link avtomatik topilsa to'ldiriladi — topilmasa qo'lda kiriting.", "При загрузке QR ссылка заполнится автоматически, если распознается — иначе введите вручную.")}</p>
+        ` : ''}
+      </div>`;
+    }
+
     function renderPaymentMethodSettings(method) {
+      const icon = method.id === 'CASH' ? '💵' : method.id === 'CARD' ? '💳' : '🔳';
+      const label = method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : tr('QR orqali', 'По QR');
       return `<div class="border rounded-2xl p-3 space-y-3">
-        <label class="flex items-center justify-between font-black"><span>${method.id === 'CASH' ? '💵' : '💳'} ${escapeHtml(method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.name)}</span><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setPaymentMethodEnabled('${method.id}',this.checked)"></label>
-        ${method.enabled ? `${method.id === 'CARD' ? `<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2"><input type="text" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000" class="w-full p-2 border rounded-xl font-mono"><input type="text" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Karta egasi','Владелец карты')}" class="w-full p-2 border rounded-xl"><label class="flex items-center gap-2 font-bold"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label><p class="text-[10px] text-blue-700">${tr('Faqat xaridorga ko‘rsatiladigan karta raqami va egasi. CVV/PIN/SMS saqlanmaydi.','Только номер и владелец карты для показа покупателю. CVV/PIN/SMS не сохраняются.')}</p></div>` : ''}${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}<div class="space-y-2">${TOP_LEVEL_REGIONS.map(region => `<label class="flex items-center justify-between border rounded-xl p-2.5 font-bold"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><input type="checkbox" ${method.regions[region.id]?.enabled ? 'checked' : ''} onchange="setPaymentRegionEnabled('${method.id}','${encodedRegionId(region.id)}',this.checked)"></label>`).join('')}</div>` : ''}
+        <label class="flex items-center justify-between font-black"><span>${icon} ${escapeHtml(label)}</span><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setPaymentMethodEnabled('${method.id}',this.checked)"></label>
+        ${method.enabled ? `${method.id === 'CARD' ? `<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2"><input type="text" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000" class="w-full p-2 border rounded-xl font-mono"><input type="text" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Karta egasi','Владелец карты')}" class="w-full p-2 border rounded-xl"><label class="flex items-center gap-2 font-bold"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label><p class="text-[10px] text-blue-700">${tr('Faqat xaridorga ko‘rsatiladigan karta raqami va egasi. CVV/PIN/SMS saqlanmaydi.','Только номер и владелец карты для показа покупателю. CVV/PIN/SMS не сохраняются.')}</p></div>` : ''}${method.id === 'QR' ? `<div class="space-y-2">${(method.providers || []).map(renderQrProviderSettings).join('')}</div>` : ''}${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}<div class="space-y-2">${TOP_LEVEL_REGIONS.map(region => `<label class="flex items-center justify-between border rounded-xl p-2.5 font-bold"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><input type="checkbox" ${method.regions[region.id]?.enabled ? 'checked' : ''} onchange="setPaymentRegionEnabled('${method.id}','${encodedRegionId(region.id)}',this.checked)"></label>`).join('')}</div>` : ''}
       </div>`;
     }
 
@@ -4893,9 +5058,19 @@
       const descriptions = {
         FREE: tr('Tanlangan hududlarda checkoutda faqat bepul variant chiqadi.', 'В выбранных регионах появится бесплатный вариант.'),
         FIXED: tr('Har tanlangan hudud uchun uyigacha aniq narx kiriting.', 'Укажите точную стоимость доставки до дома для каждого региона.'),
-        TAXI: tr('Taxminiy min/max diapazon informatsion; buyurtma summasiga qo‘shilmaydi.', 'Диапазон min/max информационный и не включается в сумму заказа.'),
+        TAXI: tr("Aniq narx yoki min/max diapazon — ikkalasi ham ixtiyoriy, informatsion; buyurtma summasiga qo‘shilmaydi.", "Точная цена или диапазон min/max — оба необязательны, информационные; не включаются в сумму заказа."),
       };
-      return `<div class="space-y-3"><label class="flex items-center justify-between font-black"><span>${tr('Usulni yoqish','Включить способ')}</span><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setDeliveryMethodEnabled('${kind}',this.checked)"></label><p class="text-[10px] text-gray-500">${descriptions[kind]}</p>${method.enabled ? `${settingsBulkButtons(`bulkDeliveryRegions('${kind}',true)`, `bulkDeliveryRegions('${kind}',false)`)}<div class="space-y-2">${renderDeliveryRegionRows(kind)}</div>` : ''}</div>`;
+      const taxiGeneralHtml = kind === 'TAXI' ? (() => {
+        const g = fulfillmentDraft.delivery.taxi.general || { exactFee: null, minFee: null, maxFee: null, comment: null };
+        return `<div class="border-2 border-dashed rounded-xl p-2.5 space-y-2 bg-white">
+          <p class="font-bold text-gray-700">⚙️ ${tr('Umumiy qiymat (barcha viloyatlar uchun)', 'Общее значение (для всех регионов)')}</p>
+          <input type="number" min="0" value="${g.exactFee ?? ''}" oninput="setTaxiGeneralNumber('exactFee',this.value)" placeholder="${tr('Aniq narx (ixtiyoriy)', 'Точная цена (необязательно)')}" class="w-full p-2 border rounded-xl">
+          <div class="grid grid-cols-2 gap-2"><input type="number" min="0" value="${g.minFee ?? ''}" oninput="setTaxiGeneralNumber('minFee',this.value)" placeholder="Min" class="p-2 border rounded-xl"><input type="number" min="0" value="${g.maxFee ?? ''}" oninput="setTaxiGeneralNumber('maxFee',this.value)" placeholder="Max" class="p-2 border rounded-xl"></div>
+          <input type="text" value="${escapeHtml(g.comment || '')}" oninput="setTaxiGeneralComment(this.value)" placeholder="${tr('Umumiy izoh (ixtiyoriy)', 'Общий комментарий (необязательно)')}" maxlength="200" class="w-full p-2 border rounded-xl text-[11px]">
+          <p class="text-[9px] text-gray-400">${tr("Bu qiymat faqat o'z narxini kiritmagan viloyatlar uchun ishlatiladi.", "Это значение применяется только к регионам, где своя цена не указана.")}</p>
+        </div>`;
+      })() : '';
+      return `<div class="space-y-3"><label class="flex items-center justify-between font-black"><span>${tr('Usulni yoqish','Включить способ')}</span><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setDeliveryMethodEnabled('${kind}',this.checked)"></label><p class="text-[10px] text-gray-500">${descriptions[kind]}</p>${method.enabled ? `${taxiGeneralHtml}${settingsBulkButtons(`bulkDeliveryRegions('${kind}',true)`, `bulkDeliveryRegions('${kind}',false)`)}<div class="space-y-2">${renderDeliveryRegionRows(kind)}</div>` : ''}</div>`;
     }
 
     function fulfillmentBackButton() {
@@ -4937,9 +5112,9 @@
       const methods = fulfillmentDraft.payments.methods;
       return `<div class="space-y-3">
         ${fulfillmentBackButton()}
-        <div class="grid grid-cols-2 gap-2">${methods.map(m => `
+        <div class="grid grid-cols-3 gap-2">${methods.map(m => `
           <button type="button" onclick="setFulfillmentExpandedPayment('${m.id}')" class="p-3 rounded-2xl border font-black flex flex-col items-center gap-1 ${fulfillmentExpandedPayment === m.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-gray-50 text-gray-700 border-gray-200'}">
-            <span class="text-lg">${m.id === 'CASH' ? '💵' : '💳'}</span>
+            <span class="text-lg">${m.id === 'CASH' ? '💵' : m.id === 'CARD' ? '💳' : '🔳'}</span>
             <span>${escapeHtml(m.name)}</span>
             <span class="text-[9px] font-bold ${m.enabled ? (fulfillmentExpandedPayment === m.id ? 'text-emerald-300' : 'text-emerald-600') : 'text-gray-400'}">${m.enabled ? tr('Yoqilgan','Включено') : tr("O'chirilgan",'Выключено')}</span>
           </button>`).join('')}</div>
@@ -4959,8 +5134,10 @@
         const first = checked.issues[0];
         if (first.code === 'CARD_DETAILS_REQUIRED') return alert(tr('Karta raqami va karta egasi nomini to‘g‘ri kiriting.', 'Правильно укажите номер карты и имя владельца.'));
         if (first.code === 'FIXED_FEE_REQUIRED') return alert(`${topLevelRegionLabel(first.regionId)}: ${tr('aniq yetkazish narxini kiriting.', 'укажите стоимость доставки.')}`);
-        return alert(`${topLevelRegionLabel(first.regionId)}: ${tr('taksi min/max diapazonini tekshiring.', 'проверьте диапазон такси min/max.')}`);
+        if (first.code === 'QR_PROVIDER_REQUIRED') return alert(tr("Kamida bitta QR provayderni yoqing va to'lov URL manzilini kiriting.", "Включите хотя бы один QR-провайдер и укажите URL страницы оплаты."));
+        return alert(`${first.regionId === null ? tr('Umumiy qiymat', 'Общее значение') : topLevelRegionLabel(first.regionId)}: ${tr('taksi min/max diapazonini tekshiring.', 'проверьте диапазон такси min/max.')}`);
       }
+      const qrEnabledForWarning = checked.config.payments.methods.find(m => m.id === 'QR')?.enabled;
       const old = fulfillmentConfig;
       fulfillmentConfig = checked.config;
       activePopupModal = null;
@@ -4971,6 +5148,12 @@
         const result = await callApi('set_fulfillment_config', { config: fulfillmentConfig });
         fulfillmentConfig = commerce.normalizeConfig(result.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
         showActionToast(tr('✅ Yetkazib berish va to‘lov sozlamalari saqlandi', '✅ Настройки доставки и оплаты сохранены'), 'success', 1600);
+        // 17-band, "QR SAVE WARNING": faqat admin ko'radi, faqat QR yoqilgan
+        // holatda, saqlangandan KEYIN — mablag' haqiqatan tushishini o'zi
+        // sinab ko'rishi kerakligini eslatadi.
+        if (qrEnabledForWarning) {
+          alert(tr("⚠️ Avval o'zingiz to'lovni sinab ko'ring va mablag' to'g'ri hisobga tushayotganini tekshiring.", "⚠️ Сначала протестируйте оплату сами и убедитесь, что средства поступают правильно."));
+        }
       } catch (e) {
         fulfillmentConfig = old;
         render();
@@ -5021,6 +5204,7 @@
             </div>
           </div>
 
+          ${!(isAdminMode && isUserAnAdmin) ? `
           <div class="grid grid-cols-2 gap-2">
             <button onclick="openPage('FAVORITES')" class="fc-card flex items-center gap-2 text-left">
               <svg class="w-5 h-5 fc-text-danger shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"></path></svg>
@@ -5031,6 +5215,7 @@
               <span class="font-bold text-xs">${tr('Yaqinda ko‘rilgan', 'Недавно просмотренные')}</span>
             </button>
           </div>
+          ` : ''}
 
           ${myStatus.isBlocked ? `
             <div class="fc-bg-danger-soft border fc-border-danger p-4 rounded-2xl text-xs">
@@ -5066,6 +5251,7 @@
                       🖼️
                       <input type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
                     </label>
+                    <button onclick="activePopupModal='SHOP_LOGO_URL'; render();" class="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200" title="${tr("URL orqali logotip qo'shish","Добавить логотип по URL")}">🔗</button>
                   ` : ''}
                 </div>
               </div>
@@ -5087,10 +5273,12 @@
               </a>
             ` : ''}
 
-            <div class="flex items-center space-x-3">
-              <i data-lucide="clock" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
-              <p class="text-xs font-bold text-gray-800">${tr("Ish vaqti", "Время работы")}: 10:00 – 22:00</p>
-            </div>
+            ${shopContact.workHours ? `
+              <div class="flex items-center space-x-3">
+                <i data-lucide="clock" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
+                <p class="text-xs font-bold text-gray-800">${tr("Ish vaqti", "Время работы")}: ${escapeHtml(shopContact.workHours)}</p>
+              </div>
+            ` : ''}
 
             ${phones.map(phone => `
               <a href="tel:${escapeHtml(String(phone).replace(/[^\d+]/g, ''))}" class="flex items-center space-x-3 active:bg-gray-50 rounded-xl p-1 -m-1">
@@ -5107,10 +5295,6 @@
           ${(isUserAnAdmin && isAdminMode) ? `
             <button onclick="openDashboardLite()" class="w-full bg-white text-slate-800 p-4 rounded-2xl flex items-center justify-between font-bold shadow-sm border border-slate-200 text-xs">
               <span>📊 ${tr("Dashboard / Hisobot", 'Dashboard / Отчёт')}</span>
-              <span>›</span>
-            </button>
-            <button onclick="openShopParams()" class="w-full bg-white text-slate-800 p-4 rounded-2xl flex items-center justify-between font-bold shadow-sm border border-slate-200 text-xs">
-              <span class="inline-flex items-center gap-1.5">${ICON_SETTINGS} ${tr("Do'kon sozlamalari", 'Настройки магазина')}</span>
               <span>›</span>
             </button>
           ` : ''}
@@ -5148,6 +5332,7 @@
         address: document.getElementById('sc-address').value.trim() || null,
         addressRu: document.getElementById('sc-address-ru').value.trim() || null,
         coordinates: document.getElementById('sc-coordinates').value.trim() || null,
+        workHours: document.getElementById('sc-work-hours').value.trim() || null,
         phone: document.getElementById('sc-phone1').value.trim() || null,
         phone2: document.getElementById('sc-phone2').value.trim() || null,
         phone3: document.getElementById('sc-phone3').value.trim() || null,
@@ -5219,6 +5404,63 @@
       } finally {
         URL.revokeObjectURL(localPreview);
         event.target.value = '';
+      }
+    }
+
+    // 13-band: logotip uchun ham URL orqali qo'shish imkoniyati — fayl
+    // pickeriga parallel, mustaqil yo'l (upload qadamiga hojat yo'q).
+    async function saveShopLogoFromUrl() {
+      const input = document.getElementById('shop-logo-url-input');
+      const errorEl = document.getElementById('shop-logo-url-error');
+      const raw = String(input?.value || '').trim();
+      if (errorEl) { errorEl.classList.add('hidden'); errorEl.textContent = ''; }
+      let validUrl;
+      try { validUrl = validateExternalImageUrl(raw); }
+      catch (e) {
+        if (errorEl) { errorEl.textContent = e.message || String(e); errorEl.classList.remove('hidden'); }
+        return;
+      }
+      if (!validUrl) {
+        if (errorEl) { errorEl.textContent = tr("URL kiriting.", "Введите URL."); errorEl.classList.remove('hidden'); }
+        return;
+      }
+      const old = shopLogoUrl;
+      activePopupModal = null;
+      shopLogoUrl = validUrl;
+      render();
+      showActionToast(tr("⏳ Logotip saqlanmoqda...", "⏳ Логотип сохраняется..."), 'saving');
+      try {
+        await callApi('set_shop_logo', { logoUrl: validUrl });
+        showActionToast(tr("✅ Saqlandi", "✅ Сохранено"), 'success', 1200);
+      } catch (e) {
+        console.error(e);
+        shopLogoUrl = old;
+        render();
+        showActionToast(tr("❌ Saqlanmadi", "❌ Не сохранено"), 'error', 1800);
+        alert(tr("❌ Logotipni saqlab bo'lmadi: ", "❌ Не удалось сохранить логотип: ") + (e.message || e));
+      }
+    }
+
+    async function saveLowStockThreshold() {
+      const raw = Number(document.getElementById('low-stock-threshold-input')?.value);
+      if (!Number.isFinite(raw) || raw < 0) return alert(tr("To'g'ri son kiriting (0 yoki undan katta).", "Введите корректное число (0 или больше)."));
+      const threshold = Math.round(raw);
+      const old = shopLowStockThreshold;
+      shopLowStockThreshold = threshold;
+      activePopupModal = null;
+      render();
+      showActionToast(tr("⏳ Saqlanmoqda...", "⏳ Сохраняется..."), 'saving');
+      try {
+        await callApi('set_low_stock_threshold', { threshold });
+        showActionToast(tr("✅ Saqlandi", "✅ Сохранено"), 'success', 1200);
+        await loadWarehouseSummary(true);
+        render();
+      } catch (e) {
+        console.error(e);
+        shopLowStockThreshold = old;
+        render();
+        showActionToast(tr("❌ Saqlanmadi", "❌ Не сохранено"), 'error', 1800);
+        alert(tr("❌ Xatolik: ", "❌ Ошибка: ") + (e.message || e));
       }
     }
 
@@ -5322,6 +5564,10 @@
                 <label class="font-bold text-gray-600">${tr("Kordinata", "Координаты")}</label>
                 <input type="text" id="sc-coordinates" value="${escapeHtml(shopContact.coordinates || '')}" placeholder="41.217408,69.211225" class="w-full mt-1 p-2 border rounded-xl font-mono">
                 <p class="text-[9px] text-gray-400 mt-1">${tr("Google Maps'dan koordinatani nusxa qilib qo'ying.", "Вставьте координаты из Google Maps.")}</p>
+              </div>
+              <div>
+                <label class="font-bold text-gray-600">${tr("Ish vaqti", "Часы работы")}</label>
+                <input type="text" id="sc-work-hours" value="${escapeHtml(shopContact.workHours || '')}" placeholder="${tr('Masalan: 09:00–22:00 yoki Du–Yak 09:00–22:00','Например: 09:00–22:00 или Пн–Вс 09:00–22:00')}" class="w-full mt-1 p-2 border rounded-xl">
               </div>
               <div class="grid grid-cols-1 gap-2">
                 <div><label class="font-bold text-gray-600">${tr("Telefon 1", "Телефон 1")}</label><input type="text" id="sc-phone1" value="${escapeHtml(shopContact.phone || '')}" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2 border rounded-xl font-mono"></div>
@@ -5477,12 +5723,13 @@
               </div>
               <div>
                 <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
+                <input id="m-cat-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
                 <div class="flex items-center gap-3 mt-1">
                   <img id="m-cat-prev" src="" class="w-16 h-16 object-cover rounded-xl hidden border">
-                  <label class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">🖼️ ${tr('Rasm tanlash', 'Выбрать изображение')}
-                    <input type="file" accept="image/*" onchange="onImagePicked(event, 'm-cat-prev')" class="hidden">
-                  </label>
+                  <button id="m-cat-image-button" type="button" onclick="document.getElementById('m-cat-image-input').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">🖼️ ${tr('Rasm tanlash', 'Выбрать изображение')}</button>
                 </div>
+                <input id="m-cat-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-cat-prev', 'm-cat-image-url-error', 'm-cat-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
+                <p id="m-cat-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
               </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveCategoryFromModal()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
@@ -5506,12 +5753,13 @@
               </div>
               <div>
                 <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
+                <input id="ec-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
                 <div class="flex items-center gap-3 mt-1">
                   <img id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-cover rounded-xl ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border">
-                  <label class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? `🔄 ${tr('Rasmni almashtirish', 'Заменить изображение')}` : `🖼️ ${tr('Rasm tanlash', 'Выбрать изображение')}`}
-                    <input type="file" accept="image/*" onchange="onImagePicked(event, 'ec-img-prev')" class="hidden">
-                  </label>
+                  <button id="ec-image-button" type="button" onclick="document.getElementById('ec-image-input').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? `🔄 ${tr('Rasmni almashtirish', 'Заменить изображение')}` : `🖼️ ${tr('Rasm tanlash', 'Выбрать изображение')}`}</button>
                 </div>
+                <input id="ec-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'ec-img-prev', 'ec-image-url-error', 'ec-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
+                <p id="ec-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
               </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveCategoryEdit('${c.id}')" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
@@ -5829,6 +6077,43 @@
       // BLOKLASH MODAL (bu tekshiruv "USER DETAILS MODAL"dan OLDIN turishi shart,
       // aks holda selectedUserModal hali ham to'ldirilgan bo'lgani uchun
       // eski mijoz kartochkasi qayta ko'rsatilib, bu oyna umuman ochilmaydi)
+      if (activePopupModal === 'LOW_STOCK_SETTINGS') {
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">⚙️ ${tr("Kam qolgan chegarasi", "Порог «заканчивается»")}</h3>
+              <div>
+                <label class="font-bold text-gray-600">${tr("Nechi donadan kam bo'lsa \"Kam qolgan\" deb belgilansin?", "При каком остатке считать товар «заканчивается»?")}</label>
+                <input type="number" min="0" step="1" id="low-stock-threshold-input" value="${escapeHtml(String(shopLowStockThreshold))}" class="w-full mt-1 p-2 border rounded-xl font-mono">
+                <p class="text-[9px] text-gray-400 mt-1">${tr("Masalan: 5 — qoldiq 5 yoki undan kam bo'lsa \"Kam qolgan\"ga tushadi. Faqat shu do'kon uchun amal qiladi.", "Например: 5 — товар считается «заканчивается» при остатке 5 и менее. Действует только для этого магазина.")}</p>
+              </div>
+              <div class="flex space-x-2 pt-2">
+                <button onclick="saveLowStockThreshold()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
+                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (activePopupModal === 'SHOP_LOGO_URL') {
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("Logotip — URL orqali", "Логотип — по URL")}</h3>
+              <input id="shop-logo-url-input" type="url" inputmode="url" placeholder="https://..." value="${escapeHtml((shopLogoUrl && shopLogoUrl.startsWith('http')) ? shopLogoUrl : '')}" class="w-full p-2 border rounded-xl">
+              <p id="shop-logo-url-error" class="hidden text-[10px] fc-text-danger"></p>
+              <div class="flex space-x-2 pt-2">
+                <button onclick="saveShopLogoFromUrl()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
+                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
       if (activePopupModal === 'BLOCK_USER') {
         const u = selectedUserModal;
         container.innerHTML = `
@@ -6254,7 +6539,7 @@
 
               ${(isAdminMode && isUserAnAdmin && o.hasReceipt) ? `<button onclick="openOrderReceipt(${o.id})" class="w-full bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-bold">🧾 ${tr("To'lov chekini ochish", 'Открыть чек оплаты')}</button>` : ''}
               ${(isAdminMode && isUserAnAdmin && o.receiptSentToTelegram && botUsername) ? `<button onclick="openReceiptInTelegram()" class="w-full bg-sky-50 text-sky-700 border border-sky-200 py-2 rounded-xl font-bold">✈️ ${tr("Telegramda ko'rish", 'Смотреть в Telegram')}</button>` : ''}
-              ${(isAdminMode && isUserAnAdmin && o.hasReceipt && (o.receiptReviewStatus || 'PENDING') === 'PENDING') ? `
+              ${(isAdminMode && isUserAnAdmin && o.hasReceipt && o.status !== 'CANCELLED' && (o.receiptReviewStatus || 'PENDING') === 'PENDING') ? `
                 <div class="grid grid-cols-2 gap-2">
                   <button onclick="approvePaymentReceipt(${o.id})" class="bg-emerald-600 text-white font-bold py-2 rounded-xl text-[11px]">✅ ${tr('Tasdiqlash', 'Подтвердить')}</button>
                   <button onclick="openRejectReceiptModal(${o.id})" class="fc-bg-danger text-white font-bold py-2 rounded-xl text-[11px]">❌ ${tr('Rad etish', 'Отклонить')}</button>
@@ -6276,7 +6561,7 @@
                   <p class="font-black">📦 ${escapeHtml(o.delivery.providerName || tr('Pochta','Почта'))}</p>
                   ${o.delivery.branchName ? `<p class="text-[11px] text-gray-600">${tr('Mijoz tanlagan filial','Филиал, выбранный клиентом')}: <b>${escapeHtml(o.delivery.branchName)}</b></p>` : ''}
                   <input id="shipment-tracking" value="${escapeHtml(o.shipment?.trackingNumber || '')}" placeholder="${tr("Tracking/jo'natma raqami",'Трек-номер')}" class="w-full p-2 border rounded-xl font-mono">
-                  <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50"><option value="READY" ${o.shipment?.status === 'READY' ? 'selected' : ''}>${tr('Tayyor','Готовится')}</option><option value="HANDED_TO_CARRIER" ${o.shipment?.status === 'HANDED_TO_CARRIER' ? 'selected' : ''}>${tr('Pochtaga topshirildi','Передано почте')}</option></select>
+                  <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50"><option value="READY" ${o.shipment?.status === 'READY' ? 'selected' : ''}>${tr('Tayyorlanmoqda','Готовится')}</option><option value="HANDED_TO_CARRIER" ${o.shipment?.status === 'HANDED_TO_CARRIER' ? 'selected' : ''}>${tr('Pochtaga topshirildi','Передано почте')}</option></select>
                   <button onclick="saveShipmentForOrder(${o.id})" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold">💾 ${tr('Jo‘natmani saqlash','Сохранить отправление')}</button>
                 </div>` : ''}
 
@@ -6446,12 +6731,18 @@
       return labels[status] || status || '-';
     }
 
+    // 11-band: signed URL so'rovi tugaguncha UI "qotib qolgandek" ko'rinardi
+    // (hech qanday feedback yo'q edi). Endi darhol spinner+matnli toast
+    // chiqadi, natija/ xato kelgach yashiriladi.
     async function openOrderReceipt(orderId) {
+      showActionToast('<span class="fc-spinner" style="display:inline-block;vertical-align:middle;margin-right:6px"></span>' + tr("Chek ochilmoqda…", "Чек открывается…"), 'saving');
       try {
         const data = await callApi('get_payment_receipt_url', { orderId });
+        hideActionToast();
         if (tg?.openLink) tg.openLink(data.url);
         else window.open(data.url, '_blank', 'noopener');
       } catch (e) {
+        hideActionToast();
         alert(tr("Chekni ochib bo'lmadi: ", 'Не удалось открыть чек: ') + (e.message || e));
       }
     }
@@ -7601,6 +7892,20 @@
 
     let ordersSnapshot = JSON.stringify(orders.map(o => [o.id, o.status]));
     let pollTimer = null;
+    // Phase 3 tuzatish: root cause — 90s fon polling har safar ishga
+    // tushganda `render()` ni SO'ZSIZ chaqirardi, bu esa renderModalContainer()
+    // orqali ochiq modal HTML'sini butunlay qayta yozib yuborardi (ADD_PROD'da
+    // bo'sh inputlar bilan, EDIT_PROD_FIELD'da bazadagi eski qiymat bilan) —
+    // admin hali Saqlash bosmagan, DOM'dagi .value'da yashab turgan matnni
+    // yo'qotardi. Draft alohida JS state'da saqlanmagani uchun (mavjud
+    // arxitektura shunday) yagona xavfsiz yechim — bu ochiq tovar/kategoriya
+    // muharrirlari davomida fon poll'ning render() chaqiruvini o'tkazib
+    // yuborish (ma'lumotning o'zi loadCatalog() orqali fonda baribir yangilanadi
+    // — modal yopilganda ko'rinadigan holat allaqachon dolzarb bo'ladi).
+    function isCatalogEditorModalOpen() {
+      return activePopupModal === 'ADD_PROD' || activePopupModal === 'EDIT_PROD_FIELD'
+        || activePopupModal === 'ADD_CAT' || activePopupModal === 'EDIT_CAT';
+    }
     function startBackgroundPolling() {
       if (pollTimer) clearInterval(pollTimer);
       pollTimer = setInterval(async () => {
@@ -7622,7 +7927,7 @@
           try { await loadUsersLazy(true); } catch (e) { console.error('Foydalanuvchilarni fon tekshiruvi xatosi:', e); }
         }
         if (currentTab === 'home' || currentTab === 'categories' || currentTab === 'warehouse' || selectedProductModal) {
-          try { await loadCatalog(); render(); } catch (e) { console.error('Katalogni fon tekshiruvi xatosi:', e); }
+          try { await loadCatalog(); if (!isCatalogEditorModalOpen()) render(); } catch (e) { console.error('Katalogni fon tekshiruvi xatosi:', e); }
         }
         if (isSuperAdmin && adminsLoaded) {
           try { await loadAdminsLazy(true); } catch (e) { console.error('Adminlarni fon tekshiruvi xatosi:', e); }
@@ -7715,7 +8020,8 @@
         };
         shopLogoUrl = bootData.logoUrl || null;
         botUsername = bootData.botUsername || null;
-        shopContact = bootData.shopContact || { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null };
+        shopContact = bootData.shopContact || { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
+        shopLowStockThreshold = Number.isFinite(Number(bootData.lowStockThreshold)) ? Number(bootData.lowStockThreshold) : 5;
         fulfillmentConfig = commerce.normalizeConfig(bootData.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
         designSettings = bootData.designSettings || { themeId: 'minimal', colors: {} };
         applyDesignColors(designSettings.colors);

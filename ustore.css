@@ -337,6 +337,12 @@
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 1;
   }
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
   .block {
     display: block;
   }
@@ -1649,6 +1655,13 @@ body { background: var(--ustore-page-bg) !important; color: var(--ustore-text) !
 /* Bo'sh holat (empty state) — Sevimlilar/Buyurtmalar/Trash/Support kabi ro'yxatlar uchun umumiy */
 .fc-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; padding: 2.5rem 1rem; color: var(--fc-muted); text-align: center; }
 .fc-empty-state svg { opacity: .45; }
+
+/* Phase 3, 3-band: admin formalaridagi (tovar/katalog qo'shish-tahrirlash
+   va h.k.) input/select/textarea'lar mobil ekranda o'z konteyneridan
+   kengroq bo'lib, gorizontal scroll paydo qilmasin — box-sizing:border-box
+   allaqachon bor, lekin ba'zi brauzerlarda number/date input'lar min-width
+   tufayli o'z grid katagidan tashqariga chiqib ketishi mumkin edi. */
+input, select, textarea { max-width: 100%; min-width: 0; }
 
 /* Loading spinner — bitta umumiy uslub (dashboard/ombor/support kabi joylarda) */
 .fc-spinner { width: 1.25rem; height: 1.25rem; border: 2px solid var(--fc-border); border-top-color: var(--fc-primary); border-radius: 9999px; animation: fc-spin .7s linear infinite; }
