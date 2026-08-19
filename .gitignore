@@ -1,0 +1,10 @@
+# Unlike the previous rebrand round, there is no separate "real" config.js
+# to exclude here — config.public.js is the ONLY frontend config file, and
+# it is designed to be safe to publish (see its own header comment). Every
+# actual secret (bot tokens, USTORE_BOT_TOKEN_MASTER_KEY, BOSS_SHARED_SECRET,
+# CRON_SHARED_SECRET, Azure keys, the Supabase service_role key) lives only
+# in Supabase Edge Function secrets — never in a file in this repo.
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
