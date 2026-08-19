@@ -1,0 +1,76 @@
+/* USTORE Platform Mini App — minimal, serious admin styling.
+   Plain CSS on purpose (no Tailwind build pipeline available here) —
+   deliberately NOT sharing ../ustore.css, whose classes/CSS variables are
+   tied to per-shop design settings, not the platform admin UI. */
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+.wrap { max-width: 520px; margin: 0 auto; padding: 20px 16px 40px; }
+
+header.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+header.top h1 { font-size: 18px; font-weight: 800; margin: 0; letter-spacing: 0.2px; }
+header.top .badge {
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+  background: #1e293b; color: #94a3b8; border: 1px solid #334155;
+}
+
+.card {
+  background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+  padding: 16px; margin-bottom: 14px;
+}
+.card h2 { font-size: 14px; font-weight: 700; margin: 0 0 10px; color: #f1f5f9; }
+.muted { color: #94a3b8; font-size: 12px; }
+
+.shop-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid #293548;
+}
+.shop-row:last-child { border-bottom: none; }
+.shop-row .name { font-weight: 600; font-size: 13px; color: #f1f5f9; }
+.shop-row .meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+.status-pill {
+  font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 999px; text-transform: uppercase;
+}
+.status-ACTIVE { background: #14532d; color: #86efac; }
+.status-PROVISIONING { background: #78350f; color: #fcd34d; }
+.status-DISABLED { background: #450a0a; color: #fca5a5; }
+
+button.primary {
+  width: 100%; padding: 12px; border-radius: 10px; border: none;
+  background: #2563eb; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
+}
+button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+button.secondary {
+  width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #334155;
+  background: transparent; color: #cbd5e1; font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 8px;
+}
+
+label { display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin: 12px 0 6px; }
+input[type="text"], input[type="password"] {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #334155;
+  background: #0f172a; color: #f1f5f9; font-size: 14px; font-family: monospace;
+}
+input:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+
+.notice { font-size: 12px; padding: 10px 12px; border-radius: 10px; margin-top: 10px; }
+.notice.error { background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+.notice.success { background: #14532d; color: #86efac; border: 1px solid #166534; }
+.notice.warn { background: #78350f; color: #fcd34d; border: 1px solid #92400e; }
+
+.preview-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; }
+.preview-row span:first-child { color: #94a3b8; }
+.preview-row span:last-child { color: #f1f5f9; font-weight: 600; }
+
+.empty { text-align: center; padding: 24px 12px; color: #64748b; font-size: 13px; }
+.hidden { display: none !important; }
+.spinner {
+  display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -2px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
