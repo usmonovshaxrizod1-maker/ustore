@@ -1819,6 +1819,27 @@
       render();
     }
 
+    // Telegram WebView'da bitta urinishdagi tarmoq xatosi ("Failed to
+    // fetch"/"Load failed") ko'pincha o'tkinchi — shu sabab yuklash
+    // qadamlari uchun umumiy qayta-urinish va timeout yordamchilari.
+    function withTimeout(promise, timeoutMs, timeoutMessage) {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs)),
+      ]);
+    }
+    async function retryAsync(fn, attempts, delayMs) {
+      let lastErr;
+      for (let i = 0; i < attempts; i++) {
+        try { return await fn(); }
+        catch (e) {
+          lastErr = e;
+          if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs));
+        }
+      }
+      throw lastErr;
+    }
+
     async function uploadImageSnapshot(snapshot, existingImg, strict = false) {
       if (!snapshot || (!snapshot.file && !snapshot.preparing)) return existingImg || null;
       const pipelineStartedAt = Date.now();
@@ -1854,18 +1875,36 @@
       // tasdiqlanadi (finalize_payment_receipt bilan bir xil pattern:
       // "yozildi" deb signed URL javobiga emas, haqiqiy Storage `.list()`
       // natijasiga ishoniladi).
+      //
+      // MUHIM TUZATISH: captureAndPrepareImageV2 dekod/o'qish butunlay
+      // muvaffaqiyatsiz bo'lganda ham (yuqoridagi izohga qarang) ataylab
+      // ORIGINAL faylni o'zgarishsiz qaytaradi — chunki signed-URL yuklash
+      // browser darajasida to'g'ridan-to'g'ri fetch bilan ishlaydi va bu
+      // ba'zida JS o'qishi ishlamagan taqdirda ham muvaffaqiyatli bo'lishi
+      // mumkin. Lekin real production'da bu "balki ishlaydi" chegara holati
+      // ko'pincha bitta urinishda muvaffaqiyatsiz (WebView tarmoq xatosi,
+      // "Failed to fetch"/"Load failed") — shu sabab ikkala transport ham
+      // endi qisqa kechikish bilan qayta uriniladi (uploadToSignedUrl esa
+      // qo'shimcha ravishda timeout bilan himoyalangan, chunki u xom fetch
+      // bo'lib, callApi'dagi kabi o'z AbortController'iga ega emas).
       const extByMime = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
       const ext = extByMime[mimeType] || 'jpg';
       let signedErr = null;
       const signedUploadStartedAt = Date.now();
       try {
-        const { path, token } = await callApi('get_upload_url', { ext, size: prepared.size, mimeType });
-        const { error: upErr } = await sb.storage.from(CONFIG.IMAGES_BUCKET).uploadToSignedUrl(path, token, prepared);
-        if (upErr) throw upErr;
-        const finalized = await callApi('finalize_image_upload', { path });
-        if (!finalized?.url) throw new Error('image_public_url_failed');
+        const finalUrl = await retryAsync(async () => {
+          const { path, token } = await callApi('get_upload_url', { ext, size: prepared.size, mimeType });
+          const { error: upErr } = await withTimeout(
+            sb.storage.from(CONFIG.IMAGES_BUCKET).uploadToSignedUrl(path, token, prepared),
+            20000, 'signed_url_upload_timeout'
+          );
+          if (upErr) throw upErr;
+          const finalized = await callApi('finalize_image_upload', { path });
+          if (!finalized?.url) throw new Error('image_public_url_failed');
+          return finalized.url;
+        }, 2, 1200);
         imageIO.logStage('SIGNED_URL_UPLOAD_OK', { duration: Date.now() - signedUploadStartedAt, size: prepared.size });
-        return finalized.url;
+        return finalUrl;
       } catch (e) {
         signedErr = e;
         console.warn('[image:SIGNED_URL_UPLOAD_FAILED]', e);
@@ -1874,14 +1913,18 @@
 
       // FALLBACK (o'chirilmagan, ikkinchi darajali): signed URL vaqtincha
       // ishlamasa (masalan Storage CORS/tarmoq muammosi), base64-in-JSON
-      // orqali app-api server upload — mustaqil ikkinchi yo'l.
+      // orqali app-api server upload — mustaqil ikkinchi yo'l. Bu ham
+      // xuddi shunday qayta uriniladi (callApi'ning o'zida 15s timeout bor).
       const serverUploadStartedAt = Date.now();
       try {
         const imageUpload = { mimeType, base64: await fileToBase64(prepared) };
-        const result = await callApi('upload_product_image', { imageUpload });
-        if (!result?.url) throw new Error('image_public_url_failed');
+        const url = await retryAsync(async () => {
+          const result = await callApi('upload_product_image', { imageUpload });
+          if (!result?.url) throw new Error('image_public_url_failed');
+          return result.url;
+        }, 2, 1200);
         imageIO.logStage('SERVER_UPLOAD_OK', { duration: Date.now() - serverUploadStartedAt, size: prepared.size });
-        return result.url;
+        return url;
       } catch (fallbackErr) {
         console.error('[image:SERVER_UPLOAD_FALLBACK_FAILED]', { signedErr, fallbackErr });
         imageIO.logStage('SERVER_UPLOAD_FAILED', { duration: Date.now() - serverUploadStartedAt, name: fallbackErr?.name, message: fallbackErr?.message, level: 'error' });
