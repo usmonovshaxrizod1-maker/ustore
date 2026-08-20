@@ -37,7 +37,7 @@
       delivery: {
         free: { enabled: true, regions: freeRegions },
         fixed: { enabled: false, regions: {} },
-        taxi: { enabled: false, general: { exactFee: null, minFee: null, maxFee: null, comment: null }, regions: {} },
+        taxi: { enabled: false, general: { exactFee: null, minFee: null, maxFee: null, comment: null, estimatedTime: null }, regions: {} },
         post: {
           enabled: false,
           providers: [
@@ -93,6 +93,9 @@
       if (kind !== 'PAYMENT') {
         const comment = String(raw.comment || '').trim().slice(0, 200);
         if (comment) entry.comment = comment;
+        // 9-band: "Yetkazib berish vaqti" — comment bilan bir xil naqsh, ixtiyoriy.
+        const estimatedTime = String(raw.estimatedTime || '').trim().slice(0, 60);
+        if (estimatedTime) entry.estimatedTime = estimatedTime;
       }
       result[regionId] = entry;
     }
@@ -107,6 +110,7 @@
       minFee: nonNegativeIntOrNull(raw?.minFee),
       maxFee: nonNegativeIntOrNull(raw?.maxFee),
       comment: (String(raw?.comment || '').trim().slice(0, 200)) || null,
+      estimatedTime: (String(raw?.estimatedTime || '').trim().slice(0, 60)) || null,
     };
   }
 
@@ -190,12 +194,12 @@
     const delivery = config?.delivery || {};
     const free = delivery.free?.regions?.[regionId];
     if (delivery.free?.enabled && free?.enabled) {
-      result.push({ id: 'FREE', kind: 'FREE', fee: 0, payableFee: 0, comment: free.comment || null });
+      result.push({ id: 'FREE', kind: 'FREE', fee: 0, payableFee: 0, comment: free.comment || null, estimatedTime: free.estimatedTime || null });
     }
     const fixed = delivery.fixed?.regions?.[regionId];
     if (delivery.fixed?.enabled && fixed?.enabled) {
       const fee = nonNegativeInt(fixed.fee);
-      result.push({ id: 'FIXED', kind: 'FIXED', fee, payableFee: fee, comment: fixed.comment || null });
+      result.push({ id: 'FIXED', kind: 'FIXED', fee, payableFee: fee, comment: fixed.comment || null, estimatedTime: fixed.estimatedTime || null });
     }
     const taxi = delivery.taxi?.regions?.[regionId];
     if (delivery.taxi?.enabled && taxi?.enabled) {
@@ -207,7 +211,8 @@
       const minFee = taxi.minFee ?? general.minFee ?? null;
       const maxFee = taxi.maxFee ?? general.maxFee ?? null;
       const comment = taxi.comment ?? general.comment ?? null;
-      result.push({ id: 'TAXI', kind: 'TAXI', fee: 0, payableFee: 0, exactFee, minFee, maxFee, payer: 'CUSTOMER_DIRECT', comment });
+      const estimatedTime = taxi.estimatedTime ?? general.estimatedTime ?? null;
+      result.push({ id: 'TAXI', kind: 'TAXI', fee: 0, payableFee: 0, exactFee, minFee, maxFee, payer: 'CUSTOMER_DIRECT', comment, estimatedTime });
     }
     if (delivery.post?.enabled) {
       for (const provider of delivery.post.providers || []) {
@@ -222,6 +227,7 @@
           fee: 0,
           payableFee: 0,
           comment: region.comment || null,
+          estimatedTime: region.estimatedTime || null,
         });
       }
     }

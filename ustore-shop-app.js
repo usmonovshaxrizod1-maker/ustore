@@ -839,6 +839,51 @@
       return String(Number.isFinite(n) ? n : 0).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     }
     function money(v) { return `${formatNumber(v)} ${tr("so‘m", 'сум')}`; }
+    // 8-band: oldPrice > price bo'lgandagina chegirma foizi bor — butun songa
+    // yaxlitlanadi. oldPrice yo'q yoki price'dan katta emas bo'lsa null
+    // (chaqiruvchi taraf shunda badge'ni umuman ko'rsatmaydi).
+    function discountPercent(p) {
+      if (!p?.oldPrice || !(p.oldPrice > p.price)) return null;
+      return Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100);
+    }
+
+    // 4-band: Telegram WebView'da (ayniqsa eski Android) navigator.clipboard
+    // hamma vaqt ham mavjud/ruxsat etilgan bo'lavermaydi — shu sabab
+    // muvaffaqiyatsiz/yo'q bo'lsa xavfsiz fallback (vaqtinchalik yashirin
+    // textarea + document.execCommand) ishlatiladi. Ikkalasi ham
+    // muvaffaqiyatsiz bo'lsa xatolik jim yutilmaydi — foydalanuvchi buni
+    // ko'radi (raqamni qo'lda ko'chirib olishi mumkin bo'lsin uchun).
+    async function copyTextToClipboard(text) {
+      const value = String(text || '').trim();
+      if (!value) return false;
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(value);
+          return true;
+        }
+      } catch (_) { /* fallback pastda */ }
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        ta.style.top = '0';
+        ta.style.left = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch (_) {
+        return false;
+      }
+    }
+    async function copyCardNumber(text) {
+      const ok = await copyTextToClipboard(text);
+      if (ok) showActionToast(tr('✅ Nusxa olindi', '✅ Скопировано'), 'success', 1400);
+      else alert(tr("Nusxalab bo'lmadi. Raqamni qo'lda tanlab nusxalang.", "Не удалось скопировать. Выделите номер вручную."));
+    }
 
     // Har bir katalog uchun o'zidagi va barcha avlod kataloglaridagi tovarlar
     // sonini xotiradagi products/categories ma'lumotidan bir marta hisoblaydi.
@@ -1022,29 +1067,41 @@
 
       const { latin, cyrillic } = normalizeText(query);
       const q = query.trim().toLowerCase();
-      const results = activeProducts.filter(p => {
+      // 13-band: har bir mahsulot uchun moslik BIR MARTA hisoblanadi (name
+      // VA description'da mos kelsa ham bitta yozuv) — keyin shu bitta
+      // moslik natijasidan HAM filtrlash, HAM tartiblash uchun foydalaniladi.
+      const decorated = [];
+      for (const p of activeProducts) {
         const pNorm = normalizeText(p.name);
         const skuMatch = String(p.sku || '').toLowerCase().includes(latin);
         // 3.5: name_uz, description_uz, name_ru, description_ru bo'yicha qidiradi.
         // RU maydonlari (avtomatik tarjima qilingan) o'zining haqiqiy kirill
         // shaklida, transliteratsiyasiz solishtiriladi.
         const nameRuMatch = p.nameRu && p.nameRu.toLowerCase().includes(q);
+        const nameMatch = pNorm.latin.includes(latin) || pNorm.cyrillic.includes(cyrillic) || nameRuMatch;
         const descNorm = normalizeText(p.desc || '');
         const descMatch = descNorm.latin.includes(latin) || descNorm.cyrillic.includes(cyrillic);
         const descRuMatch = p.descRu && p.descRu.toLowerCase().includes(q);
         // Har bir o'lchamning O'ZINING ID'sini ham qidiradi.
         const variantSkuMatch = productVariants(p).some(v => v.sku && String(v.sku).toLowerCase().includes(latin));
         const variantTextMatch = productVariants(p).some(v => [v.size,v.color].filter(Boolean).some(x => String(x).toLowerCase().includes(q)));
-        return pNorm.latin.includes(latin) || pNorm.cyrillic.includes(cyrillic) || skuMatch || nameRuMatch || descMatch || descRuMatch || variantSkuMatch || variantTextMatch;
+        if (nameMatch || skuMatch || descMatch || descRuMatch || variantSkuMatch || variantTextMatch) {
+          decorated.push({ p, nameMatch, skuStarts: String(p.sku || '').toLowerCase().startsWith(latin) });
+        }
+      }
+
+      decorated.sort((a, b) => {
+        const aSkuStarts = a.skuStarts ? 0 : 1;
+        const bSkuStarts = b.skuStarts ? 0 : 1;
+        if (aSkuStarts !== bSkuStarts) return aSkuStarts - bSkuStarts;
+        // Avval NOMIDA mos kelganlar, keyin faqat izohida (yoki variant/SKU
+        // ichida) mos kelganlar — ikkalasi ham teng bo'lsa mavjud tartib saqlanadi.
+        const aNameRank = a.nameMatch ? 0 : 1;
+        const bNameRank = b.nameMatch ? 0 : 1;
+        return aNameRank - bNameRank;
       });
 
-      results.sort((a, b) => {
-        const aSkuStarts = String(a.sku || '').toLowerCase().startsWith(latin) ? 0 : 1;
-        const bSkuStarts = String(b.sku || '').toLowerCase().startsWith(latin) ? 0 : 1;
-        return aSkuStarts - bSkuStarts;
-      });
-
-      return results;
+      return decorated.map(d => d.p);
     }
 
     // NAVIGATION — og'ir admin ma'lumotlari faqat kerak bo'lgan tab ochilganda yuklanadi.
@@ -1068,7 +1125,7 @@
     async function loadUsersLazy(force = false) {
       if (!isUserAnAdmin || usersLoading || (usersLoaded && !force)) return;
       usersLoading = true;
-      if (activePage === 'SUPPORT' || activePage === 'DASHBOARD') render();
+      if ((activePage === 'SUPPORT' || activePage === 'DASHBOARD') && !isCatalogEditorModalOpen()) render();
       try {
         const data = await callApi('get_users_summary', {});
         usersSummary = data.users || [];
@@ -1077,7 +1134,7 @@
         console.error('Mijozlarni yuklashda xatolik:', e);
       } finally {
         usersLoading = false;
-        if (activePage === 'SUPPORT' || activePage === 'DASHBOARD') render();
+        if ((activePage === 'SUPPORT' || activePage === 'DASHBOARD') && !isCatalogEditorModalOpen()) render();
       }
     }
 
@@ -1092,7 +1149,7 @@
         console.error('Adminlarni yuklashda xatolik:', e);
       } finally {
         adminsLoading = false;
-        if (currentTab === 'profile') render();
+        if (currentTab === 'profile' && !isCatalogEditorModalOpen()) render();
       }
     }
 
@@ -1113,7 +1170,11 @@
         supportTicketsLoading = false;
         // POLISH ROUND: bottom-nav Support tugmasidagi o'qilmagan-nuqta ham
         // shu yuklanishga bog'liq — activePage/tab'dan qat'iy nazar qayta chizamiz.
-        render();
+        // 14-band: BEKOR — bu ham fon poll orqali (8334-qator) chaqirilishi
+        // mumkin, shuning uchun ADD_PROD/EDIT_PROD_FIELD/ADD_CAT/EDIT_CAT
+        // ochiq bo'lsa baribir o'tkazib yuboriladi (draft yo'qolish bugi,
+        // 8300-qatordagi isCatalogEditorModalOpen() bilan bir xil naqsh).
+        if (!isCatalogEditorModalOpen()) render();
       }
     }
     async function loadAdminSupportTicketsLazy(force = false) {
@@ -1127,13 +1188,13 @@
         console.error("Murojaatlarni yuklashda xatolik:", e);
       } finally {
         adminSupportTicketsLoading = false;
-        render();
+        if (!isCatalogEditorModalOpen()) render();
       }
     }
     async function loadSupportMessages(ticketId, force = false) {
       if (!force && openSupportTicketId === ticketId && supportMessages.length) return;
       supportMessagesLoading = true;
-      render();
+      if (!isCatalogEditorModalOpen()) render();
       try {
         const data = await callApi('get_support_messages', { ticketId });
         supportMessages = data.messages || [];
@@ -1142,7 +1203,7 @@
         supportMessages = [];
       } finally {
         supportMessagesLoading = false;
-        render();
+        if (!isCatalogEditorModalOpen()) render();
       }
     }
     // 5-band: usersSummary allaqachon boshqa joyda (Mijozlar tab) yuklangan
@@ -2139,6 +2200,10 @@
         case 'FAVORITES': renderFavoritesPage(container); break;
         case 'RECENT': renderRecentPage(container); break;
         case 'BILLZ': renderBillzPage(container); break;
+        case 'ORDER_INFO': renderOrderInfoPage(container); break;
+        case 'DESIGN_SETTINGS': renderDesignSettingsPage(container); break;
+        case 'DELIVERY_SETTINGS': renderDeliverySettingsPage(container); break;
+        case 'PAYMENT_SETTINGS': renderPaymentSettingsPage(container); break;
         default:
           container.innerHTML = '';
       }
@@ -2377,7 +2442,8 @@
       const body = `
         <div class="space-y-2">
           <button type="button" onclick="openOrderInfoSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="receipt" class="w-4 h-4"></i>${tr("Buyurtma ma'lumotlari", "Информация о заказе")}</span><span>›</span></button>
-          <button type="button" onclick="openFulfillmentSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="truck" class="w-4 h-4"></i>${tr("Yetkazib berish va to'lov", "Доставка и оплата")}</span><span>›</span></button>
+          <button type="button" onclick="openDeliverySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="truck" class="w-4 h-4"></i>${tr("Yetkazib berish parametrlari", "Параметры доставки")}</span><span>›</span></button>
+          <button type="button" onclick="openPaymentSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr("To'lov parametrlari", "Параметры оплаты")}</span><span>›</span></button>
           <button type="button" onclick="openDesignSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4"></i>${tr("Dizayn", "Дизайн")}</span><span>›</span></button>
           ${(isSuperAdmin && isAdminMode) ? `
             <button type="button" onclick="activePopupModal='START_MESSAGE'; render();" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4"></i>${tr("Bot /start xabari", "Сообщение бота /start")}</span><span>›</span></button>
@@ -2388,6 +2454,97 @@
         </div>
       `;
       renderPageShell(container, tr("Do'kon sozlamalari", 'Настройки магазина'), body);
+    }
+
+    // 10-band: ilgari popup modal bo'lgan sozlamalar endi to'liq sahifa —
+    // renderPageShell orqali (mobil Telegram Mini App navigatsiyasiga mos,
+    // orqaga/bosh sahifa tugmalari standart, modal fon-scroll muammosi yo'q).
+    // Billz sozlamalari (BILLZ_SETTINGS) va Kam qolgan chegarasi
+    // (LOW_STOCK_SETTINGS, Ombor sahifasidan ochiladi) ATAYLAB tegilmagan.
+    function renderOrderInfoPage(container) {
+      renderPageShell(container, tr("Buyurtma ma'lumotlari", "Информация о заказе"),
+        `<p class="text-gray-400 text-center py-8 text-xs">${tr("Bu bo'lim tez orada qo'shiladi.", "Этот раздел скоро будет добавлен.")}</p>`);
+    }
+
+    function renderDesignSettingsPage(container) {
+      const draft = designDraft || { themeId: 'minimal', colors: {} };
+      const activeColors = designColorsWithDefaults(draft.colors);
+      const issues = findContrastIssues(draft.colors);
+      const body = `
+        <div class="space-y-3 text-xs">
+          <div>
+            <p class="font-bold text-gray-600 mb-1.5">${tr("Tayyor mavzular", "Готовые темы")}</p>
+            <div class="grid grid-cols-3 gap-2">
+              ${Object.entries(DESIGN_THEMES).map(([id, theme]) => `
+                <button type="button" onclick="pickDesignTheme('${id}')" class="rounded-xl border-2 p-2 text-center ${draft.themeId === id ? 'border-blue-600' : 'border-transparent'}" style="background:${theme.colors.pageBg}">
+                  <div class="flex justify-center gap-1 mb-1">
+                    <span class="w-3.5 h-3.5 rounded-full inline-block" style="background:${theme.colors.button}"></span>
+                    <span class="w-3.5 h-3.5 rounded-full inline-block border" style="background:${theme.colors.cardBg}"></span>
+                  </div>
+                  <span class="font-bold text-[10px]" style="color:${theme.colors.text}">${theme.label}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="space-y-2 pt-2 border-t">
+            <p class="font-bold text-gray-600 pt-2">${tr("Qo'lda rang tanlash", "Ручной выбор цвета")}</p>
+            ${DESIGN_COLOR_KEYS.map(key => `
+              <div class="flex items-center justify-between gap-2">
+                <label class="font-bold text-gray-600">${DESIGN_COLOR_LABELS[key]}</label>
+                <div class="flex items-center gap-2">
+                  <input type="color" value="${activeColors[key]}" onchange="setDesignColor('${key}', this.value)" class="w-9 h-9 border rounded-lg cursor-pointer">
+                  <span class="font-mono text-[10px] text-gray-400 w-14">${activeColors[key]}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          ${issues.length ? `
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[10px] text-amber-900 space-y-1">
+              <p class="font-bold">⚠️ ${tr("O'qilishi qiyin bo'lishi mumkin:", 'Может быть трудно читать:')}</p>
+              ${issues.map(i => `<p>${i.pair}: ${i.ratio.toFixed(1)}:1 (${tr('kerak','нужно')} ${WCAG_AA_RATIO}:1)</p>`).join('')}
+            </div>
+          ` : ''}
+
+          <div class="flex gap-2 pt-2 sticky bottom-0 bg-white">
+            <button onclick="saveDesignSettings()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">✅ ${tr("Saqlash", "Сохранить")}</button>
+            <button onclick="closeDesignSettings()" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
+          </div>
+        </div>
+      `;
+      renderPageShell(container, tr("Do'kon dizayni", "Дизайн магазина"), body, { onBack: 'closeDesignSettings()' });
+    }
+
+    function renderDeliverySettingsPage(container) {
+      if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
+      fulfillmentSettingsSection = 'DELIVERY';
+      const body = `
+        <div class="space-y-3 text-xs">
+          <p class="text-[10px] text-gray-500">${TOP_LEVEL_REGIONS.length} ${tr('ta top-level hudud mavjud ro‘yxatdan olindi', 'регионов взято из текущего списка')}</p>
+          <div id="fulfillment-panel">${renderFulfillmentDeliveryPanel()}</div>
+          <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
+            <button onclick="saveFulfillmentSettings()" class="bg-blue-600 text-white font-black py-3 rounded-xl">✅ ${tr('Saqlash','Сохранить')}</button>
+            <button onclick="closeFulfillmentSettingsPage()" class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl">${tr('Bekor qilish','Отмена')}</button>
+          </div>
+        </div>
+      `;
+      renderPageShell(container, tr("Yetkazib berish parametrlari", "Параметры доставки"), body, { onBack: 'closeFulfillmentSettingsPage()' });
+    }
+
+    function renderPaymentSettingsPage(container) {
+      if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
+      fulfillmentSettingsSection = 'PAYMENTS';
+      const body = `
+        <div class="space-y-3 text-xs">
+          <div id="fulfillment-panel">${renderFulfillmentPaymentsPanel()}</div>
+          <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
+            <button onclick="saveFulfillmentSettings()" class="bg-blue-600 text-white font-black py-3 rounded-xl">✅ ${tr('Saqlash','Сохранить')}</button>
+            <button onclick="closeFulfillmentSettingsPage()" class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl">${tr('Bekor qilish','Отмена')}</button>
+          </div>
+        </div>
+      `;
+      renderPageShell(container, tr("To'lov parametrlari", "Параметры оплаты"), body, { onBack: 'closeFulfillmentSettingsPage()' });
     }
 
     // 1. HOME TAB
@@ -2591,7 +2748,7 @@
           <div>
             <div class="relative">
               <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-28 object-cover rounded-xl mb-2" loading="lazy">
-              ${hasDiscount ? `<span class="absolute top-1 right-1 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">${tr("CHEGIRMA", "СКИДКА")}</span>` : ''}
+              ${hasDiscount ? `<span class="absolute top-1 right-1 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">${discountPercent(p)}% ${tr("CHEGIRMA", "СКИДКА")}</span>` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
@@ -3326,7 +3483,11 @@
         // qo'shimcha qator sifatida chiqadi; bo'lmasa hech narsa qo'shilmaydi.
         const noticeText = escapeHtml(deliveryOptionNotice(selectedDelivery));
         const comment = selectedDelivery?.comment ? `${noticeText ? '<br>' : ''}<b>${escapeHtml(selectedDelivery.comment)}</b>` : '';
-        notice.innerHTML = noticeText + comment;
+        // 9-band: "Yetkazib berish vaqti" — ixtiyoriy, to'ldirilgan bo'lsagina
+        // ko'rinadi (bo'sh bo'lsa na label, na bo'sh joy qoladi).
+        const estimatedTime = selectedDelivery?.estimatedTime
+          ? `${(noticeText || comment) ? '<br>' : ''}⏱ ${tr('Taxminiy vaqt', 'Ориентировочное время')}: <b>${escapeHtml(selectedDelivery.estimatedTime)}</b>` : '';
+        notice.innerHTML = noticeText + comment + estimatedTime;
         notice.classList.toggle('hidden', !selectedDelivery);
       }
       // 2-band: POST (BTS/EMU) uchun faqat manzil maydoni yashiriladi (uning
@@ -3352,7 +3513,10 @@
           cardDetails.innerHTML = `
             <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-1">
               <p class="font-bold text-blue-900">${tr("Pul o'tkaziladigan karta", 'Карта для перевода')}</p>
-              <p class="font-mono text-sm font-black">${escapeHtml(selectedPayment.cardNumber || '')}</p>
+              <div class="flex items-center gap-2">
+                <p id="chk-card-number-display" class="font-mono text-sm font-black">${escapeHtml(selectedPayment.cardNumber || '')}</p>
+                <button type="button" onclick="copyCardNumber(document.getElementById('chk-card-number-display').textContent)" class="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 px-2 py-0.5 rounded-lg shrink-0">📋 ${tr('Nusxalash', 'Копировать')}</button>
+              </div>
               <p>${escapeHtml(selectedPayment.cardHolder || '')}</p>
               <p class="text-[10px] text-blue-700">${tr(`CVV, PIN, SMS kod yoki amal qilish muddatini hech kimga bermang — ${escapeHtml(shopDisplayName())} ularni so'ramaydi.`, `Никому не сообщайте CVV, PIN, SMS-код или срок действия — ${escapeHtml(shopDisplayName())} их не запрашивает.`)}</p>
             </div>
@@ -4174,7 +4338,7 @@
     async function loadWarehouseSummary(force = false) {
       if (!isUserAnAdmin || warehouseSummaryLoading || (warehouseSummaryLoaded && !force)) return;
       warehouseSummaryLoading = true;
-      if (currentTab === 'warehouse') render();
+      if (currentTab === 'warehouse' && !isCatalogEditorModalOpen()) render();
       try {
         warehouseSummaryData = await callApi('get_warehouse_summary', {});
         warehouseSummaryLoaded = true;
@@ -4182,7 +4346,7 @@
         console.error('Ombor holatini yuklashda xatolik:', e);
       } finally {
         warehouseSummaryLoading = false;
-        if (currentTab === 'warehouse') render();
+        if (currentTab === 'warehouse' && !isCatalogEditorModalOpen()) render();
       }
     }
     function switchWarehouseSubTab(tabName) {
@@ -4716,14 +4880,12 @@
     function openDesignSettings() {
       if (!isUserAnAdmin || !isAdminMode) return;
       designDraft = { themeId: designSettings.themeId, colors: { ...designSettings.colors } };
-      activePopupModal = 'DESIGN_SETTINGS';
-      render();
+      openPage('DESIGN_SETTINGS');
     }
     function closeDesignSettings() {
       applyDesignColors(designSettings.colors); // bekor qilinsa — saqlangan holatga qaytariladi
       designDraft = null;
-      activePopupModal = null;
-      render();
+      closePage();
     }
     function pickDesignTheme(themeId) {
       const theme = DESIGN_THEMES[themeId];
@@ -4752,8 +4914,7 @@
         designSettings = result.designSettings;
         applyDesignColors(designSettings.colors);
         designDraft = null;
-        activePopupModal = null;
-        render();
+        closePage();
         showActionToast(tr('✅ Dizayn saqlandi', '✅ Дизайн сохранён'), 'success', 1500);
       } catch (e) {
         console.error(e);
@@ -4765,24 +4926,32 @@
 
     function openOrderInfoSettings() {
       if (!isUserAnAdmin || !isAdminMode) return;
-      activePopupModal = 'ORDER_INFO';
-      render();
+      openPage('ORDER_INFO');
     }
 
-    function openFulfillmentSettings() {
+    // 11-band: "Yetkazib berish va to'lov" endi BITTA modal ichidagi menyu
+    // emas — Do'kon sozlamalari sahifasida ikkita ALOHIDA qator, har biri
+    // o'zining TO'LIQ sahifasini ochadi (fulfillmentSettingsSection shu ikki
+    // funksiyaning birida darhol DELIVERY/PAYMENTS'ga o'rnatiladi — "MENU"
+    // holati endi hech qachon kerak bo'lmaydi).
+    function openDeliverySettingsPage() {
       if (!isUserAnAdmin || !isAdminMode) return;
-      fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
-      fulfillmentSettingsSection = 'MENU';
-      fulfillmentDeliveryKind = 'FREE';
-      fulfillmentExpandedPayment = null;
-      activePopupModal = 'FULFILLMENT_SETTINGS';
-      render();
+      if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
+      fulfillmentSettingsSection = 'DELIVERY';
+      fulfillmentDeliveryKind = fulfillmentDeliveryKind || 'FREE';
+      openPage('DELIVERY_SETTINGS');
+    }
+    function openPaymentSettingsPage() {
+      if (!isUserAnAdmin || !isAdminMode) return;
+      if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
+      fulfillmentSettingsSection = 'PAYMENTS';
+      fulfillmentExpandedPayment = fulfillmentExpandedPayment || 'CASH';
+      openPage('PAYMENT_SETTINGS');
     }
 
-    function closeFulfillmentSettings() {
+    function closeFulfillmentSettingsPage() {
       fulfillmentDraft = null;
-      activePopupModal = null;
-      render();
+      closePage();
     }
 
     // Faqat #fulfillment-panel (sarlavha/Saqlash tugmalaridan tashqari ichki
@@ -4869,6 +5038,13 @@
       if (!key || !fulfillmentDraft.delivery[key].regions[regionId]) return;
       fulfillmentDraft.delivery[key].regions[regionId].comment = String(value || '').slice(0, 200);
     }
+    // 9-band: "Yetkazib berish vaqti" — comment bilan bir xil naqsh, ixtiyoriy.
+    function setDeliveryRegionEstimatedTime(kind, encodedId, value) {
+      const key = DELIVERY_CONFIG_KEYS[kind];
+      const regionId = decodedRegionId(encodedId);
+      if (!key || !fulfillmentDraft.delivery[key].regions[regionId]) return;
+      fulfillmentDraft.delivery[key].regions[regionId].estimatedTime = String(value || '').slice(0, 60);
+    }
 
     // 7-band: TAXI uchun "umumiy" (region'ga bog'liq bo'lmagan) narx/izoh —
     // biror region o'zining qiymatini kiritmagan bo'lsa shu fallback bo'ladi.
@@ -4880,8 +5056,12 @@
       fulfillmentDraft.delivery.taxi.general[field] = (Number.isFinite(n) && n >= 0) ? Math.round(n) : null;
     }
     function setTaxiGeneralComment(value) {
-      if (!fulfillmentDraft.delivery.taxi.general) fulfillmentDraft.delivery.taxi.general = { exactFee: null, minFee: null, maxFee: null, comment: null };
+      if (!fulfillmentDraft.delivery.taxi.general) fulfillmentDraft.delivery.taxi.general = { exactFee: null, minFee: null, maxFee: null, comment: null, estimatedTime: null };
       fulfillmentDraft.delivery.taxi.general.comment = String(value || '').slice(0, 200) || null;
+    }
+    function setTaxiGeneralEstimatedTime(value) {
+      if (!fulfillmentDraft.delivery.taxi.general) fulfillmentDraft.delivery.taxi.general = { exactFee: null, minFee: null, maxFee: null, comment: null, estimatedTime: null };
+      fulfillmentDraft.delivery.taxi.general.estimatedTime = String(value || '').slice(0, 60) || null;
     }
 
     function bulkDeliveryRegions(kind, enabled) {
@@ -4926,6 +5106,10 @@
     function setPostRegionComment(providerId, encodedId, value) {
       const provider = postProvider(providerId), regionId = decodedRegionId(encodedId);
       if (provider?.regions?.[regionId]) provider.regions[regionId].comment = String(value || '').slice(0, 200);
+    }
+    function setPostRegionEstimatedTime(providerId, encodedId, value) {
+      const provider = postProvider(providerId), regionId = decodedRegionId(encodedId);
+      if (provider?.regions?.[regionId]) provider.regions[regionId].estimatedTime = String(value || '').slice(0, 60);
     }
 
     function bulkPostRegions(providerId, enabled) {
@@ -4980,6 +5164,7 @@
             <p class="text-[9px] text-gray-400">${tr("Bo'sh qoldirilsa, umumiy qiymat yoki standart matn ishlatiladi.", "Если оставить пустым, используется общее значение или стандартный текст.")}</p>
           ` : ''}
           ${entry?.enabled ? `<input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setDeliveryRegionComment('${kind}','${encoded}',this.value)" placeholder="${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}" maxlength="200" class="w-full p-2 border rounded-xl text-[11px]">` : ''}
+          ${entry?.enabled ? `<input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setDeliveryRegionEstimatedTime('${kind}','${encoded}',this.value)" placeholder="${tr("Yetkazib berish vaqti (ixtiyoriy, masalan: 30-60 daqiqa)","Время доставки (необязательно, например: 30-60 минут)")}" maxlength="60" class="w-full p-2 border rounded-xl text-[11px]">` : ''}
         </div>`;
       }).join('');
     }
@@ -4990,7 +5175,7 @@
         ${provider.id === 'OTHER' ? `<input type="text" value="${escapeHtml(provider.name)}" oninput="setPostProviderName('OTHER',this.value)" placeholder="${tr('Pochta nomi','Название почты')}" class="w-full p-2 border rounded-xl">` : ''}
         ${provider.enabled ? `${settingsBulkButtons(`bulkPostRegions('${provider.id}',true)`, `bulkPostRegions('${provider.id}',false)`)}<div class="space-y-2">${TOP_LEVEL_REGIONS.map(region => {
           const entry = provider.regions[region.id], encoded = encodedRegionId(region.id);
-          return `<div class="border rounded-xl p-2 space-y-2"><label class="flex justify-between gap-2 font-bold"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setPostRegionEnabled('${provider.id}','${encoded}',this.checked)"></label>${entry?.enabled ? `<select onchange="setPostRegionPayer('${provider.id}','${encoded}',this.value)" class="w-full p-2 border rounded-xl bg-gray-50"><option value="CUSTOMER" ${entry.payer !== 'SELLER' ? 'selected' : ''}>${tr('Pochta xarajati mijoz hisobidan','Почта за счёт клиента')}</option><option value="SELLER" ${entry.payer === 'SELLER' ? 'selected' : ''}>${tr('Pochta xarajati sotuvchi hisobidan','Почта за счёт продавца')}</option></select><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setPostRegionComment('${provider.id}','${encoded}',this.value)" placeholder="${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}" maxlength="200" class="w-full p-2 border rounded-xl text-[11px]">` : ''}</div>`;
+          return `<div class="border rounded-xl p-2 space-y-2"><label class="flex justify-between gap-2 font-bold"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setPostRegionEnabled('${provider.id}','${encoded}',this.checked)"></label>${entry?.enabled ? `<select onchange="setPostRegionPayer('${provider.id}','${encoded}',this.value)" class="w-full p-2 border rounded-xl bg-gray-50"><option value="CUSTOMER" ${entry.payer !== 'SELLER' ? 'selected' : ''}>${tr('Pochta xarajati mijoz hisobidan','Почта за счёт клиента')}</option><option value="SELLER" ${entry.payer === 'SELLER' ? 'selected' : ''}>${tr('Pochta xarajati sotuvchi hisobidan','Почта за счёт продавца')}</option></select><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setPostRegionComment('${provider.id}','${encoded}',this.value)" placeholder="${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}" maxlength="200" class="w-full p-2 border rounded-xl text-[11px]"><input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setPostRegionEstimatedTime('${provider.id}','${encoded}',this.value)" placeholder="${tr("Yetkazib berish vaqti (ixtiyoriy)","Время доставки (необязательно)")}" maxlength="60" class="w-full p-2 border rounded-xl text-[11px]">` : ''}</div>`;
         }).join('')}</div>` : ''}
       </div>`;
     }
@@ -5092,6 +5277,7 @@
           <input type="number" min="0" value="${g.exactFee ?? ''}" oninput="setTaxiGeneralNumber('exactFee',this.value)" placeholder="${tr('Aniq narx (ixtiyoriy)', 'Точная цена (необязательно)')}" class="w-full p-2 border rounded-xl">
           <div class="grid grid-cols-2 gap-2"><input type="number" min="0" value="${g.minFee ?? ''}" oninput="setTaxiGeneralNumber('minFee',this.value)" placeholder="Min" class="p-2 border rounded-xl"><input type="number" min="0" value="${g.maxFee ?? ''}" oninput="setTaxiGeneralNumber('maxFee',this.value)" placeholder="Max" class="p-2 border rounded-xl"></div>
           <input type="text" value="${escapeHtml(g.comment || '')}" oninput="setTaxiGeneralComment(this.value)" placeholder="${tr('Umumiy izoh (ixtiyoriy)', 'Общий комментарий (необязательно)')}" maxlength="200" class="w-full p-2 border rounded-xl text-[11px]">
+          <input type="text" value="${escapeHtml(g.estimatedTime || '')}" oninput="setTaxiGeneralEstimatedTime(this.value)" placeholder="${tr("Umumiy yetkazib berish vaqti (ixtiyoriy)","Общее время доставки (необязательно)")}" maxlength="60" class="w-full p-2 border rounded-xl text-[11px]">
           <p class="text-[9px] text-gray-400">${tr("Bu qiymat faqat o'z narxini kiritmagan viloyatlar uchun ishlatiladi.", "Это значение применяется только к регионам, где своя цена не указана.")}</p>
         </div>`;
       })() : '';
@@ -5126,7 +5312,6 @@
         ['POST', tr('📦 Pochta', '📦 Почта')],
       ];
       return `<div class="space-y-3">
-        ${fulfillmentBackButton()}
         <div class="flex gap-1 flex-wrap">${kinds.map(([id, label]) => `<button type="button" onclick="setFulfillmentDeliveryKind('${id}')" class="px-2.5 py-1.5 rounded-xl font-bold ${fulfillmentDeliveryKind === id ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-600'}">${label}</button>`).join('')}</div>
         <div id="fulfillment-body" class="bg-gray-50 border rounded-2xl p-3">${renderFulfillmentDeliveryBody()}</div>
       </div>`;
@@ -5136,7 +5321,6 @@
     function renderFulfillmentPaymentsPanel() {
       const methods = fulfillmentDraft.payments.methods;
       return `<div class="space-y-3">
-        ${fulfillmentBackButton()}
         <div class="grid grid-cols-3 gap-2">${methods.map(m => `
           <button type="button" onclick="setFulfillmentExpandedPayment('${m.id}')" class="p-3 rounded-2xl border font-black flex flex-col items-center gap-1 ${fulfillmentExpandedPayment === m.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-gray-50 text-gray-700 border-gray-200'}">
             <span class="text-lg">${m.id === 'CASH' ? '💵' : m.id === 'CARD' ? '💳' : '🔳'}</span>
@@ -5165,9 +5349,8 @@
       const qrEnabledForWarning = checked.config.payments.methods.find(m => m.id === 'QR')?.enabled;
       const old = fulfillmentConfig;
       fulfillmentConfig = checked.config;
-      activePopupModal = null;
       fulfillmentDraft = null;
-      render();
+      closePage();
       showActionToast(tr('⏳ Yetkazib berish sozlamalari saqlanmoqda...', '⏳ Настройки доставки сохраняются...'), 'saving');
       try {
         const result = await callApi('set_fulfillment_config', { config: fulfillmentConfig });
@@ -5935,39 +6118,11 @@
 
       // POLISH ROUND 1-bosqich: SHOP_PARAMS endi modal emas — renderSettingsPage()
       // (activePage='SETTINGS') ga ko'chirildi.
-
-      if (activePopupModal === 'ORDER_INFO') {
-        container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="activePopupModal=null; render();">
-            <div class="bg-white rounded-t-3xl sm:rounded-3xl p-4 max-w-md w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
-              <div class="flex items-center justify-between border-b pb-2">
-                <h3 class="font-black text-sm">🧾 ${tr("Buyurtma ma'lumotlari", "Информация о заказе")}</h3>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 px-3 py-1.5 rounded-xl font-bold">✕</button>
-              </div>
-              <p class="text-gray-400 text-center py-8">${tr("Bu bo'lim tez orada qo'shiladi.", "Этот раздел скоро будет добавлен.")}</p>
-            </div>
-          </div>`;
-        return;
-      }
-
-      if (activePopupModal === 'FULFILLMENT_SETTINGS') {
-        if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
-        container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <div class="bg-white rounded-t-3xl sm:rounded-3xl p-4 max-w-md w-full max-h-[94vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
-              <div class="flex items-center justify-between border-b pb-2 gap-2">
-                <div><h3 class="font-black text-sm">🚚 ${tr("Yetkazib berish va to'lov", 'Доставка и оплата')}</h3><p class="text-[10px] text-gray-500">${TOP_LEVEL_REGIONS.length} ${tr('ta top-level hudud mavjud ro‘yxatdan olindi', 'регионов взято из текущего списка')}</p></div>
-                <button onclick="closeFulfillmentSettings()" class="bg-gray-100 px-3 py-1.5 rounded-xl font-bold">✕</button>
-              </div>
-              <div id="fulfillment-panel">${renderFulfillmentPanel()}</div>
-              <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
-                <button onclick="saveFulfillmentSettings()" class="bg-blue-600 text-white font-black py-3 rounded-xl">✅ ${tr('Saqlash','Сохранить')}</button>
-                <button onclick="closeFulfillmentSettings()" class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl">${tr('Bekor qilish','Отмена')}</button>
-              </div>
-            </div>
-          </div>`;
-        return;
-      }
+      // 10/11-band: ORDER_INFO, DESIGN_SETTINGS va FULFILLMENT_SETTINGS
+      // (endi ikkiga bo'lingan: DELIVERY_SETTINGS/PAYMENT_SETTINGS) ham xuddi
+      // shunday — endi modal emas, to'liq sahifa (renderOrderInfoPage,
+      // renderDesignSettingsPage, renderDeliverySettingsPage,
+      // renderPaymentSettingsPage — activePage router'da, pastda qarang).
 
       if (activePopupModal === 'ADD_PROD') {
         container.innerHTML = `
@@ -6006,7 +6161,11 @@
               <div>
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
                 <input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
-                <button id="m-prod-image-button" type="button" onclick="document.getElementById('m-prod-image-input').click()" class="w-full mt-1 bg-slate-800 text-white font-bold py-3 rounded-xl shadow-sm">🖼 ${tr("Rasm tanlash", "Выбрать фото")}</button>
+                <input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                  <button id="m-prod-image-button" type="button" onclick="document.getElementById('m-prod-image-input').click()" class="bg-slate-800 text-white font-bold py-3 rounded-xl shadow-sm">🖼 ${tr("Galereyadan tanlash", "Из галереи")}</button>
+                  <button type="button" onclick="document.getElementById('m-prod-image-input-files').click()" class="bg-slate-100 text-slate-700 font-bold py-3 rounded-xl">📁 ${tr("Fayldan tanlash", "Из файлов")}</button>
+                </div>
                 <input id="m-prod-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-prod-prev', 'm-prod-image-url-error', 'm-prod-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="m-prod-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
                 <img id="m-prod-prev" src="" class="w-24 h-24 object-cover rounded-xl mt-2 hidden border">
@@ -6034,9 +6193,11 @@
               <div>
                 <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
                 <input id="m-cat-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
-                <div class="flex items-center gap-3 mt-1">
+                <input id="m-cat-image-input-files" type="file" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
+                <div class="flex items-center gap-3 mt-1 flex-wrap">
                   <img id="m-cat-prev" src="" class="w-16 h-16 object-cover rounded-xl hidden border">
-                  <button id="m-cat-image-button" type="button" onclick="document.getElementById('m-cat-image-input').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">🖼️ ${tr('Rasm tanlash', 'Выбрать изображение')}</button>
+                  <button id="m-cat-image-button" type="button" onclick="document.getElementById('m-cat-image-input').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">🖼️ ${tr('Galereyadan', 'Из галереи')}</button>
+                  <button type="button" onclick="document.getElementById('m-cat-image-input-files').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700">📁 ${tr('Fayldan', 'Из файлов')}</button>
                 </div>
                 <input id="m-cat-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-cat-prev', 'm-cat-image-url-error', 'm-cat-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="m-cat-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
@@ -6064,9 +6225,11 @@
               <div>
                 <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
                 <input id="ec-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
-                <div class="flex items-center gap-3 mt-1">
+                <input id="ec-image-input-files" type="file" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
+                <div class="flex items-center gap-3 mt-1 flex-wrap">
                   <img id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-cover rounded-xl ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border">
-                  <button id="ec-image-button" type="button" onclick="document.getElementById('ec-image-input').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? `🔄 ${tr('Rasmni almashtirish', 'Заменить изображение')}` : `🖼️ ${tr('Rasm tanlash', 'Выбрать изображение')}`}</button>
+                  <button id="ec-image-button" type="button" onclick="document.getElementById('ec-image-input').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? `🔄 ${tr('Almashtirish', 'Заменить')}` : `🖼️ ${tr('Galereyadan', 'Из галереи')}`}</button>
+                  <button type="button" onclick="document.getElementById('ec-image-input-files').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700">📁 ${tr('Fayldan', 'Из файлов')}</button>
                 </div>
                 <input id="ec-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'ec-img-prev', 'ec-image-url-error', 'ec-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="ec-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
@@ -6253,61 +6416,8 @@
       }
 
       // 4-blok: do'kon dizayni — tayyor mavzular + qo'lda ranglar + kontrast ogohlantirish.
-      if (activePopupModal === 'DESIGN_SETTINGS') {
-        const draft = designDraft || { themeId: 'minimal', colors: {} };
-        const activeColors = designColorsWithDefaults(draft.colors);
-        const issues = findContrastIssues(draft.colors);
-        container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="closeDesignSettings()">
-            <div class="bg-white rounded-t-3xl sm:rounded-3xl p-4 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
-              <div class="flex items-center justify-between border-b pb-2">
-                <h3 class="font-black text-sm">🎨 ${tr("Do'kon dizayni", "Дизайн магазина")}</h3>
-                <button onclick="closeDesignSettings()" class="bg-gray-100 px-3 py-1.5 rounded-xl font-bold">✕</button>
-              </div>
-
-              <div>
-                <p class="font-bold text-gray-600 mb-1.5">${tr("Tayyor mavzular", "Готовые темы")}</p>
-                <div class="grid grid-cols-3 gap-2">
-                  ${Object.entries(DESIGN_THEMES).map(([id, theme]) => `
-                    <button type="button" onclick="pickDesignTheme('${id}')" class="rounded-xl border-2 p-2 text-center ${draft.themeId === id ? 'border-blue-600' : 'border-transparent'}" style="background:${theme.colors.pageBg}">
-                      <div class="flex justify-center gap-1 mb-1">
-                        <span class="w-3.5 h-3.5 rounded-full inline-block" style="background:${theme.colors.button}"></span>
-                        <span class="w-3.5 h-3.5 rounded-full inline-block border" style="background:${theme.colors.cardBg}"></span>
-                      </div>
-                      <span class="font-bold text-[10px]" style="color:${theme.colors.text}">${theme.label}</span>
-                    </button>
-                  `).join('')}
-                </div>
-              </div>
-
-              <div class="space-y-2 pt-2 border-t">
-                <p class="font-bold text-gray-600 pt-2">${tr("Qo'lda rang tanlash", "Ручной выбор цвета")}</p>
-                ${DESIGN_COLOR_KEYS.map(key => `
-                  <div class="flex items-center justify-between gap-2">
-                    <label class="font-bold text-gray-600">${DESIGN_COLOR_LABELS[key]}</label>
-                    <div class="flex items-center gap-2">
-                      <input type="color" value="${activeColors[key]}" onchange="setDesignColor('${key}', this.value)" class="w-9 h-9 border rounded-lg cursor-pointer">
-                      <span class="font-mono text-[10px] text-gray-400 w-14">${activeColors[key]}</span>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-
-              ${issues.length ? `
-                <div class="bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-[10px] text-amber-900 space-y-1">
-                  <p class="font-bold">⚠️ ${tr("O'qilishi qiyin bo'lishi mumkin:", 'Может быть трудно читать:')}</p>
-                  ${issues.map(i => `<p>${i.pair}: ${i.ratio.toFixed(1)}:1 (${tr('kerak','нужно')} ${WCAG_AA_RATIO}:1)</p>`).join('')}
-                </div>
-              ` : ''}
-
-              <div class="flex gap-2 pt-2 sticky bottom-0 bg-white">
-                <button onclick="saveDesignSettings()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">✅ ${tr("Saqlash", "Сохранить")}</button>
-                <button onclick="closeDesignSettings()" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
-              </div>
-            </div>
-          </div>`;
-        return;
-      }
+      // 10-band: DESIGN_SETTINGS endi modal emas — renderDesignSettingsPage()
+      // (activePage='DESIGN_SETTINGS').
 
       if (activePopupModal === 'ADD_ADMIN') {
         container.innerHTML = `
@@ -6366,7 +6476,11 @@
               ${field === 'img' ? `
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
                 <input id="ef-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
-                <button id="ef-image-button" type="button" onclick="document.getElementById('ef-image-input').click()" class="w-full mt-1 bg-slate-800 text-white font-bold py-3 rounded-xl shadow-sm">🖼 ${hasProductImage(p) ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}</button>
+                <input id="ef-image-input-files" type="file" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                  <button id="ef-image-button" type="button" onclick="document.getElementById('ef-image-input').click()" class="bg-slate-800 text-white font-bold py-3 rounded-xl shadow-sm">🖼 ${hasProductImage(p) ? tr("Almashtirish", "Заменить") : tr("Galereyadan", "Из галереи")}</button>
+                  <button type="button" onclick="document.getElementById('ef-image-input-files').click()" class="bg-slate-100 text-slate-700 font-bold py-3 rounded-xl">📁 ${tr("Fayldan", "Из файлов")}</button>
+                </div>
                 <input id="ef-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'ef-img-prev', 'ef-image-url-error', 'ef-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="ef-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
                 <img id="ef-img-prev" src="${escapeHtml(hasProductImage(p) ? p.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-24 h-24 object-cover rounded-xl mt-2 border ${hasProductImage(p) ? '' : 'hidden'}">
@@ -6947,7 +7061,7 @@
                   <input id="shipment-car" value="${escapeHtml(o.shipment?.carNumber || '')}" placeholder="01 A 123 BC" class="w-full p-2 border rounded-xl uppercase">
                   <input id="shipment-phone" value="${escapeHtml(o.shipment?.driverPhone || '')}" placeholder="+998 90 123 45 67" class="w-full p-2 border rounded-xl font-mono">
                   <input id="shipment-driver" value="${escapeHtml(o.shipment?.driverName || '')}" placeholder="${tr('Haydovchi ismi (ixtiyoriy)','Имя водителя (необязательно)')}" class="w-full p-2 border rounded-xl">
-                  <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50"><option value="READY" ${o.shipment?.status === 'READY' ? 'selected' : ''}>${tr('Tayyor','Готовится')}</option><option value="TAXI_ASSIGNED" ${o.shipment?.status === 'TAXI_ASSIGNED' ? 'selected' : ''}>${tr('Taksi biriktirildi','Такси назначено')}</option><option value="IN_TRANSIT" ${o.shipment?.status === 'IN_TRANSIT' ? 'selected' : ''}>${tr("Yo'lga chiqdi",'В пути')}</option><option value="DELIVERED" ${o.shipment?.status === 'DELIVERED' ? 'selected' : ''}>${tr('Yetkazildi','Доставлено')}</option></select>
+                  <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50">${o.shipment?.status === 'READY' || !o.shipment?.status ? `<option value="READY" selected disabled hidden>${tr('— Hali harakat qilinmagan —','— Действие ещё не выполнено —')}</option>` : ''}<option value="TAXI_ASSIGNED" ${o.shipment?.status === 'TAXI_ASSIGNED' ? 'selected' : ''}>${tr('Taksi biriktirildi','Такси назначено')}</option><option value="IN_TRANSIT" ${o.shipment?.status === 'IN_TRANSIT' ? 'selected' : ''}>${tr("Yo'lga chiqdi",'В пути')}</option><option value="DELIVERED" ${o.shipment?.status === 'DELIVERED' ? 'selected' : ''}>${tr('Yetkazildi','Доставлено')}</option></select>
                   <button onclick="saveShipmentForOrder(${o.id})" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold">💾 ${tr('Jo‘natmani saqlash','Сохранить отправление')}</button>
                 </div>` : ''}
 
@@ -6956,7 +7070,7 @@
                   <p class="font-black">📦 ${escapeHtml(o.delivery.providerName || tr('Pochta','Почта'))}</p>
                   ${o.delivery.branchName ? `<p class="text-[11px] text-gray-600">${tr('Mijoz tanlagan filial','Филиал, выбранный клиентом')}: <b>${escapeHtml(o.delivery.branchName)}</b></p>` : ''}
                   <input id="shipment-tracking" value="${escapeHtml(o.shipment?.trackingNumber || '')}" placeholder="${tr("Tracking/jo'natma raqami",'Трек-номер')}" class="w-full p-2 border rounded-xl font-mono">
-                  <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50"><option value="READY" ${o.shipment?.status === 'READY' ? 'selected' : ''}>${tr('Tayyorlanmoqda','Готовится')}</option><option value="HANDED_TO_CARRIER" ${o.shipment?.status === 'HANDED_TO_CARRIER' ? 'selected' : ''}>${tr('Pochtaga topshirildi','Передано почте')}</option></select>
+                  <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50">${o.shipment?.status === 'READY' || !o.shipment?.status ? `<option value="READY" selected disabled hidden>${tr('— Hali harakat qilinmagan —','— Действие ещё не выполнено —')}</option>` : ''}<option value="HANDED_TO_CARRIER" ${o.shipment?.status === 'HANDED_TO_CARRIER' ? 'selected' : ''}>${tr('Pochtaga topshirildi','Передано почте')}</option></select>
                   <button onclick="saveShipmentForOrder(${o.id})" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold">💾 ${tr('Jo‘natmani saqlash','Сохранить отправление')}</button>
                 </div>` : ''}
 
@@ -7118,9 +7232,18 @@
       return delivery.label || tr('Eski buyurtma yetkazishi', 'Доставка старого заказа');
     }
 
+    // 5-band: "Tayyor"/"Tayyorlanmoqda" alohida bosqich sifatida BEKOR
+    // qilindi (avvalgi noto'g'ri fix — nomini o'zgartirish emas, o'zini olib
+    // tashlash kerak edi). READY hamon ICHKI boshlang'ich qiymat sifatida
+    // saqlanadi (yangi buyurtma har doim shundan boshlanadi — create_order),
+    // lekin admin uni endi tanlay olmaydi (shipment-status select'laridan
+    // <option value="READY"> olib tashlandi) va bu yerda ham neytral
+    // "hali harakat qilinmagan" matni ko'rsatiladi — "tayyor" so'zi umuman
+    // ishlatilmaydi. Legacy buyurtmalar (eski READY qiymati) shu bilan
+    // buzilmasdan ko'rsatiladi.
     function shipmentStatusLabel(status) {
       const labels = {
-        READY: tr('Tayyorlanmoqda', 'Готовится'), TAXI_ASSIGNED: tr('Taksi biriktirildi', 'Такси назначено'),
+        READY: tr('— Hali harakat qilinmagan —', '— Действие ещё не выполнено —'), TAXI_ASSIGNED: tr('Taksi biriktirildi', 'Такси назначено'),
         HANDED_TO_CARRIER: tr('Pochtaga topshirildi', 'Передано почте'), IN_TRANSIT: tr("Yo'lda", 'В пути'), DELIVERED: tr('Yetkazildi', 'Доставлено')
       };
       return labels[status] || status || '-';
@@ -7434,7 +7557,13 @@
       render();
       showActionToast(tr("⏳ Katalog saqlanmoqda...", "⏳ Каталог сохраняется..."), 'saving');
       try {
-        const imgUrl = await uploadImageSnapshot(imageSnap, null, false);
+        // 14-band: uploadImageSnapshot faqat FAYL yuklashni biladi
+        // (snapshot.url'ni hech qachon o'qimaydi) — admin URL kiritib fayl
+        // tanlamasa, bu chaqiruv jim ravishda null qaytarardi va katalog
+        // rasmsiz saqlanardi. productImagePayloadFromSnapshot ikkalasini ham
+        // (fayl VA URL) to'g'ri qayta ishlaydi — mahsulot rasmi shu orqali
+        // ishlaydigan bir xil yo'l.
+        const { img: imgUrl } = await productImagePayloadFromSnapshot(imageSnap, false);
         const result = await callApi('add_category', { name, img: imgUrl, parentId });
         upsertLocalCategory(result.category);
         saveCatalogCache();
@@ -7443,7 +7572,7 @@
       } catch (e) {
         console.error(e);
         showActionToast(tr("❌ Katalog saqlanmadi", "❌ Каталог не сохранён"), 'error', 1800);
-        alert(tr("❌ Katalogni saqlashda xatolik yuz berdi: ", "❌ Ошибка сохранения каталога: ") + (e.message || e));
+        alert(tr("❌ Katalogni saqlashda xatolik yuz berdi: ", "❌ Ошибка сохранения каталога: ") + ((imageSnap?.file || imageSnap?.preparing || imageSnap?.url) ? friendlyImageError(e) : (e.message || e)));
       } finally { releaseImageSnapshot(imageSnap); }
     }
 
@@ -7647,6 +7776,14 @@
       const name = document.getElementById('ec-name').value.trim();
       if (!name) return alert(tr("Katalog nomini kiriting!", "Введите название каталога!"));
       const imageSnap = takeTempImageSnapshot();
+      // 14-band: uploadImageSnapshot faqat FAYL yuklashni biladi, URL
+      // maydonini hech qachon o'qimasdi — admin URL kiritsa, u yerga
+      // yozilgan qiymat jim ravishda tashlab yuborilib, eski rasm (yoki
+      // hech narsa) qaytaverardi. productImagePayloadFromSnapshot fayl VA
+      // URL'ni bir xil to'g'ri yo'l bilan qayta ishlaydi (mahsulot rasmi
+      // shu orqali ishlaydi) — admin hech narsa tanlamagan holatdagina
+      // eski rasm saqlanib qoladi.
+      const imageChanged = !!(imageSnap.file || imageSnap.preparing || imageSnap.url);
 
       c.name = name;
       if (imageSnap.preview) c.img = imageSnap.preview;
@@ -7655,7 +7792,7 @@
       showActionToast(tr("⏳ Katalog saqlanmoqda...", "⏳ Каталог сохраняется..."), 'saving');
 
       try {
-        const newImg = await uploadImageSnapshot(imageSnap, old.img, !!(imageSnap.file || imageSnap.preparing));
+        const newImg = imageChanged ? (await productImagePayloadFromSnapshot(imageSnap, false)).img : old.img;
         const result = await callApi('edit_category', { categoryId: id, name, img: newImg });
         const current = categories.find(cat => cat.id === id);
         if (current) Object.assign(current, mapCategoryFromDB(result.category));
@@ -7668,7 +7805,7 @@
         if (curIdx >= 0) categories[curIdx] = old;
         render();
         showActionToast(tr("❌ Saqlanmadi", "❌ Не сохранено"), 'error', 1800);
-        alert(tr("❌ Xatolik yuz berdi: ", "❌ Произошла ошибка: ") + (e2.message || e2));
+        alert(tr("❌ Xatolik yuz berdi: ", "❌ Произошла ошибка: ") + (imageChanged ? friendlyImageError(e2) : (e2.message || e2)));
       } finally {
         releaseImageSnapshot(imageSnap);
       }
@@ -8324,6 +8461,13 @@
         if (currentTab === 'home' || currentTab === 'categories' || currentTab === 'warehouse' || selectedProductModal) {
           try { await loadCatalog(); if (!isCatalogEditorModalOpen()) render(); } catch (e) { console.error('Katalogni fon tekshiruvi xatosi:', e); }
         }
+        // 7-band: warehouseSummaryData (Tugagan/Kam qolgan hisoblagichlari va
+        // filtrlangan ro'yxatlari) yuqoridagi loadCatalog() bilan birga
+        // yangilanmasdi — Omborga birinchi kirilgandagi eski holicha qolib
+        // ketardi (masalan mijoz buyurtma berib tovar 0'ga tushsa ham).
+        if (currentTab === 'warehouse' && warehouseSummaryLoaded) {
+          try { await loadWarehouseSummary(true); } catch (e) { console.error('Ombor holatini fon tekshiruvi xatosi:', e); }
+        }
         if (isSuperAdmin && adminsLoaded) {
           try { await loadAdminsLazy(true); } catch (e) { console.error('Adminlarni fon tekshiruvi xatosi:', e); }
         }
@@ -8398,7 +8542,11 @@
       // Katalog cache darhol xotiraga olinadi, lekin ADMIN/USER roli aniqlanmaguncha
       // hech narsa render qilinmaydi. Shu bilan USER -> ADMIN sakrashi yo'qoladi.
       const catalogPromise = loadCatalog().then(() => {
-        if (authReady && (currentTab === 'home' || currentTab === 'categories' || currentTab === 'warehouse')) render();
+        // 14-band: boot'ning stale-while-revalidate yangilanishi ham draft
+        // yo'qolish bugiga hissa qo'shishi mumkin edi (juda kam uchraydigan
+        // holat — admin modal ochishga ulgurgan bo'lsa) — shu poll bilan bir
+        // xil himoya qo'yildi.
+        if (authReady && (currentTab === 'home' || currentTab === 'categories' || currentTab === 'warehouse') && !isCatalogEditorModalOpen()) render();
       });
 
       try {
