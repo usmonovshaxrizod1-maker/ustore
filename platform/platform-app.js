@@ -98,6 +98,21 @@
         <button class="primary" id="btn-new-shop">+ Yangi do'kon ulash</button>
       </div>`;
     document.getElementById('btn-new-shop').onclick = () => { state.view = 'connect'; state.verifyResult = null; state.error = null; state.connectSuccess = null; render(); };
+    Array.prototype.forEach.call(document.querySelectorAll('.billz-toggle-btn'), (btn) => {
+      btn.onclick = () => toggleBillzAccess(btn.dataset.shopId, btn.dataset.enabled !== 'true');
+    });
+  }
+
+  // Billz (billz.ai) integratsiyasi — boshqarilgan/beta chiqarilish: faqat
+  // bosh admin (shu Mini App) qaysi do'konlarga ruxsat berganini belgilaydi.
+  async function toggleBillzAccess(shopId, enable) {
+    try {
+      await callPlatformApi('platform_set_billz_access', { shopId, enabled: enable });
+      await reloadShops();
+      render();
+    } catch (e) {
+      alert(e.message || String(e));
+    }
   }
 
   function renderShopRow(s) {
@@ -107,7 +122,12 @@
           <div class="name">${escapeHtml(s.botName || s.botUsername || s.publicCode)}</div>
           <div class="meta">${s.botUsername ? '@' + escapeHtml(s.botUsername) : 'bot yo\'q'} · owner ${escapeHtml(s.ownerTelegramId || '-')}</div>
         </div>
-        <span class="status-pill status-${s.status}">${statusLabel(s.status)}</span>
+        <div class="pill-group">
+          <span class="status-pill status-${s.status}">${statusLabel(s.status)}</span>
+          <button class="billz-toggle-btn status-pill ${s.billzAccessGranted ? 'status-ACTIVE' : ''}" data-shop-id="${escapeHtml(s.id)}" data-enabled="${s.billzAccessGranted ? 'true' : 'false'}">
+            Billz ${s.billzAccessGranted ? '✓' : '—'}
+          </button>
+        </div>
       </div>`;
   }
 

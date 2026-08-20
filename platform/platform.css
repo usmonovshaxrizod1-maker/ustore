@@ -40,6 +40,12 @@ header.top .badge {
 .status-ACTIVE { background: #14532d; color: #86efac; }
 .status-PROVISIONING { background: #78350f; color: #fcd34d; }
 .status-DISABLED { background: #450a0a; color: #fca5a5; }
+.pill-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.billz-toggle-btn {
+  border: none; cursor: pointer; font-family: inherit;
+  background: #1e293b; color: #64748b;
+}
+.billz-toggle-btn.status-ACTIVE { background: #14532d; color: #86efac; }
 
 button.primary {
   width: 100%; padding: 12px; border-radius: 10px; border: none;
