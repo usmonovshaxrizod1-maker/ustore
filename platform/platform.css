@@ -80,3 +80,197 @@ input:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
   border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -2px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+select {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #334155;
+  background: #0f172a; color: #f1f5f9; font-size: 14px; font-family: inherit;
+}
+select:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
+
+/* ============================================================
+   3-bosqich: navigatsiya asosi — sahifa-router, pastki menyu,
+   admin/user rejim popover'i. Naqsh ustore-shop-app.js'dan
+   ko'chirilgan, lekin shu faylning o'z qorong'i palitrasida.
+   ============================================================ */
+
+.plat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid #1e293b; position: sticky; top: 0;
+  background: #0f172a; z-index: 5;
+}
+.plat-header-title { font-size: 17px; font-weight: 800; letter-spacing: 0.2px; }
+.plat-header-btn {
+  width: 36px; height: 36px; border-radius: 999px; border: 1px solid #334155;
+  background: #1e293b; color: #e2e8f0; font-size: 16px; cursor: pointer;
+}
+
+.plat-role-popover {
+  position: fixed; z-index: 20; background: #1e293b; border: 1px solid #334155;
+  border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); overflow: hidden;
+}
+.plat-role-popover-btn {
+  display: block; width: 100%; white-space: nowrap; padding: 12px 16px; border: none;
+  background: transparent; color: #f1f5f9; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left;
+}
+.plat-role-popover-btn:hover { background: #263349; }
+
+.plat-content { max-width: 520px; margin: 0 auto; padding: 16px 16px 96px; }
+
+.plat-bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; background: #0f172a; border-top: 1px solid #1e293b;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+}
+.plat-nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border: none; background: transparent; color: #64748b; padding: 6px 2px; cursor: pointer;
+}
+.plat-nav-btn.active { color: #60a5fa; }
+.plat-nav-icon { font-size: 18px; line-height: 1; }
+.plat-nav-label { font-size: 10px; font-weight: 600; }
+
+.plat-page { position: fixed; inset: 0; background: #0f172a; z-index: 10; display: flex; flex-direction: column; }
+.plat-page-header {
+  display: flex; align-items: center; gap: 10px; padding: 14px 12px;
+  border-bottom: 1px solid #1e293b; flex-shrink: 0;
+}
+.plat-page-header-btn {
+  width: 34px; height: 34px; border-radius: 999px; border: 1px solid #334155;
+  background: #1e293b; color: #e2e8f0; font-size: 15px; cursor: pointer; flex-shrink: 0;
+}
+.plat-page-header-title { font-size: 15px; font-weight: 700; flex: 1; }
+.plat-page-body { flex: 1; overflow-y: auto; padding: 16px; max-width: 520px; margin: 0 auto; width: 100%; }
+.plat-page-title { font-size: 20px; font-weight: 800; margin: 4px 0 14px; }
+
+/* ============================================================
+   4-bosqich: landing/hero, tariflar, obuna oqimi
+   ============================================================ */
+
+.plat-hero { text-align: center; padding: 28px 8px 8px; }
+.plat-hero-title { font-size: 30px; font-weight: 900; margin: 0 0 4px; letter-spacing: 0.3px; }
+.plat-hero-sub { font-size: 14px; font-weight: 700; color: #cbd5e1; margin: 0 0 6px; }
+.plat-hero-desc { font-size: 13px; color: #94a3b8; margin: 0 0 18px; }
+
+.plat-feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0; }
+.plat-feature-card {
+  background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 14px 12px; text-align: center;
+}
+.plat-feature-icon { font-size: 22px; margin-bottom: 6px; }
+.plat-feature-title { font-size: 12.5px; font-weight: 700; color: #f1f5f9; }
+.plat-feature-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+.plat-tariff-grid { display: flex; flex-direction: column; gap: 10px; }
+.plat-tariff-card {
+  position: relative; text-align: left; background: #1e293b; border: 1px solid #334155;
+  border-radius: 14px; padding: 14px; cursor: pointer; color: inherit; font-family: inherit;
+}
+.plat-tariff-card.selected { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb inset; }
+.plat-tariff-badge {
+  position: absolute; top: -9px; right: 12px; background: #2563eb; color: #fff;
+  font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px;
+}
+.plat-tariff-badge-sm {
+  display: inline-block; background: #2563eb; color: #fff; font-size: 9px; font-weight: 800;
+  padding: 2px 7px; border-radius: 999px; margin-left: 6px; vertical-align: middle;
+}
+.plat-tariff-name { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+.plat-tariff-limit { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+.plat-tariff-price { font-size: 18px; font-weight: 800; color: #60a5fa; margin-top: 8px; }
+.plat-tariff-price span { font-size: 11px; font-weight: 600; color: #94a3b8; }
+
+.plat-summary-card { font-size: 13px; }
+.plat-choice-btn {
+  display: block; width: 100%; text-align: left; background: #1e293b; border: 1px solid #334155;
+  border-radius: 12px; padding: 16px; margin-bottom: 10px; color: #f1f5f9; font-size: 14px;
+  font-weight: 600; cursor: pointer; font-family: inherit;
+}
+
+.plat-shop-pick-list { display: flex; flex-direction: column; gap: 8px; }
+.plat-shop-pick-row {
+  display: flex; align-items: center; justify-content: space-between; background: #1e293b;
+  border: 1px solid #334155; border-radius: 12px; padding: 12px 14px; cursor: pointer;
+  color: #f1f5f9; font-family: inherit;
+}
+.plat-shop-pick-row .name { font-weight: 700; font-size: 13px; }
+.plat-shop-pick-row .meta { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+.plat-card-number-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.plat-card-number { font-family: monospace; font-size: 16px; font-weight: 700; color: #f1f5f9; letter-spacing: 0.5px; }
+.plat-copy-btn {
+  flex-shrink: 0; border: 1px solid #334155; background: #0f172a; color: #cbd5e1;
+  font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+}
+.plat-receipt-preview { width: 100%; max-height: 220px; object-fit: contain; border-radius: 10px; margin-top: 10px; border: 1px solid #334155; }
+
+.plat-center { text-align: center; }
+
+/* ============================================================
+   Oddiy foydalanuvchi: bosh sahifa / do'konlarim / obuna / yordam / profil
+   ============================================================ */
+
+.plat-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.plat-summary-card-sm {
+  background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 12px; text-align: center;
+}
+.plat-summary-card-sm span { font-size: 18px; display: block; margin-bottom: 4px; }
+.plat-summary-card-sm b { display: block; font-size: 14px; color: #f1f5f9; }
+.plat-summary-card-sm small { display: block; font-size: 10px; color: #94a3b8; margin-top: 2px; }
+
+.plat-shop-card-list { display: flex; flex-direction: column; gap: 12px; }
+.plat-shop-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.plat-shop-card-actions { display: flex; gap: 8px; margin-top: 8px; }
+.plat-shop-card-actions > * { flex: 1; margin-top: 0; }
+.plat-link-btn {
+  display: flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box;
+  padding: 10px; border-radius: 10px; border: 1px solid #334155; background: transparent;
+  color: #cbd5e1; font-weight: 600; font-size: 13px; cursor: pointer;
+}
+
+.plat-plan-name { font-size: 13px; font-weight: 700; color: #60a5fa; margin: 2px 0 8px; }
+.plat-progress { height: 8px; border-radius: 999px; background: #0f172a; border: 1px solid #334155; overflow: hidden; }
+.plat-progress-fill { height: 100%; background: #2563eb; }
+
+.plat-help-list { display: flex; flex-direction: column; gap: 10px; }
+.plat-help-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; }
+.plat-help-row span:first-child { font-size: 18px; }
+
+.plat-profile-card { display: flex; align-items: center; gap: 12px; }
+.plat-profile-photo { width: 52px; height: 52px; border-radius: 999px; object-fit: cover; }
+.plat-profile-photo-fallback {
+  display: flex; align-items: center; justify-content: center; background: #334155; font-size: 22px;
+}
+.plat-profile-menu { padding: 4px 16px; }
+.plat-profile-row {
+  display: flex; align-items: center; justify-content: space-between; padding: 12px 0;
+  border-bottom: 1px solid #293548; font-size: 13px; color: #e2e8f0;
+}
+.plat-profile-row:last-child { border-bottom: none; }
+
+/* ============================================================
+   5-bosqich: admin operatsion qatlami
+   ============================================================ */
+
+.plat-mini-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; font-size: 12.5px; }
+
+.plat-tab-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.plat-small-btn { width: auto; padding: 8px 14px; margin-top: 0; font-size: 12px; }
+.plat-clickable { cursor: pointer; }
+
+.plat-filter-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.plat-filter-btn {
+  flex: 1; padding: 8px; border-radius: 10px; border: 1px solid #334155; background: #1e293b;
+  color: #94a3b8; font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.plat-filter-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+.plat-request-actions { display: flex; gap: 8px; margin-top: 10px; }
+.plat-request-actions > * { flex: 1; margin-top: 0; }
+.plat-reject-box { display: flex; gap: 8px; margin-top: 10px; }
+.plat-reject-box input { flex: 1; margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #f1f5f9; font-size: 13px; }
+.plat-reject-box button { width: auto; margin-top: 0; padding: 10px 14px; }
+
+.plat-tariff-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.plat-tariff-row button { width: auto; margin-top: 0; }
+
+.plat-checkbox-row { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #cbd5e1; font-size: 13px; margin: 10px 0 0; }
+.plat-checkbox-row input { width: auto; margin: 0; }
