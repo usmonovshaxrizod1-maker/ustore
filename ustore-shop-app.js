@@ -559,6 +559,26 @@
     let botUsername = null; // 1.10: "Telegramda ko'rish" uchun — hardcode emas, boot() javobidan
     let shopContact = { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
     let shopLowStockThreshold = 5;
+    // Billz (billz.ai) integratsiyasi — boshqarilgan/beta chiqarilish: faqat
+    // platforma bosh admin ruxsat bergan do'konlarda true bo'ladi (boot()
+    // javobidan). false bo'lsa "Billz" bo'limi sozlamalarda umuman ko'rinmaydi.
+    let billzAccessGranted = false;
+    let billzConnectionStatus = null; // {status, billzShopName, billzCashboxName, billzPaymentTypeName, lastError}
+    let billzConfigOptions = null; // {shops, cashboxes, paymentTypes} — ulangandan keyin tanlash uchun
+    // Billz Phase 2 — katalog ko'rish/import holati.
+    let billzBrowseCategories = null; // Billz'ning o'z kategoriya daraxti
+    let billzBrowseSelectedCatId = ''; // hozir ko'rilayotgan Billz kategoriyasi
+    let billzBrowseSearch = '';
+    let billzBrowseLoading = false;
+    let billzBrowseItems = []; // hozirgi sahifadagi hali import qilinmagan Billz tovarlari
+    let billzBrowseCount = 0;
+    let billzBrowseSelectedIds = new Set(); // tanlangan billzProductId'lar
+    let billzImportTargetCategoryId = null; // "B" tugmasi bosilgan katalogdan oldindan to'ldiriladi
+    let billzImporting = false;
+    // Billz Phase 4 — avtomatik sinxron natijasida o'chirilgan tovarlar sahifasi.
+    let billzSubTab = 'IMPORT'; // 'IMPORT' | 'DELETED'
+    let billzDeletedItems = [];
+    let billzDeletedLoading = false;
     let fulfillmentConfig = commerce.defaultConfig(TOP_LEVEL_REGION_IDS);
     let fulfillmentDraft = null;
 
@@ -2118,6 +2138,7 @@
         case 'DASHBOARD': renderDashboardPage(container); break;
         case 'FAVORITES': renderFavoritesPage(container); break;
         case 'RECENT': renderRecentPage(container); break;
+        case 'BILLZ': renderBillzPage(container); break;
         default:
           container.innerHTML = '';
       }
@@ -2360,6 +2381,9 @@
           <button type="button" onclick="openDesignSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4"></i>${tr("Dizayn", "Дизайн")}</span><span>›</span></button>
           ${(isSuperAdmin && isAdminMode) ? `
             <button type="button" onclick="activePopupModal='START_MESSAGE'; render();" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4"></i>${tr("Bot /start xabari", "Сообщение бота /start")}</span><span>›</span></button>
+          ` : ''}
+          ${billzAccessGranted ? `
+            <button type="button" onclick="openBillzSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">🔳 Billz</span><span>›</span></button>
           ` : ''}
         </div>
       `;
@@ -2673,6 +2697,7 @@
                 <button onclick="openTrashModal()" title="${tr('Chiqindi (24 soat)','Корзина (24 часа)')}" aria-label="${tr('Chiqindi', 'Корзина')}" class="flex items-center gap-1 bg-white border text-gray-600 font-bold px-2.5 py-1.5 rounded-xl text-[11px]">${ICON_TRASH}</button>
                 <button onclick="openDuplicateProductsModal()" title="${tr('Duplicate tovarlarni tekshirish','Проверить дубликаты товаров')}" class="flex items-center gap-1 bg-white border text-gray-600 font-bold px-2.5 py-1.5 rounded-xl text-[11px]">🧭</button>
                 <button onclick="toggleBulkProductSelectMode()" title="${bulkProductSelectMode ? tr('Tanlashni tugatish','Завершить выбор') : tr('Tovarlarni tanlash','Выбрать товары')}" class="flex items-center gap-1 ${bulkProductSelectMode ? 'bg-blue-600 text-white' : 'bg-white border text-gray-700'} font-bold px-2.5 py-1.5 rounded-xl text-[11px]">☑️</button>
+                ${billzAccessGranted ? `<button onclick="openBillzBrowse('${adminCatParentId || ''}')" title="${tr("Billz'dan tovar tortib olish", 'Импорт товаров из Billz')}" class="flex items-center gap-1 bg-white border text-gray-700 font-bold px-2.5 py-1.5 rounded-xl text-[11px]">🔳 B</button>` : ''}
               </div>
             ` : ''}
           </div>
@@ -5464,6 +5489,291 @@
       }
     }
 
+    // Billz (billz.ai) integratsiyasi, 0/1-bosqich ----------------------------
+    async function openBillzSettings() {
+      activePopupModal = 'BILLZ_SETTINGS';
+      billzConnectionStatus = null;
+      billzConfigOptions = null;
+      render();
+      await refreshBillzStatus();
+    }
+    async function refreshBillzStatus() {
+      try {
+        const st = await callApi('billz_get_status', {});
+        billzConnectionStatus = st;
+        if (st.status === 'CONNECTED') {
+          try { billzConfigOptions = await callApi('billz_list_config_options', {}); }
+          catch (e) { console.error(e); billzConfigOptions = { shops: [], cashboxes: [], paymentTypes: [] }; }
+        }
+      } catch (e) {
+        console.error(e);
+        billzConnectionStatus = { status: 'ERROR', lastError: e.message || String(e) };
+      }
+      if (activePopupModal === 'BILLZ_SETTINGS') render();
+    }
+    async function connectBillz() {
+      const secretToken = document.getElementById('billz-secret-token-input')?.value.trim();
+      if (!secretToken) return alert(tr("Kalitni kiriting.", "Введите ключ."));
+      const btn = document.getElementById('billz-connect-btn');
+      if (btn) { btn.disabled = true; btn.textContent = tr("Ulanmoqda...", "Подключение..."); }
+      try {
+        const result = await callApi('billz_connect', { secretToken });
+        billzConnectionStatus = { status: 'CONNECTED', billzShopName: null, billzCashboxName: null, billzPaymentTypeName: null, lastError: null };
+        billzConfigOptions = { shops: result.shops || [], cashboxes: result.cashboxes || [], paymentTypes: result.paymentTypes || [] };
+        showActionToast(tr("✅ Ulandi", "✅ Подключено"), 'success', 1500);
+        render();
+      } catch (e) {
+        console.error(e);
+        alert(tr("Ulab bo'lmadi: ", "Не удалось подключить: ") + (e.message || e));
+        await refreshBillzStatus();
+      }
+    }
+    async function saveBillzSaleConfig() {
+      const shopSel = document.getElementById('billz-shop-select');
+      const cashboxSel = document.getElementById('billz-cashbox-select');
+      const paymentSel = document.getElementById('billz-payment-type-select');
+      const billzShopId = shopSel?.value || null;
+      const billzCashboxId = cashboxSel?.value || null;
+      const billzPaymentTypeId = paymentSel?.value || null;
+      const billzShopName = billzShopId ? shopSel.options[shopSel.selectedIndex].textContent : null;
+      const billzCashboxName = billzCashboxId ? cashboxSel.options[cashboxSel.selectedIndex].textContent : null;
+      const billzPaymentTypeName = billzPaymentTypeId ? paymentSel.options[paymentSel.selectedIndex].textContent : null;
+      showActionToast(tr("⏳ Saqlanmoqda...", "⏳ Сохраняется..."), 'saving');
+      try {
+        await callApi('billz_save_sale_config', { billzShopId, billzShopName, billzCashboxId, billzCashboxName, billzPaymentTypeId, billzPaymentTypeName });
+        if (billzConnectionStatus) {
+          billzConnectionStatus.billzShopName = billzShopName;
+          billzConnectionStatus.billzCashboxName = billzCashboxName;
+          billzConnectionStatus.billzPaymentTypeName = billzPaymentTypeName;
+        }
+        showActionToast(tr("✅ Saqlandi", "✅ Сохранено"), 'success', 1200);
+      } catch (e) {
+        console.error(e);
+        showActionToast(tr("❌ Saqlanmadi", "❌ Не сохранено"), 'error', 1800);
+        alert(tr("❌ Xatolik: ", "❌ Ошибка: ") + (e.message || e));
+      }
+    }
+    async function disconnectBillz() {
+      if (!confirm(tr("Billz ulanishini uzmoqchimisiz?", "Отключить интеграцию с Billz?"))) return;
+      showActionToast(tr("⏳ ...", "⏳ ..."), 'saving');
+      try {
+        await callApi('billz_disconnect', {});
+        billzConnectionStatus = { status: 'DISCONNECTED', billzShopName: null, billzCashboxName: null, billzPaymentTypeName: null, lastError: null };
+        billzConfigOptions = null;
+        showActionToast(tr("✅ Uzildi", "✅ Отключено"), 'success', 1200);
+        render();
+      } catch (e) {
+        console.error(e);
+        showActionToast(tr("❌ Xatolik", "❌ Ошибка"), 'error', 1800);
+        alert(e.message || String(e));
+      }
+    }
+
+    // Billz Phase 2: katalog ko'rish/import qilish -----------------------------
+    // "Billz" umumiy menyusi va har katalogdagi "B" tugmasi bir xil sahifani
+    // ochadi — farqi faqat billzImportTargetCategoryId oldindan to'ldirilishida
+    // ("B" bosilganda hozirgi katalog, umumiy menyudan ochilganda bo'sh —
+    // import tasdiqlash bosqichida qo'lda tanlanadi).
+    async function openBillzBrowse(categoryId) {
+      billzImportTargetCategoryId = categoryId || null;
+      billzBrowseSelectedCatId = '';
+      billzBrowseSearch = '';
+      billzBrowseItems = [];
+      billzBrowseSelectedIds = new Set();
+      billzSubTab = 'IMPORT';
+      openPage('BILLZ');
+      if (!billzBrowseCategories) await loadBillzBrowseCategories();
+      await loadBillzBrowseItems();
+    }
+    function setBillzSubTab(tab) {
+      billzSubTab = tab;
+      if (tab === 'DELETED' && !billzDeletedItems.length) loadBillzDeletedItems();
+      render();
+    }
+    async function loadBillzDeletedItems() {
+      billzDeletedLoading = true;
+      render();
+      try {
+        const result = await callApi('billz_list_deleted_products', {});
+        billzDeletedItems = result.items || [];
+      } catch (e) {
+        console.error(e);
+        alert(tr("Ro'yxatni yuklab bo'lmadi: ", "Не удалось загрузить список: ") + (e.message || e));
+        billzDeletedItems = [];
+      } finally {
+        billzDeletedLoading = false;
+        if (activePage === 'BILLZ') render();
+      }
+    }
+    async function restoreBillzProduct(productId) {
+      try {
+        await callApi('billz_restore_product', { productId });
+        billzDeletedItems = billzDeletedItems.filter((it) => it.id !== productId);
+        showActionToast(tr("✅ Tiklandi", "✅ Восстановлено"), 'success', 1800);
+        render();
+      } catch (e) {
+        console.error(e);
+        alert(tr("Tiklab bo'lmadi: ", "Не удалось восстановить: ") + (e.message || e));
+      }
+    }
+    async function loadBillzBrowseCategories() {
+      try {
+        const result = await callApi('billz_get_categories', {});
+        billzBrowseCategories = result.categories || [];
+      } catch (e) {
+        console.error(e);
+        billzBrowseCategories = [];
+      }
+      if (activePage === 'BILLZ') render();
+    }
+    async function loadBillzBrowseItems() {
+      billzBrowseLoading = true;
+      render();
+      try {
+        const result = await callApi('billz_browse_products', {
+          billzCategoryId: billzBrowseSelectedCatId || undefined,
+          search: billzBrowseSearch || undefined,
+          page: 1,
+        });
+        billzBrowseItems = result.items || [];
+        billzBrowseCount = result.count || 0;
+        // Ekrandan g'oyib bo'lgan (masalan qidiruv o'zgargach) tovarlarning
+        // tanlovini ham tozalaymiz — aks holda "tanlangan" hisoblagich
+        // ko'rinmas tovarlarni ham hisoblab yuraveradi.
+        const visibleIds = new Set(billzBrowseItems.map((it) => it.billzProductId));
+        billzBrowseSelectedIds = new Set([...billzBrowseSelectedIds].filter((id) => visibleIds.has(id)));
+      } catch (e) {
+        console.error(e);
+        alert(tr("Billz'dan tovarlarni yuklab bo'lmadi: ", "Не удалось загрузить товары из Billz: ") + (e.message || e));
+        billzBrowseItems = [];
+      } finally {
+        billzBrowseLoading = false;
+        if (activePage === 'BILLZ') render();
+      }
+    }
+    function setBillzBrowseCategory(catId) {
+      billzBrowseSelectedCatId = catId || '';
+      loadBillzBrowseItems();
+    }
+    let billzBrowseSearchTimer = null;
+    function handleBillzBrowseSearchDebounced(value) {
+      billzBrowseSearch = value;
+      clearTimeout(billzBrowseSearchTimer);
+      billzBrowseSearchTimer = setTimeout(() => loadBillzBrowseItems(), 500);
+    }
+    function toggleBillzItemSelected(billzProductId) {
+      if (billzBrowseSelectedIds.has(billzProductId)) billzBrowseSelectedIds.delete(billzProductId);
+      else billzBrowseSelectedIds.add(billzProductId);
+      render();
+    }
+    function openBillzImportConfirmModal() {
+      if (!billzBrowseSelectedIds.size) return;
+      activePopupModal = 'BILLZ_IMPORT_CONFIRM';
+      render();
+    }
+    async function confirmBillzImport() {
+      const categoryId = document.getElementById('billz-import-category-select')?.value || null;
+      const oldPricePercent = (document.getElementById('billz-import-oldprice-input')?.value || '').trim();
+      const selectedItems = billzBrowseItems.filter((it) => billzBrowseSelectedIds.has(it.billzProductId));
+      if (!selectedItems.length) return alert(tr("Hech narsa tanlanmagan.", "Ничего не выбрано."));
+      billzImporting = true;
+      render();
+      showActionToast(tr("⏳ Import qilinmoqda...", "⏳ Импортируется..."), 'saving');
+      try {
+        const items = selectedItems.map((it) => ({
+          billzProductId: it.billzProductId, name: it.name, description: it.description,
+          price: it.price, stock: it.stock,
+          variants: it.isVariative ? (it.variants || []).map((v) => ({ billzProductId: v.billzProductId, size: v.size, color: v.color, stock: v.stock })) : undefined,
+        }));
+        const result = await callApi('billz_import_products', { items, categoryId, oldPricePercent });
+        for (const p of (result.imported || [])) upsertLocalProduct(p);
+        saveCatalogCache();
+        activePopupModal = null;
+        billzBrowseSelectedIds = new Set();
+        const failedCount = result.failedCount || 0;
+        showActionToast(
+          failedCount ? `${tr('⚠️ Qisman import qilindi', '⚠️ Импортировано частично')}: ${result.importedCount}/${selectedItems.length}` : `${tr('✅ Import qilindi', '✅ Импортировано')}: ${result.importedCount}`,
+          failedCount ? 'error' : 'success', 2200,
+        );
+        await loadBillzBrowseItems();
+      } catch (e) {
+        console.error(e);
+        showActionToast(tr("❌ Import qilinmadi", "❌ Не импортировано"), 'error', 1800);
+        if (String(e.message).startsWith('product_limit_reached')) {
+          const limit = String(e.message).split(':')[1];
+          alert(`${tr('⚠️ Tovar soni chegarasiga yetdingiz', '⚠️ Достигнут лимит количества товаров')} (${limit}).`);
+        } else {
+          alert(tr("❌ Xatolik: ", "❌ Ошибка: ") + (e.message || e));
+        }
+      } finally {
+        billzImporting = false;
+        render();
+      }
+    }
+    function renderBillzBrowseItemRow(item) {
+      const checked = billzBrowseSelectedIds.has(item.billzProductId);
+      const totalStock = item.isVariative ? (item.variants || []).reduce((sum, v) => sum + (Number(v.stock) || 0), 0) : item.stock;
+      return `
+        <label class="fc-card flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleBillzItemSelected('${escapeHtml(item.billzProductId)}')">
+          <div class="flex-1 min-w-0">
+            <p class="font-bold text-xs truncate">${escapeHtml(item.name)}</p>
+            <p class="text-[10px] text-gray-500">${money(item.price)} · ${tr('Qoldiq', 'Остаток')}: ${totalStock}${item.isVariative ? ` (${(item.variants || []).length} ${tr('variant', 'вариант')})` : ''}</p>
+          </div>
+        </label>
+      `;
+    }
+    function renderBillzPage(container) {
+      const tabsBar = `
+        <div class="flex gap-2">
+          <button onclick="setBillzSubTab('IMPORT')" class="flex-1 py-2 rounded-xl text-xs font-bold ${billzSubTab === 'IMPORT' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr('Import', 'Импорт')}</button>
+          <button onclick="setBillzSubTab('DELETED')" class="flex-1 py-2 rounded-xl text-xs font-bold ${billzSubTab === 'DELETED' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr("O'chirilganlar", "Удалённые")}${billzDeletedItems.length ? ` (${billzDeletedItems.length})` : ''}</button>
+        </div>
+      `;
+      const importBody = `
+        <div class="space-y-3" style="padding-bottom:4rem">
+          <select id="billz-browse-cat-select" onchange="setBillzBrowseCategory(this.value)" class="w-full p-2 border rounded-xl bg-gray-50 text-xs">
+            <option value="">${tr("Barcha kategoriyalar (Billz)", "Все категории (Billz)")}</option>
+            ${(billzBrowseCategories || []).map((c) => `<option value="${escapeHtml(c.id)}" ${c.id === billzBrowseSelectedCatId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
+          </select>
+          <input type="text" value="${escapeHtml(billzBrowseSearch)}" oninput="handleBillzBrowseSearchDebounced(this.value)" placeholder="${tr('Qidirish...', 'Поиск...')}" class="w-full p-2 border rounded-xl text-xs">
+          ${billzBrowseLoading ? `
+            <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
+          ` : !billzBrowseItems.length ? `
+            <p class="text-center text-gray-400 py-6 text-xs">${tr("Hali tortib olinmagan tovar topilmadi.", "Не найдено ещё не импортированных товаров.")}</p>
+          ` : `
+            <div class="space-y-2">${billzBrowseItems.map(renderBillzBrowseItemRow).join('')}</div>
+          `}
+        </div>
+        ${billzBrowseSelectedIds.size ? `
+          <div class="fixed bottom-0 left-0 right-0 p-3 bg-white border-t shadow-lg z-40">
+            <div class="max-w-md mx-auto">
+              <button onclick="openBillzImportConfirmModal()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl">${tr("Import qilish", "Импортировать")} (${billzBrowseSelectedIds.size})</button>
+            </div>
+          </div>
+        ` : ''}
+      `;
+      const deletedBody = `
+        <div class="space-y-2" style="padding-bottom:2rem">
+          ${billzDeletedLoading ? `
+            <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
+          ` : !billzDeletedItems.length ? `
+            <p class="text-center text-gray-400 py-6 text-xs">${tr("Billz tomonidan o'chirilgan tovar yo'q.", "Товаров, удалённых со стороны Billz, нет.")}</p>
+          ` : billzDeletedItems.map((it) => `
+            <div class="fc-card flex items-center gap-3">
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-xs truncate">${escapeHtml(it.name)}</p>
+                <p class="text-[10px] text-gray-500">${money(it.price)} · ${tr('Oxirgi qoldiq', 'Последний остаток')}: ${it.stock}</p>
+              </div>
+              <button onclick="restoreBillzProduct('${it.id}')" class="text-xs font-bold text-blue-600 px-3 py-1.5 border border-blue-600 rounded-lg shrink-0">${tr('Tiklash', 'Восстановить')}</button>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      const body = `<div class="space-y-3">${tabsBar}${billzSubTab === 'IMPORT' ? importBody : deletedBody}</div>`;
+      renderPageShell(container, '🔳 Billz', body);
+    }
+
     async function removeAdmin(admId) {
       if (!confirm(tr("Ushbu admin huquqini bekor qilmoqchimisiz?", "Удалить права этого администратора?"))) return;
       const idx = adminsList.indexOf(admId);
@@ -6089,6 +6399,91 @@
               </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveLowStockThreshold()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
+                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // Billz (billz.ai) integratsiyasi, 0/1-bosqich: ulash + do'kon/kassa/
+      // to'lov turini tanlash. Faqat billzAccessGranted=true bo'lganda
+      // ochiladi (openBillzSettings() orqali). Hech qanday token qiymati
+      // bu yerda ko'rsatilmaydi — faqat server allaqachon tasdiqlagan
+      // do'kon/kassa/to'lov NOMLARI (billzConnectionStatus'dan).
+      if (activePopupModal === 'BILLZ_SETTINGS') {
+        const st = billzConnectionStatus;
+        const isConnected = st?.status === 'CONNECTED';
+        const isLoading = st === null;
+        const opts = billzConfigOptions;
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">🔳 Billz</h3>
+              ${isLoading ? `
+                <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
+              ` : !isConnected ? `
+                <p class="text-gray-500">${tr("Billz hisobingizdagi integratsiya kaliti (secret_token) kiriting. BILLZ UI'da: Sozlamalar → Ключи интеграции.", "Введите ключ интеграции (secret_token) вашего аккаунта Billz. В BILLZ UI: Настройки → Ключи интеграции.")}</p>
+                ${st?.status === 'ERROR' && st?.lastError ? `<p class="fc-bg-danger-soft border fc-border-danger fc-text-danger p-2 rounded-xl">${escapeHtml(st.lastError)}</p>` : ''}
+                <input type="password" id="billz-secret-token-input" autocomplete="off" placeholder="secret_token" class="w-full p-2 border rounded-xl font-mono">
+                <button onclick="connectBillz()" id="billz-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
+              ` : `
+                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
+                <div>
+                  <label class="font-bold text-gray-600">${tr("Billz do'koni", "Магазин Billz")}</label>
+                  <select id="billz-shop-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50">
+                    <option value="">${tr("Tanlanmagan", "Не выбрано")}</option>
+                    ${(opts?.shops || []).map(s => `<option value="${escapeHtml(s.id)}" ${st.billzShopName === s.name ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="font-bold text-gray-600">${tr("Kassa", "Касса")}</label>
+                  <select id="billz-cashbox-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50">
+                    <option value="">${tr("Tanlanmagan", "Не выбрано")}</option>
+                    ${(opts?.cashboxes || []).map(c => `<option value="${escapeHtml(c.id)}" ${st.billzCashboxName === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="font-bold text-gray-600">${tr("To'lov turi", "Тип оплаты")}</label>
+                  <select id="billz-payment-type-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50">
+                    <option value="">${tr("Tanlanmagan", "Не выбрано")}</option>
+                    ${(opts?.paymentTypes || []).map(p => `<option value="${escapeHtml(p.id)}" ${st.billzPaymentTypeName === p.name ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}
+                  </select>
+                </div>
+                <p class="text-[9px] text-gray-400">${tr("Bu tanlovlar keyingi bosqichlarda (sotuvlarni Billz'ga yuborish) ishlatiladi.", "Эти настройки будут использоваться на следующих этапах (отправка продаж в Billz).")}</p>
+                <button onclick="saveBillzSaleConfig()" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
+                <button onclick="disconnectBillz()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
+              `}
+              <button onclick="activePopupModal=null; billzConnectionStatus=null; billzConfigOptions=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // Billz Phase 2: tanlangan tovarlarni qaysi UStorE katalogiga
+      // import qilishni tasdiqlash + ixtiyoriy "eski narx" foizi.
+      if (activePopupModal === 'BILLZ_IMPORT_CONFIRM') {
+        const flatCats = categories.slice().sort((a, b) => categoryName(a).localeCompare(categoryName(b)));
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">🔳 ${tr("Import qilish", "Импорт")} (${billzBrowseSelectedIds.size})</h3>
+              <div>
+                <label class="font-bold text-gray-600">${tr("Qaysi katalogga qo'shilsin?", "В какой каталог добавить?")}</label>
+                <select id="billz-import-category-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50">
+                  <option value="">${tr("— Katalogsiz —", "— Без каталога —")}</option>
+                  ${flatCats.map(c => `<option value="${escapeHtml(c.id)}" ${String(c.id) === String(billzImportTargetCategoryId) ? 'selected' : ''}>${escapeHtml(categoryName(c))}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="font-bold text-gray-600">${tr("Eski narx (chegirma ko'rinishi), ixtiyoriy", "Старая цена (для скидки), необязательно")}</label>
+                <input type="text" id="billz-import-oldprice-input" placeholder="${tr("Masalan: 20 yoki 10-30", "Например: 20 или 10-30")}" class="w-full mt-1 p-2 border rounded-xl font-mono">
+                <p class="text-[9px] text-gray-400 mt-1">${tr("Bitta son — hammasiga bir xil foiz. Oraliq (10-30) — har tovarga har xil, tabiiy ko'rinadigan foiz.", "Одно число — одинаковый процент всем. Диапазон (10-30) — разный процент для каждого товара, выглядит естественнее.")}</p>
+              </div>
+              <div class="flex space-x-2 pt-2">
+                <button onclick="confirmBillzImport()" ${billzImporting ? 'disabled' : ''} class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${billzImporting ? tr("Import qilinmoqda...", "Импортируется...") : tr("Tasdiqlash", "Подтвердить")}</button>
                 <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
               </div>
             </div>
@@ -8022,6 +8417,7 @@
         botUsername = bootData.botUsername || null;
         shopContact = bootData.shopContact || { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
         shopLowStockThreshold = Number.isFinite(Number(bootData.lowStockThreshold)) ? Number(bootData.lowStockThreshold) : 5;
+        billzAccessGranted = bootData.billzAccessGranted === true;
         fulfillmentConfig = commerce.normalizeConfig(bootData.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
         designSettings = bootData.designSettings || { themeId: 'minimal', colors: {} };
         applyDesignColors(designSettings.colors);
