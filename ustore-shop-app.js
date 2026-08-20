@@ -258,6 +258,20 @@
     }
     function districtLabelForUi(uzLabel) { return uiLang === 'ru' ? districtNameRu(uzLabel) : uzLabel; }
 
+    // 10-band: hardcoded fallback ro'yxat ("Olmazor") va server'dan kelgan
+    // normalized ro'yxat ("Olmazor tumani") xuddi bir xil tumanni har xil
+    // shaklda yozadi — tanlovni tiklashda oddiy qat'iy string tenglik shu
+    // sabab ishlamay qolib, foydalanuvchining tanlovi yo'qolib qolardi.
+    // Bu "tumani"/"shahri" qo'shimchasini tashlab, mos variantni topadi.
+    function districtNormalizedKey(value) {
+      return String(value || '').trim().toLocaleLowerCase('uz').replace(/\s+(tumani|shahri)$/, '').trim();
+    }
+    function findMatchingDistrictOption(options, previousValue) {
+      if (!previousValue) return null;
+      const key = districtNormalizedKey(previousValue);
+      return options.find(d => districtNormalizedKey(d) === key) || null;
+    }
+
     const TOP_LEVEL_REGIONS = REGION_DEFS.map(r => ({ id: r.code, nameUz: r.nameUz, nameRu: r.nameRu }));
     const TOP_LEVEL_REGION_IDS = TOP_LEVEL_REGIONS.map(region => region.id);
     const imageIO = window.UstoreImageIO;
@@ -2043,6 +2057,12 @@
       if (logoImg) {
         if (shopLogoUrl) { logoImg.src = shopLogoUrl; logoImg.classList.remove('hidden'); }
         else { logoImg.classList.add('hidden'); }
+        // 6-band: logotip tahrirlash endi shu asosiy header logotipining
+        // o'zida — "Do'kon haqida"dagi alohida logotip bo'limi olib
+        // tashlandi (openShopLogoManager() pastda).
+        const canEditLogo = isUserAnAdmin && isAdminMode;
+        logoImg.onclick = canEditLogo ? openShopLogoManager : null;
+        logoImg.classList.toggle('cursor-pointer', canEditLogo);
       }
       const flagBtn = document.getElementById('lang-flag-btn');
       if (flagBtn) flagBtn.innerText = uiLang === 'uz' ? '🇷🇺' : '🇺🇿';
@@ -2747,8 +2767,10 @@
           ${bulkSelecting ? `<div class="absolute top-2 left-2 z-10 w-7 h-7 rounded-full flex items-center justify-center font-black ${bulkSelectedProductIds.has(String(p.id)) ? 'bg-blue-600 text-white' : 'bg-white/95 text-gray-400 border'}">${bulkSelectedProductIds.has(String(p.id)) ? '✓' : '○'}</div>` : ''}
           <div>
             <div class="relative">
-              <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-28 object-cover rounded-xl mb-2" loading="lazy">
-              ${hasDiscount ? `<span class="absolute top-1 right-1 bg-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">${discountPercent(p)}% ${tr("CHEGIRMA", "СКИДКА")}</span>` : ''}
+              <div class="w-full h-28 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center">
+                <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="max-w-full max-h-full object-contain" loading="lazy">
+              </div>
+              ${hasDiscount ? `<div class="absolute top-1 right-1 flex items-center gap-1"><span class="bg-amber-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-sm">${discountPercent(p)}%</span><span class="bg-white/95 text-amber-700 text-[8px] font-bold px-1.5 py-0.5 rounded-md shadow-sm">${tr("CHEGIRMA", "СКИДКА")}</span></div>` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
@@ -3180,18 +3202,26 @@
     // faqat custom tugma + tanlangach preview + "Almashtirish".
     function renderReceiptPicker(receiptRequired) {
       const label = `${tr("To'lov cheki/skrinshoti", 'Чек/скриншот оплаты')} ${receiptRequired ? '*' : `(${tr('ixtiyoriy', 'необязательно')})`}`;
-      const pickerInput = `<input id="chk-receipt" type="file" accept="image/*" onchange="onCheckoutReceiptPicked(event)" class="hidden">`;
+      // 5-band: boshqa barcha rasm joylari kabi ikkita alohida manba —
+      // Galereya (accept=image/*) va Fayllar (accept'siz) — ikkalasi ham
+      // bir xil onCheckoutReceiptPicked(event) handler'ga ulanadi.
+      const galleryInput = `<input id="chk-receipt" type="file" accept="image/*" onchange="onCheckoutReceiptPicked(event)" class="hidden">`;
+      const filesInput = `<input id="chk-receipt-files" type="file" onchange="onCheckoutReceiptPicked(event)" class="hidden">`;
       if (checkoutReceiptPreviewUrl) {
         return `
           <label class="block font-bold">${label}</label>
-          <div class="flex items-center gap-3 mt-1">
+          <div class="flex items-center gap-2 mt-1 flex-wrap">
             <img src="${checkoutReceiptPreviewUrl}" class="h-16 w-16 object-cover rounded-xl border" alt="">
-            <label class="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">🔄 ${tr('Almashtirish', 'Заменить')}${pickerInput}</label>
+            <label class="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">🖼 ${tr('Galereya', 'Галерея')}${galleryInput}</label>
+            <label class="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">📁 ${tr('Fayl', 'Файл')}${filesInput}</label>
           </div>`;
       }
       return `
         <label class="block font-bold">${label}</label>
-        <label class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white mt-1">📎 ${tr('Chekni tanlash', 'Выбрать чек')}${pickerInput}</label>`;
+        <div class="flex items-center gap-2 mt-1 flex-wrap">
+          <label class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">🖼 ${tr('Galereyadan tanlash', 'Выбрать из галереи')}${galleryInput}</label>
+          <label class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">📁 ${tr('Fayldan tanlash', 'Выбрать файл')}${filesInput}</label>
+        </div>`;
     }
 
     function rerenderReceiptPicker() {
@@ -3236,34 +3266,37 @@
       if (fullnameEl) fullnameEl.value = checkoutDraft.fullname || (currentUser.firstName + ' ' + currentUser.lastName).trim();
       if (phoneEl) phoneEl.value = checkoutDraft.phone || currentUser.phone || '';
       const regionEl = document.getElementById('chk-region-key');
-      if (regionEl) regionEl.value = TOP_LEVEL_REGION_IDS.includes(checkoutDraft.regionKey) ? checkoutDraft.regionKey : 'tashkent_city';
+      const regionKey = TOP_LEVEL_REGION_IDS.includes(checkoutDraft.regionKey) ? checkoutDraft.regionKey : 'tashkent_city';
+      if (regionEl) regionEl.value = regionKey;
       selectedDeliveryMethodId = checkoutDraft.deliveryMethodId || selectedDeliveryMethodId;
       selectedPayMethod = checkoutDraft.paymentMethodId || selectedPayMethod;
-      handleRegionChange(false);
-      const districtEl = document.getElementById('chk-district');
-      if (districtEl && checkoutDraft.district) districtEl.value = checkoutDraft.district;
+      // 11-band: handleRegionChange(false) O'RNIGA — u selectedDeliveryMethodId/
+      // selectedPayMethod/checkoutSelectedBranq'ni doim reset qilardi, yuqorida
+      // shu qatorda tiklangan qiymatlarni zudlik bilan yo'qqa chiqarardi. Faqat
+      // #chk-district ro'yxatini shu region uchun to'ldiradigan, hech narsani
+      // reset qilmaydigan variant kerak (draft tiklanayotganda region "haqiqatan
+      // o'zgargani" yo'q — u shunchaki birinchi marta o'rnatilyapti).
+      populateDistrictSelectForRegion(regionKey, checkoutDraft.district || '');
       const addressEl = document.getElementById('chk-address');
       if (addressEl) addressEl.value = checkoutDraft.address || '';
       renderCheckoutOptions();
     }
 
-    function handleRegionChange(shouldSave = true) {
-      const regionKey = document.getElementById('chk-region-key')?.value || 'tashkent_city';
+    // 11-band: handleRegionChange()'dan ajratildi — faqat #chk-district
+    // ro'yxatini berilgan region uchun to'ldiradi va tanlovni (mavjud
+    // bo'lsa) tiklaydi, hech qanday boshqa checkout holatini (delivery
+    // method/payment/branch) reset qilmaydi. handleRegionChange() (haqiqiy
+    // foydalanuvchi region'ni o'zgartirganda) va applyCheckoutDraftToForm()
+    // (saqlangan draft tiklanayotganda, reset kerak EMAS) ikkalasi ham
+    // shundan foydalanadi.
+    function populateDistrictSelectForRegion(regionKey, previousDistrict) {
       const districtSelect = document.getElementById('chk-district');
-      const previousDistrict = districtSelect?.value || '';
       const districts = regionKey === 'tashkent_city' ? TASHKENT_CITY_DISTRICTS : (UZ_REGIONS_BY_CODE[regionKey] || []);
       if (districtSelect) {
         districtSelect.innerHTML = `<option value="">${tr('— Tanlang —', '— Выберите —')}</option>` + districts.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(districtLabelForUi(d))}</option>`).join('');
-        if (districts.includes(previousDistrict)) districtSelect.value = previousDistrict;
+        const matched = findMatchingDistrictOption(districts, previousDistrict);
+        if (matched) districtSelect.value = matched;
       }
-      selectedDeliveryMethodId = null;
-      selectedPayMethod = null;
-      clearCheckoutReceipt();
-      checkoutSelectedBranch = null;
-      checkoutBranches = [];
-      checkoutBranchesLoadedFor = null;
-      checkoutBranchesLoading = false;
-      branchRequestSeq++; // 5.7: har qanday kutilayotgan eski so'rovni bekor qiladi
       // 2-band: viloyat almashsa — real (delivery_branches asosidagi) tuman
       // ro'yxati ham reset qilinadi; #chk-district esa yuqorida hardcoded
       // ro'yxat bilan darhol to'ldirildi (foydalanuvchi kutmasin), real
@@ -3272,6 +3305,21 @@
       checkoutDistrictOptions = [];
       checkoutDistrictOptionsLoadedFor = null;
       loadCheckoutDistrictOptions(regionKey);
+    }
+
+    function handleRegionChange(shouldSave = true) {
+      const regionKey = document.getElementById('chk-region-key')?.value || 'tashkent_city';
+      const districtSelect = document.getElementById('chk-district');
+      const previousDistrict = districtSelect?.value || '';
+      populateDistrictSelectForRegion(regionKey, previousDistrict);
+      selectedDeliveryMethodId = null;
+      selectedPayMethod = null;
+      clearCheckoutReceipt();
+      checkoutSelectedBranch = null;
+      checkoutBranches = [];
+      checkoutBranchesLoadedFor = null;
+      checkoutBranchesLoading = false;
+      branchRequestSeq++; // 5.7: har qanday kutilayotgan eski so'rovni bekor qiladi
       renderCheckoutOptions();
       if (shouldSave) saveCheckoutDraft();
     }
@@ -3310,7 +3358,8 @@
       const previousValue = select.value;
       select.innerHTML = `<option value="">${tr('— Tanlang —', '— Выберите —')}</option>` +
         checkoutDistrictOptions.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(districtLabelForUi(d))}</option>`).join('');
-      if (checkoutDistrictOptions.includes(previousValue)) select.value = previousValue;
+      const matched = findMatchingDistrictOption(checkoutDistrictOptions, previousValue);
+      if (matched) select.value = matched;
     }
 
     // Tuman/shahar o'zgarganda: draft saqlanadi, eski filial tanlovi bekor
@@ -3326,7 +3375,12 @@
         const regionKey = document.getElementById('chk-region-key')?.value || checkoutDraft.regionKey || 'tashkent_city';
         loadCheckoutBranches(regionKey, selectedDeliveryMethodId.slice(5), districtValue);
       } else {
-        renderBranchPicker();
+        // 9-band: POST bo'lmagan (yoki hali usul tanlanmagan) holatda filial
+        // paneli KO'RSATILMASLIGI kerak — avval bu yerda renderBranchPicker()
+        // chaqirilardi, u esa selectedDelivery.kind'ni tekshirmasdan panelni
+        // doim ko'rsatib qo'yardi (masalan "Uyigacha" tanlangan holda ham).
+        const wrap = document.getElementById('chk-branch-wrap');
+        if (wrap) wrap.classList.add('hidden');
       }
     }
 
@@ -3403,8 +3457,14 @@
     }
 
     function renderBranchPicker() {
+      // 9-band: hech qachon POST bo'lmagan yetkazib berish usuli uchun
+      // filial panelini ko'rsatmaydi — bu qo'shimcha himoya qatlami, asosiy
+      // fix handleDistrictChange()'da (endi bu funksiyani noto'g'ri holatda
+      // umuman chaqirmaydi).
+      const isPost = String(selectedDeliveryMethodId || '').startsWith('POST:');
       const wrap = document.getElementById('chk-branch-wrap');
-      if (wrap) wrap.classList.remove('hidden');
+      if (wrap) wrap.classList.toggle('hidden', !isPost);
+      if (!isPost) return;
       const listEl = document.getElementById('chk-branch-list');
       if (listEl) listEl.innerHTML = renderBranchListHTML();
       renderSelectedBranchSummary();
@@ -3484,9 +3544,12 @@
         const noticeText = escapeHtml(deliveryOptionNotice(selectedDelivery));
         const comment = selectedDelivery?.comment ? `${noticeText ? '<br>' : ''}<b>${escapeHtml(selectedDelivery.comment)}</b>` : '';
         // 9-band: "Yetkazib berish vaqti" — ixtiyoriy, to'ldirilgan bo'lsagina
-        // ko'rinadi (bo'sh bo'lsa na label, na bo'sh joy qoladi).
-        const estimatedTime = selectedDelivery?.estimatedTime
-          ? `${(noticeText || comment) ? '<br>' : ''}⏱ ${tr('Taxminiy vaqt', 'Ориентировочное время')}: <b>${escapeHtml(selectedDelivery.estimatedTime)}</b>` : '';
+        // ko'rinadi (bo'sh bo'lsa na label, na bo'sh joy qoladi). Alohida
+        // "Taxminiy vaqt:" labelisiz — admin kiritgan qiymat tabiiy gap
+        // ichiga qo'yiladi.
+        const estimatedTimeVal = selectedDelivery?.estimatedTime ? escapeHtml(selectedDelivery.estimatedTime) : '';
+        const estimatedTime = estimatedTimeVal
+          ? `${(noticeText || comment) ? '<br>' : ''}⏱ ${tr(`${estimatedTimeVal} ichida yetkazib beriladi.`, `Доставка в течение ${estimatedTimeVal}.`)}` : '';
         notice.innerHTML = noticeText + comment + estimatedTime;
         notice.classList.toggle('hidden', !selectedDelivery);
       }
@@ -5285,7 +5348,7 @@
     }
 
     function fulfillmentBackButton() {
-      return `<button type="button" onclick="setFulfillmentSettingsSection('MENU')" class="text-[11px] font-bold text-blue-600 flex items-center gap-1">‹ ${tr('Orqaga','Назад')}</button>`;
+      return `<button type="button" onclick="setFulfillmentSettingsSection('MENU')" class="text-[11px] font-bold text-blue-600 bg-blue-50 flex items-center gap-1 px-2.5 py-1.5 rounded-full w-fit">‹ ${tr('Orqaga','Назад')}</button>`;
     }
 
     // 1.1: "Yetkazib berish va to'lov" ikkita mustaqil bo'limga bo'lingan:
@@ -5455,11 +5518,6 @@
                   </div>
                   ${(isUserAnAdmin && isAdminMode) ? `
                     <button onclick="activePopupModal='SHOP_INFO'; render();" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">${ICON_EDIT} ${tr("Tahrirlash", "Изменить")}</button>
-                    <label class="cursor-pointer text-[10px] font-bold px-2 py-1.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200" title="${tr("Logotip qo'shish/almashtirish","Добавить/заменить логотип")}">
-                      🖼️
-                      <input type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
-                    </label>
-                    <button onclick="activePopupModal='SHOP_LOGO_URL'; render();" class="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200" title="${tr("URL orqali logotip qo'shish","Добавить логотип по URL")}">🔗</button>
                   ` : ''}
                 </div>
               </div>
@@ -5570,6 +5628,15 @@
     // 1.11: boshqa rasm oqimlaridagi (yangi tovar/tahrirlash/Rasmsiz queue)
     // kabi bir xil barqaror pipeline: baytlar avval mustaqil nusxalanadi,
     // vaqtinchalik File obyektiga (upload tugagunicha) keyin ishonilmaydi.
+    // 6-band: header logotipiga bosilganda ochiladigan yagona logotip
+    // boshqaruvi — Galereya + Fayl + URL, uchtasi ham bitta joyda (5-band:
+    // logotip ham boshqa rasm joylari kabi Galereya+Fayl ikkalasiga ega
+    // bo'lishi kerak edi, avval faqat Galereya bor edi).
+    function openShopLogoManager() {
+      activePopupModal = 'SHOP_LOGO_MANAGER';
+      render();
+    }
+
     async function saveShopLogoFromPicker(event) {
       const file = event.target.files?.[0];
       if (!file) return;
@@ -5766,6 +5833,20 @@
       billzSubTab = 'IMPORT';
       openPage('BILLZ');
       if (!billzBrowseCategories) await loadBillzBrowseCategories();
+      // 12-band: "B" tugmasi qaysi UStorE katalogidan bosilgan bo'lsa, shu
+      // nomdagi Billz kategoriyasi (agar mos kelsa) avtomatik tanlanadi —
+      // shunda ro'yxat darhol shu katalogga mos tovarlar bilan ochiladi,
+      // har safar bir xil "birinchi ~30 ta" o'rniga. Bazada UStorE<->Billz
+      // kategoriya bog'lanishi saqlanmaydi (Billz buni taqdim etmaydi),
+      // shuning uchun nom bo'yicha taqqoslanadi; mos kelmasa "Barcha
+      // kategoriyalar" holicha qoladi — admin qo'lda tanlaydi. Qidiruv
+      // (billzBrowseSearch/handleBillzBrowseSearchDebounced) bunga tegilmagan.
+      if (categoryId && billzBrowseCategories && billzBrowseCategories.length) {
+        const uStoreCat = categories.find(c => String(c.id) === String(categoryId));
+        const uStoreName = uStoreCat ? categoryName(uStoreCat).trim().toLocaleLowerCase('uz') : '';
+        const match = uStoreName ? billzBrowseCategories.find(c => String(c.name || '').trim().toLocaleLowerCase('uz') === uStoreName) : null;
+        if (match) billzBrowseSelectedCatId = match.id;
+      }
       await loadBillzBrowseItems();
     }
     function setBillzSubTab(tab) {
@@ -6044,6 +6125,9 @@
                 <input type="text" id="sc-name" value="${escapeHtml(shopContact.name || '')}" placeholder="${tr("Do'kon nomi", "Название магазина")}" class="w-full mt-1 p-2 border rounded-xl">
                 <p class="text-[9px] text-gray-400 mt-1">${tr("Bo'sh qoldirilsa, standart \"Do'kon\" nomi ishlatiladi.", "Если оставить пустым, используется название \"Магазин\" по умолчанию.")}</p>
               </div>
+              <div class="pt-1">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wide">📍 ${tr("Manzil", "Адрес")}</p>
+              </div>
               <div>
                 <label class="font-bold text-gray-600">${tr("Manzil", "Адрес")}</label>
                 <input type="text" id="sc-address" value="${escapeHtml(shopContact.address || '')}" placeholder="Sergeli tumani, ..." class="w-full mt-1 p-2 border rounded-xl">
@@ -6058,26 +6142,22 @@
                 <input type="text" id="sc-coordinates" value="${escapeHtml(shopContact.coordinates || '')}" placeholder="41.217408,69.211225" class="w-full mt-1 p-2 border rounded-xl font-mono">
                 <p class="text-[9px] text-gray-400 mt-1">${tr("Google Maps'dan koordinatani nusxa qilib qo'ying.", "Вставьте координаты из Google Maps.")}</p>
               </div>
+              <div class="pt-1">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wide">🕐 ${tr("Ish vaqti", "Часы работы")}</p>
+              </div>
               <div>
-                <label class="font-bold text-gray-600">${tr("Ish vaqti", "Часы работы")}</label>
                 <input type="text" id="sc-work-hours" value="${escapeHtml(shopContact.workHours || '')}" placeholder="${tr('Masalan: 09:00–22:00 yoki Du–Yak 09:00–22:00','Например: 09:00–22:00 или Пн–Вс 09:00–22:00')}" class="w-full mt-1 p-2 border rounded-xl">
+              </div>
+              <div class="pt-1">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wide">📞 ${tr("Aloqa", "Контакты")}</p>
               </div>
               <div class="grid grid-cols-1 gap-2">
                 <div><label class="font-bold text-gray-600">${tr("Telefon 1", "Телефон 1")}</label><input type="text" id="sc-phone1" value="${escapeHtml(shopContact.phone || '')}" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2 border rounded-xl font-mono"></div>
                 <div><label class="font-bold text-gray-600">${tr("Telefon 2 (ixtiyoriy)", "Телефон 2 (необязательно)")}</label><input type="text" id="sc-phone2" value="${escapeHtml(shopContact.phone2 || '')}" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2 border rounded-xl font-mono"></div>
                 <div><label class="font-bold text-gray-600">${tr("Telefon 3 (ixtiyoriy)", "Телефон 3 (необязательно)")}</label><input type="text" id="sc-phone3" value="${escapeHtml(shopContact.phone3 || '')}" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2 border rounded-xl font-mono"></div>
-              </div>
-              <div>
-                <label class="font-bold text-gray-600">Instagram ${tr("nickname", "никнейм")}</label>
-                <div class="flex items-center mt-1"><span class="px-2 py-2 bg-slate-50 border border-r-0 rounded-l-xl text-gray-500">@</span><input type="text" id="sc-instagram" value="${escapeHtml(cleanSocialNick(shopContact.instagram))}" placeholder="mystore.uz" class="flex-1 p-2 border rounded-r-xl"></div>
-              </div>
-              <div>
-                <label class="font-bold text-gray-600">Telegram ${tr("nickname", "никнейм")}</label>
-                <div class="flex items-center mt-1"><span class="px-2 py-2 bg-slate-50 border border-r-0 rounded-l-xl text-gray-500">@</span><input type="text" id="sc-telegram" value="${escapeHtml(cleanSocialNick(shopContact.telegram))}" placeholder="mystore_uz" class="flex-1 p-2 border rounded-r-xl"></div>
-              </div>
-              <div>
-                <label class="font-bold text-gray-600">Facebook ${tr("nickname", "никнейм")}</label>
-                <div class="flex items-center mt-1"><span class="px-2 py-2 bg-slate-50 border border-r-0 rounded-l-xl text-gray-500">@</span><input type="text" id="sc-facebook" value="${escapeHtml(cleanSocialNick(shopContact.facebook))}" placeholder="mystore.uz" class="flex-1 p-2 border rounded-r-xl"></div>
+                <div><label class="font-bold text-gray-600">Instagram ${tr("nickname", "никнейм")}</label><div class="flex items-center mt-1"><span class="px-2 py-2 bg-slate-50 border border-r-0 rounded-l-xl text-gray-500">@</span><input type="text" id="sc-instagram" value="${escapeHtml(cleanSocialNick(shopContact.instagram))}" placeholder="mystore.uz" class="flex-1 p-2 border rounded-r-xl"></div></div>
+                <div><label class="font-bold text-gray-600">Telegram ${tr("nickname", "никнейм")}</label><div class="flex items-center mt-1"><span class="px-2 py-2 bg-slate-50 border border-r-0 rounded-l-xl text-gray-500">@</span><input type="text" id="sc-telegram" value="${escapeHtml(cleanSocialNick(shopContact.telegram))}" placeholder="mystore_uz" class="flex-1 p-2 border rounded-r-xl"></div></div>
+                <div><label class="font-bold text-gray-600">Facebook ${tr("nickname", "никнейм")}</label><div class="flex items-center mt-1"><span class="px-2 py-2 bg-slate-50 border border-r-0 rounded-l-xl text-gray-500">@</span><input type="text" id="sc-facebook" value="${escapeHtml(cleanSocialNick(shopContact.facebook))}" placeholder="mystore.uz" class="flex-1 p-2 border rounded-r-xl"></div></div>
               </div>
               <p class="text-[10px] text-gray-400">${tr("Bo'sh qoldirilgan maydonlar foydalanuvchiga umuman ko'rinmaydi.", "Пустые поля вообще не показываются пользователю.")}</p>
               <div class="flex gap-2 pt-2">
@@ -6606,6 +6686,24 @@
         return;
       }
 
+      if (activePopupModal === 'SHOP_LOGO_MANAGER') {
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; render();">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("Logotip", "Логотип")}</h3>
+              ${shopLogoUrl ? `<img src="${escapeHtml(shopLogoUrl)}" class="h-16 mx-auto rounded-xl bg-slate-50 p-1 border object-contain">` : ''}
+              <div class="flex items-center gap-2 flex-wrap justify-center">
+                <label class="cursor-pointer inline-flex items-center gap-1.5 font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">🖼 ${tr('Galereyadan tanlash', 'Выбрать из галереи')}<input type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)"></label>
+                <label class="cursor-pointer inline-flex items-center gap-1.5 font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">📁 ${tr('Fayldan tanlash', 'Выбрать файл')}<input type="file" class="hidden" onchange="saveShopLogoFromPicker(event)"></label>
+                <button onclick="activePopupModal='SHOP_LOGO_URL'; render();" class="inline-flex items-center gap-1.5 font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">🔗 ${tr('URL orqali', 'По URL')}</button>
+              </div>
+              <button onclick="activePopupModal=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
       if (activePopupModal === 'SHOP_LOGO_URL') {
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
@@ -6808,7 +6906,9 @@
           <div class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="selectedProductModal=null; render();">
             <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl" onclick="event.stopPropagation()">
               <div class="relative">
-                <img src="${escapeHtml(p.img || FALLBACK_IMG.replace('150','300'))}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-48 object-cover rounded-2xl border">
+                <div class="w-full h-48 rounded-2xl border bg-gray-50 overflow-hidden flex items-center justify-center">
+                  <img src="${escapeHtml(p.img || FALLBACK_IMG.replace('150','300'))}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="max-w-full max-h-full object-contain">
+                </div>
                 ${(isAdminMode && isUserAnAdmin) ? `
                   <button onclick="openEditFieldModal('${p.id}', 'img')" class="absolute bottom-2 right-2 bg-blue-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center space-x-1 shadow">
                     <span class="inline-flex items-center gap-1">${ICON_EDIT} ${tr("Rasmni o'zgartirish", "Изменить фото")}</span>
@@ -8434,9 +8534,17 @@
     // muharrirlari davomida fon poll'ning render() chaqiruvini o'tkazib
     // yuborish (ma'lumotning o'zi loadCatalog() orqali fonda baribir yangilanadi
     // — modal yopilganda ko'rinadigan holat allaqachon dolzarb bo'ladi).
+    // 11-band: xuddi shu muammo (fon poll render()ni qayta yozib, saqlanmagan
+    // matnni yo'qotib qo'yishi) mijoz checkout formasida ham bor edi — nom
+    // "CatalogEditor" bo'lsa-da, bu funksiya allaqachon barcha poll/stale-
+    // while-revalidate chaqiruv joylarida ishlatiladi, shuning uchun
+    // CHECKOUT_FORM'ni shu yerga qo'shish yagona joydan barcha chaqiruv
+    // nuqtalarini avtomatik himoya qiladi (funksiyani qayta nomlash/har bir
+    // chaqiruv joyini alohida o'zgartirish shart emas).
     function isCatalogEditorModalOpen() {
       return activePopupModal === 'ADD_PROD' || activePopupModal === 'EDIT_PROD_FIELD'
-        || activePopupModal === 'ADD_CAT' || activePopupModal === 'EDIT_CAT';
+        || activePopupModal === 'ADD_CAT' || activePopupModal === 'EDIT_CAT'
+        || activePopupModal === 'CHECKOUT_FORM';
     }
     function startBackgroundPolling() {
       if (pollTimer) clearInterval(pollTimer);

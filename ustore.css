@@ -1640,7 +1640,13 @@ body { background: var(--ustore-page-bg) !important; color: var(--ustore-text) !
 /* Sahifa header standarti — page-shell (yangi full-page bo'limlar: Support/Settings/Dashboard/Ombor) */
 .fc-page-header { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: .5rem; padding: max(.75rem, env(safe-area-inset-top)) .75rem .75rem; background: var(--fc-surface); border-bottom: 1px solid var(--fc-border); }
 .fc-page-header-title { flex: 1; font-weight: 700; font-size: 1rem; text-align: center; }
-.fc-page-header-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 2.5rem; min-height: 2.5rem; border-radius: 9999px; background: var(--fc-muted-bg); color: var(--color-gray-700); }
+.fc-page-header-btn {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 2.5rem; min-height: 2.5rem;
+  border-radius: 9999px; background: var(--fc-muted-bg); color: var(--color-gray-700);
+  border: 1px solid var(--fc-border); box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  transition: transform .12s ease, background-color .12s ease, box-shadow .12s ease;
+}
+.fc-page-header-btn:active { transform: scale(0.92); background: var(--fc-selected-bg); box-shadow: none; }
 
 /* Ombor -> Qoldiq: bulk ID/SKU paneli tepada pin (sticky) qilinadi, faqat pastdagi
    daraxt scroll bo'ladi. `top` qiymati .fc-page-header'ning haqiqiy balandligini
