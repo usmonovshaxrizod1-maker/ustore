@@ -46,6 +46,38 @@
     if (str === null || str === undefined) return '';
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+  // 2-band: zamonaviy chiziqli ikonalar (emoji o'rniga) — ustore-shop-app.js'dagi
+  // fcIcon() naqshi, lekin platform.css'ning o'z palitrasida (stroke=currentColor).
+  const PICONS = {
+    home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>',
+    shop: '<path d="M4 9l1-5h14l1 5"/><path d="M4 9a2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0 2 2 0 0 0 4 0"/><path d="M5.5 9.4V20a1 1 0 0 0 1 1H9v-6h6v6h2.5a1 1 0 0 0 1-1V9.4"/>',
+    diamond: '<path d="M6 3h12l3.5 5.5L12 21 2.5 8.5 6 3z"/><path d="M2.5 8.5h19M9 3l-2.5 5.5L12 21M15 3l2.5 5.5L12 21"/>',
+    chat: '<path d="M4 4h16v12H8l-4 4V4z"/>',
+    user: '<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.8-3.8 4-6 7.5-6s6.7 2.2 7.5 6"/>',
+    dashboard: '<rect x="3.5" y="3.5" width="7" height="8" rx="1.2"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.2"/><rect x="13.5" y="12" width="7" height="8.5" rx="1.2"/><rect x="3.5" y="15" width="7" height="5.5" rx="1.2"/>',
+    inbox: '<path d="M21 12h-5.5l-1.7 2.6h-3.6L8.5 12H3"/><path d="M5.3 5.3 3 12v6a1.6 1.6 0 0 0 1.6 1.6h14.8A1.6 1.6 0 0 0 21 18v-6l-2.3-6.7A1.6 1.6 0 0 0 17.2 4H6.8a1.6 1.6 0 0 0-1.5 1.3z"/>',
+    back: '<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>',
+    rocket: '<path d="M12 3c3 1.2 5 4 5 8 0 3-1.6 5.6-3 7l-2 2-2-2c-1.4-1.4-3-4-3-7 0-4 2-6.8 5-8z"/><circle cx="12" cy="10" r="1.6"/><path d="M9 16.5c-1.6.3-2.5 1.6-2.9 4.5 2.9-.4 4.2-1.3 4.5-2.9M15 16.5c1.6.3 2.5 1.6 2.9 4.5-2.9-.4-4.2-1.3-4.5-2.9"/>',
+    play: '<path d="M7 4.5v15l13-7.5-13-7.5z"/>',
+    gift: '<rect x="3.5" y="8.5" width="17" height="4" rx="1"/><path d="M12 8.5V21M18.5 12.5V20a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1v-7.5"/><path d="M12 8.5c-1.3-3-3.2-4.3-4.8-3.2C5.6 6.3 6.4 8.5 12 8.5zM12 8.5c1.3-3 3.2-4.3 4.8-3.2 1.6 1 .8 3.2-4.8 3.2z"/>',
+    lock: '<rect x="4.5" y="10.5" width="15" height="9.5" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    phone: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/>',
+    bolt: '<path d="M13 2.5 5 14h6l-1 7.5 8-11.5h-6l1-7.5z"/>',
+    cloud: '<path d="M7 18a4.2 4.2 0 0 1-1-8.3 5.3 5.3 0 0 1 10.2-2 4.6 4.6 0 0 1 .8 9.1"/><path d="M7 18h10"/>',
+    bag: '<path d="M6 8h12l1 12.5a1 1 0 0 1-1 1.5H6a1 1 0 0 1-1-1.5L6 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+    box: '<path d="M12 3 3 7.5 12 12l9-4.5L12 3z"/><path d="M3 7.5v9L12 21l9-4.5v-9"/><path d="M12 12v9"/>',
+    bell: '<path d="M6 9a6 6 0 0 1 12 0v5l1.8 3H4.2L6 14V9z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+    card: '<rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10.2h19"/>',
+    truck: '<path d="M3 7h10v9H3z"/><path d="M13 10.5h4l3.5 3.2V16h-7.5z"/><circle cx="7.5" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>',
+    layers: '<path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+    chevronDown: '<path d="M6 9l6 6 6-6"/>',
+  };
+  function pIcon(name, size) {
+    const s = size || 18;
+    return `<svg class="p-icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${PICONS[name] || ''}</svg>`;
+  }
+
   function money(v) { return `${Number(v || 0).toLocaleString('uz-UZ').replace(/,/g, ' ')} so'm`; }
   function statusLabel(s) {
     if (s === 'ACTIVE') return '🟢 Faol';
@@ -154,9 +186,9 @@
     return `
       <div class="plat-page">
         <div class="plat-page-header">
-          <button class="plat-page-header-btn" onclick="${backAction}" aria-label="Orqaga">←</button>
+          <button class="plat-page-header-btn" onclick="${backAction}" aria-label="Orqaga">${pIcon('back', 17)}</button>
           <div class="plat-page-header-title">${escapeHtml(title)}</div>
-          <button class="plat-page-header-btn" onclick="goHomePage()" aria-label="Bosh sahifa">⌂</button>
+          <button class="plat-page-header-btn" onclick="goHomePage()" aria-label="Bosh sahifa">${pIcon('home', 17)}</button>
         </div>
         <div class="plat-page-body">${bodyHtml}</div>
       </div>`;
@@ -172,7 +204,7 @@
     const rect = btn.getBoundingClientRect();
     popover.style.top = `${rect.bottom + 6}px`;
     popover.style.right = `${window.innerWidth - rect.right}px`;
-    const label = isAdminMode ? "👤 Foydalanuvchi rejimiga o'tish" : '🛡 Admin rejimiga o\'tish';
+    const label = isAdminMode ? `${pIcon('user', 15)} Foydalanuvchi rejimiga o'tish` : `${pIcon('lock', 15)} Admin rejimiga o'tish`;
     popover.innerHTML = `<button class="plat-role-popover-btn" onclick="document.getElementById('plat-role-popover').classList.add('hidden'); toggleAdminRole();">${label}</button>`;
     popover.classList.remove('hidden');
   }
@@ -248,7 +280,7 @@
     return `
       <div class="plat-header">
         <div class="plat-header-title">${isAdminMode ? 'UStorE Admin' : 'UStorE'}</div>
-        <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">👤</button>
+        <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">${pIcon('user', 17)}</button>
       </div>
       <div id="plat-role-popover" class="hidden plat-role-popover"></div>
       <div class="plat-content">${bodyHtml}</div>
@@ -258,19 +290,19 @@
 
   function renderBottomNav() {
     const userTabs = [
-      ['home', '🏠', 'Bosh sahifa'], ['shops', '🏪', "Do'konlarim"], ['subscription', '💎', 'Obuna'],
-      ['help', '💬', 'Yordam'], ['profile', '👤', 'Profil'],
+      ['home', 'home', 'Bosh sahifa'], ['shops', 'shop', "Do'konlarim"], ['subscription', 'diamond', 'Obuna'],
+      ['help', 'chat', 'Yordam'], ['profile', 'user', 'Profil'],
     ];
     const adminTabs = [
-      ['dashboard', '📊', 'Dashboard'], ['shops', '🏪', "Do'konlar"], ['requests', '📨', "So'rovlar"],
-      ['tariffs', '💎', 'Tariflar'], ['profile', '👤', 'Profil'],
+      ['dashboard', 'dashboard', 'Dashboard'], ['shops', 'shop', "Do'konlar"], ['requests', 'inbox', "So'rovlar"],
+      ['tariffs', 'diamond', 'Tariflar'], ['profile', 'user', 'Profil'],
     ];
     const tabs = isAdminMode ? adminTabs : userTabs;
     return `
       <nav class="plat-bottom-nav">
         ${tabs.map(([id, icon, label]) => `
           <button class="plat-nav-btn ${currentTab === id ? 'active' : ''}" onclick="switchTab('${id}')">
-            <span class="plat-nav-icon">${icon}</span>
+            <span class="plat-nav-icon">${pIcon(icon, 20)}</span>
             <span class="plat-nav-label">${label}</span>
           </button>
         `).join('')}
@@ -461,16 +493,21 @@
   // ======================================================================
   // 3.2-band: "Nega UStorE?" — 8 ta karta, gorizontal swipe-carousel.
   const WHY_USTORE_CARDS = [
-    ['🛍', '24/7 ishlaydigan onlayn do\'kon', 'Mijozlaringiz Telegram\'dan chiqmasdan mahsulotlarni ko\'radi va buyurtma beradi.'],
-    ['📦', 'Ombor nazorati', 'Qoldiq, kam qolgan va tugagan mahsulotlarni bir joydan kuzating.'],
-    ['📲', 'Buyurtmalar bir joyda', 'Yangi buyurtmadan yetkazib berishgacha bo\'lgan jarayonni bitta paneldan boshqaring.'],
-    ['💳', 'Qulay to\'lovlar', 'Naqd, karta, QR va mavjud to\'lov usullarini sozlang.'],
-    ['🚚', 'Moslashuvchan yetkazib berish', 'Taksi, uyga yetkazish, pochta va olib ketish usullaridan foydalaning.'],
-    ['🌐', 'Ikki tilda ishlash', 'Mijozlaringiz UStorE\'dan O\'zbekcha yoki Ruscha foydalanishi mumkin.'],
-    ['📱', 'Telefon orqali boshqaruv', 'Do\'koningizni kompyutersiz ham, telefon orqali boshqarishingiz mumkin.'],
-    ['⚡', 'Alohida sayt shart emas', 'Savdoni boshlash uchun alohida sayt tayyorlashga hojat yo\'q — UStorE Telegram ichida ishlaydi.'],
+    ['bag', '24/7 ishlaydigan onlayn do\'kon', 'Mijozlaringiz Telegram\'dan chiqmasdan mahsulotlarni ko\'radi va buyurtma beradi.'],
+    ['box', 'Ombor nazorati', 'Qoldiq, kam qolgan va tugagan mahsulotlarni bir joydan kuzating.'],
+    ['bell', 'Buyurtmalar bir joyda', 'Yangi buyurtmadan yetkazib berishgacha bo\'lgan jarayonni bitta paneldan boshqaring.'],
+    ['card', 'Qulay to\'lovlar', 'Naqd, karta, QR va mavjud to\'lov usullarini sozlang.'],
+    ['truck', 'Moslashuvchan yetkazib berish', 'Taksi, uyga yetkazish, pochta va olib ketish usullaridan foydalaning.'],
+    ['globe', 'Ikki tilda ishlash', 'Mijozlaringiz UStorE\'dan O\'zbekcha yoki Ruscha foydalanishi mumkin.'],
+    ['phone', 'Telefon orqali boshqaruv', 'Do\'koningizni kompyutersiz ham, telefon orqali boshqarishingiz mumkin.'],
+    ['layers', 'Alohida sayt shart emas', 'Savdoni boshlash uchun alohida sayt tayyorlashga hojat yo\'q — UStorE Telegram ichida ishlaydi.'],
   ];
-  // 3.7-band: FAQ.
+  // 3.7-band: FAQ — accordion. Butun app'ni qayta render() qilmaydi (scroll
+  // pozitsiyasi buzilmasin uchun), faqat bosilgan qatorning DOM klassini almashtiradi.
+  function toggleFaq(btn) {
+    const item = btn.closest('.plat-faq-item');
+    if (item) item.classList.toggle('open');
+  }
   const FAQ_ITEMS = [
     ["Do'kon qancha vaqtda tayyor bo'ladi?", "To'lov tasdiqlangandan keyin do'koningiz imkon qadar tez ulanadi. Qo'lda ulash talab qilinadigan holatlarda 24 soatgacha vaqt ketishi mumkin."],
     ['Tarifni keyin almashtirish mumkinmi?', "Ha. Mavjud do'koningiz uchun boshqa tarifni tanlab, obunani yangilashingiz mumkin."],
@@ -486,8 +523,8 @@
         <h1 class="plat-hero-title">UStorE</h1>
         <p class="plat-hero-sub">Telegram'da o'z e-do'koningizni oching</p>
         <p class="plat-hero-desc">Mahsulotlaringizni soting, buyurtmalarni qabul qiling, omborni boshqaring — barchasi bitta tizimda.</p>
-        <button class="primary" onclick="openPage('TARIFFS')">🚀 Obuna sotib olish</button>
-        <button class="secondary" onclick="document.getElementById('plat-why-ustore').scrollIntoView({behavior:'smooth'})">▶️ Imkoniyatlarni ko'rish</button>
+        <button class="primary" onclick="openPage('TARIFFS')">${pIcon('rocket', 16)} Obuna sotib olish</button>
+        <button class="secondary" onclick="document.getElementById('plat-why-ustore').scrollIntoView({behavior:'smooth'})">${pIcon('play', 14)} Imkoniyatlarni ko'rish</button>
       </div>
 
       <div id="plat-why-ustore">
@@ -497,7 +534,7 @@
           ${WHY_USTORE_CARDS.map(([icon, title, desc]) => `
             <div class="plat-carousel-item">
               <div class="plat-why-card">
-                <div class="plat-why-card-icon">${icon}</div>
+                <div class="plat-why-card-icon">${pIcon(icon, 22)}</div>
                 <div class="plat-why-card-title">${title}</div>
                 <div class="plat-why-card-desc">${desc}</div>
               </div>
@@ -522,7 +559,7 @@
       </div>
 
       <div class="plat-bonus-card">
-        <div class="plat-bonus-title">🎁 Birinchi obunada +7 kun bonus</div>
+        <div class="plat-bonus-title">${pIcon('gift', 18)} Birinchi obunada +7 kun bonus</div>
         <div class="plat-bonus-desc">Do'koningizni mahsulotlar bilan to'ldirib, katalog va sozlamalarni tayyorlab olish uchun.</div>
         <div class="plat-bonus-note">Birinchi obuna: 30 kun + 7 kun bonus = 37 kun.</div>
       </div>
@@ -534,18 +571,23 @@
 
       <h2 class="plat-section-title">Do'koningiz uchun ishonchli boshqaruv</h2>
       <div class="plat-trust-grid">
-        <div class="plat-trust-card">🔐 Ma'lumotlaringiz himoyalangan</div>
-        <div class="plat-trust-card">📱 Telefon orqali boshqarish mumkin</div>
-        <div class="plat-trust-card">⚡ Telegram ichida ishlaydi</div>
-        <div class="plat-trust-card">☁️ Ma'lumotlar xavfsiz serverlarda saqlanadi</div>
+        ${[['lock', "Ma'lumotlaringiz himoyalangan"], ['phone', 'Telefon orqali boshqarish mumkin'], ['bolt', 'Telegram ichida ishlaydi'], ['cloud', "Ma'lumotlar xavfsiz serverlarda saqlanadi"]].map(([icon, text]) => `
+          <div class="plat-trust-card">
+            <div class="plat-trust-card-icon">${pIcon(icon, 20)}</div>
+            <div class="plat-trust-card-text">${text}</div>
+          </div>
+        `).join('')}
       </div>
 
       <h2 class="plat-section-title">Ko'p beriladigan savollar</h2>
-      <div class="card">
+      <div class="card plat-faq-card">
         ${FAQ_ITEMS.map(([q, a]) => `
           <div class="plat-faq-item">
-            <div class="plat-faq-q">${q}</div>
-            <div class="plat-faq-a">${a}</div>
+            <button class="plat-faq-q" onclick="toggleFaq(this)">
+              <span>${q}</span>
+              <span class="plat-faq-chevron">${pIcon('chevronDown', 16)}</span>
+            </button>
+            <div class="plat-faq-a"><div class="plat-faq-a-inner">${a}</div></div>
           </div>
         `).join('')}
       </div>
@@ -677,7 +719,7 @@
       <div class="card">
         <label class="plat-checkbox-row" style="align-items:flex-start">
           <input type="checkbox" id="plat-consent-checkbox" ${consentAccepted ? 'checked' : ''} onchange="setConsentAccepted(this.checked)">
-          <span>Men UStorE <a href="#" onclick="event.preventDefault(); openTermsPage('PAYMENT');" style="color:#60a5fa">Foydalanish shartlari</a> va <a href="#" onclick="event.preventDefault(); openPrivacyPage('PAYMENT');" style="color:#60a5fa">Maxfiylik siyosati</a>ni o'qidim, tushundim va ularga roziman.</span>
+          <span>Men UStorE <a href="#" onclick="event.preventDefault(); openTermsPage('PAYMENT');" style="color:#1d4ed8">Foydalanish shartlari</a> va <a href="#" onclick="event.preventDefault(); openPrivacyPage('PAYMENT');" style="color:#1d4ed8">Maxfiylik siyosati</a>ni o'qidim, tushundim va ularga roziman.</span>
         </label>
       </div>
       <button class="primary ${(!receiptFile || !consentAccepted || submittingRequest) ? 'plat-btn-dimmed' : ''}" onclick="submitSubscriptionRequest()">
@@ -761,7 +803,7 @@
         <div style="font-size:40px">✅</div>
         <h2>So'rov yuborildi</h2>
         <p class="muted">To'lovingiz tekshirilmoqda. Tasdiqlanganda Telegram orqali xabar beramiz.</p>
-        <div class="status-pill" style="background:#78350f;color:#fcd34d">🟡 Tekshirilmoqda</div>
+        <div class="status-pill" style="background:#fef3c7;color:#b45309">🟡 Tekshirilmoqda</div>
         <button class="primary" style="margin-top:16px" onclick="goHomePage()">Bosh sahifaga qaytish</button>
       </div>`;
   }
@@ -1061,7 +1103,7 @@
         <input type="text" id="plat-terminate-reason" value="${escapeHtml(terminateReasonDraft)}" oninput="terminateReasonDraft=this.value">
         <div style="display:flex; gap:8px; margin-top:8px">
           <button class="secondary" style="flex:1; margin-top:0" onclick="cancelTerminateShop()">Bekor qilish</button>
-          <button class="secondary" style="flex:1; margin-top:0; color:#fca5a5" onclick="confirmTerminateStepReason()">Davom etish</button>
+          <button class="secondary" style="flex:1; margin-top:0; color:#dc2626" onclick="confirmTerminateStepReason()">Davom etish</button>
         </div>
       `;
     }
@@ -1070,11 +1112,11 @@
         <div class="notice error" style="margin-top:14px">Bu amal do'kon faoliyatini to'xtatadi. Davom etasizmi?</div>
         <div style="display:flex; gap:8px; margin-top:8px">
           <button class="secondary" style="flex:1; margin-top:0" onclick="cancelTerminateShop()">Bekor qilish</button>
-          <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" style="flex:1; margin-top:0; color:#fca5a5" onclick="submitTerminateShop('${shopId}')">${lifecycleActionSubmitting ? '<span class="spinner"></span>' : "Ha, o'chirish"}</button>
+          <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" style="flex:1; margin-top:0; color:#dc2626" onclick="submitTerminateShop('${shopId}')">${lifecycleActionSubmitting ? '<span class="spinner"></span>' : "Ha, o'chirish"}</button>
         </div>
       `;
     }
-    return `<button class="secondary" style="margin-top:14px; color:#fca5a5" onclick="startTerminateShop()">🗑 O'chirish</button>`;
+    return `<button class="secondary" style="margin-top:14px; color:#dc2626" onclick="startTerminateShop()">🗑 O'chirish</button>`;
   }
   function startTerminateShop() { terminateStep = 'reason'; terminateReasonDraft = ''; render(); }
   function cancelTerminateShop() { terminateStep = null; terminateReasonDraft = ''; render(); }
@@ -1369,6 +1411,7 @@
   window.goHomePage = goHomePage;
   window.switchTab = switchTab;
   window.togglePersonMenu = togglePersonMenu;
+  window.toggleFaq = toggleFaq;
   window.toggleAdminRole = toggleAdminRole;
   window.openTermsPage = openTermsPage;
   window.openPrivacyPage = openPrivacyPage;
