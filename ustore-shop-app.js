@@ -6004,15 +6004,40 @@
       billzBrowseLoading = true;
       render();
       try {
-        const result = await callApi('billz_browse_products', {
-          billzCategoryId: billzBrowseSelectedCatId || undefined,
-          search: billzBrowseSearch || undefined,
-          page: targetPage,
-          limit: billzBrowsePageSize,
-        });
-        billzBrowseItems = result.items || [];
-        billzBrowseCount = result.count || 0;
-        billzBrowsePage = targetPage;
+        if (billzBrowsePageSize === 'ALL') {
+          // "Barchasi" — bitta so'rovda emas (Billz'ning o'zi bitta so'rovda
+          // qaytaradigan eng katta hajmi 100), balki 100 tadan qilib bir necha
+          // sahifani ketma-ket so'rab, natijalarni birlashtiramiz. 200 sahifa
+          // (20 000 tovar) — cheksiz tsiklga qarshi xavfsizlik chegarasi.
+          let all = [];
+          let total = Infinity;
+          let page = 1;
+          while (all.length < total && page <= 200) {
+            const result = await callApi('billz_browse_products', {
+              billzCategoryId: billzBrowseSelectedCatId || undefined,
+              search: billzBrowseSearch || undefined,
+              page, limit: 100,
+            });
+            const items = result.items || [];
+            total = result.count || 0;
+            all = all.concat(items);
+            if (!items.length) break;
+            page++;
+          }
+          billzBrowseItems = all;
+          billzBrowseCount = total;
+          billzBrowsePage = 1;
+        } else {
+          const result = await callApi('billz_browse_products', {
+            billzCategoryId: billzBrowseSelectedCatId || undefined,
+            search: billzBrowseSearch || undefined,
+            page: targetPage,
+            limit: billzBrowsePageSize,
+          });
+          billzBrowseItems = result.items || [];
+          billzBrowseCount = result.count || 0;
+          billzBrowsePage = targetPage;
+        }
         // Ekrandan g'oyib bo'lgan (masalan qidiruv o'zgargach) tovarlarning
         // tanlovini ham tozalaymiz — aks holda "tanlangan" hisoblagich
         // ko'rinmas tovarlarni ham hisoblab yuraveradi.
@@ -6027,9 +6052,9 @@
         if (activePage === 'BILLZ') render();
       }
     }
-    // Sahifa hajmini (10/25/50/100) o'zgartirish — 1-sahifadan qayta boshlaydi.
+    // Sahifa hajmini (10/25/50/100/Barchasi) o'zgartirish — 1-sahifadan qayta boshlaydi.
     function setBillzBrowsePageSize(size) {
-      billzBrowsePageSize = Number(size) || 10;
+      billzBrowsePageSize = size === 'ALL' ? 'ALL' : (Number(size) || 10);
       loadBillzBrowseItems(1);
     }
     // 100 tanlangan va jami 100 tadan ko'p bo'lganda ko'rinadigan raqamli
@@ -6128,12 +6153,15 @@
       `;
       // 9-band: sahifa hajmi tanlovi + (100 tanlanib, 100 tadan ko'p bo'lsa)
       // raqamli sahifalar — eski "Yana yuklash" tugmasi o'rniga.
-      const totalPages = Math.ceil(billzBrowseCount / billzBrowsePageSize);
+      // "Barchasi" tanlanganda sahifalash umuman kerak emas (hammasi bitta
+      // ro'yxatda), shu sabab totalPages faqat son bo'lganda hisoblanadi.
+      const totalPages = typeof billzBrowsePageSize === 'number' ? Math.ceil(billzBrowseCount / billzBrowsePageSize) : 1;
       const pagerBar = `
         <div class="flex items-center gap-2">
           <label class="text-[10px] font-bold text-gray-500 shrink-0">${tr('Ko\'rsatish', 'Показывать')}:</label>
           <select onchange="setBillzBrowsePageSize(this.value)" class="flex-1 p-1.5 border rounded-lg bg-gray-50 text-xs">
             ${[10, 25, 50, 100].map((n) => `<option value="${n}" ${billzBrowsePageSize === n ? 'selected' : ''}>${n}</option>`).join('')}
+            <option value="ALL" ${billzBrowsePageSize === 'ALL' ? 'selected' : ''}>${tr('Barchasi', 'Все')}</option>
           </select>
         </div>
         ${billzBrowsePageSize === 100 && totalPages > 1 ? `
@@ -6162,7 +6190,7 @@
           `}
         </div>
         ${billzBrowseSelectedIds.size ? `
-          <div class="fixed bottom-0 left-0 right-0 p-3 bg-white border-t shadow-lg z-40">
+          <div class="ustore-sticky-panel p-3 bg-white border-t shadow-lg z-40">
             <div class="max-w-md mx-auto">
               <button onclick="openBillzImportConfirmModal()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl">${tr("Import qilish", "Импортировать")} (${billzBrowseSelectedIds.size})</button>
             </div>
@@ -6188,7 +6216,7 @@
           `}
         </div>
         ${billzImportedSelectedIds.size ? `
-          <div class="fixed bottom-0 left-0 right-0 p-3 bg-white border-t shadow-lg z-40">
+          <div class="ustore-sticky-panel p-3 bg-white border-t shadow-lg z-40">
             <div class="max-w-md mx-auto">
               <button onclick="unlinkSelectedBillzImports()" ${billzUnlinking ? 'disabled' : ''} class="w-full fc-bg-danger text-white font-bold py-3 rounded-xl">${billzUnlinking ? tr('Bajarilmoqda...', 'Выполняется...') : `${tr("Importdan olib tashlash", "Убрать из импорта")} (${billzImportedSelectedIds.size})`}</button>
             </div>

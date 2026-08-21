@@ -1448,6 +1448,18 @@ input.border:focus, textarea.border:focus, select.border:focus {
    yopishib qolmasin. */
 .ustore-bottom-nav { padding-bottom: max(.5rem, env(safe-area-inset-bottom)) !important; }
 
+/* Billz import/select uchun "tanlandi — Saqlash" kabi lipkий (sticky) amal
+   paneli — bottom-nav bilan bir xil "bottom:0" ishlatib bo'lmaydi: nav har
+   doim z-50 bilan tepada turishi kerak (7-band), va #page-container'ning
+   o'zi z-40 stacking context yaratgani uchun ICHKARIDAGI hech qanday
+   elementning z-index'i navni "yenga olmaydi" — shu sabab panel navning
+   PASTIGA emas, USTIGA (bottom offset bilan) joylashtiriladi. Qiymat
+   renderPageShell'ning mavjud, allaqachon sinovdan o'tgan "5rem" nav-
+   balandligi taxminidan olingan (bir xil qiymat, ikki joyda mos kelishi
+   uchun bitta CSS o'zgaruvchida). */
+:root { --ustore-nav-h: calc(5rem + env(safe-area-inset-bottom)); }
+.ustore-sticky-panel { position: fixed; bottom: var(--ustore-nav-h); left: 0; right: 0; }
+
 /* Aynan rejim almashtirish tugmasi: mavjud bo'lmagan gradient utility'lariga bog'liq emas. */
 #admin-role-toggle-btn {
   color: #0f172a;
@@ -1479,6 +1491,21 @@ input.border:focus, textarea.border:focus, select.border:focus {
 }
 /* 44-band: Telegram WebView top xavfsiz zonasi (notch/status bar) hisobga olinadi. */
 .ustore-topbar { padding-top: max(.75rem, env(safe-area-inset-top)) !important; }
+/* Global header (brend, admin/user, til/profil/sozlamalar) hech qachon
+   yopilib qolmasin — #page-container ("Do'kon sozlamalari",
+   "Qo'llab-quvvatlash" kabi to'liq ichki sahifalar) undan PASTDA boshlanadi,
+   header esa ustida z-50 bilan doim ko'rinib turadi (bottom-nav'dagi bilan
+   bir xil naqsh). --ustore-header-h — header'ning haqiqiy balandligi
+   (safe-area bilan birga) — page-container va uning ichki .fc-page-header'i
+   shu bitta qiymatga tayanadi, ikkalasi hech qachon bir-biridan uzoqlashib
+   ketmaydi. */
+:root { --ustore-header-h: calc(max(0.75rem, env(safe-area-inset-top)) + 3rem); }
+.ustore-topbar { min-height: var(--ustore-header-h); z-index: 50 !important; }
+#page-container { top: var(--ustore-header-h) !important; }
+/* .fc-page-header endi #page-container ICHIDA, global header PASTIDA
+   joylashadi — o'zining alohida safe-area-top qo'shimchasi endi shart emas
+   (aks holda safe-area ikki marta hisoblanib, ortiqcha bo'sh joy qolardi). */
+.fc-page-header { padding-top: .75rem !important; }
 .ustore-bottom-nav {
   border-top-color: #eef2f6 !important;
   box-shadow: 0 -4px 14px rgba(15, 23, 42, 0.04) !important;
