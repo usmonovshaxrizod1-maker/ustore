@@ -1000,6 +1000,12 @@
             ${s.billzAccessGranted ? '✅ Ulangan' : '— Ruxsat berilmagan'}
           </button>
         </div>
+        <div class="plat-mini-row">
+          <span>CLICK</span>
+          <button class="billz-toggle-btn status-pill ${s.clickAccessGranted ? 'status-ACTIVE' : ''}" onclick="toggleClickAccess('${s.id}', ${!s.clickAccessGranted})">
+            ${s.clickAccessGranted ? '✅ Ruxsat berilgan' : '— Ruxsat berilmagan'}
+          </button>
+        </div>
       </div>
       ${renderLifecycleControlsCard(s)}
     `;
@@ -1163,6 +1169,16 @@
   async function toggleBillzAccess(shopId, enable) {
     try {
       await callPlatformApi('platform_set_billz_access', { shopId, enabled: enable });
+      await reloadAdminShops();
+      selectedShopDetails = adminShops.find((s) => s.id === shopId) || selectedShopDetails;
+      render();
+    } catch (e) { alert(e.message || String(e)); }
+  }
+  // Click.uz avtomatik to'lov integratsiyasi — Billz'ning aynan bir xil
+  // ruxsat-darvoza naqshi.
+  async function toggleClickAccess(shopId, enable) {
+    try {
+      await callPlatformApi('platform_set_click_access', { shopId, enabled: enable });
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || selectedShopDetails;
       render();
@@ -1427,6 +1443,7 @@
   window.submitReactivateShop = submitReactivateShop;
   window.submitTerminateShop = submitTerminateShop;
   window.toggleBillzAccess = toggleBillzAccess;
+  window.toggleClickAccess = toggleClickAccess;
   window.setRequestsFilter = setRequestsFilter;
   window.viewReceipt = viewReceipt;
   window.approveRequest = approveRequest;
