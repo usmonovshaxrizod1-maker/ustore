@@ -3,6 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 6-band: Telegram WebView index.html'ning O'ZINI ba'zan uzoq vaqt
+       keshlab qo'yadi — shunda pastdagi ?v= raqamlarini oshirish ham
+       yordam bermaydi, chunki WebView yangi index.html'ni umuman qayta
+       so'ramaydi. Bu meta teglar entry-document'ni keshlashni butunlay
+       o'chiradi (child fayllar — JS/CSS — o'zining ?v= versiyalanishi
+       bilan hali ham to'g'ri keshlanaveradi, faqat shu bitta sahifa emas). -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>UStorE - Telegram Mini App & ERP</title>
   <!-- Tashqi manbalarga oldindan ulanish — sahifa ochilishini biroz tezlashtiradi -->
   <link rel="preconnect" href="https://telegram.org">
@@ -70,7 +79,11 @@
   <div id="action-toast" class="hidden" data-state="saving" aria-live="polite"></div>
 
   <!-- BOTTOM NAVIGATION -->
-  <nav class="ustore-bottom-nav fixed bottom-0 left-0 right-0 bg-white py-2 px-3 flex justify-around items-center z-40">
+  <!-- 7-band: z-50 — #page-container (z-40, "to'liq sahifa" ko'rinishlari:
+       Sozlamalar/Qo'llab-quvvatlash va h.k.) ustidan ko'rinib turishi uchun;
+       avval ikkalasi ham z-40 edi, DOM tartibida keyingisi (page-container)
+       uni to'liq yopib qo'yardi. -->
+  <nav class="ustore-bottom-nav fixed bottom-0 left-0 right-0 bg-white py-2 px-3 flex justify-around items-center z-50">
     <button onclick="switchTab('home')" class="nav-btn flex flex-col items-center text-gray-500" id="nav-home">
       <i data-lucide="home" class="w-5 h-5"></i>
       <span class="text-[10px] mt-1" id="nav-label-home">Bosh sahifa</span>

@@ -587,14 +587,22 @@
     let billzBrowseItems = []; // hozirgi sahifadagi hali import qilinmagan Billz tovarlari
     let billzBrowseCount = 0;
     let billzBrowsePage = 1;
-    let billzBrowseLoadingMore = false;
     let billzBrowseSelectedIds = new Set(); // tanlangan billzProductId'lar
     let billzImportTargetCategoryId = null; // "B" tugmasi bosilgan katalogdan oldindan to'ldiriladi
     let billzImporting = false;
     // Billz Phase 4 — avtomatik sinxron natijasida o'chirilgan tovarlar sahifasi.
-    let billzSubTab = 'IMPORT'; // 'IMPORT' | 'DELETED'
+    let billzSubTab = 'IMPORT'; // 'IMPORT' | 'IMPORTED' | 'DELETED'
     let billzDeletedItems = [];
     let billzDeletedLoading = false;
+    // 8-band: "Import qilinganlar" — Billz'ga bog'langan UStorE tovarlari,
+    // belgilab importdan (Billz bog'lanishidan) olib tashlash mumkin.
+    let billzImportedItems = [];
+    let billzImportedLoading = false;
+    let billzImportedSelectedIds = new Set();
+    let billzUnlinking = false;
+    // 9-band: sahifa hajmi tanlovi (10/25/50/100) — 100 tanlangan va jami
+    // 100 tadan ko'p bo'lsa raqamli sahifalash (1,2,3...) chiqadi.
+    let billzBrowsePageSize = 10;
     let fulfillmentConfig = commerce.defaultConfig(TOP_LEVEL_REGION_IDS);
     let fulfillmentDraft = null;
 
@@ -2281,7 +2289,7 @@
             <i data-lucide="home" class="w-5 h-5"></i>
           </button>
         </div>
-        <div class="p-4 max-w-md mx-auto" style="padding-bottom:max(1.5rem, env(safe-area-inset-bottom))">
+        <div class="p-4 max-w-md mx-auto" style="padding-bottom:calc(5rem + env(safe-area-inset-bottom))">
           ${bodyHtml}
         </div>
       `;
@@ -5839,7 +5847,48 @@
     function setBillzSubTab(tab) {
       billzSubTab = tab;
       if (tab === 'DELETED' && !billzDeletedItems.length) loadBillzDeletedItems();
+      if (tab === 'IMPORTED') loadBillzImportedItems();
       render();
+    }
+    async function loadBillzImportedItems() {
+      billzImportedLoading = true;
+      render();
+      try {
+        const result = await callApi('billz_list_imported_products', {});
+        billzImportedItems = result.items || [];
+        const visibleIds = new Set(billzImportedItems.map((it) => it.id));
+        billzImportedSelectedIds = new Set([...billzImportedSelectedIds].filter((id) => visibleIds.has(id)));
+      } catch (e) {
+        console.error(e);
+        alert(tr("Import qilinganlar ro'yxatini yuklab bo'lmadi: ", "Не удалось загрузить список импортированных: ") + (e.message || e));
+        billzImportedItems = [];
+      } finally {
+        billzImportedLoading = false;
+        if (activePage === 'BILLZ') render();
+      }
+    }
+    function toggleBillzImportedSelected(productId) {
+      if (billzImportedSelectedIds.has(productId)) billzImportedSelectedIds.delete(productId);
+      else billzImportedSelectedIds.add(productId);
+      render();
+    }
+    async function unlinkSelectedBillzImports() {
+      if (!billzImportedSelectedIds.size || billzUnlinking) return;
+      if (!confirm(tr("Tanlangan tovarlar Billz bog'lanishidan chiqariladi (tovarning o'zi o'chirilmaydi). Davom etasizmi?", "Выбранные товары будут отвязаны от Billz (сам товар не удаляется). Продолжить?"))) return;
+      billzUnlinking = true;
+      render();
+      try {
+        await callApi('billz_unlink_products', { productIds: [...billzImportedSelectedIds] });
+        billzImportedSelectedIds = new Set();
+        await loadBillzImportedItems();
+        showActionToast(tr("✅ Bog'lanish uzildi", "✅ Связь разорвана"), 'success', 1500);
+      } catch (e) {
+        console.error(e);
+        alert(tr("Amalga oshmadi: ", "Не удалось: ") + (e.message || e));
+      } finally {
+        billzUnlinking = false;
+        render();
+      }
     }
     async function loadBillzDeletedItems() {
       billzDeletedLoading = true;
@@ -5877,18 +5926,22 @@
       }
       if (activePage === 'BILLZ') render();
     }
-    async function loadBillzBrowseItems() {
-      billzBrowsePage = 1;
+    // 9-band: sahifalash — har doim BERILGAN sahifani almashtiradi (append
+    // emas). requestedPage berilmasa 1-sahifadan boshlanadi.
+    async function loadBillzBrowseItems(requestedPage) {
+      const targetPage = requestedPage > 0 ? requestedPage : 1;
       billzBrowseLoading = true;
       render();
       try {
         const result = await callApi('billz_browse_products', {
           billzCategoryId: billzBrowseSelectedCatId || undefined,
           search: billzBrowseSearch || undefined,
-          page: 1,
+          page: targetPage,
+          limit: billzBrowsePageSize,
         });
         billzBrowseItems = result.items || [];
         billzBrowseCount = result.count || 0;
+        billzBrowsePage = targetPage;
         // Ekrandan g'oyib bo'lgan (masalan qidiruv o'zgargach) tovarlarning
         // tanlovini ham tozalaymiz — aks holda "tanlangan" hisoblagich
         // ko'rinmas tovarlarni ham hisoblab yuraveradi.
@@ -5903,30 +5956,15 @@
         if (activePage === 'BILLZ') render();
       }
     }
-    // "Yana yuklash" — keyingi sahifani ORQASIGA qo'shadi (almashtirmaydi),
-    // shunda "hali import qilinmaganlar hammasi" bosqichma-bosqich to'liq
-    // ko'rinadi, 30 tadan cheklanib qolmaydi.
-    async function loadMoreBillzBrowseItems() {
-      if (billzBrowseLoadingMore) return;
-      billzBrowseLoadingMore = true;
-      render();
-      try {
-        const nextPage = billzBrowsePage + 1;
-        const result = await callApi('billz_browse_products', {
-          billzCategoryId: billzBrowseSelectedCatId || undefined,
-          search: billzBrowseSearch || undefined,
-          page: nextPage,
-        });
-        billzBrowseItems = billzBrowseItems.concat(result.items || []);
-        billzBrowseCount = result.count || billzBrowseCount;
-        billzBrowsePage = nextPage;
-      } catch (e) {
-        console.error(e);
-        alert(tr("Ko'proq tovar yuklab bo'lmadi: ", "Не удалось загрузить ещё товары: ") + (e.message || e));
-      } finally {
-        billzBrowseLoadingMore = false;
-        render();
-      }
+    // Sahifa hajmini (10/25/50/100) o'zgartirish — 1-sahifadan qayta boshlaydi.
+    function setBillzBrowsePageSize(size) {
+      billzBrowsePageSize = Number(size) || 10;
+      loadBillzBrowseItems(1);
+    }
+    // 100 tanlangan va jami 100 tadan ko'p bo'lganda ko'rinadigan raqamli
+    // sahifalar (1, 2, 3...) — bosilgan sahifaga o'tadi.
+    function goToBillzBrowsePage(pageNum) {
+      loadBillzBrowseItems(pageNum);
     }
     // Barcha filtr(lar)ni tozalab, hali import qilinmagan tovarlarning
     // TO'LIQ ro'yxatini (birinchi sahifadan) ko'rsatadi.
@@ -6013,10 +6051,28 @@
       const tabsBar = `
         <div class="flex gap-2">
           <button onclick="setBillzSubTab('IMPORT')" class="flex-1 py-2 rounded-xl text-xs font-bold ${billzSubTab === 'IMPORT' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr('Import', 'Импорт')}</button>
+          <button onclick="setBillzSubTab('IMPORTED')" class="flex-1 py-2 rounded-xl text-xs font-bold ${billzSubTab === 'IMPORTED' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr('Import qilinganlar', 'Импортированные')}${billzImportedItems.length ? ` (${billzImportedItems.length})` : ''}</button>
           <button onclick="setBillzSubTab('DELETED')" class="flex-1 py-2 rounded-xl text-xs font-bold ${billzSubTab === 'DELETED' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr("O'chirilganlar", "Удалённые")}${billzDeletedItems.length ? ` (${billzDeletedItems.length})` : ''}</button>
         </div>
       `;
-      const hasMoreBillzItems = billzBrowseItems.length < billzBrowseCount;
+      // 9-band: sahifa hajmi tanlovi + (100 tanlanib, 100 tadan ko'p bo'lsa)
+      // raqamli sahifalar — eski "Yana yuklash" tugmasi o'rniga.
+      const totalPages = Math.ceil(billzBrowseCount / billzBrowsePageSize);
+      const pagerBar = `
+        <div class="flex items-center gap-2">
+          <label class="text-[10px] font-bold text-gray-500 shrink-0">${tr('Ko\'rsatish', 'Показывать')}:</label>
+          <select onchange="setBillzBrowsePageSize(this.value)" class="flex-1 p-1.5 border rounded-lg bg-gray-50 text-xs">
+            ${[10, 25, 50, 100].map((n) => `<option value="${n}" ${billzBrowsePageSize === n ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        ${billzBrowsePageSize === 100 && totalPages > 1 ? `
+          <div class="flex flex-wrap gap-1.5 justify-center">
+            ${Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => `
+              <button onclick="goToBillzBrowsePage(${n})" class="w-8 h-8 rounded-lg text-xs font-bold ${n === billzBrowsePage ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${n}</button>
+            `).join('')}
+          </div>
+        ` : ''}
+      `;
       const importBody = `
         <div class="space-y-3" style="padding-bottom:4rem">
           <button onclick="showAllUnimportedBillzItems()" class="w-full py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">🆕 ${tr("Hali import qilinmaganlar (hammasi)", "Ещё не импортированные (все)")}</button>
@@ -6025,23 +6081,45 @@
             ${(billzBrowseCategories || []).map((c) => `<option value="${escapeHtml(c.id)}" ${c.id === billzBrowseSelectedCatId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
           </select>
           <input id="billz-browse-search-input" type="text" value="${escapeHtml(billzBrowseSearch)}" oninput="handleBillzBrowseSearchDebounced(this.value)" placeholder="${tr('Qidirish...', 'Поиск...')}" class="w-full p-2 border rounded-xl text-xs">
+          ${pagerBar}
           ${billzBrowseLoading ? `
             <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
           ` : !billzBrowseItems.length ? `
             <p class="text-center text-gray-400 py-6 text-xs">${tr("Hali tortib olinmagan tovar topilmadi.", "Не найдено ещё не импортированных товаров.")}</p>
           ` : `
             <div class="space-y-2">${billzBrowseItems.map(renderBillzBrowseItemRow).join('')}</div>
-            ${hasMoreBillzItems ? `
-              <button onclick="loadMoreBillzBrowseItems()" ${billzBrowseLoadingMore ? 'disabled' : ''} class="w-full py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-600">
-                ${billzBrowseLoadingMore ? tr('Yuklanmoqda...', 'Загрузка...') : tr(`Yana yuklash (${billzBrowseItems.length}/${billzBrowseCount})`, `Загрузить ещё (${billzBrowseItems.length}/${billzBrowseCount})`)}
-              </button>
-            ` : ''}
           `}
         </div>
         ${billzBrowseSelectedIds.size ? `
           <div class="fixed bottom-0 left-0 right-0 p-3 bg-white border-t shadow-lg z-40">
             <div class="max-w-md mx-auto">
               <button onclick="openBillzImportConfirmModal()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl">${tr("Import qilish", "Импортировать")} (${billzBrowseSelectedIds.size})</button>
+            </div>
+          </div>
+        ` : ''}
+      `;
+      const importedBody = `
+        <div class="space-y-3" style="padding-bottom:4rem">
+          ${billzImportedLoading ? `
+            <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
+          ` : !billzImportedItems.length ? `
+            <p class="text-center text-gray-400 py-6 text-xs">${tr("Billz'dan import qilingan tovar yo'q.", "Нет товаров, импортированных из Billz.")}</p>
+          ` : `
+            <div class="space-y-2">${billzImportedItems.map((it) => `
+              <div class="fc-card flex items-center gap-3" onclick="toggleBillzImportedSelected('${it.id}')">
+                <div class="w-5 h-5 rounded flex items-center justify-center font-black text-[10px] shrink-0 ${billzImportedSelectedIds.has(it.id) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400 border'}">${billzImportedSelectedIds.has(it.id) ? '✓' : ''}</div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-xs truncate">${escapeHtml(it.name)}</p>
+                  <p class="text-[10px] text-gray-500">${money(it.price)} · ${tr('Qoldiq', 'Остаток')}: ${it.stock}</p>
+                </div>
+              </div>
+            `).join('')}</div>
+          `}
+        </div>
+        ${billzImportedSelectedIds.size ? `
+          <div class="fixed bottom-0 left-0 right-0 p-3 bg-white border-t shadow-lg z-40">
+            <div class="max-w-md mx-auto">
+              <button onclick="unlinkSelectedBillzImports()" ${billzUnlinking ? 'disabled' : ''} class="w-full fc-bg-danger text-white font-bold py-3 rounded-xl">${billzUnlinking ? tr('Bajarilmoqda...', 'Выполняется...') : `${tr("Importdan olib tashlash", "Убрать из импорта")} (${billzImportedSelectedIds.size})`}</button>
             </div>
           </div>
         ` : ''}
@@ -6063,7 +6141,8 @@
           `).join('')}
         </div>
       `;
-      const body = `<div class="space-y-3">${tabsBar}${billzSubTab === 'IMPORT' ? importBody : deletedBody}</div>`;
+      const bodyBySubTab = { IMPORT: importBody, IMPORTED: importedBody, DELETED: deletedBody };
+      const body = `<div class="space-y-3">${tabsBar}${bodyBySubTab[billzSubTab] || importBody}</div>`;
       renderPageShell(container, '🔳 Billz', body);
     }
 
