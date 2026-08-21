@@ -48,8 +48,10 @@
   }
   function money(v) { return `${Number(v || 0).toLocaleString('uz-UZ').replace(/,/g, ' ')} so'm`; }
   function statusLabel(s) {
-    if (s === 'ACTIVE') return 'Faol';
+    if (s === 'ACTIVE') return '🟢 Faol';
     if (s === 'PROVISIONING') return 'Sozlanmoqda';
+    if (s === 'FROZEN') return '❄️ Muzlatilgan';
+    if (s === 'TERMINATED') return "🔴 O'chirilgan";
     return "O'chirilgan";
   }
   function limitLabel(limit) { return (limit === null || limit === undefined) ? 'Cheksiz' : `${limit} tagacha`; }
@@ -74,6 +76,12 @@
   let currentTab = 'home'; // user: home|shops|subscription|help|profile ; admin: dashboard|shops|requests|tariffs|profile
   let activePage = null;
 
+  // 5-band: Foydalanish shartlari/Maxfiylik siyosati versiyalari — backend
+  // (platform-api/index.ts)dagi TERMS_VERSION/PRIVACY_VERSION bilan QO'LDA
+  // sinxronlanadi (ikkita alohida deploy birligi, umumiy modul yo'q).
+  const TERMS_VERSION = '1.0';
+  const PRIVACY_VERSION = '1.0';
+
   // Obuna sotib olish oqimi (mijoz tarafi)
   let flowKind = null;        // 'NEW_SHOP' | 'UPGRADE'
   let flowTariffId = null;
@@ -81,6 +89,7 @@
   let paymentInfo = null;     // { cardNumber, cardHolder }
   let receiptFile = null;
   let receiptPreviewUrl = null;
+  let consentAccepted = false; // Shartlar/Maxfiylikka rozilik checkbox — default FALSE, foydalanuvchi o'zi belgilashi shart
   let submittingRequest = false;
   let lastSubmittedRequestId = null;
 
@@ -106,6 +115,14 @@
 
   // Admin: dashboard
   let dashboardSummary = null;
+
+  // Admin: Shop Details — obuna hayot sikli (15/18/19-bandlar)
+  let grantDaysPreset = null;         // 1|3|7|14|'other'|null
+  let grantDaysReasonPreset = null;   // 'Texnik nosozlik'|'Kompensatsiya'|'Aksiya'|'other'|null
+  let grantDaysSubmitting = false;
+  let terminateStep = null;           // null | 'reason' | 'confirm'
+  let terminateReasonDraft = '';
+  let lifecycleActionSubmitting = false;
 
   // Admin: to'lov ma'lumoti tahrirlash (Tariflar bo'limi ichida kichik bo'lim)
   let paymentInfoDraft = null;
@@ -286,57 +303,296 @@
     if (p === 'REQUEST_SENT') return pageShell("So'rov yuborildi", renderRequestSentBody(), { onBack: 'goHomePage()' });
     if (p === 'CONNECT_SHOP') return pageShell("Yangi do'kon ulash", renderConnectShopBody(), { onBack: "closePage()" });
     if (p === 'SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderShopDetailsBody(), { onBack: "switchTab('shops')" });
+    if (p === 'TERMS') return pageShell("Foydalanish shartlari", renderTermsBody(), { onBack: "closeTermsPrivacyPage()" });
+    if (p === 'PRIVACY') return pageShell("Maxfiylik siyosati", renderPrivacyBody(), { onBack: "closeTermsPrivacyPage()" });
     return '';
+  }
+
+  // 5-band: Shartlar/Maxfiylik sahifasi PAYMENT (checkout o'rtasida) yoki
+  // Profil'dan ochilishi mumkin — yopilganda aynan o'sha joyga qaytadi.
+  // Checkout holati (flowKind/flowTariffId/flowShopId/receiptFile) allaqachon
+  // module-level o'zgaruvchilarda, DOM'ga bog'liq emas — shu sabab bu yerga
+  // qaytishda hech narsa qayta tiklash shart emas, faqat sahifa almashadi.
+  let termsPrivacyReturnTo = null;
+  function openTermsPage(returnTo) { termsPrivacyReturnTo = returnTo || null; openPage('TERMS'); }
+  function openPrivacyPage(returnTo) { termsPrivacyReturnTo = returnTo || null; openPage('PRIVACY'); }
+  function closeTermsPrivacyPage() {
+    const returnTo = termsPrivacyReturnTo;
+    termsPrivacyReturnTo = null;
+    if (returnTo === 'PAYMENT') openPage('PAYMENT');
+    else closePage();
+  }
+
+  // ======================================================================
+  // FOYDALANISH SHARTLARI / MAXFIYLIK SIYOSATI (5-band, spec 20/21-bo'limlar)
+  // ======================================================================
+  function renderTermsBody() {
+    return `
+      <div class="plat-legal">
+        <p class="plat-legal-meta">Versiya: ${TERMS_VERSION} — Kuchga kirish sanasi: admin belgilaydi</p>
+
+        <h2>20.1. Umumiy qoidalar</h2>
+        <p>UStorE Telegram ichida onlayn do'kon yaratish va boshqarish imkonini beruvchi platformadir.</p>
+        <p>UStorE'dan foydalanish orqali foydalanuvchi ushbu shartlarni o'qiganini, tushunganini va ularga roziligini tasdiqlaydi.</p>
+
+        <h2>20.2. Foydalanuvchi javobgarligi</h2>
+        <p>Do'kon egasi quyidagilar uchun o'zi javobgar:</p>
+        <ul>
+          <li>do'kon ma'lumotlarining to'g'riligi</li>
+          <li>mahsulotlarning qonuniyligi</li>
+          <li>narxlarning to'g'riligi</li>
+          <li>xaridor bilan savdo munosabatlari</li>
+          <li>yetkazib berish</li>
+          <li>zarur litsenziya va ruxsatnomalar</li>
+          <li>soliqqa oid majburiyatlar</li>
+          <li>iste'molchi oldidagi majburiyatlar</li>
+        </ul>
+        <p>UStorE sotilayotgan mahsulot sifati, qonuniyligi yoki sotuvchining va'dalari bo'yicha sotuvchi o'rniga javobgarlikni o'z zimmasiga olmaydi.</p>
+
+        <h2>20.3. Taqiqlangan va cheklangan tovarlar</h2>
+        <p>UStorE orqali O'zbekiston Respublikasi qonunchiligida muomalasi taqiqlangan, muomalasi cheklangan, yoki maxsus ruxsat/litsenziya talab etiladigan (lekin sotuvchida tegishli ruxsat bo'lmagan) tovar va xizmatlarni sotish taqiqlanadi.</p>
+        <p>UStorE xavfsizlik va platforma siyosati asosida qonun bilan mutlaq taqiqlanmagan ayrim toifalarni ham platformada cheklashi yoki taqiqlashi mumkin. Bunday holatda mahsulot yashirilishi, do'kon muzlatilishi yoki do'kon butunlay o'chirilishi mumkin.</p>
+        <p>Jiddiy qoidabuzarlik sababli do'kon o'chirilsa, to'langan obuna puli qaytarilmaydi, qonunchilikda majburiy qaytarish talab etilgan holatlar bundan mustasno.</p>
+
+        <h2>20.4. Firibgarlik va noqonuniy faoliyat</h2>
+        <p>Qat'iyan taqiqlanadi:</p>
+        <ul>
+          <li>yolg'on mahsulot joylashtirish</li>
+          <li>mavjud bo'lmagan tovar uchun pul yig'ish maqsadidagi firibgarlik</li>
+          <li>noqonuniy to'lov sxemalari</li>
+          <li>qalbaki hujjat yoki chek</li>
+          <li>boshqa shaxs nomidan ruxsatsiz savdo</li>
+          <li>platformadan noqonuniy yoki zararli faoliyat uchun foydalanish</li>
+          <li>UStorE xavfsizlik mexanizmlarini chetlab o'tish</li>
+          <li>boshqa do'kon yoki foydalanuvchilarga zarar yetkazish</li>
+        </ul>
+
+        <h2>20.5. Obuna</h2>
+        <p>Standart obuna 30 kun. Yangi do'konning birinchi obunasi: 30 kun + 7 kun bonus = 37 kun. +7 kun bonus faqat birinchi obunada beriladi.</p>
+        <p>Tarif va narxlar kelajak uchun o'zgartirilishi mumkin. Amaldagi to'langan davr narxi orqaga qarab o'zgartirilmaydi.</p>
+
+        <h2>20.6. Obuna tugashi</h2>
+        <p>Obuna tugaganda shop muzlatiladi. Ma'lumotlar 30 kun davomida saqlanadi. 30 kun ichida obuna yangilanmasa shopni o'chirish/terminatsiya jarayoni boshlanishi mumkin.</p>
+
+        <h2>20.7. Kompensatsiya</h2>
+        <p>UStorE texnik nosozlik yoki boshqa asosli holatlarda obunaga qo'shimcha kun berishi mumkin. Bu avtomatik doimiy huquq emas va Super Admin qarori bilan sabab ko'rsatilgan holda beriladi.</p>
+
+        <h2>20.8. Texnik ishlar</h2>
+        <p>Profilaktika, xavfsizlik yangilanishi, server ishlari yoki uchinchi tomon xizmatlari sabab UStorE vaqtincha ishlamasligi mumkin. Platforma uzilishlarni imkon qadar kamaytirishga harakat qiladi.</p>
+
+        <h2>20.9. Muzlatish</h2>
+        <p>UStorE qoidabuzarlik, xavfsizlik xavfi, obuna tugashi, shubhali faoliyat yoki qonuniy talab sabab shopni muzlatishi mumkin.</p>
+
+        <h2>20.10. O'chirish</h2>
+        <p>Jiddiy yoki takroriy qoidabuzarliklarda UStorE shopni butunlay o'chirish huquqini saqlab qoladi.</p>
+
+        <h2>20.11. To'lovni qaytarish</h2>
+        <p>Obuna xizmati faollashgandan keyin to'lovlar odatda qaytarilmaydi.</p>
+        <p>Alohida ko'rib chiqilishi mumkin:</p>
+        <ul>
+          <li>UStorE xizmatni taqdim eta olmagan holat</li>
+          <li>bir to'lovning ikki marta qabul qilinishi</li>
+          <li>amaldagi qonunchilik majbur qiladigan holat</li>
+        </ul>
+        <p>Qoidabuzarlik sababli o'chirilgan shop uchun obuna puli qaytarilmaydi, qonunchilikdagi majburiy holatlar bundan mustasno.</p>
+
+        <h2>20.12. Shartlarni o'zgartirish</h2>
+        <p>UStorE shartlarni yangilashi mumkin. Muhim o'zgarishda yangi versiyaga qayta rozilik olinishi mumkin.</p>
+
+        <h2>Huquqiy eslatma</h2>
+        <p>Ushbu Foydalanish shartlari va Maxfiylik siyosati UStorE mahsuloti uchun ishchi draft hisoblanadi. Production'da foydalanuvchilarga chiqarishdan oldin O'zbekiston Respublikasining amaldagi shaxsga doir ma'lumotlar, elektron tijorat, iste'molchilar huquqlari, to'lovlar, taqiqlangan va cheklangan tovarlar, soliq va boshqa tegishli talablar bo'yicha malakali yurist tomonidan tekshirtirish tavsiya etiladi.</p>
+      </div>
+    `;
+  }
+
+  function renderPrivacyBody() {
+    return `
+      <div class="plat-legal">
+        <p class="plat-legal-meta">Versiya: ${PRIVACY_VERSION}</p>
+
+        <h2>21.1. Qayta ishlanishi mumkin bo'lgan ma'lumotlar</h2>
+        <ul>
+          <li>Telegram ID, username, Telegram'dagi ism, profil rasmi (mavjud bo'lsa)</li>
+          <li>do'kon nomi, bot ma'lumotlari</li>
+          <li>mahsulotlar, katalog, narxlar, ombor qoldig'i</li>
+          <li>buyurtmalar, yetkazib berish ma'lumotlari</li>
+          <li>obuna ma'lumotlari, to'lov cheklari</li>
+          <li>support yozishmalari</li>
+          <li>texnik loglar, xavfsizlikka oid texnik ma'lumotlar</li>
+        </ul>
+
+        <h2>21.2. Maqsad</h2>
+        <p>Ma'lumotlar xizmatni taqdim etish, userni aniqlash, do'konni boshqarish, buyurtmani qayta ishlash, obunani boshqarish, to'lovni tekshirish, support, xavfsizlik, firibgarlikni oldini olish, texnik muammolarni aniqlash va xizmatni yaxshilash uchun ishlatiladi.</p>
+
+        <h2>21.3. Maxfiy credentials</h2>
+        <p>API key, bot token, integratsiya tokeni va boshqa maxfiy credentiallar frontendga chiqarilmasligi kerak. Ular server tomonda va zarur bo'lsa shifrlangan holda saqlanadi.</p>
+
+        <h2>21.4. Uchinchi tomon xizmatlari</h2>
+        <p>UStorE ishlashi uchun Telegram, hosting, database, storage, tarjima va integratsiya provayderlaridan foydalanishi mumkin. Ular zarur texnik funksiyani bajarish doirasida ma'lumotlarni qayta ishlashi mumkin.</p>
+
+        <h2>21.5. To'lov cheklari</h2>
+        <p>Cheklar to'lovni tekshirish, nizolar va audit uchun saqlanishi mumkin. Cheklar boshqa foydalanuvchilarga ommaviy ko'rsatilmaydi.</p>
+
+        <h2>21.6. Ma'lumotlarni saqlash</h2>
+        <p>Ma'lumotlar xizmatni ko'rsatish, xavfsizlik, audit va qonuniy majburiyatlar mavjud muddat davomida saqlanishi mumkin.</p>
+        <p>Shop o'chirilganda operatsion ma'lumotlar o'chirilishi yoki anonymizatsiya qilinishi mumkin. Audit va qonuniy ehtiyojlar uchun minimal yozuvlar ma'lum muddat saqlanishi mumkin.</p>
+
+        <h2>21.7. Foydalanuvchi huquqlari</h2>
+        <p>Foydalanuvchi quyidagi huquqlarga ega:</p>
+        <ul>
+          <li>o'z ma'lumotlarini ko'rish</li>
+          <li>xatoni tuzatish</li>
+          <li>qonunchilik va platforma majburiyatlari doirasida ma'lumotni o'chirishni so'rash</li>
+          <li>maxfiylik bo'yicha supportga murojaat qilish</li>
+        </ul>
+
+        <h2>21.8. Xavfsizlik</h2>
+        <p>UStorE ruxsatsiz kirish, ma'lumot yo'qolishi, token sizib chiqishi va noqonuniy foydalanish xavfini kamaytirish uchun texnik va tashkiliy choralarni qo'llaydi.</p>
+        <p>Hech bir internet tizimi 100% mutlaq xavfsizlik kafolatini bera olmaydi.</p>
+
+        <h2>21.9. Siyosatni yangilash</h2>
+        <p>Maxfiylik siyosati yangilanishi mumkin. Muhim o'zgarishda version, sana va zarur bo'lsa qayta rozilik ishlatiladi.</p>
+      </div>
+    `;
   }
 
   // ======================================================================
   // LANDING (yangi tashrif buyuruvchi, hali do'koni yo'q)
   // ======================================================================
+  // 3.2-band: "Nega UStorE?" — 8 ta karta, gorizontal swipe-carousel.
+  const WHY_USTORE_CARDS = [
+    ['🛍', '24/7 ishlaydigan onlayn do\'kon', 'Mijozlaringiz Telegram\'dan chiqmasdan mahsulotlarni ko\'radi va buyurtma beradi.'],
+    ['📦', 'Ombor nazorati', 'Qoldiq, kam qolgan va tugagan mahsulotlarni bir joydan kuzating.'],
+    ['📲', 'Buyurtmalar bir joyda', 'Yangi buyurtmadan yetkazib berishgacha bo\'lgan jarayonni bitta paneldan boshqaring.'],
+    ['💳', 'Qulay to\'lovlar', 'Naqd, karta, QR va mavjud to\'lov usullarini sozlang.'],
+    ['🚚', 'Moslashuvchan yetkazib berish', 'Taksi, uyga yetkazish, pochta va olib ketish usullaridan foydalaning.'],
+    ['🌐', 'Ikki tilda ishlash', 'Mijozlaringiz UStorE\'dan O\'zbekcha yoki Ruscha foydalanishi mumkin.'],
+    ['📱', 'Telefon orqali boshqaruv', 'Do\'koningizni kompyutersiz ham, telefon orqali boshqarishingiz mumkin.'],
+    ['⚡', 'Alohida sayt shart emas', 'Savdoni boshlash uchun alohida sayt tayyorlashga hojat yo\'q — UStorE Telegram ichida ishlaydi.'],
+  ];
+  // 3.7-band: FAQ.
+  const FAQ_ITEMS = [
+    ["Do'kon qancha vaqtda tayyor bo'ladi?", "To'lov tasdiqlangandan keyin do'koningiz imkon qadar tez ulanadi. Qo'lda ulash talab qilinadigan holatlarda 24 soatgacha vaqt ketishi mumkin."],
+    ['Tarifni keyin almashtirish mumkinmi?', "Ha. Mavjud do'koningiz uchun boshqa tarifni tanlab, obunani yangilashingiz mumkin."],
+    ['Mahsulotlar soni limitdan oshsa nima bo\'ladi?', "Tarif limitidan ko'p mahsulot qo'shish uchun yuqoriroq tarifga o'tishingiz kerak."],
+    ["Obuna qancha muddatga?", "Standart obuna muddati 30 kun. Yangi do'konning birinchi obunasiga qo'shimcha 7 kun bonus beriladi."],
+    ["To'lov qanday amalga oshiriladi?", "Hozircha karta orqali to'lov qilib, chek yuborasiz. To'lov UStorE Admin tomonidan tasdiqlanadi."],
+    ["Obuna tugasa ma'lumotlar o'chadimi?", "Yo'q. Obuna tugaganda do'kon avval muzlatiladi va 30 kun davomida ma'lumotlar saqlanadi."],
+  ];
+
   function renderLandingHero() {
-    const features = [
-      ['🛍', 'Onlayn do\'kon', 'Telegram ichida tayyor e-do\'kon'],
-      ['📦', 'Ombor nazorati', 'Qoldiq, kam qolgan va tugagan mahsulotlar'],
-      ['🚚', 'Yetkazib berish', 'Pochta, taksi, uyga yetkazish'],
-      ['💳', "To'lov", 'Naqd, karta va QR'],
-    ];
     return `
       <div class="plat-hero">
         <h1 class="plat-hero-title">UStorE</h1>
-        <p class="plat-hero-sub">Telegram ichida o'z onlayn do'koningizni yarating</p>
-        <p class="plat-hero-desc">Mahsulot, ombor, buyurtma, to'lov va yetkazib berishni bitta tizimdan boshqaring.</p>
-        <button class="primary" onclick="openPage('TARIFFS')">Do'kon ochish</button>
-        <button class="secondary" onclick="document.getElementById('plat-features').scrollIntoView({behavior:'smooth'})">Imkoniyatlarni ko'rish</button>
+        <p class="plat-hero-sub">Telegram'da o'z e-do'koningizni oching</p>
+        <p class="plat-hero-desc">Mahsulotlaringizni soting, buyurtmalarni qabul qiling, omborni boshqaring — barchasi bitta tizimda.</p>
+        <button class="primary" onclick="openPage('TARIFFS')">🚀 Obuna sotib olish</button>
+        <button class="secondary" onclick="document.getElementById('plat-why-ustore').scrollIntoView({behavior:'smooth'})">▶️ Imkoniyatlarni ko'rish</button>
       </div>
-      <div id="plat-features" class="plat-feature-grid">
-        ${features.map(([icon, title, desc]) => `
-          <div class="plat-feature-card">
-            <div class="plat-feature-icon">${icon}</div>
-            <div class="plat-feature-title">${title}</div>
-            <div class="plat-feature-desc">${desc}</div>
+
+      <div id="plat-why-ustore">
+        <h2 class="plat-section-title">Nega UStorE?</h2>
+        <p class="plat-section-sub">Savdoni murakkablashtirmang. Do'koningizni Telegram ichida bir joydan boshqaring.</p>
+        <div class="plat-carousel">
+          ${WHY_USTORE_CARDS.map(([icon, title, desc]) => `
+            <div class="plat-carousel-item">
+              <div class="plat-why-card">
+                <div class="plat-why-card-icon">${icon}</div>
+                <div class="plat-why-card-title">${title}</div>
+                <div class="plat-why-card-desc">${desc}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="plat-carousel-dots">${WHY_USTORE_CARDS.map(() => '<span class="plat-carousel-dot"></span>').join('')}</div>
+      </div>
+
+      <h2 class="plat-section-title">Qanday ishlaydi?</h2>
+      <div class="plat-step-row">
+        <div class="plat-step-num">1</div>
+        <div><div class="plat-step-title">Tarifni tanlang</div><div class="plat-step-desc">Do'koningiz hajmiga mos tarifni tanlang.</div></div>
+      </div>
+      <div class="plat-step-row">
+        <div class="plat-step-num">2</div>
+        <div><div class="plat-step-title">Obunani faollashtiring</div><div class="plat-step-desc">To'lovni amalga oshiring va chekni yuboring.</div></div>
+      </div>
+      <div class="plat-step-row">
+        <div class="plat-step-num">3</div>
+        <div><div class="plat-step-title">Savdoni boshlang</div><div class="plat-step-desc">Do'koningiz tayyor bo'lgach mahsulotlarni joylashtiring va buyurtmalarni qabul qiling.</div></div>
+      </div>
+
+      <div class="plat-bonus-card">
+        <div class="plat-bonus-title">🎁 Birinchi obunada +7 kun bonus</div>
+        <div class="plat-bonus-desc">Do'koningizni mahsulotlar bilan to'ldirib, katalog va sozlamalarni tayyorlab olish uchun.</div>
+        <div class="plat-bonus-note">Birinchi obuna: 30 kun + 7 kun bonus = 37 kun.</div>
+      </div>
+
+      <h2 class="plat-section-title">O'zingizga mos tarifni tanlang</h2>
+      <p class="plat-section-sub">Do'koningizdagi mahsulotlar soniga mos rejani tanlang.</p>
+      ${renderTariffCards(false)}
+      <button class="secondary" onclick="openPage('TARIFFS')">Barcha tariflarni solishtirish</button>
+
+      <h2 class="plat-section-title">Do'koningiz uchun ishonchli boshqaruv</h2>
+      <div class="plat-trust-grid">
+        <div class="plat-trust-card">🔐 Ma'lumotlaringiz himoyalangan</div>
+        <div class="plat-trust-card">📱 Telefon orqali boshqarish mumkin</div>
+        <div class="plat-trust-card">⚡ Telegram ichida ishlaydi</div>
+        <div class="plat-trust-card">☁️ Ma'lumotlar xavfsiz serverlarda saqlanadi</div>
+      </div>
+
+      <h2 class="plat-section-title">Ko'p beriladigan savollar</h2>
+      <div class="card">
+        ${FAQ_ITEMS.map(([q, a]) => `
+          <div class="plat-faq-item">
+            <div class="plat-faq-q">${q}</div>
+            <div class="plat-faq-a">${a}</div>
           </div>
         `).join('')}
       </div>
-      <div class="card">
-        <h2>Sizga mos tarifni tanlang</h2>
-        ${renderTariffCards(false)}
+
+      <div class="plat-final-cta">
+        <div class="plat-final-cta-title">Savdoni Telegram'da boshlashga tayyormisiz?</div>
+        <div class="plat-final-cta-desc">UStorE bilan do'koningizni bitta tizimdan boshqaring.</div>
+        <button class="primary" onclick="openPage('TARIFFS')">🚀 Obuna sotib olish</button>
       </div>
     `;
   }
 
-  function renderTariffCards(compact) {
-    if (!tariffs.length) return '<p class="empty">Hozircha tarif mavjud emas.</p>';
-    return `<div class="plat-tariff-grid">${tariffs.map((t) => `
-      <button class="plat-tariff-card ${flowTariffId === t.id ? 'selected' : ''}" onclick="selectTariffAndContinue('${t.id}')">
-        ${t.isPopular ? '<span class="plat-tariff-badge">Ommabop</span>' : ''}
+  // compact=false (landing teaser) -> gorizontal carousel; compact=true
+  // (TARIFFS to'liq sahifasi) -> vertikal to'liq ro'yxat, ikkalasi ham bir
+  // xil kartani (renderOneTariffCard) qayta ishlatadi.
+  function renderOneTariffCard(t) {
+    return `
+      <div class="plat-tariff-card ${flowTariffId === t.id ? 'selected' : ''}">
+        ${t.isPopular ? '<span class="plat-tariff-badge">⭐ Ommabop</span>' : ''}
         <div class="plat-tariff-name">${escapeHtml(t.name)}</div>
         <div class="plat-tariff-limit">${limitLabel(t.productLimit)}</div>
         <div class="plat-tariff-price">${money(t.price)}<span>/oy</span></div>
-      </button>
-    `).join('')}</div>`;
+        <div class="plat-tariff-limit">30 kun</div>
+        <button class="primary plat-small-btn" style="width:100%; margin-top:10px" onclick="selectTariffAndContinue('${t.id}')">Tarifni tanlash</button>
+      </div>
+    `;
+  }
+  function renderTariffCards(compact) {
+    if (!tariffs.length) return '<p class="empty">Hozircha tarif mavjud emas.</p>';
+    if (compact) {
+      return `<div class="plat-tariff-grid">${tariffs.map(renderOneTariffCard).join('')}</div>`;
+    }
+    return `
+      <div class="plat-carousel">${tariffs.map((t) => `<div class="plat-carousel-item">${renderOneTariffCard(t)}</div>`).join('')}</div>
+      <div class="plat-carousel-dots">${tariffs.map(() => '<span class="plat-carousel-dot"></span>').join('')}</div>
+    `;
   }
 
   function renderTariffListBody() {
-    return `<p class="muted">Sizga mos tarifni tanlang:</p>${renderTariffCards(true)}`;
+    return `
+      <p class="muted">Sizga mos tarifni tanlang:</p>
+      ${renderTariffCards(true)}
+      <h2 class="plat-section-title">Barcha tariflarni solishtirish</h2>
+      <div class="card">
+        ${tariffs.map((t) => `<div class="plat-mini-row"><span>${escapeHtml(t.name)}</span><span class="muted">${limitLabel(t.productLimit)} — ${money(t.price)}</span></div>`).join('') || '<p class="empty">Hozircha tarif mavjud emas.</p>'}
+      </div>
+    `;
   }
   function selectTariffAndContinue(tariffId) {
     flowTariffId = tariffId;
@@ -357,10 +613,12 @@
   function chooseNewShop() {
     flowKind = 'NEW_SHOP';
     flowShopId = null;
+    consentAccepted = false; // har bir yangi so'rov o'z alohida roziligini talab qiladi
     openPage('PAYMENT');
   }
   function chooseUpgrade() {
     flowKind = 'UPGRADE';
+    consentAccepted = false;
     openPage('SHOP_PICKER');
   }
 
@@ -408,15 +666,26 @@
       <div class="card">
         <h2>To'lov chekini yuboring</h2>
         <input type="file" id="plat-receipt-input" accept="image/*" class="hidden" onchange="onReceiptPicked(event)">
-        <button class="secondary" onclick="document.getElementById('plat-receipt-input').click()">📷 Chek yuklash</button>
+        <input type="file" id="plat-receipt-input-files" class="hidden" onchange="onReceiptPicked(event)">
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-receipt-input').click()">🖼 Galereyadan tanlash</button>
+          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-receipt-input-files').click()">📁 Fayllardan tanlash</button>
+        </div>
         ${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" class="plat-receipt-preview">` : ''}
         ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
-        <button class="primary" ${(!receiptFile || submittingRequest) ? 'disabled' : ''} onclick="submitSubscriptionRequest()">
-          ${submittingRequest ? '<span class="spinner"></span> Yuborilmoqda...' : "So'rov yuborish"}
-        </button>
       </div>
+      <div class="card">
+        <label class="plat-checkbox-row" style="align-items:flex-start">
+          <input type="checkbox" id="plat-consent-checkbox" ${consentAccepted ? 'checked' : ''} onchange="setConsentAccepted(this.checked)">
+          <span>Men UStorE <a href="#" onclick="event.preventDefault(); openTermsPage('PAYMENT');" style="color:#60a5fa">Foydalanish shartlari</a> va <a href="#" onclick="event.preventDefault(); openPrivacyPage('PAYMENT');" style="color:#60a5fa">Maxfiylik siyosati</a>ni o'qidim, tushundim va ularga roziman.</span>
+        </label>
+      </div>
+      <button class="primary ${(!receiptFile || !consentAccepted || submittingRequest) ? 'plat-btn-dimmed' : ''}" onclick="submitSubscriptionRequest()">
+        ${submittingRequest ? '<span class="spinner"></span> Yuborilmoqda...' : "So'rov yuborish"}
+      </button>
     `;
   }
+  function setConsentAccepted(checked) { consentAccepted = checked; rerenderActivePage(); }
   function copyPlatformCardNumber() {
     const el = document.getElementById('plat-card-number');
     const text = el ? el.textContent : '';
@@ -457,7 +726,11 @@
     });
   }
   async function submitSubscriptionRequest() {
-    if (!receiptFile || submittingRequest) return;
+    if (submittingRequest) return;
+    // 5-band: checkbox native disabled EMAS (button.plat-btn-dimmed shunchaki
+    // vizual) — shu sabab bosilganda aniq nima yetishmayotganini aytish kerak.
+    if (!consentAccepted) { alert("Davom etish uchun Foydalanish shartlari va Maxfiylik siyosatiga rozilik bildiring."); return; }
+    if (!receiptFile) { alert("Iltimos, to'lov chekini yuklang."); return; }
     submittingRequest = true;
     connectError = null;
     rerenderActivePage();
@@ -468,6 +741,7 @@
         requesterUsername: (tg?.initDataUnsafe?.user?.username) || null,
         requesterFirstName: (tg?.initDataUnsafe?.user?.first_name) || null,
         receiptImageUpload: { base64, mimeType: receiptFile.type, fileName: receiptFile.name },
+        consentAccepted: true,
       });
       lastSubmittedRequestId = result.requestId;
       receiptFile = null;
@@ -581,7 +855,8 @@
       </div>
       <div class="card plat-profile-menu">
         <div class="plat-profile-row"><span>UStorE haqida</span><span>›</span></div>
-        <div class="plat-profile-row"><span>Maxfiylik va shartlar</span><span>›</span></div>
+        <div class="plat-profile-row plat-clickable" onclick="openPrivacyPage()"><span>Maxfiylik siyosati</span><span>›</span></div>
+        <div class="plat-profile-row plat-clickable" onclick="openTermsPage()"><span>Foydalanish shartlari</span><span>›</span></div>
       </div>
       ${isSuperAdmin ? `<button class="primary" onclick="toggleAdminRole()">${isAdminMode ? "👤 Foydalanuvchi rejimiga o'tish" : '🛡 Admin rejimiga o\'tish'}</button>` : ''}
     `;
@@ -601,11 +876,22 @@
       <h1 class="plat-page-title">Dashboard</h1>
       <div class="plat-summary-grid">
         <div class="plat-summary-card-sm"><span>🏪</span><b>${s.activeShopsCount}</b><small>Faol do'konlar</small></div>
-        <div class="plat-summary-card-sm"><span>📨</span><b>${s.newRequestsCount}</b><small>Yangi so'rovlar</small></div>
-        <div class="plat-summary-card-sm"><span>⏳</span><b>${s.expiringSoonCount}</b><small>Obunasi tugayotgan</small></div>
-        <div class="plat-summary-card-sm"><span>👤</span><b>${s.totalUsersCount}</b><small>Jami foydalanuvchi</small></div>
+        <div class="plat-summary-card-sm"><span>📨</span><b>${s.newRequestsCount}</b><small>Yangi obuna so'rovlari</small></div>
+        <div class="plat-summary-card-sm"><span>⏳</span><b>${s.expiringSoonCount}</b><small>Obunasi tugayotganlar</small></div>
+        <div class="plat-summary-card-sm"><span>👤</span><b>${s.totalUsersCount}</b><small>Jami foydalanuvchilar</small></div>
       </div>
       ${s.newRequestsCount ? `<button class="primary" onclick="switchTab('requests')">📨 ${s.newRequestsCount} ta yangi so'rovni ko'rish</button>` : ''}
+      ${(s.attentionItems || []).length ? `
+        <div class="card">
+          <h2>⚠️ Diqqat talab qiladi</h2>
+          ${s.attentionItems.map((it) => `
+            <div class="plat-mini-row plat-clickable" onclick="switchTab('${it.type === 'NEW_REQUEST' ? 'requests' : 'shops'}')">
+              <span>${escapeHtml(it.label)}</span>
+              <span class="muted">${escapeHtml(it.detail || '')}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
       <div class="card">
         <h2>So'nggi do'konlar</h2>
         ${(s.recentShops || []).map((sh) => `
@@ -673,6 +959,7 @@
         </select>
         <button class="secondary" onclick="applyTariffFromShopDetails('${s.id}')">Tarifni bog'lash</button>
       </div>
+      ${s.status !== 'TERMINATED' ? renderGrantDaysCard(s.id) : ''}
       <div class="card">
         <h2>Integratsiyalar</h2>
         <div class="plat-mini-row">
@@ -682,6 +969,7 @@
           </button>
         </div>
       </div>
+      ${renderLifecycleControlsCard(s)}
     `;
   }
   async function applyTariffFromShopDetails(shopId) {
@@ -695,6 +983,146 @@
       alert('Tarif bog\'landi.');
       render();
     } catch (e) { alert(e.message || String(e)); }
+  }
+
+  // ---- 15-band: qo'lda kun qo'shish -------------------------------------
+  function renderGrantDaysCard(shopId) {
+    const days = [1, 3, 7, 14];
+    const reasons = ['Texnik nosozlik', 'Kompensatsiya', 'Aksiya'];
+    return `
+      <div class="card">
+        <h2>Kun qo'shish</h2>
+        <div style="display:flex; gap:6px; flex-wrap:wrap">
+          ${days.map((d) => `<button class="plat-small-btn ${grantDaysPreset === d ? 'primary' : 'secondary'}" style="width:auto" onclick="setGrantDaysPreset(${d})">+${d} kun</button>`).join('')}
+          <button class="plat-small-btn ${grantDaysPreset === 'other' ? 'primary' : 'secondary'}" style="width:auto" onclick="setGrantDaysPreset('other')">Boshqa</button>
+        </div>
+        ${grantDaysPreset === 'other' ? `<input type="text" id="plat-grant-days-custom" inputmode="numeric" placeholder="Kun soni" style="margin-top:8px">` : ''}
+        <label style="margin-top:10px">Sabab</label>
+        <select id="plat-grant-days-reason-select" onchange="setGrantDaysReasonPreset(this.value)">
+          <option value="">— tanlang —</option>
+          ${reasons.map((r) => `<option value="${r}" ${grantDaysReasonPreset === r ? 'selected' : ''}>${r}</option>`).join('')}
+          <option value="other" ${grantDaysReasonPreset === 'other' ? 'selected' : ''}>Boshqa</option>
+        </select>
+        ${grantDaysReasonPreset === 'other' ? `<input type="text" id="plat-grant-days-reason-other" placeholder="Sababni yozing" style="margin-top:8px">` : ''}
+        <button class="primary ${grantDaysSubmitting ? 'plat-btn-dimmed' : ''}" style="margin-top:10px" onclick="submitGrantDays('${shopId}')">${grantDaysSubmitting ? '<span class="spinner"></span> Yuborilmoqda...' : "Kun qo'shish"}</button>
+      </div>
+    `;
+  }
+  function setGrantDaysPreset(preset) { grantDaysPreset = preset; render(); }
+  function setGrantDaysReasonPreset(preset) { grantDaysReasonPreset = preset; render(); }
+  async function submitGrantDays(shopId) {
+    if (grantDaysSubmitting) return;
+    const days = grantDaysPreset === 'other'
+      ? Number((document.getElementById('plat-grant-days-custom')?.value || '').trim())
+      : Number(grantDaysPreset);
+    if (!Number.isFinite(days) || days <= 0) return alert('Kun sonini tanlang yoki kiriting.');
+    const reason = grantDaysReasonPreset === 'other'
+      ? (document.getElementById('plat-grant-days-reason-other')?.value || '').trim()
+      : (grantDaysReasonPreset || '');
+    if (!reason) return alert('Sababni tanlang yoki kiriting.');
+    grantDaysSubmitting = true;
+    render();
+    try {
+      await callPlatformApi('platform_grant_subscription_days', { shopId, days, reason });
+      grantDaysPreset = null;
+      grantDaysReasonPreset = null;
+      await reloadAdminShops();
+      selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
+      showActionToast("✅ Kun qo'shildi.");
+    } catch (e) { alert(e.message || String(e)); }
+    finally { grantDaysSubmitting = false; render(); }
+  }
+  // Kichik, ekranni bloklamaydigan holat xabari (mavjud shop-app'dagi
+  // showActionToast naqshiga o'xshash, lekin platform.css'ning o'zida — bu
+  // yerda shunchaki qisqa alert() bilan almashtiriladi, alohida toast UI
+  // hozircha yo'q.
+  function showActionToast(text) { alert(text); }
+
+  // ---- 16/18/19-bandlar: muzlatish/qayta faollashtirish/o'chirish -------
+  function renderLifecycleControlsCard(s) {
+    if (s.status === 'PROVISIONING') return '';
+    return `
+      <div class="card">
+        <h2>Boshqaruv</h2>
+        ${s.status === 'ACTIVE' ? `
+          <label>Muzlatish sababi</label>
+          <input type="text" id="plat-freeze-reason">
+          <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitFreezeShop('${s.id}')">❄️ Muzlatish</button>
+        ` : ''}
+        ${s.status === 'FROZEN' ? `<button class="primary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitReactivateShop('${s.id}')">✅ Qayta faollashtirish</button>` : ''}
+        ${s.status !== 'TERMINATED' ? renderTerminateSection(s.id) : '<p class="muted">Bu do\'kon o\'chirilgan.</p>'}
+      </div>
+    `;
+  }
+  function renderTerminateSection(shopId) {
+    if (terminateStep === 'reason') {
+      return `
+        <label style="margin-top:14px">O'chirish sababi</label>
+        <input type="text" id="plat-terminate-reason" value="${escapeHtml(terminateReasonDraft)}" oninput="terminateReasonDraft=this.value">
+        <div style="display:flex; gap:8px; margin-top:8px">
+          <button class="secondary" style="flex:1; margin-top:0" onclick="cancelTerminateShop()">Bekor qilish</button>
+          <button class="secondary" style="flex:1; margin-top:0; color:#fca5a5" onclick="confirmTerminateStepReason()">Davom etish</button>
+        </div>
+      `;
+    }
+    if (terminateStep === 'confirm') {
+      return `
+        <div class="notice error" style="margin-top:14px">Bu amal do'kon faoliyatini to'xtatadi. Davom etasizmi?</div>
+        <div style="display:flex; gap:8px; margin-top:8px">
+          <button class="secondary" style="flex:1; margin-top:0" onclick="cancelTerminateShop()">Bekor qilish</button>
+          <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" style="flex:1; margin-top:0; color:#fca5a5" onclick="submitTerminateShop('${shopId}')">${lifecycleActionSubmitting ? '<span class="spinner"></span>' : "Ha, o'chirish"}</button>
+        </div>
+      `;
+    }
+    return `<button class="secondary" style="margin-top:14px; color:#fca5a5" onclick="startTerminateShop()">🗑 O'chirish</button>`;
+  }
+  function startTerminateShop() { terminateStep = 'reason'; terminateReasonDraft = ''; render(); }
+  function cancelTerminateShop() { terminateStep = null; terminateReasonDraft = ''; render(); }
+  function confirmTerminateStepReason() {
+    const reason = (document.getElementById('plat-terminate-reason')?.value || '').trim();
+    if (!reason) return alert('Sababni kiriting.');
+    terminateReasonDraft = reason;
+    terminateStep = 'confirm';
+    render();
+  }
+  async function submitFreezeShop(shopId) {
+    if (lifecycleActionSubmitting) return;
+    const reason = (document.getElementById('plat-freeze-reason')?.value || '').trim();
+    if (!reason) return alert('Sababni kiriting.');
+    lifecycleActionSubmitting = true;
+    render();
+    try {
+      await callPlatformApi('platform_freeze_shop', { shopId, reason });
+      await reloadAdminShops();
+      selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
+    } catch (e) { alert(e.message || String(e)); }
+    finally { lifecycleActionSubmitting = false; render(); }
+  }
+  async function submitReactivateShop(shopId) {
+    if (lifecycleActionSubmitting) return;
+    lifecycleActionSubmitting = true;
+    render();
+    try {
+      await callPlatformApi('platform_reactivate_shop', { shopId });
+      await reloadAdminShops();
+      selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
+    } catch (e) { alert(e.message || String(e)); }
+    finally { lifecycleActionSubmitting = false; render(); }
+  }
+  async function submitTerminateShop(shopId) {
+    if (lifecycleActionSubmitting) return;
+    const reason = terminateReasonDraft.trim();
+    if (!reason) return alert('Sababni kiriting.');
+    lifecycleActionSubmitting = true;
+    render();
+    try {
+      await callPlatformApi('platform_terminate_shop', { shopId, reason });
+      terminateStep = null;
+      terminateReasonDraft = '';
+      await reloadAdminShops();
+      selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
+    } catch (e) { alert(e.message || String(e)); }
+    finally { lifecycleActionSubmitting = false; render(); }
   }
 
   // Billz (billz.ai) integratsiyasi — boshqarilgan/beta chiqarilish: faqat
@@ -942,6 +1370,10 @@
   window.switchTab = switchTab;
   window.togglePersonMenu = togglePersonMenu;
   window.toggleAdminRole = toggleAdminRole;
+  window.openTermsPage = openTermsPage;
+  window.openPrivacyPage = openPrivacyPage;
+  window.closeTermsPrivacyPage = closeTermsPrivacyPage;
+  window.setConsentAccepted = setConsentAccepted;
   window.selectTariffAndContinue = selectTariffAndContinue;
   window.chooseNewShop = chooseNewShop;
   window.chooseUpgrade = chooseUpgrade;
@@ -952,6 +1384,15 @@
   window.startUpgradeFor = startUpgradeFor;
   window.openShopDetails = openShopDetails;
   window.applyTariffFromShopDetails = applyTariffFromShopDetails;
+  window.setGrantDaysPreset = setGrantDaysPreset;
+  window.setGrantDaysReasonPreset = setGrantDaysReasonPreset;
+  window.submitGrantDays = submitGrantDays;
+  window.startTerminateShop = startTerminateShop;
+  window.cancelTerminateShop = cancelTerminateShop;
+  window.confirmTerminateStepReason = confirmTerminateStepReason;
+  window.submitFreezeShop = submitFreezeShop;
+  window.submitReactivateShop = submitReactivateShop;
+  window.submitTerminateShop = submitTerminateShop;
   window.toggleBillzAccess = toggleBillzAccess;
   window.setRequestsFilter = setRequestsFilter;
   window.viewReceipt = viewReceipt;

@@ -40,6 +40,8 @@ header.top .badge {
 .status-ACTIVE { background: #14532d; color: #86efac; }
 .status-PROVISIONING { background: #78350f; color: #fcd34d; }
 .status-DISABLED { background: #450a0a; color: #fca5a5; }
+.status-FROZEN { background: #0c4a6e; color: #7dd3fc; }
+.status-TERMINATED { background: #450a0a; color: #fca5a5; }
 .pill-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .billz-toggle-btn {
   border: none; cursor: pointer; font-family: inherit;
@@ -52,6 +54,11 @@ button.primary {
   background: #2563eb; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
 }
 button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+/* 5-band: rozilik checkbox'i belgilanmaguncha "So'rov yuborish" VIZUAL
+   jihatdan o'chirilgan ko'rinadi, lekin native disabled EMAS — bosilganda
+   "rozilik bildiring" xabari chiqishi kerak, disabled tugma esa umuman
+   click hodisasini chaqirmaydi. */
+button.primary.plat-btn-dimmed { opacity: 0.5; }
 button.secondary {
   width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #334155;
   background: transparent; color: #cbd5e1; font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 8px;
@@ -151,13 +158,6 @@ select:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
 .plat-hero-sub { font-size: 14px; font-weight: 700; color: #cbd5e1; margin: 0 0 6px; }
 .plat-hero-desc { font-size: 13px; color: #94a3b8; margin: 0 0 18px; }
 
-.plat-feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0; }
-.plat-feature-card {
-  background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 14px 12px; text-align: center;
-}
-.plat-feature-icon { font-size: 22px; margin-bottom: 6px; }
-.plat-feature-title { font-size: 12.5px; font-weight: 700; color: #f1f5f9; }
-.plat-feature-desc { font-size: 11px; color: #94a3b8; margin-top: 2px; }
 
 .plat-tariff-grid { display: flex; flex-direction: column; gap: 10px; }
 .plat-tariff-card {
@@ -274,3 +274,74 @@ select:focus { outline: 2px solid #2563eb; outline-offset: 1px; }
 
 .plat-checkbox-row { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #cbd5e1; font-size: 13px; margin: 10px 0 0; }
 .plat-checkbox-row input { width: auto; margin: 0; }
+
+/* ============================================================
+   5-band: Foydalanish shartlari / Maxfiylik siyosati — uzun matnli
+   yuridik hujjat sahifalari.
+   ============================================================ */
+.plat-legal { font-size: 13px; line-height: 1.6; color: #cbd5e1; }
+.plat-legal h2 { font-size: 15px; font-weight: 800; color: #f1f5f9; margin: 22px 0 4px; }
+.plat-legal h2:first-child { margin-top: 0; }
+.plat-legal h3 { font-size: 13px; font-weight: 700; color: #93c5fd; margin: 14px 0 6px; }
+.plat-legal p { margin: 0 0 8px; }
+.plat-legal ul { margin: 0 0 8px; padding-left: 18px; }
+.plat-legal li { margin-bottom: 4px; }
+.plat-legal .plat-legal-meta { color: #64748b; font-size: 11px; margin-bottom: 16px; }
+
+/* ============================================================
+   D-bosqich: landing sahifasi — swipe-carousel, "Qanday ishlaydi",
+   bonus promo, ishonch bloki, FAQ, yakuniy CTA.
+   ============================================================ */
+.plat-section-title { font-size: 17px; font-weight: 800; margin: 28px 0 4px; color: #f1f5f9; }
+.plat-section-sub { font-size: 12px; color: #94a3b8; margin: 0 0 14px; }
+
+.plat-carousel {
+  display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+  padding: 2px 2px 4px; margin: 0 -2px; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.plat-carousel::-webkit-scrollbar { display: none; }
+.plat-carousel-item { scroll-snap-align: start; flex: 0 0 82%; }
+.plat-carousel-dots { display: flex; justify-content: center; gap: 5px; margin: 8px 0 4px; }
+.plat-carousel-dot { width: 6px; height: 6px; border-radius: 999px; background: #334155; }
+.plat-carousel-dot:first-child { background: #60a5fa; width: 16px; }
+
+.plat-why-card {
+  background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 16px; height: 100%;
+}
+.plat-why-card-icon { font-size: 22px; margin-bottom: 8px; }
+.plat-why-card-title { font-size: 13px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
+.plat-why-card-desc { font-size: 12px; color: #94a3b8; line-height: 1.4; }
+
+.plat-step-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+.plat-step-num {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 999px; background: #2563eb; color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;
+}
+.plat-step-title { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+.plat-step-desc { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+.plat-bonus-card {
+  background: linear-gradient(135deg, #1e293b, #172554); border: 1px solid #3730a3; border-radius: 16px;
+  padding: 16px; margin: 10px 0;
+}
+.plat-bonus-title { font-size: 15px; font-weight: 800; color: #fbbf24; margin-bottom: 4px; }
+.plat-bonus-desc { font-size: 12px; color: #cbd5e1; margin-bottom: 4px; }
+.plat-bonus-note { font-size: 11px; color: #94a3b8; }
+
+.plat-trust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.plat-trust-card {
+  background: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 12px; font-size: 12px;
+  font-weight: 600; color: #cbd5e1; text-align: center;
+}
+
+.plat-faq-item { border-bottom: 1px solid #1e293b; padding: 12px 0; }
+.plat-faq-item:last-child { border-bottom: none; }
+.plat-faq-q {
+  display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+  font-size: 13px; font-weight: 700; color: #f1f5f9;
+}
+.plat-faq-a { font-size: 12px; color: #94a3b8; margin-top: 8px; line-height: 1.5; }
+
+.plat-final-cta { text-align: center; padding: 28px 10px; margin-top: 10px; }
+.plat-final-cta-title { font-size: 18px; font-weight: 800; color: #f1f5f9; margin-bottom: 4px; }
+.plat-final-cta-desc { font-size: 12px; color: #94a3b8; margin-bottom: 14px; }
