@@ -271,7 +271,10 @@
       return;
     }
 
-    const showLanding = !isAdminMode && myShops.length === 0 && currentTab === 'home';
+    // 6-band root-cause fix: Bosh sahifa (USER rejim) har doim marketing
+    // landing'ni ko'rsatadi — shop borligi/yo'qligi bu yerga ta'sir qilmaydi.
+    // Mavjud shoplar faqat "Do'konlarim" tabida (renderMyShopsTab) ko'rinadi.
+    const showLanding = !isAdminMode && currentTab === 'home';
     const body = showLanding ? renderLandingHero() : renderTabBody();
     app.innerHTML = `${renderChrome(body)}`;
   }
@@ -318,7 +321,6 @@
       if (currentTab === 'profile') return renderProfileTab();
       return '';
     }
-    if (currentTab === 'home') return renderUserHomeTab();
     if (currentTab === 'shops') return renderMyShopsTab();
     if (currentTab === 'subscription') return renderSubscriptionTab();
     if (currentTab === 'help') return renderHelpTab();
@@ -809,21 +811,9 @@
   }
 
   // ======================================================================
-  // ODDIY FOYDALANUVCHI: Bosh sahifa (do'koni bor bo'lsa), Do'konlarim, Obuna, Yordam, Profil
+  // ODDIY FOYDALANUVCHI: Do'konlarim, Obuna, Yordam, Profil
+  // (Bosh sahifa endi har doim renderLandingHero() — yuqoridagi showLanding orqali)
   // ======================================================================
-  function renderUserHomeTab() {
-    if (!myShops.length) return renderLandingHero();
-    return `
-      <h1 class="plat-page-title">Xush kelibsiz 👋</h1>
-      <div class="plat-summary-grid">
-        <div class="plat-summary-card-sm"><span>🏪</span><b>${myShops.length}</b><small>Do'konlarim</small></div>
-        <div class="plat-summary-card-sm"><span>💎</span><b>${myShops[0]?.tariffName || '—'}</b><small>Tarif</small></div>
-      </div>
-      <button class="primary" onclick="switchTab('shops')">Do'konlarim →</button>
-      <button class="secondary" onclick="openPage('TARIFFS')">+ Yangi do'kon ochish</button>
-    `;
-  }
-
   function renderMyShopsTab() {
     if (!myShops.length) return '<p class="empty">Sizda hozircha do\'kon yo\'q.</p><button class="primary" onclick="openPage(\'TARIFFS\')">Do\'kon ochish</button>';
     return `<div class="plat-shop-card-list">${myShops.map((s) => {
