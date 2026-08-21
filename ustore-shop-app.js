@@ -2064,6 +2064,15 @@
         logoImg.onclick = canEditLogo ? openShopLogoManager : null;
         logoImg.classList.toggle('cursor-pointer', canEditLogo);
       }
+      // 6-band: logotip hali umuman qo'yilmagan bo'lsa, yuqoridagi
+      // #shop-logo-img yashirin qoladi — o'sha holatda bosadigan joy
+      // qolmasligi uchun ADMIN belgisi yonidagi bu tugma DOIM ko'rinadi
+      // (admin+admin rejimida), logotip bor-yo'qligidan qat'iy nazar.
+      const logoEditBtn = document.getElementById('header-logo-edit-btn');
+      if (logoEditBtn) {
+        logoEditBtn.classList.toggle('hidden', !(isUserAnAdmin && isAdminMode));
+        logoEditBtn.onclick = openShopLogoManager;
+      }
       const flagBtn = document.getElementById('lang-flag-btn');
       if (flagBtn) flagBtn.innerText = uiLang === 'uz' ? '🇷🇺' : '🇺🇿';
       const cartBtn = document.getElementById('header-cart-btn');
@@ -2767,10 +2776,9 @@
           ${bulkSelecting ? `<div class="absolute top-2 left-2 z-10 w-7 h-7 rounded-full flex items-center justify-center font-black ${bulkSelectedProductIds.has(String(p.id)) ? 'bg-blue-600 text-white' : 'bg-white/95 text-gray-400 border'}">${bulkSelectedProductIds.has(String(p.id)) ? '✓' : '○'}</div>` : ''}
           <div>
             <div class="relative">
-              <div class="w-full h-28 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center">
+              <div class="w-full h-32 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
                 <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="max-w-full max-h-full object-contain" loading="lazy">
               </div>
-              ${hasDiscount ? `<div class="absolute top-1 right-1 flex items-center gap-1"><span class="bg-amber-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md shadow-sm">${discountPercent(p)}%</span><span class="bg-white/95 text-amber-700 text-[8px] font-bold px-1.5 py-0.5 rounded-md shadow-sm">${tr("CHEGIRMA", "СКИДКА")}</span></div>` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
@@ -2778,10 +2786,11 @@
 
             <div class="mt-1">
               ${hasDiscount ? `
-                <div class="flex items-center space-x-1">
-                  <span class="text-[10px] text-gray-400 line-through font-bold">${money(p.oldPrice)}</span>
+                <div class="flex items-center gap-1.5 flex-wrap">
                   <span class="text-xs fc-text-danger font-black">${money(p.price)}</span>
+                  <span class="text-[10px] bg-amber-100 text-amber-700 font-black px-1.5 py-0.5 rounded-md">-${discountPercent(p)}%</span>
                 </div>
+                <p class="text-[10px] text-gray-400 line-through font-bold mt-0.5">${money(p.oldPrice)}</p>
               ` : `
                 <p class="text-xs text-blue-600 font-black">${money(p.price)}</p>
               `}
@@ -2857,8 +2866,8 @@
               <span class="font-bold flex flex-wrap items-center gap-x-1 gap-y-0.5">📍 ${breadcrumbHtml}</span>
               ${adminCatParentId ? `
                 <div class="flex space-x-1 shrink-0">
-                  <button onclick="goBackCatLevel()" class="bg-gray-100 px-2 py-1 rounded-lg font-bold text-[11px]">${tr("⬅️ Orqaga", "⬅️ Назад")}</button>
-                  <button onclick="adminCatParentId = null; categoryPage=1; render();" class="bg-gray-100 px-2 py-1 rounded-lg font-bold text-[11px]">${tr("🏠 Boshiga", "🏠 В начало")}</button>
+                  <button onclick="goBackCatLevel()" class="fc-cat-nav-btn">${tr("⬅️ Orqaga", "⬅️ Назад")}</button>
+                  <button onclick="adminCatParentId = null; categoryPage=1; render();" class="fc-cat-nav-btn">${tr("🏠 Boshiga", "🏠 В начало")}</button>
                 </div>
               ` : ''}
             </div>
@@ -5433,27 +5442,6 @@
       }
     }
 
-    // 7-band: logo shakliga qarab joylashuvni moslashtiradi — kvadratga
-    // yaqin (en/bo'y nisbati past) -> logo chapda matn o'ngda (default);
-    // uzunchoq/gorizontal (en/bo'y nisbati baland) -> logo tepada, matn pastda.
-    function adjustShopLogoLayout() {
-      const img = document.getElementById('shop-about-logo');
-      const wrap = document.getElementById('shop-about-header');
-      if (!img || !wrap || !img.naturalWidth || !img.naturalHeight) return;
-      const ratio = img.naturalWidth / img.naturalHeight;
-      if (ratio > 1.4) {
-        wrap.classList.remove('items-center');
-        wrap.classList.add('flex-col');
-        img.classList.remove('h-16');
-        img.classList.add('h-14', 'w-full');
-      } else {
-        wrap.classList.remove('flex-col');
-        wrap.classList.add('items-center');
-        img.classList.remove('h-14', 'w-full');
-        img.classList.add('h-16');
-      }
-    }
-
     function renderProfile(container) {
       const phones = [shopContact.phone, shopContact.phone2, shopContact.phone3].filter(Boolean);
       const instagramNick = cleanSocialNick(shopContact.instagram);
@@ -5503,11 +5491,9 @@
           ` : ''}
 
           <div class="shop-about-card bg-white p-4 rounded-2xl shadow-sm border space-y-3">
-            <!-- 7-band: LOGO eng muhim/eng yuqoridagi element. Kvadratga yaqin
-                 logo -> chapda (logo yuklangach adjustShopLogoLayout() aniqlaydi);
-                 uzunchoq/gorizontal logo -> tepada, matn pastda. -->
-            <div id="shop-about-header" class="flex items-center gap-3 border-b pb-2">
-              ${shopLogoUrl ? `<img id="shop-about-logo" src="${escapeHtml(shopLogoUrl)}" onload="adjustShopLogoLayout()" class="h-16 rounded-xl bg-slate-50 p-1 border flex-shrink-0 object-contain">` : `<div id="shop-about-logo-empty" class="h-16 px-3 rounded-xl bg-slate-50 border flex items-center justify-center text-xs font-bold text-slate-400 flex-shrink-0">${escapeHtml(shopDisplayName())}</div>`}
+            <!-- 6-band: LOGOTIP endi bu yerda YO'Q — u faqat yuqoridagi
+                 header'da (STORE/ADMIN qatorida) tahrirlanadi, takrorlanmaydi. -->
+            <div class="flex items-center gap-3 border-b pb-2">
               <div class="min-w-0 flex-1">
                 <h3 class="font-bold text-base text-gray-900 truncate">📍 ${escapeHtml(shopDisplayName())}</h3>
                 <div class="flex items-center gap-2 flex-wrap mt-1">
@@ -6116,51 +6102,88 @@
       }
 
       if (activePopupModal === 'SHOP_INFO') {
+        // 6-band: butun forma bir xil "bo'lim-kartochka" naqshiga o'tkazildi
+        // (gray-50 fon, rounded-2xl, ichida bir xil space-y-2 oraliq, har bir
+        // input bir xil p-2.5/border/rounded-xl/bg-white) — avvalgi versiyada
+        // ba'zi maydonlar bevosita tashqi space-y-3'ga, ba'zilari ichki
+        // grid gap-2'ga bog'liq edi, shu sabab oraliqlar notekis ko'rinardi.
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; render();">
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-xl text-xs" onclick="event.stopPropagation()">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">${ICON_EDIT} ${tr("Do'kon haqida", "О магазине")}</h3>
-              <div>
-                <label class="font-bold text-gray-600">${tr("Do'kon nomi", "Название магазина")}</label>
-                <input type="text" id="sc-name" value="${escapeHtml(shopContact.name || '')}" placeholder="${tr("Do'kon nomi", "Название магазина")}" class="w-full mt-1 p-2 border rounded-xl">
-                <p class="text-[9px] text-gray-400 mt-1">${tr("Bo'sh qoldirilsa, standart \"Do'kon\" nomi ishlatiladi.", "Если оставить пустым, используется название \"Магазин\" по умолчанию.")}</p>
+
+              <div class="bg-gray-50 rounded-2xl p-3 space-y-2">
+                <label class="font-bold text-gray-600 block">${tr("Do'kon nomi", "Название магазина")}</label>
+                <input type="text" id="sc-name" value="${escapeHtml(shopContact.name || '')}" placeholder="${tr("Do'kon nomi", "Название магазина")}" class="w-full p-2.5 border rounded-xl bg-white">
+                <p class="text-[9px] text-gray-400">${tr("Bo'sh qoldirilsa, standart \"Do'kon\" nomi ishlatiladi.", "Если оставить пустым, используется название \"Магазин\" по умолчанию.")}</p>
               </div>
-              <div class="pt-1">
+
+              <div class="bg-gray-50 rounded-2xl p-3 space-y-2">
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-wide">📍 ${tr("Manzil", "Адрес")}</p>
+                <div class="space-y-2">
+                  <div>
+                    <label class="font-bold text-gray-600 block mb-1">${tr("Manzil", "Адрес")}</label>
+                    <input type="text" id="sc-address" value="${escapeHtml(shopContact.address || '')}" placeholder="Sergeli tumani, ..." class="w-full p-2.5 border rounded-xl bg-white">
+                  </div>
+                  <div>
+                    <label class="font-bold text-gray-600 block mb-1">${tr("Manzil (ruscha, ixtiyoriy)", "Адрес (по-русски, необязательно)")}</label>
+                    <input type="text" id="sc-address-ru" value="${escapeHtml(shopContact.addressRu || '')}" placeholder="Сергелийский район, ..." class="w-full p-2.5 border rounded-xl bg-white">
+                    <p class="text-[9px] text-gray-400 mt-1">${tr("Bo'sh qoldirilsa, ruscha rejimda ham o'zbekcha manzil ko'rsatiladi.", "Если оставить пустым, в русском режиме тоже отображается узбекский адрес.")}</p>
+                  </div>
+                  <div>
+                    <label class="font-bold text-gray-600 block mb-1">${tr("Kordinata", "Координаты")}</label>
+                    <input type="text" id="sc-coordinates" value="${escapeHtml(shopContact.coordinates || '')}" placeholder="41.217408,69.211225" class="w-full p-2.5 border rounded-xl bg-white font-mono">
+                    <p class="text-[9px] text-gray-400 mt-1">${tr("Google Maps'dan koordinatani nusxa qilib qo'ying.", "Вставьте координаты из Google Maps.")}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label class="font-bold text-gray-600">${tr("Manzil", "Адрес")}</label>
-                <input type="text" id="sc-address" value="${escapeHtml(shopContact.address || '')}" placeholder="Sergeli tumani, ..." class="w-full mt-1 p-2 border rounded-xl">
-              </div>
-              <div>
-                <label class="font-bold text-gray-600">${tr("Manzil (ruscha, ixtiyoriy)", "Адрес (по-русски, необязательно)")}</label>
-                <input type="text" id="sc-address-ru" value="${escapeHtml(shopContact.addressRu || '')}" placeholder="Сергелийский район, ..." class="w-full mt-1 p-2 border rounded-xl">
-                <p class="text-[9px] text-gray-400 mt-1">${tr("Bo'sh qoldirilsa, ruscha rejimda ham o'zbekcha manzil ko'rsatiladi.", "Если оставить пустым, в русском режиме тоже отображается узбекский адрес.")}</p>
-              </div>
-              <div>
-                <label class="font-bold text-gray-600">${tr("Kordinata", "Координаты")}</label>
-                <input type="text" id="sc-coordinates" value="${escapeHtml(shopContact.coordinates || '')}" placeholder="41.217408,69.211225" class="w-full mt-1 p-2 border rounded-xl font-mono">
-                <p class="text-[9px] text-gray-400 mt-1">${tr("Google Maps'dan koordinatani nusxa qilib qo'ying.", "Вставьте координаты из Google Maps.")}</p>
-              </div>
-              <div class="pt-1">
+
+              <div class="bg-gray-50 rounded-2xl p-3 space-y-2">
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-wide">🕐 ${tr("Ish vaqti", "Часы работы")}</p>
+                <input type="text" id="sc-work-hours" value="${escapeHtml(shopContact.workHours || '')}" placeholder="${tr('Masalan: 09:00–22:00 yoki Du–Yak 09:00–22:00','Например: 09:00–22:00 или Пн–Вс 09:00–22:00')}" class="w-full p-2.5 border rounded-xl bg-white">
               </div>
-              <div>
-                <input type="text" id="sc-work-hours" value="${escapeHtml(shopContact.workHours || '')}" placeholder="${tr('Masalan: 09:00–22:00 yoki Du–Yak 09:00–22:00','Например: 09:00–22:00 или Пн–Вс 09:00–22:00')}" class="w-full mt-1 p-2 border rounded-xl">
-              </div>
-              <div class="pt-1">
+
+              <div class="bg-gray-50 rounded-2xl p-3 space-y-2">
                 <p class="text-[10px] font-black text-gray-400 uppercase tracking-wide">📞 ${tr("Aloqa", "Контакты")}</p>
+                <div class="space-y-2">
+                  <div>
+                    <label class="font-bold text-gray-600 block mb-1">${tr("Telefon 1", "Телефон 1")}</label>
+                    <input type="text" id="sc-phone1" value="${escapeHtml(shopContact.phone || '')}" placeholder="+998 90 123 45 67" class="w-full p-2.5 border rounded-xl bg-white font-mono">
+                  </div>
+                  <div>
+                    <label class="font-bold text-gray-600 block mb-1">${tr("Telefon 2 (ixtiyoriy)", "Телефон 2 (необязательно)")}</label>
+                    <input type="text" id="sc-phone2" value="${escapeHtml(shopContact.phone2 || '')}" placeholder="+998 90 123 45 67" class="w-full p-2.5 border rounded-xl bg-white font-mono">
+                  </div>
+                  <div>
+                    <label class="font-bold text-gray-600 block mb-1">${tr("Telefon 3 (ixtiyoriy)", "Телефон 3 (необязательно)")}</label>
+                    <input type="text" id="sc-phone3" value="${escapeHtml(shopContact.phone3 || '')}" placeholder="+998 90 123 45 67" class="w-full p-2.5 border rounded-xl bg-white font-mono">
+                  </div>
+                  <div>
+                    <label class="font-bold text-gray-600 block mb-1">Instagram ${tr("nickname", "никнейм")}</label>
+                    <div class="flex items-center rounded-xl border bg-white overflow-hidden">
+                      <span class="px-2.5 py-2.5 bg-slate-50 text-gray-500 border-r flex-shrink-0">@</span>
+                      <input type="text" id="sc-instagram" value="${escapeHtml(cleanSocialNick(shopContact.instagram))}" placeholder="mystore.uz" class="flex-1 min-w-0 p-2.5">
+                    </div>
+                  </div>
+                  <div>
+                    <label class="font-bold text-gray-600 block mb-1">Telegram ${tr("nickname", "никнейм")}</label>
+                    <div class="flex items-center rounded-xl border bg-white overflow-hidden">
+                      <span class="px-2.5 py-2.5 bg-slate-50 text-gray-500 border-r flex-shrink-0">@</span>
+                      <input type="text" id="sc-telegram" value="${escapeHtml(cleanSocialNick(shopContact.telegram))}" placeholder="mystore_uz" class="flex-1 min-w-0 p-2.5">
+                    </div>
+                  </div>
+                  <div>
+                    <label class="font-bold text-gray-600 block mb-1">Facebook ${tr("nickname", "никнейм")}</label>
+                    <div class="flex items-center rounded-xl border bg-white overflow-hidden">
+                      <span class="px-2.5 py-2.5 bg-slate-50 text-gray-500 border-r flex-shrink-0">@</span>
+                      <input type="text" id="sc-facebook" value="${escapeHtml(cleanSocialNick(shopContact.facebook))}" placeholder="mystore.uz" class="flex-1 min-w-0 p-2.5">
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="grid grid-cols-1 gap-2">
-                <div><label class="font-bold text-gray-600">${tr("Telefon 1", "Телефон 1")}</label><input type="text" id="sc-phone1" value="${escapeHtml(shopContact.phone || '')}" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2 border rounded-xl font-mono"></div>
-                <div><label class="font-bold text-gray-600">${tr("Telefon 2 (ixtiyoriy)", "Телефон 2 (необязательно)")}</label><input type="text" id="sc-phone2" value="${escapeHtml(shopContact.phone2 || '')}" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2 border rounded-xl font-mono"></div>
-                <div><label class="font-bold text-gray-600">${tr("Telefon 3 (ixtiyoriy)", "Телефон 3 (необязательно)")}</label><input type="text" id="sc-phone3" value="${escapeHtml(shopContact.phone3 || '')}" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2 border rounded-xl font-mono"></div>
-                <div><label class="font-bold text-gray-600">Instagram ${tr("nickname", "никнейм")}</label><div class="flex items-center mt-1"><span class="px-2 py-2 bg-slate-50 border border-r-0 rounded-l-xl text-gray-500">@</span><input type="text" id="sc-instagram" value="${escapeHtml(cleanSocialNick(shopContact.instagram))}" placeholder="mystore.uz" class="flex-1 p-2 border rounded-r-xl"></div></div>
-                <div><label class="font-bold text-gray-600">Telegram ${tr("nickname", "никнейм")}</label><div class="flex items-center mt-1"><span class="px-2 py-2 bg-slate-50 border border-r-0 rounded-l-xl text-gray-500">@</span><input type="text" id="sc-telegram" value="${escapeHtml(cleanSocialNick(shopContact.telegram))}" placeholder="mystore_uz" class="flex-1 p-2 border rounded-r-xl"></div></div>
-                <div><label class="font-bold text-gray-600">Facebook ${tr("nickname", "никнейм")}</label><div class="flex items-center mt-1"><span class="px-2 py-2 bg-slate-50 border border-r-0 rounded-l-xl text-gray-500">@</span><input type="text" id="sc-facebook" value="${escapeHtml(cleanSocialNick(shopContact.facebook))}" placeholder="mystore.uz" class="flex-1 p-2 border rounded-r-xl"></div></div>
-              </div>
+
               <p class="text-[10px] text-gray-400">${tr("Bo'sh qoldirilgan maydonlar foydalanuvchiga umuman ko'rinmaydi.", "Пустые поля вообще не показываются пользователю.")}</p>
-              <div class="flex gap-2 pt-2">
+              <div class="flex gap-2 pt-1">
                 <button onclick="saveShopContact()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">✅ ${tr("Saqlash", "Сохранить")}</button>
                 <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
               </div>
@@ -6906,7 +6929,7 @@
           <div class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="selectedProductModal=null; render();">
             <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl" onclick="event.stopPropagation()">
               <div class="relative">
-                <div class="w-full h-48 rounded-2xl border bg-gray-50 overflow-hidden flex items-center justify-center">
+                <div class="w-full h-48 rounded-2xl border bg-gray-50 overflow-hidden flex items-center justify-center p-2">
                   <img src="${escapeHtml(p.img || FALLBACK_IMG.replace('150','300'))}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="max-w-full max-h-full object-contain">
                 </div>
                 ${(isAdminMode && isUserAnAdmin) ? `

@@ -8,14 +8,14 @@
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=11">
+  <link rel="stylesheet" href="./ustore.css?v=12">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=4"></script>
   <script defer src="./config.public.js?v=1"></script>
-  <script defer src="./ustore-shop-app.js?v=19"></script>
+  <script defer src="./ustore-shop-app.js?v=20"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
 
@@ -24,6 +24,11 @@
     <div class="flex items-center space-x-2">
       <img id="shop-logo-img" src="" class="h-8 max-w-[110px] object-contain hidden">
       <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400"></span>
+      <!-- 6-band: logotip qo'shish/almashtirish uchun doim ko'rinadigan tugma
+           (faqat admin+admin rejimida) — "Do'kon haqida"dan olib tashlandi,
+           endi shu bitta joydan boshqariladi. Logotip hali yo'q bo'lganda ham
+           ishlaydi (header logotip rasmining o'zi hali yashirin bo'lsa ham). -->
+      <button id="header-logo-edit-btn" class="hidden p-1.5 bg-gray-100 rounded-full text-sm leading-none" title="Logotip qo'shish/almashtirish" aria-label="Logotip qo'shish/almashtirish">🖼️</button>
     </div>
     <div class="flex items-center space-x-2">
       <button onclick="switchTab('cart')" class="relative p-2 bg-gray-100 rounded-full" id="header-cart-btn" aria-label="Savatcha" title="Savatcha">
