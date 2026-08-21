@@ -9,7 +9,7 @@
 
   const VERSION = 1;
   const DELIVERY_KINDS = Object.freeze(['FREE', 'FIXED', 'TAXI', 'POST']);
-  const PAYMENT_IDS = Object.freeze(['CASH', 'CARD', 'QR']);
+  const PAYMENT_IDS = Object.freeze(['CASH', 'CARD', 'QR', 'CLICK']);
   const POST_PROVIDER_IDS = Object.freeze(['BTS', 'EMU', 'OTHER']);
   // 17-band: qattiq belgilangan (yopiq) QR provayderlar ro'yxati — kelajakda
   // kengaytirishga mos, lekin hozircha faqat shu to'rttasi.
@@ -52,6 +52,8 @@
           { id: 'CASH', name: 'Naqd', enabled: true, regions: cashRegions },
           { id: 'CARD', name: 'Karta orqali', enabled: false, regions: {}, cardNumber: '', cardHolder: '', receiptRequired: false },
           { id: 'QR', name: 'QR orqali', enabled: false, regions: {}, providers: QR_PROVIDER_IDS.map(id => ({ id, name: QR_PROVIDER_NAMES[id], enabled: false, qrImageUrl: null, paymentUrl: null })) },
+          // Click.uz avtomatik to'lov — mavjud "QR: Click" (qo'lda)dan mustaqil.
+          { id: 'CLICK', name: "Click orqali (avtomatik)", enabled: false, regions: {} },
         ],
       },
     };

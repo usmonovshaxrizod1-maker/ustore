@@ -579,6 +579,10 @@
     let billzAccessGranted = false;
     let billzConnectionStatus = null; // {status, billzShopName, billzCashboxName, billzPaymentTypeName, lastError}
     let billzConfigOptions = null; // {shops, cashboxes, paymentTypes} — ulangandan keyin tanlash uchun
+    // Click.uz avtomatik to'lov integratsiyasi — Billz bilan bir xil
+    // ruxsat-darvoza naqshi (platforma bosh admin ruxsat berganda true).
+    let clickAccessGranted = false;
+    let clickConnectionStatus = null; // {status, merchantId, serviceId}
     // Billz Phase 2 — katalog ko'rish/import holati.
     let billzBrowseCategories = null; // Billz'ning o'z kategoriya daraxti
     let billzBrowseSelectedCatId = ''; // hozir ko'rilayotgan Billz kategoriyasi
@@ -2490,6 +2494,9 @@
           ${billzAccessGranted ? `
             <button type="button" onclick="openBillzSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">🔳 Billz</span><span>›</span></button>
           ` : ''}
+          ${clickAccessGranted ? `
+            <button type="button" onclick="openClickSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">💳 Click</span><span>›</span></button>
+          ` : ''}
         </div>
       `;
       renderPageShell(container, tr("Do'kon sozlamalari", 'Настройки магазина'), body);
@@ -3585,7 +3592,7 @@
       const payWrap = document.getElementById('pay-method-wrap');
       if (payWrap) payWrap.innerHTML = paymentOptions.length ? paymentOptions.map(method => `
         <button type="button" onclick="selectPayment('${method.id}')" class="p-2.5 border rounded-xl font-bold text-xs ${method.id === selectedPayMethod ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-white text-gray-700'}">
-          ${method.id === 'CASH' ? '💵' : method.id === 'CARD' ? '💳' : '🔳'} ${escapeHtml(method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.id === 'QR' ? tr('QR orqali', 'По QR') : method.name)}
+          ${method.id === 'CASH' ? '💵' : method.id === 'CARD' ? '💳' : method.id === 'CLICK' ? '⚡' : '🔳'} ${escapeHtml(method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.id === 'QR' ? tr('QR orqali', 'По QR') : method.name)}
         </button>`).join('') : `<div class="col-span-2 fc-bg-danger-soft border fc-border-danger fc-text-danger p-3 rounded-xl font-bold">${tr("Bu hudud uchun to'lov usuli yoqilmagan.", 'Для этого региона способы оплаты не настроены.')}</div>`;
 
       const cardDetails = document.getElementById('card-payment-details');
@@ -3622,6 +3629,13 @@
                 </div>
                 <div id="chk-receipt-wrap">${renderReceiptPicker(true)}</div>
               ` : ''}
+            </div>`;
+        } else if (selectedPayment?.id === 'CLICK') {
+          cardDetails.classList.remove('hidden');
+          cardDetails.innerHTML = `
+            <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-1 text-center">
+              <p class="font-bold text-blue-900">⚡ ${tr("Click orqali avtomatik to'lov", "Автоматическая оплата через Click")}</p>
+              <p class="text-[11px] text-blue-700">${tr("Buyurtmani yuborganingizdan so'ng, to'lov so'rovi Click ilovangizga yuboriladi. To'lov tasdiqlanishi bilan buyurtma avtomatik qabul qilinadi — chek yuklash shart emas.", "После отправки заказа запрос на оплату придёт в ваше приложение Click. После подтверждения оплаты заказ будет принят автоматически — чек загружать не нужно.")}</p>
             </div>`;
         } else {
           cardDetails.classList.add('hidden');
@@ -3807,7 +3821,7 @@
         checkoutBranchesLoadedFor = null;
         checkoutDistrictOptions = [];
         checkoutDistrictOptionsLoadedFor = null;
-        openOrderSuccessCelebration(newOrder.id);
+        openOrderSuccessCelebration(newOrder.id, selectedPayment.id === 'CLICK');
       } catch (e) {
         console.error(e);
         if (String(e.message).includes('insufficient_stock')) {
@@ -3832,14 +3846,16 @@
       }
     }
 
-    function openOrderSuccessCelebration(orderId) {
+    function openOrderSuccessCelebration(orderId, isClickPayment) {
       selectedProductModal = null;
       document.getElementById('modal-container').innerHTML = `
         <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div class="bg-white rounded-3xl p-6 text-center max-w-sm w-full space-y-4 shadow-2xl">
             <div class="text-5xl">🎉</div>
             <h3 class="text-xl font-black text-gray-900">${tr("Buyurtmangiz qabul qilindi!", "Ваш заказ принят!")}</h3>
-            <p class="text-xs text-gray-500">${tr("Buyurtma ID:", "ID заказа:")} <b class="text-blue-600">#${orderId}</b>${tr(`. ${escapeHtml(shopDisplayName())} mutaxassislari tez orada siz bilan bog'lanishadi.`, `. Специалисты ${escapeHtml(shopDisplayName())} скоро свяжутся с вами.`)}</p>
+            <p class="text-xs text-gray-500">${tr("Buyurtma ID:", "ID заказа:")} <b class="text-blue-600">#${orderId}</b>${isClickPayment
+              ? tr(". To'lov so'rovi Click ilovangizga yuborildi — to'lovni shu yerda tasdiqlang.", ". Запрос на оплату отправлен в ваше приложение Click — подтвердите оплату там.")
+              : tr(`. ${escapeHtml(shopDisplayName())} mutaxassislari tez orada siz bilan bog'lanishadi.`, `. Специалисты ${escapeHtml(shopDisplayName())} скоро свяжутся с вами.`)}</p>
             <button onclick="document.getElementById('modal-container').innerHTML=''; switchTab('orders');" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs">
               ${tr("📦 Buyurtmalarda ko\'rish", "📦 Посмотреть в заказах")}
             </button>
@@ -5335,10 +5351,12 @@
     }
 
     function renderPaymentMethodSettings(method) {
-      const icon = method.id === 'CASH' ? '💵' : method.id === 'CARD' ? '💳' : '🔳';
-      const label = method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : tr('QR orqali', 'По QR');
+      const icon = method.id === 'CASH' ? '💵' : method.id === 'CARD' ? '💳' : method.id === 'CLICK' ? '⚡' : '🔳';
+      const label = method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.id === 'CLICK' ? tr('Click orqali (avtomatik)', 'Click (автоматически)') : tr('QR orqali', 'По QR');
+      const clickReady = clickConnectionStatus?.status === 'CONNECTED';
       return `<div class="border rounded-2xl p-3 space-y-3">
         <label class="flex items-center justify-between font-black"><span>${icon} ${escapeHtml(label)}</span><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setPaymentMethodEnabled('${method.id}',this.checked)"></label>
+        ${method.id === 'CLICK' && !clickReady ? `<p class="text-[10px] text-amber-600 font-bold">${tr("Avval Do'kon sozlamalari → Click bo'limidan hisobingizni ulang.", "Сначала подключите аккаунт в Настройки магазина → Click.")}</p>` : ''}
         ${method.enabled ? `${method.id === 'CARD' ? `<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2"><input type="text" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000" class="w-full p-2 border rounded-xl font-mono"><input type="text" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Karta egasi','Владелец карты')}" class="w-full p-2 border rounded-xl"><label class="flex items-center gap-2 font-bold"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label><p class="text-[10px] text-blue-700">${tr('Faqat xaridorga ko‘rsatiladigan karta raqami va egasi. CVV/PIN/SMS saqlanmaydi.','Только номер и владелец карты для показа покупателю. CVV/PIN/SMS не сохраняются.')}</p></div>` : ''}${method.id === 'QR' ? `<div class="space-y-2">${(method.providers || []).map(renderQrProviderSettings).join('')}</div>` : ''}${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}<div class="space-y-2">${TOP_LEVEL_REGIONS.map(region => `<label class="flex items-center justify-between border rounded-xl p-2.5 font-bold"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><input type="checkbox" ${method.regions[region.id]?.enabled ? 'checked' : ''} onchange="setPaymentRegionEnabled('${method.id}','${encodedRegionId(region.id)}',this.checked)"></label>`).join('')}</div>` : ''}
       </div>`;
     }
@@ -5401,11 +5419,14 @@
 
     // 1.2: Naqd va Karta yonma-yon tugma; bosilgan usul pastda ochiladi.
     function renderFulfillmentPaymentsPanel() {
-      const methods = fulfillmentDraft.payments.methods;
+      // CLICK — faqat platforma ruxsat bergan do'konlarda ko'rinadi (Billz
+      // bilan bir xil naqsh); ruxsatsiz do'kon uchun ishlatib bo'lmaydigan
+      // tugmani ko'rsatib chalkashtirmaslik uchun ro'yxatdan olib tashlanadi.
+      const methods = fulfillmentDraft.payments.methods.filter(m => m.id !== 'CLICK' || clickAccessGranted);
       return `<div class="space-y-3">
         <div class="grid grid-cols-3 gap-2">${methods.map(m => `
           <button type="button" onclick="setFulfillmentExpandedPayment('${m.id}')" class="p-3 rounded-2xl border font-black flex flex-col items-center gap-1 ${fulfillmentExpandedPayment === m.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-gray-50 text-gray-700 border-gray-200'}">
-            <span class="text-lg">${m.id === 'CASH' ? '💵' : m.id === 'CARD' ? '💳' : '🔳'}</span>
+            <span class="text-lg">${m.id === 'CASH' ? '💵' : m.id === 'CARD' ? '💳' : m.id === 'CLICK' ? '⚡' : '🔳'}</span>
             <span>${escapeHtml(m.name)}</span>
             <span class="text-[9px] font-bold ${m.enabled ? (fulfillmentExpandedPayment === m.id ? 'text-emerald-300' : 'text-emerald-600') : 'text-gray-400'}">${m.enabled ? tr('Yoqilgan','Включено') : tr("O'chirilgan",'Выключено')}</span>
           </button>`).join('')}</div>
@@ -5805,6 +5826,56 @@
         await callApi('billz_disconnect', {});
         billzConnectionStatus = { status: 'DISCONNECTED', billzShopName: null, billzCashboxName: null, billzPaymentTypeName: null, lastError: null };
         billzConfigOptions = null;
+        showActionToast(tr("✅ Uzildi", "✅ Отключено"), 'success', 1200);
+        render();
+      } catch (e) {
+        console.error(e);
+        showActionToast(tr("❌ Xatolik", "❌ Ошибка"), 'error', 1800);
+        alert(e.message || String(e));
+      }
+    }
+
+    // Click.uz avtomatik to'lov integratsiyasi — Billz sozlamalari bilan bir
+    // xil naqsh (openBillzSettings/connectBillz/disconnectBillz nusxasi).
+    async function openClickSettings() {
+      activePopupModal = 'CLICK_SETTINGS';
+      clickConnectionStatus = null;
+      render();
+      try {
+        clickConnectionStatus = await callApi('click_get_status', {});
+      } catch (e) {
+        console.error(e);
+        clickConnectionStatus = { status: 'DISCONNECTED', merchantId: null, serviceId: null };
+      }
+      if (activePopupModal === 'CLICK_SETTINGS') render();
+    }
+    async function connectClick() {
+      const merchantId = document.getElementById('click-merchant-id-input')?.value.trim();
+      const serviceId = document.getElementById('click-service-id-input')?.value.trim();
+      const merchantUserId = document.getElementById('click-merchant-user-id-input')?.value.trim();
+      const secretKey = document.getElementById('click-secret-key-input')?.value.trim();
+      if (!merchantId || !serviceId || !merchantUserId || !secretKey) {
+        return alert(tr("Barcha maydonlarni to'ldiring.", "Заполните все поля."));
+      }
+      const btn = document.getElementById('click-connect-btn');
+      if (btn) { btn.disabled = true; btn.textContent = tr("Ulanmoqda...", "Подключение..."); }
+      try {
+        await callApi('click_connect', { merchantId, serviceId, merchantUserId, secretKey });
+        clickConnectionStatus = { status: 'CONNECTED', merchantId, serviceId };
+        showActionToast(tr("✅ Ulandi", "✅ Подключено"), 'success', 1500);
+        render();
+      } catch (e) {
+        console.error(e);
+        alert(tr("Ulab bo'lmadi: ", "Не удалось подключить: ") + (e.message || e));
+        await openClickSettings();
+      }
+    }
+    async function disconnectClick() {
+      if (!confirm(tr("Click ulanishini uzmoqchimisiz?", "Отключить интеграцию с Click?"))) return;
+      showActionToast(tr("⏳ ...", "⏳ ..."), 'saving');
+      try {
+        await callApi('click_disconnect', {});
+        clickConnectionStatus = { status: 'DISCONNECTED', merchantId: null, serviceId: null };
         showActionToast(tr("✅ Uzildi", "✅ Отключено"), 'success', 1200);
         render();
       } catch (e) {
@@ -6795,6 +6866,39 @@
                 <button onclick="disconnectBillz()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
               `}
               <button onclick="activePopupModal=null; billzConnectionStatus=null; billzConfigOptions=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // Click.uz avtomatik to'lov integratsiyasi — BILLZ_SETTINGS bilan bir
+      // xil naqsh. Faqat clickAccessGranted=true bo'lganda ochiladi
+      // (openClickSettings() orqali). Secret Key hech qanday javobda
+      // qaytarilmaydi — bu yerda faqat maydonlarni kiritish shakli.
+      if (activePopupModal === 'CLICK_SETTINGS') {
+        const cst = clickConnectionStatus;
+        const isClickConnected = cst?.status === 'CONNECTED';
+        const isClickLoading = cst === null;
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">💳 Click</h3>
+              ${isClickLoading ? `
+                <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
+              ` : !isClickConnected ? `
+                <p class="text-gray-500">${tr("Click Merchant kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Click Merchant — заказ будет подтверждаться автоматически после оплаты.")}</p>
+                <input type="text" id="click-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="w-full p-2 border rounded-xl font-mono">
+                <input type="text" id="click-service-id-input" autocomplete="off" placeholder="Service ID" class="w-full p-2 border rounded-xl font-mono">
+                <input type="text" id="click-merchant-user-id-input" autocomplete="off" placeholder="Merchant User ID" class="w-full p-2 border rounded-xl font-mono">
+                <input type="password" id="click-secret-key-input" autocomplete="off" placeholder="Secret Key" class="w-full p-2 border rounded-xl font-mono">
+                <button onclick="connectClick()" id="click-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
+              ` : `
+                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
+                <p class="text-gray-500">${tr("Endi \"To'lov sozlamalari\"da \"Click orqali (avtomatik)\" metodini yoqishingiz mumkin.", "Теперь вы можете включить метод \"Click (автоматически)\" в настройках оплаты.")}</p>
+                <button onclick="disconnectClick()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
+              `}
+              <button onclick="activePopupModal=null; clickConnectionStatus=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
             </div>
           </div>
         `;
@@ -8819,6 +8923,7 @@
         shopContact = bootData.shopContact || { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
         shopLowStockThreshold = Number.isFinite(Number(bootData.lowStockThreshold)) ? Number(bootData.lowStockThreshold) : 5;
         billzAccessGranted = bootData.billzAccessGranted === true;
+        clickAccessGranted = bootData.clickAccessGranted === true;
         fulfillmentConfig = commerce.normalizeConfig(bootData.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
         designSettings = bootData.designSettings || { themeId: 'minimal', colors: {} };
         applyDesignColors(designSettings.colors);
