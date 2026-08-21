@@ -68,6 +68,7 @@
     box: '<path d="M12 3 3 7.5 12 12l9-4.5L12 3z"/><path d="M3 7.5v9L12 21l9-4.5v-9"/><path d="M12 12v9"/>',
     bell: '<path d="M6 9a6 6 0 0 1 12 0v5l1.8 3H4.2L6 14V9z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
     card: '<rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10.2h19"/>',
+    book: '<path d="M4 4.5c2-1 5-1 8 0v15c-3-1-6-1-8 0z"/><path d="M20 4.5c-2-1-5-1-8 0v15c3-1 6-1 8 0z"/>',
     truck: '<path d="M3 7h10v9H3z"/><path d="M13 10.5h4l3.5 3.2V16h-7.5z"/><circle cx="7.5" cy="18" r="1.6"/><circle cx="17.5" cy="18" r="1.6"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/>',
     layers: '<path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 13l9 5 9-5"/>',
@@ -158,6 +159,24 @@
 
   // Admin: to'lov ma'lumoti tahrirlash (Tariflar bo'limi ichida kichik bo'lim)
   let paymentInfoDraft = null;
+
+  // 4.4/4.5-band: Yordam bo'limi — Support / Muammo haqida xabar (foydalanuvchi tomoni)
+  let mySupportTickets = [];
+  let mySupportTicketsLoading = false;
+  let activeSupportTicketId = null;
+  let activeSupportMessages = [];
+  let activeSupportLoading = false;
+  let sendingSupportMessage = false;
+  let bugReportAttachmentFile = null;
+  let bugReportAttachmentPreviewUrl = null;
+  let submittingBugReport = false;
+  let bugReportSent = false;
+
+  // 4.4-band: Yordam bo'limi — Support (admin tomoni)
+  let adminSupportTickets = [];
+  let adminSupportTicketsLoading = false;
+  let adminSupportFilter = 'OPEN'; // 'OPEN' | 'ANSWERED' | 'CLOSED' | null (hammasi)
+  let adminSupportTypeFilter = null; // 'SUPPORT' | 'BUG_REPORT' | null (hammasi)
 
   // ---- PAGE SHELL / ROUTER (ustore-shop-app.js'dagi naqsh) --------------
   function openPage(pageId) { activePage = pageId; render(); }
@@ -339,6 +358,14 @@
     if (p === 'SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderShopDetailsBody(), { onBack: "switchTab('shops')" });
     if (p === 'TERMS') return pageShell("Foydalanish shartlari", renderTermsBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'PRIVACY') return pageShell("Maxfiylik siyosati", renderPrivacyBody(), { onBack: "closeTermsPrivacyPage()" });
+    if (p === 'GUIDE_USAGE') return pageShell("UStorE'dan foydalanish", renderGuideUsageBody(), { onBack: "switchTab('help')" });
+    if (p === 'GUIDE_SUBSCRIPTION') return pageShell("To'lov va obuna", renderGuideSubscriptionBody(), { onBack: "switchTab('help')" });
+    if (p === 'GUIDE_SHOP_SETUP') return pageShell("Do'kon sozlash", renderGuideShopSetupBody(), { onBack: "switchTab('help')" });
+    if (p === 'SUPPORT') return pageShell('Support bilan yozish', renderSupportBody(), { onBack: "switchTab('help')" });
+    if (p === 'SUPPORT_THREAD') return pageShell(supportThreadTitle(), renderSupportThreadBody(), { onBack: "openPage('SUPPORT')" });
+    if (p === 'BUG_REPORT') return pageShell('Muammo haqida xabar berish', renderBugReportBody(), { onBack: "switchTab('help')" });
+    if (p === 'ADMIN_SUPPORT') return pageShell('Support', renderAdminSupportBody(), { onBack: "switchTab('profile')" });
+    if (p === 'ADMIN_SUPPORT_THREAD') return pageShell(supportThreadTitle(), renderAdminSupportThreadBody(), { onBack: "openPage('ADMIN_SUPPORT')" });
     return '';
   }
 
@@ -864,15 +891,299 @@
 
   function renderHelpTab() {
     const cards = [
-      ["📖", "UStorE'dan foydalanish", null],
-      ['💳', "To'lov va obuna", null],
-      ['🏪', "Do'kon sozlash", null],
-      ['💬', 'Support bilan yozish', null],
-      ['⚠️', 'Muammo haqida xabar berish', null],
+      ['book', "UStorE'dan foydalanish", "openPage('GUIDE_USAGE')"],
+      ['card', "To'lov va obuna", "openPage('GUIDE_SUBSCRIPTION')"],
+      ['shop', "Do'kon sozlash", "openPage('GUIDE_SHOP_SETUP')"],
+      ['chat', 'Support bilan yozish', "openSupportPage()"],
+      ['bolt', 'Muammo haqida xabar berish', "openPage('BUG_REPORT')"],
     ];
-    return `<div class="plat-help-list">${cards.map(([icon, title]) => `
-      <div class="card plat-help-row"><span>${icon}</span><b>${title}</b></div>
+    return `<div class="plat-help-list">${cards.map(([icon, title, action]) => `
+      <button type="button" class="card plat-help-row plat-clickable" style="width:100%; text-align:left; border:none;" onclick="${action}"><span>${pIcon(icon, 20)}</span><b>${title}</b><span style="margin-left:auto; color:#94a3b8">${pIcon('back', 14)}</span></button>
     `).join('')}</div>`;
+  }
+
+  // ======================================================================
+  // 4-band: Yordam bo'limi — statik qo'llanma sahifalari (4.1-4.3).
+  // Backend kerak emas — faqat matn + mavjud sahifalarga o'tish tugmalari.
+  // ======================================================================
+  function guideStep(num, title, desc, actionHtml) {
+    return `
+      <div class="plat-step-row">
+        <div class="plat-step-num">${num}</div>
+        <div style="flex:1">
+          <div class="plat-step-title">${title}</div>
+          <div class="plat-step-desc">${desc}</div>
+          ${actionHtml || ''}
+        </div>
+      </div>`;
+  }
+  function renderGuideUsageBody() {
+    return `
+      <p class="muted" style="margin-bottom:14px">Do'koningizni ochishdan birinchi buyurtmagacha bo'lgan yo'l — bosqichma-bosqich.</p>
+      ${guideStep(1, 'Tarifni tanlang', "Do'koningiz hajmiga mos tarifni tanlang.", `<button class="secondary plat-small-btn" style="margin-top:8px" onclick="openPage('TARIFFS')">Tariflarni ko'rish</button>`)}
+      ${guideStep(2, 'Obunani faollashtiring', "To'lovni amalga oshiring va chekni yuboring — tasdiqlangач do'koningiz ulanadi.")}
+      ${guideStep(3, "Do'kon botini ulang", "Yangi do'kon uchun 24 soat ichida, mavjud do'kon uchun darhol.")}
+      ${guideStep(4, 'Katalog yarating', "Do'kon botingiz ichida (Do'kon sozlamalari → Kataloglar) bo'limlarni tuzing.")}
+      ${guideStep(5, "Tovar qo'shing", "Har bir tovarga rasm, narx va qoldiqni kiriting.")}
+      ${guideStep(6, "To'lov usulini sozlang", "Naqd, karta yoki QR — do'kon botingizning To'lov sozlamalaridan.")}
+      ${guideStep(7, "Yetkazib berishni sozlang", "Bepul, aniq narxli, taksi yoki pochta — hududlar bo'yicha.")}
+      ${guideStep(8, 'Buyurtmalarni qabul qiling', "Mijozlar buyurtma bersa, do'kon botingizda ko'rinadi va boshqariladi.")}
+    `;
+  }
+  function renderGuideSubscriptionBody() {
+    return `
+      <p class="muted" style="margin-bottom:14px">Tariflar, to'lov va obuna qanday ishlashi haqida.</p>
+      <div class="card"><b>Tariflar nima uchun farq qiladi?</b><p class="muted" style="margin-top:6px">Har bir tarif do'koningizga qo'shishingiz mumkin bo'lgan mahsulotlar sonini belgilaydi. Ko'proq mahsulot kerak bo'lsa — yuqoriroq tarifga o'tasiz.</p></div>
+      <div class="card"><b>🎁 Birinchi obunada +7 kun bonus</b><p class="muted" style="margin-top:6px">Do'koningizni birinchi marta ulaganda, standart 30 kun ustiga yana 7 kun bepul qo'shiladi — jami 37 kun.</p></div>
+      <div class="card"><b>To'lov qanday amalga oshiriladi?</b><p class="muted" style="margin-top:6px">Hozircha karta orqali to'lov qilib, chek yuborasiz. UStorE Admin tekshirib tasdiqlaydi.</p></div>
+      <div class="card"><b>Obuna muddati tugasa nima bo'ladi?</b><p class="muted" style="margin-top:6px">Do'kon avval muzlatiladi (ma'lumotlar saqlanadi), obunani yangilasangiz darhol qayta faollashadi.</p></div>
+      <div class="card"><b>Tarifni oshirish mumkinmi?</b><p class="muted" style="margin-top:6px">Ha — istalgan vaqt yuqoriroq tarifni tanlab, obunangizni yangilashingiz mumkin.</p></div>
+      <button class="primary" style="margin-top:10px" onclick="switchTab('subscription')">Obunamni ko'rish</button>
+    `;
+  }
+  function renderGuideShopSetupBody() {
+    const myShop = myShops[0] || null;
+    return `
+      <p class="muted" style="margin-bottom:14px">Do'koningizni savdoga tayyorlash uchun qadamlar — bular do'kon botingizning o'zida bajariladi.</p>
+      ${guideStep(1, "Do'kon ma'lumotlari", "Logotip, nom, manzil, telefon — Do'kon sozlamalari → Do'kon haqida.")}
+      ${guideStep(2, 'Katalog', "Bo'limlarni (kategoriyalarni) tuzing.")}
+      ${guideStep(3, 'Tovar', "Rasm, nom, tavsif bilan tovar qo'shing.")}
+      ${guideStep(4, 'Narx/qoldiq', "Har bir tovarga narx va ombordagi sonini kiriting.")}
+      ${guideStep(5, "To'lov usuli", "Naqd/karta/QR — qaysi hududda qaysi usul ishlashini belgilang.")}
+      ${guideStep(6, "Yetkazib berish", "Bepul/aniq narx/taksi/pochta usullarini sozlang.")}
+      ${guideStep(7, 'Test buyurtma', "O'zingiz mijoz sifatida sinab ko'ring.")}
+      ${myShop?.botUsername ? `<a class="plat-link-btn" style="margin-top:10px" href="https://t.me/${escapeHtml(myShop.botUsername)}" target="_blank" rel="noopener">Do'kon botimni ochish →</a>`
+        : `<button class="primary" style="margin-top:10px" onclick="openPage('TARIFFS')">Tarif tanlab boshlash</button>`}
+    `;
+  }
+
+  // ======================================================================
+  // 4.4-band: Support bilan yozish (foydalanuvchi tomoni)
+  // ======================================================================
+  function supportStatusLabel(s) {
+    if (s === 'OPEN') return "🟡 Javob kutilmoqda";
+    if (s === 'ANSWERED') return "🟢 Javob berildi";
+    return "⚪ Yopilgan";
+  }
+  function openSupportPage() { openPage('SUPPORT'); loadMySupportTickets(); }
+  async function loadMySupportTickets() {
+    mySupportTicketsLoading = true; render();
+    try { mySupportTickets = (await callPlatformApi('platform_get_my_support_tickets', { type: 'SUPPORT' })).tickets || []; }
+    catch (e) { console.error(e); mySupportTickets = []; }
+    finally { mySupportTicketsLoading = false; if (activePage === 'SUPPORT') render(); }
+  }
+  function renderSupportBody() {
+    return `
+      <div class="card">
+        <h2>Yangi xabar</h2>
+        <textarea id="plat-support-new-msg" rows="3" placeholder="Savolingizni yozing..." style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid #d7e3f8; font-size:13px; font-family:inherit; resize:vertical"></textarea>
+        <button class="primary" style="margin-top:8px" onclick="submitNewSupportMessage()">Yuborish</button>
+      </div>
+      ${mySupportTicketsLoading ? `<p class="muted">Yuklanmoqda...</p>` : mySupportTickets.length ? `
+        <h2 style="font-size:13px; margin:14px 0 8px">Murojaatlarim</h2>
+        <div class="plat-shop-pick-list">
+          ${mySupportTickets.map((t) => `
+            <div class="plat-shop-pick-row" onclick="openSupportThread(${t.id})">
+              <div><div class="name">#${t.id}${t.subject ? ' — ' + escapeHtml(t.subject) : ''}</div><div class="meta">${formatDate(t.createdAt)}</div></div>
+              <span class="status-pill status-${t.status === 'ANSWERED' ? 'ACTIVE' : t.status === 'CLOSED' ? 'DISABLED' : 'PROVISIONING'}">${supportStatusLabel(t.status)}</span>
+            </div>
+          `).join('')}
+        </div>
+      ` : `<p class="empty">Hozircha murojaat yo'q.</p>`}
+    `;
+  }
+  async function submitNewSupportMessage() {
+    const el = document.getElementById('plat-support-new-msg');
+    const message = el?.value.trim();
+    if (!message) return alert('Xabar matnini yozing.');
+    el.disabled = true;
+    try {
+      const result = await callPlatformApi('platform_create_support_ticket', { type: 'SUPPORT', message });
+      el.value = '';
+      await loadMySupportTickets();
+      openSupportThread(result.ticketId);
+    } catch (e) {
+      alert("Yuborilmadi: " + (e.message || e));
+    } finally {
+      if (el) el.disabled = false;
+    }
+  }
+  function supportThreadTitle() { return activeSupportTicketId ? `Murojaat #${activeSupportTicketId}` : 'Murojaat'; }
+  async function openSupportThread(ticketId) {
+    activeSupportTicketId = ticketId;
+    activeSupportMessages = [];
+    openPage('SUPPORT_THREAD');
+    await loadSupportThreadMessages();
+  }
+  async function loadSupportThreadMessages() {
+    activeSupportLoading = true; render();
+    try { activeSupportMessages = (await callPlatformApi('platform_get_support_messages', { ticketId: activeSupportTicketId })).messages || []; }
+    catch (e) { console.error(e); }
+    finally { activeSupportLoading = false; if (activePage === 'SUPPORT_THREAD' || activePage === 'ADMIN_SUPPORT_THREAD') render(); }
+  }
+  function renderSupportThreadBody() {
+    return `
+      ${activeSupportLoading ? `<p class="muted">Yuklanmoqda...</p>` : activeSupportMessages.map((m) => `
+        <div class="card" style="${m.sender === 'ADMIN' ? 'border-color:#93c5fd' : ''}">
+          <p class="muted" style="margin:0 0 4px">${m.sender === 'ADMIN' ? 'UStorE Support' : 'Siz'} · ${formatDate(m.createdAt)}</p>
+          <p style="margin:0; white-space:pre-wrap">${escapeHtml(m.body)}</p>
+          ${m.attachmentUrl ? `<img src="${escapeHtml(m.attachmentUrl)}" style="max-width:100%; margin-top:8px; border-radius:10px">` : ''}
+        </div>
+      `).join('')}
+      <div class="card">
+        <textarea id="plat-support-reply-msg" rows="2" placeholder="Javob yozing..." style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid #d7e3f8; font-size:13px; font-family:inherit; resize:vertical"></textarea>
+        <button class="primary" style="margin-top:8px" ${sendingSupportMessage ? 'disabled' : ''} onclick="sendSupportReply()">${sendingSupportMessage ? 'Yuborilmoqda...' : 'Javob yuborish'}</button>
+      </div>
+    `;
+  }
+  async function sendSupportReply() {
+    const el = document.getElementById('plat-support-reply-msg');
+    const body = el?.value.trim();
+    if (!body) return alert('Xabar matnini yozing.');
+    sendingSupportMessage = true; render();
+    try {
+      await callPlatformApi('platform_send_support_message', { ticketId: activeSupportTicketId, body });
+      await loadSupportThreadMessages();
+      if (isAdminMode) await loadAdminSupportTickets();
+    } catch (e) {
+      alert("Yuborilmadi: " + (e.message || e));
+    } finally {
+      sendingSupportMessage = false; render();
+    }
+  }
+
+  // ======================================================================
+  // 4.5-band: Muammo haqida xabar berish
+  // ======================================================================
+  function onBugReportAttachmentPicked(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return alert("Faqat JPG, PNG yoki WebP rasm qabul qilinadi.");
+    if (file.size > 6 * 1024 * 1024) return alert("Rasm hajmi 6MB dan katta bo'lmasin.");
+    bugReportAttachmentFile = file;
+    if (bugReportAttachmentPreviewUrl) { try { URL.revokeObjectURL(bugReportAttachmentPreviewUrl); } catch (_) {} }
+    bugReportAttachmentPreviewUrl = URL.createObjectURL(file);
+    rerenderActivePage();
+  }
+  function renderBugReportBody() {
+    if (bugReportSent) {
+      return `
+        <div class="card plat-center">
+          <div style="font-size:40px">✅</div>
+          <h2 style="margin-top:8px">Xabaringiz yuborildi</h2>
+          <p class="muted">UStorE jamoasi tez orada ko'rib chiqadi. Agar javob kerak bo'lsa, Telegram orqali bog'lanamiz.</p>
+          <button class="secondary" onclick="bugReportSent=false; switchTab('help');">Yordamga qaytish</button>
+        </div>
+      `;
+    }
+    return `
+      <div class="card">
+        <label>Sarlavha</label>
+        <input type="text" id="plat-bugreport-title" placeholder="Muammoni qisqa ta'riflang">
+        <label>Qaysi bo'limda?</label>
+        <select id="plat-bugreport-section">
+          <option value="">Tanlanmagan</option>
+          <option value="Obuna">Obuna</option>
+          <option value="To'lov">To'lov</option>
+          <option value="Do'kon">Do'kon</option>
+          <option value="Boshqa">Boshqa</option>
+        </select>
+        <label>Tavsif</label>
+        <textarea id="plat-bugreport-desc" rows="4" placeholder="Nima bo'lganini batafsil yozing..." style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid #d7e3f8; font-size:13px; font-family:inherit; resize:vertical"></textarea>
+        <label>Skrinshot (ixtiyoriy)</label>
+        <input type="file" id="plat-bugreport-input" accept="image/*" class="hidden" onchange="onBugReportAttachmentPicked(event)">
+        <input type="file" id="plat-bugreport-input-files" class="hidden" onchange="onBugReportAttachmentPicked(event)">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
+          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-bugreport-input').click()">🖼 Galereyadan tanlash</button>
+          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-bugreport-input-files').click()">📁 Fayllardan tanlash</button>
+        </div>
+        ${bugReportAttachmentPreviewUrl ? `<img src="${bugReportAttachmentPreviewUrl}" class="plat-receipt-preview">` : ''}
+        <button class="primary ${submittingBugReport ? 'plat-btn-dimmed' : ''}" style="margin-top:14px" onclick="submitBugReport()">${submittingBugReport ? '<span class="spinner"></span> Yuborilmoqda...' : 'Yuborish'}</button>
+      </div>
+    `;
+  }
+  async function submitBugReport() {
+    if (submittingBugReport) return;
+    const title = document.getElementById('plat-bugreport-title')?.value.trim();
+    const section = document.getElementById('plat-bugreport-section')?.value || '';
+    const desc = document.getElementById('plat-bugreport-desc')?.value.trim();
+    if (!title || !desc) return alert("Sarlavha va tavsifni to'ldiring.");
+    submittingBugReport = true; render();
+    try {
+      let attachmentUpload;
+      if (bugReportAttachmentFile) {
+        attachmentUpload = { base64: await fileToBase64(bugReportAttachmentFile), mimeType: bugReportAttachmentFile.type };
+      }
+      await callPlatformApi('platform_create_support_ticket', {
+        type: 'BUG_REPORT', subject: title, pageContext: section || undefined,
+        message: desc, attachmentUpload,
+      });
+      bugReportAttachmentFile = null;
+      if (bugReportAttachmentPreviewUrl) { try { URL.revokeObjectURL(bugReportAttachmentPreviewUrl); } catch (_) {} }
+      bugReportAttachmentPreviewUrl = null;
+      bugReportSent = true;
+    } catch (e) {
+      alert("Yuborilmadi: " + (e.message || e));
+    } finally {
+      submittingBugReport = false; render();
+    }
+  }
+
+  // ======================================================================
+  // 4.4/4.5-band: Support — admin tomoni
+  // ======================================================================
+  function openAdminSupportPage() { openPage('ADMIN_SUPPORT'); loadAdminSupportTickets(); }
+  async function loadAdminSupportTickets() {
+    adminSupportTicketsLoading = true; render();
+    try {
+      const payload = {};
+      if (adminSupportFilter) payload.status = adminSupportFilter;
+      adminSupportTickets = (await callPlatformApi('platform_admin_list_support_tickets', payload)).tickets || [];
+      if (adminSupportTypeFilter) adminSupportTickets = adminSupportTickets.filter((t) => t.type === adminSupportTypeFilter);
+    } catch (e) { console.error(e); adminSupportTickets = []; }
+    finally { adminSupportTicketsLoading = false; if (activePage === 'ADMIN_SUPPORT') render(); }
+  }
+  function setAdminSupportFilter(status) { adminSupportFilter = status || null; loadAdminSupportTickets(); }
+  function setAdminSupportTypeFilter(type) { adminSupportTypeFilter = type || null; loadAdminSupportTickets(); }
+  function renderAdminSupportBody() {
+    return `
+      <div class="plat-filter-row">
+        ${['OPEN', 'ANSWERED', 'CLOSED', ''].map((s) => `<button class="plat-filter-btn ${adminSupportFilter === (s || null) ? 'active' : ''}" onclick="setAdminSupportFilter('${s}')">${s || 'Hammasi'}</button>`).join('')}
+      </div>
+      <div class="plat-filter-row">
+        ${[['', 'Hammasi'], ['SUPPORT', 'Support'], ['BUG_REPORT', '🐞 Bug']].map(([v, l]) => `<button class="plat-filter-btn ${adminSupportTypeFilter === (v || null) ? 'active' : ''}" onclick="setAdminSupportTypeFilter('${v}')">${l}</button>`).join('')}
+      </div>
+      ${adminSupportTicketsLoading ? `<p class="muted">Yuklanmoqda...</p>` : adminSupportTickets.length ? adminSupportTickets.map((t) => `
+        <div class="plat-shop-pick-row" onclick="openAdminSupportThread(${t.id})">
+          <div>
+            <div class="name">${t.type === 'BUG_REPORT' ? '🐞 ' : ''}#${t.id}${t.subject ? ' — ' + escapeHtml(t.subject) : ''}</div>
+            <div class="meta">${escapeHtml(t.requesterUsername ? '@' + t.requesterUsername : (t.requesterFirstName || 'Foydalanuvchi'))}${t.pageContext ? ' · ' + escapeHtml(t.pageContext) : ''} · ${formatDate(t.createdAt)}</div>
+          </div>
+          <span class="status-pill status-${t.status === 'ANSWERED' ? 'ACTIVE' : t.status === 'CLOSED' ? 'DISABLED' : 'PROVISIONING'}">${supportStatusLabel(t.status)}</span>
+        </div>
+      `).join('') : `<p class="empty">Murojaat yo'q.</p>`}
+    `;
+  }
+  async function openAdminSupportThread(ticketId) {
+    activeSupportTicketId = ticketId;
+    activeSupportMessages = [];
+    openPage('ADMIN_SUPPORT_THREAD');
+    await loadSupportThreadMessages();
+  }
+  function renderAdminSupportThreadBody() {
+    const ticket = adminSupportTickets.find((t) => t.id === activeSupportTicketId);
+    return `
+      ${ticket && ticket.status !== 'CLOSED' ? `<button class="secondary" onclick="closeAdminSupportThread()">Murojaatni yopish</button>` : ''}
+      ${renderSupportThreadBody()}
+    `;
+  }
+  async function closeAdminSupportThread() {
+    if (!confirm("Bu murojaatni yopmoqchimisiz?")) return;
+    try {
+      await callPlatformApi('platform_close_support_ticket', { ticketId: activeSupportTicketId });
+      await loadAdminSupportTickets();
+      openPage('ADMIN_SUPPORT');
+    } catch (e) { alert(e.message || String(e)); }
   }
 
   function renderProfileTab() {
@@ -886,6 +1197,7 @@
         </div>
       </div>
       <div class="card plat-profile-menu">
+        ${isAdminMode ? `<div class="plat-profile-row plat-clickable" onclick="openAdminSupportPage()"><span>Support</span><span>›</span></div>` : ''}
         <div class="plat-profile-row"><span>UStorE haqida</span><span>›</span></div>
         <div class="plat-profile-row plat-clickable" onclick="openPrivacyPage()"><span>Maxfiylik siyosati</span><span>›</span></div>
         <div class="plat-profile-row plat-clickable" onclick="openTermsPage()"><span>Foydalanish shartlari</span><span>›</span></div>
@@ -1444,6 +1756,18 @@
   window.submitTerminateShop = submitTerminateShop;
   window.toggleBillzAccess = toggleBillzAccess;
   window.toggleClickAccess = toggleClickAccess;
+  // 4.4/4.5-band: Yordam bo'limi
+  window.openSupportPage = openSupportPage;
+  window.submitNewSupportMessage = submitNewSupportMessage;
+  window.openSupportThread = openSupportThread;
+  window.sendSupportReply = sendSupportReply;
+  window.onBugReportAttachmentPicked = onBugReportAttachmentPicked;
+  window.submitBugReport = submitBugReport;
+  window.openAdminSupportPage = openAdminSupportPage;
+  window.setAdminSupportFilter = setAdminSupportFilter;
+  window.setAdminSupportTypeFilter = setAdminSupportTypeFilter;
+  window.openAdminSupportThread = openAdminSupportThread;
+  window.closeAdminSupportThread = closeAdminSupportThread;
   window.setRequestsFilter = setRequestsFilter;
   window.viewReceipt = viewReceipt;
   window.approveRequest = approveRequest;
