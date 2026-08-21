@@ -86,7 +86,7 @@
     if (s === 'TERMINATED') return "🔴 O'chirilgan";
     return "O'chirilgan";
   }
-  function limitLabel(limit) { return (limit === null || limit === undefined) ? 'Cheksiz' : `${limit} tagacha`; }
+  function limitLabel(limit) { return (limit === null || limit === undefined) ? 'Cheksiz mahsulot' : `${limit} tagacha mahsulot`; }
   function daysUntil(iso) {
     if (!iso) return null;
     return Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 3600 * 1000));

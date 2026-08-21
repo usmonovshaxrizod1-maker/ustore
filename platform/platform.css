@@ -109,10 +109,16 @@ select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(
 
 .p-icon { display: inline-block; vertical-align: -4px; flex-shrink: 0; }
 
+/* Global header (brend, profil) hech qachon yopilib qolmasin — TERMS/PRIVACY/
+   SHOP_DETAILS kabi to'liq ichki sahifalar (.plat-page) undan PASTDA
+   boshlanadi, header esa ustida z-50 bilan doim ko'rinib turadi. Ikkalasi
+   ham shu bitta --plat-header-h qiymatiga tayanadi. */
+:root { --plat-header-h: 64px; }
 .plat-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 16px; border-bottom: 1px solid #e6eefb; position: sticky; top: 0;
-  background: rgba(255,255,255,0.92); backdrop-filter: blur(6px); z-index: 5;
+  min-height: var(--plat-header-h);
+  background: rgba(255,255,255,0.92); backdrop-filter: blur(6px); z-index: 50;
 }
 .plat-header-title { font-size: 17px; font-weight: 800; letter-spacing: 0.2px; color: #0f172a; }
 .plat-header-btn {
@@ -155,7 +161,7 @@ select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(
 .plat-nav-btn.active .plat-nav-icon { transform: translateY(-1px); }
 .plat-nav-label { font-size: 10px; font-weight: 600; }
 
-.plat-page { position: fixed; inset: 0; background: #eef5ff; z-index: 10; display: flex; flex-direction: column; animation: platSlideIn 0.2s ease; }
+.plat-page { position: fixed; top: var(--plat-header-h); right: 0; bottom: 0; left: 0; background: #eef5ff; z-index: 10; display: flex; flex-direction: column; animation: platSlideIn 0.2s ease; }
 @keyframes platSlideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 .plat-page-header {
   display: flex; align-items: center; gap: 10px; padding: 14px 12px;
