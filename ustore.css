@@ -1734,3 +1734,54 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 /* 1/3-band: bottom-nav "Qo'llab-quvvatlash" tugmasidagi o'qilmagan-xabar nuqtasi */
 .nav-btn { position: relative; }
 .fc-nav-dot { position: absolute; top: -1px; right: 22%; width: 9px; height: 9px; border-radius: 9999px; background: var(--fc-danger); border: 1.5px solid #fff; }
+
+/* ============================================================
+   Yakuniy UI/UX redizayn — A-bosqich: yangi umumiy komponentlar
+   (tab/segmented control, toggle-switch, bottom-sheet wrapper,
+   accordion qator). Eski 31 ta qo'lda yozilgan modal QAYTA
+   YOZILMAYDI — .fc-sheet faqat YANGI/qayta qurilayotgan
+   modallarda ishlatiladi.
+   ============================================================ */
+
+/* Tab/segmented control — status filtri, Billz sub-tab, saralash qatori */
+.fc-tabs { display: flex; gap: .375rem; overflow-x: auto; scrollbar-width: none; }
+.fc-tabs::-webkit-scrollbar { display: none; }
+.fc-tab {
+  flex-shrink: 0; display: inline-flex; align-items: center; gap: .25rem;
+  padding: .5rem .875rem; border-radius: .625rem; font-size: .75rem; font-weight: 700;
+  background: var(--fc-muted-bg); color: var(--color-gray-600); border: 1px solid transparent;
+  cursor: pointer; transition: background .12s ease, color .12s ease, transform .12s ease;
+}
+.fc-tab.fc-tab-active { background: var(--fc-primary); color: #fff; }
+.fc-tab:active { transform: scale(0.96); }
+
+/* Toggle-switch — oddiy checkbox o'rniga (Ko'rsatish/Majburiy/yoqish-o'chirish) */
+.fc-toggle { position: relative; display: inline-block; width: 2.75rem; height: 1.625rem; flex-shrink: 0; }
+.fc-toggle input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+.fc-toggle-track { position: absolute; inset: 0; background: var(--fc-border); border-radius: 9999px; transition: background .15s ease; }
+.fc-toggle-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 1.375rem; height: 1.375rem; background: #fff; border-radius: 9999px; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s ease; }
+.fc-toggle input:checked + .fc-toggle-track { background: var(--fc-primary); }
+.fc-toggle input:checked + .fc-toggle-track::after { transform: translateX(1.125rem); }
+.fc-toggle input:disabled + .fc-toggle-track { opacity: .5; }
+
+/* Bottom-sheet — umumiy wrapper, faqat YANGI modallar uchun */
+.fc-sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+@media (min-width: 640px) { .fc-sheet-overlay { align-items: center; padding: 1rem; } }
+.fc-sheet { background: var(--fc-surface); border-radius: 1.25rem 1.25rem 0 0; width: 100%; max-width: 28rem; max-height: 88vh; display: flex; flex-direction: column; }
+@media (min-width: 640px) { .fc-sheet { border-radius: 1.25rem; max-height: 85vh; } }
+.fc-sheet-handle { width: 2.5rem; height: 4px; border-radius: 9999px; background: var(--fc-border); margin: .625rem auto 0; flex-shrink: 0; }
+.fc-sheet-header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .75rem 1.125rem; border-bottom: 1px solid var(--fc-border); flex-shrink: 0; }
+.fc-sheet-title { font-weight: 700; font-size: 1rem; }
+.fc-sheet-body { padding: 1rem 1.125rem; overflow-y: auto; }
+.fc-sheet-footer { padding: .75rem 1.125rem calc(.75rem + env(safe-area-inset-bottom)); border-top: 1px solid var(--fc-border); flex-shrink: 0; }
+
+/* Accordion qator — hudud ro'yxatlari (yetkazib berish/to'lov sozlamalari), 14
+   ta nested-border box o'rniga bitta compact, kengayadigan qator. */
+.fc-accordion-row { border: 1px solid var(--fc-border); border-radius: .75rem; overflow: hidden; margin-bottom: .5rem; }
+.fc-accordion-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .75rem .875rem; cursor: pointer; background: var(--fc-surface); }
+.fc-accordion-title { font-weight: 700; font-size: .8125rem; }
+.fc-accordion-summary { font-size: .6875rem; color: var(--fc-muted); margin-top: 1px; }
+.fc-accordion-chevron { transition: transform .15s ease; color: var(--fc-muted); flex-shrink: 0; }
+.fc-accordion-row.fc-accordion-open .fc-accordion-chevron { transform: rotate(180deg); }
+.fc-accordion-body { padding: 0 .875rem .875rem; display: none; }
+.fc-accordion-row.fc-accordion-open .fc-accordion-body { display: block; }

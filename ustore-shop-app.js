@@ -45,7 +45,10 @@
         .replace(/'/g, '&#39;');
     }
 
-    const FALLBACK_IMG = 'https://via.placeholder.com/150';
+    // Legacy audit, 1-band: eski via.placeholder.com (tashqi, tarmoqqa
+    // bog'liq, brendga mos kelmaydigan) o'rniga mahalliy inline SVG —
+    // tarmoqsiz ham ishlaydi, istalgan o'lchamda aniq (vektor) ko'rinadi.
+    const FALLBACK_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE0IiBmaWxsPSIjZjNmNGY2Ii8+PGcgc3Ryb2tlPSIjYzdjZGQ2IiBzdHJva2Utd2lkdGg9IjQiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iMjgiIHk9IjI4IiB3aWR0aD0iNDQiIGhlaWdodD0iNDQiIHJ4PSI2Ii8+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNCIvPjxwYXRoIGQ9Ik0yOCA2MiBMNDQgNDYgTDU0IDU2IEw3MiAzOCIvPjwvZz48L3N2Zz4=';
 
     // 31-band: navigatsiya/action kontekstidagi emoji o'rniga zamonaviy SVG
     // iconlar — inline (Lucide-uslubida chizilgan, lekin data-lucide emas,
@@ -59,6 +62,17 @@
     const ICON_UP = fcIcon('<polyline points="18 15 12 9 6 15"></polyline>');
     const ICON_DOWN = fcIcon('<polyline points="6 9 12 15 18 9"></polyline>');
     const ICON_PIN = fcIcon('<line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>');
+    // Legacy audit, 6-band: admin katalog toolbar'idagi tasodifiy emoji
+    // (🖼️🧭☑️🔳) o'rniga bir xil stroke uslubidagi ikonalar.
+    const ICON_IMAGE = fcIcon('<rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path>');
+    const ICON_COPY_CHECK = fcIcon('<rect x="3" y="8" width="13" height="13" rx="2"></rect><path d="M8 8V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3"></path><path d="M6.5 14.5l2 2 4-4"></path>');
+    const ICON_CHECK_SQUARE = fcIcon('<rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M7.5 12.5l3 3 6-6"></path>');
+    const ICON_DOWNLOAD = fcIcon('<path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path>');
+    // Legacy audit, 9-band: to'lov metod tanlagichidagi emoji (💵💳⚡🔳) o'rniga.
+    const ICON_CASH = fcIcon('<rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle><path d="M6 6v0M18 6v0M6 18v0M18 18v0"></path>', 'w-5 h-5');
+    const ICON_CARD = fcIcon('<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path>', 'w-5 h-5');
+    const ICON_BOLT = fcIcon('<path d="M13 2 5 14h6l-1 8 9-12h-6l1-8z"></path>', 'w-5 h-5');
+    const ICON_QR = fcIcon('<rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20v.01"></path>', 'w-5 h-5');
     const ICON_SETTINGS = fcIcon('<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>');
 
     // ⚙️ CONFIGURATION
@@ -461,6 +475,15 @@
       `;
     }
 
+    // Legacy audit, 1-band: ba'zi tovar tavsiflarida (masalan Billz import
+    // orqali kelgan) xom HTML manba matni ("<p class=...>") saqlanib qolgan —
+    // escapeHtml() to'g'ri ishlayapti (XSS yo'q), lekin teglar userga
+    // "teg supi" bo'lib ko'rinadi. Teglarni escaping'dan OLDIN olib
+    // tashlaymiz — escaping o'zi saqlanadi (xavfsizlik pasaymaydi).
+    function stripHtmlTags(text) {
+      if (!text) return '';
+      return String(text).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    }
     function truncateText(text, maxLen) {
       if (!text) return '';
       return text.length > maxLen ? text.slice(0, maxLen).trim() + '…' : text;
@@ -851,7 +874,7 @@
     // nameRu (create_order action) bo'lsa o'shani, bo'lmasa (eski buyurtmalar)
     // o'zbekchasini ko'rsatadi.
     function orderItemName(i) { return (uiLang === 'ru' && i?.nameRu) ? i.nameRu : (i?.name || ''); }
-    function productDesc(p) { return (uiLang === 'ru' && p.descRu) ? p.descRu : (p.desc || ''); }
+    function productDesc(p) { return stripHtmlTags((uiLang === 'ru' && p.descRu) ? p.descRu : (p.desc || '')); }
     function categoryName(c) { return (uiLang === 'ru' && c?.nameRu) ? c.nameRu : (c?.name || ''); }
     // 5-band: BTS/EMU filiali — translate_delivery_branches_batch orqali RU
     // maydon to'ldirilgan bo'lsa o'shani, bo'lmasa (production'da hali
@@ -2232,6 +2255,47 @@
       if (fcConfirmResolver) { fcConfirmResolver(val); fcConfirmResolver = null; }
     };
 
+    // Legacy audit: rasm/fayl tanlashning 9+ turli joyi turlicha (label,
+    // button+onclick, ikkitasi yonma-yon, ba'zisida Fayllar varianti
+    // umuman yo'q) ko'rinishda edi. Bitta umumiy action-sheet — YASHIRIN
+    // <input>/onchange handlerlarga HECH TEGILMAYDI, faqat ularni
+    // TRIGGER qiladigan ko'rinish bitta joyda. fcConfirm bilan bir xil
+    // naqsh (o'z appendChild root'i — #modal-container'dagi mavjud
+    // modalni (masalan tovar tahrirlash formasi) yo'q qilib qo'ymaslik
+    // uchun, chunki innerHTML almashtirish uning holatini yo'qotardi).
+    function openImagePickerSheet(galleryInputId, filesInputId) {
+      const root = document.createElement('div');
+      root.id = 'fc-picker-sheet-root';
+      root.innerHTML = `
+        <div class="fc-sheet-overlay" onclick="if(event.target===this) closeImagePickerSheet();">
+          <div class="fc-sheet">
+            <div class="fc-sheet-handle"></div>
+            <div class="fc-sheet-header">
+              <div class="fc-sheet-title">${tr('Rasm tanlash', 'Выбор фото')}</div>
+              <button type="button" onclick="closeImagePickerSheet()" aria-label="${tr('Yopish', 'Закрыть')}" class="fc-btn fc-btn-icon" style="min-width:2.25rem;min-height:2.25rem"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="fc-sheet-body space-y-2">
+              <button type="button" onclick="closeImagePickerSheet(); document.getElementById('${galleryInputId}').click();" class="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50 text-left active:bg-gray-100">
+                <span class="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 shrink-0"><i data-lucide="image" class="w-5 h-5"></i></span>
+                <span class="min-w-0"><span class="block font-bold text-sm">${tr('Galereyadan tanlash', 'Выбрать из галереи')}</span><span class="block text-xs text-gray-400">${tr('Telefon rasmlaridan tanlash', 'Выбрать из фото телефона')}</span></span>
+              </button>
+              ${filesInputId ? `
+              <button type="button" onclick="closeImagePickerSheet(); document.getElementById('${filesInputId}').click();" class="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50 text-left active:bg-gray-100">
+                <span class="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 shrink-0"><i data-lucide="folder" class="w-5 h-5"></i></span>
+                <span class="min-w-0"><span class="block font-bold text-sm">${tr('Fayllardan tanlash', 'Выбрать из файлов')}</span><span class="block text-xs text-gray-400">${tr('Qurilmadagi fayllardan tanlash', 'Выбрать файл на устройстве')}</span></span>
+              </button>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(root);
+      lucide.createIcons();
+    }
+    function closeImagePickerSheet() {
+      const root = document.getElementById('fc-picker-sheet-root');
+      if (root) root.remove();
+    }
+
     // ---- page-shell primitive (POLISH ROUND 1-bosqich) ----
     // Kelgusi vazifalarda renderActivePage() ichiga yangi case'lar qo'shiladi:
     // SUPPORT, SETTINGS, DASHBOARD, WAREHOUSE_HOLAT va h.k.
@@ -2880,11 +2944,11 @@
         <div class="space-y-4">
           <div class="bg-white p-3 rounded-2xl border space-y-2 shadow-sm">
             <div class="flex items-center justify-between text-xs gap-2">
-              <span class="font-bold flex flex-wrap items-center gap-x-1 gap-y-0.5">📍 ${breadcrumbHtml}</span>
+              <span class="font-bold flex flex-wrap items-center gap-x-1 gap-y-0.5"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-gray-400 shrink-0"></i> ${breadcrumbHtml}</span>
               ${adminCatParentId ? `
                 <div class="flex space-x-1 shrink-0">
-                  <button onclick="goBackCatLevel()" class="fc-cat-nav-btn">${tr("⬅️ Orqaga", "⬅️ Назад")}</button>
-                  <button onclick="adminCatParentId = null; categoryPage=1; render();" class="fc-cat-nav-btn">${tr("🏠 Boshiga", "🏠 В начало")}</button>
+                  <button onclick="goBackCatLevel()" class="fc-cat-nav-btn"><i data-lucide="chevron-left" class="w-3 h-3"></i>${tr("Orqaga", "Назад")}</button>
+                  <button onclick="adminCatParentId = null; categoryPage=1; render();" class="fc-cat-nav-btn"><i data-lucide="home" class="w-3 h-3"></i>${tr("Boshiga", "В начало")}</button>
                 </div>
               ` : ''}
             </div>
@@ -2898,11 +2962,11 @@
                 <button onclick="openExcelImportModal()" class="flex-1 flex items-center justify-center gap-1 bg-slate-800 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="table" class="w-3.5 h-3.5"></i>Excel</button>
               </div>
               <div class="flex flex-wrap gap-1.5 pt-1">
-                <button onclick="openMissingImageQueue()" title="${tr('Rasmsiz','Без фото')} · ${globalMissingImageCount}" class="flex items-center gap-1 bg-amber-50 text-amber-900 border border-amber-200 font-bold px-2.5 py-1.5 rounded-xl text-[11px] shadow-sm">🖼️ ${globalMissingImageCount}</button>
-                <button onclick="openTrashModal()" title="${tr('Chiqindi (24 soat)','Корзина (24 часа)')}" aria-label="${tr('Chiqindi', 'Корзина')}" class="flex items-center gap-1 bg-white border text-gray-600 font-bold px-2.5 py-1.5 rounded-xl text-[11px]">${ICON_TRASH}</button>
-                <button onclick="openDuplicateProductsModal()" title="${tr('Duplicate tovarlarni tekshirish','Проверить дубликаты товаров')}" class="flex items-center gap-1 bg-white border text-gray-600 font-bold px-2.5 py-1.5 rounded-xl text-[11px]">🧭</button>
-                <button onclick="toggleBulkProductSelectMode()" title="${bulkProductSelectMode ? tr('Tanlashni tugatish','Завершить выбор') : tr('Tovarlarni tanlash','Выбрать товары')}" class="flex items-center gap-1 ${bulkProductSelectMode ? 'bg-blue-600 text-white' : 'bg-white border text-gray-700'} font-bold px-2.5 py-1.5 rounded-xl text-[11px]">☑️</button>
-                ${billzAccessGranted ? `<button onclick="openBillzBrowse('${adminCatParentId || ''}')" title="${tr("Billz'dan tovar tortib olish", 'Импорт товаров из Billz')}" class="flex items-center gap-1 bg-white border text-gray-700 font-bold px-2.5 py-1.5 rounded-xl text-[11px]">🔳 B</button>` : ''}
+                <button onclick="toggleBulkProductSelectMode()" title="${bulkProductSelectMode ? tr('Tanlashni tugatish','Завершить выбор') : tr('Tovarlarni tanlash','Выбрать товары')}" aria-label="${tr('Tovarlarni tanlash','Выбрать товары')}" class="flex items-center justify-center gap-1 min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold ${bulkProductSelectMode ? 'bg-blue-600 text-white' : 'bg-white border text-gray-700'}">${ICON_CHECK_SQUARE}</button>
+                <button onclick="openMissingImageQueue()" title="${tr('Rasmsiz tovarlar','Товары без фото')} · ${globalMissingImageCount}" aria-label="${tr('Rasmsiz tovarlar','Товары без фото')}" class="flex items-center justify-center gap-1 min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">${ICON_IMAGE}${globalMissingImageCount > 0 ? `<span>${globalMissingImageCount}</span>` : ''}</button>
+                <button onclick="openTrashModal()" title="${tr('Chiqindi (24 soat)','Корзина (24 часа)')}" aria-label="${tr('Chiqindi', 'Корзина')}" class="flex items-center justify-center min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-white border fc-text-danger">${ICON_TRASH}</button>
+                <button onclick="openDuplicateProductsModal()" title="${tr('Duplicate tovarlarni tekshirish','Проверить дубликаты товаров')}" aria-label="${tr('Duplicate tovarlarni tekshirish','Проверить дубликаты товаров')}" class="flex items-center justify-center min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-white border text-gray-600">${ICON_COPY_CHECK}</button>
+                ${billzAccessGranted ? `<button onclick="openBillzBrowse('${adminCatParentId || ''}')" title="${tr("Billz'dan tovar tortib olish", 'Импорт товаров из Billz')}" aria-label="${tr("Billz'dan tovar tortib olish", 'Импорт товаров из Billz')}" class="flex items-center justify-center gap-1 min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-white border text-gray-600">${ICON_DOWNLOAD}Billz</button>` : ''}
               </div>
             ` : ''}
           </div>
@@ -3048,11 +3112,43 @@
       categoryPage = 1;
     }
 
-    // Har bir saralash: yo'q -> o'suvchi -> kamayuvchi -> yo'q, mustaqil ravishda
-    function toggleCategorySortOption(key) {
-      const order = [null, 'asc', 'desc'];
-      const idx = order.indexOf(categoryFilter[key]);
-      categoryFilter[key] = order[(idx + 1) % order.length];
+    // 4-rasm: yashirin cycling o'rniga aniq ko'rinadigan, bir martalik variantlar —
+    // har bosishda faqat BITTA saralash rejimi yoqiladi (qolganlari tozalanadi),
+    // aynan shu rejim allaqachon yoqilgan bo'lsa bosilganda o'chadi. Pastdagi
+    // applyCategoryFilter() mantig'i o'zgarishsiz qoladi — bu yerda faqat uning
+    // uchta mustaqil maydonidan (sortPrice/sortNew/sortSold) bir vaqtda faqat
+    // bittasi to'ldiriladi.
+    function currentCategorySortMode() {
+      if (categoryFilter.sortPrice === 'asc') return 'priceAsc';
+      if (categoryFilter.sortPrice === 'desc') return 'priceDesc';
+      if (categoryFilter.sortNew) return 'new';
+      if (categoryFilter.sortSold) return 'sold';
+      return null;
+    }
+    function setCategorySortMode(mode) {
+      const isActive = currentCategorySortMode() === mode;
+      categoryFilter.sortPrice = null; categoryFilter.sortNew = null; categoryFilter.sortSold = null;
+      if (!isActive) {
+        if (mode === 'priceAsc') categoryFilter.sortPrice = 'asc';
+        else if (mode === 'priceDesc') categoryFilter.sortPrice = 'desc';
+        else if (mode === 'new') categoryFilter.sortNew = 'desc';
+        else if (mode === 'sold') categoryFilter.sortSold = 'desc';
+      }
+      categoryPage = 1;
+      render();
+    }
+    // Narx-chip presetlar — bosilganda darhol qo'llanadi (typed input'dan farqli,
+    // shu bilan render() chaqirilib chip/natija-soni darhol yangilanadi).
+    const CATEGORY_PRICE_PRESETS = [
+      { min: '', max: '100000' },
+      { min: '100000', max: '300000' },
+      { min: '300000', max: '1000000' },
+      { min: '1000000', max: '' },
+    ];
+    function applyCategoryPricePreset(min, max) {
+      const isActive = String(categoryFilter.minPrice || '') === String(min) && String(categoryFilter.maxPrice || '') === String(max);
+      categoryFilter.minPrice = isActive ? '' : min;
+      categoryFilter.maxPrice = isActive ? '' : max;
       categoryPage = 1;
       render();
     }
@@ -3238,15 +3334,15 @@
           <label class="block font-bold">${label}</label>
           <div class="flex items-center gap-2 mt-1 flex-wrap">
             <img src="${checkoutReceiptPreviewUrl}" class="h-16 w-16 object-cover rounded-xl border" alt="">
-            <label class="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">🖼 ${tr('Galereya', 'Галерея')}${galleryInput}</label>
-            <label class="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">📁 ${tr('Fayl', 'Файл')}${filesInput}</label>
+            <button type="button" onclick="openImagePickerSheet('chk-receipt','chk-receipt-files')" class="fc-btn fc-btn-secondary" style="min-height:2.5rem;padding:0 .875rem"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Almashtirish', 'Заменить')}</button>
+            ${galleryInput}${filesInput}
           </div>`;
       }
       return `
         <label class="block font-bold">${label}</label>
         <div class="flex items-center gap-2 mt-1 flex-wrap">
-          <label class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">🖼 ${tr('Galereyadan tanlash', 'Выбрать из галереи')}${galleryInput}</label>
-          <label class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">📁 ${tr('Fayldan tanlash', 'Выбрать файл')}${filesInput}</label>
+          <button type="button" onclick="openImagePickerSheet('chk-receipt','chk-receipt-files')" class="fc-btn fc-btn-primary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Chekni tanlash', 'Выбрать чек')}</button>
+          ${galleryInput}${filesInput}
         </div>`;
     }
 
@@ -3558,7 +3654,7 @@
         // bosilsa selectDelivery o'zi aniq ogohlantirish ko'rsatadi.
         const disabledLook = option.kind === 'POST' && !districtValue;
         return `
-        <button type="button" onclick="selectDelivery('${escapeHtml(option.id)}')" class="w-full text-left p-2.5 border rounded-xl font-bold text-xs ${option.id === selectedDeliveryMethodId ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-white text-gray-700'} ${disabledLook ? 'opacity-40' : ''}">
+        <button type="button" onclick="selectDelivery('${escapeHtml(option.id)}')" class="p-2.5 border rounded-xl font-bold text-xs leading-snug ${option.id === selectedDeliveryMethodId ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-white text-gray-700'} ${disabledLook ? 'opacity-40' : ''}">
           ${deliveryOptionLabel(option)}
         </button>`;
       }).join('') : `<div class="fc-bg-danger-soft border fc-border-danger fc-text-danger p-3 rounded-xl font-bold">${tr('Bu hudud uchun yetkazib berish usuli yoqilmagan.', 'Для этого региона способы доставки не настроены.')}</div>`;
@@ -5340,9 +5436,9 @@
         ${provider.enabled ? `
           <div class="flex items-center gap-3">
             ${provider.qrImageUrl ? `<img src="${escapeHtml(provider.qrImageUrl)}" class="w-16 h-16 object-contain rounded-lg border bg-white">` : ''}
-            <label class="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">${provider.qrImageUrl ? tr('QR almashtirish', 'Заменить QR') : tr('QR rasm yuklash', 'Загрузить QR')}
-              <input type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')">
-            </label>
+            <input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')">
+            <input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')">
+            <button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary" style="padding:.5rem .75rem;min-height:auto;font-size:.6875rem"><i data-lucide="image-plus" class="w-3.5 h-3.5"></i>${provider.qrImageUrl ? tr('QR almashtirish', 'Заменить QR') : tr('QR rasm yuklash', 'Загрузить QR')}</button>
           </div>
           <input type="url" inputmode="url" value="${escapeHtml(provider.paymentUrl || '')}" oninput="setQrProviderPaymentUrl('${provider.id}',this.value)" placeholder="${tr("To'lov sahifasi/link URL", "URL страницы оплаты")}" class="w-full p-2 border rounded-xl text-[11px]">
           <p class="text-[9px] text-gray-400">${tr("QR rasm yuklaganda link avtomatik topilsa to'ldiriladi — topilmasa qo'lda kiriting.", "При загрузке QR ссылка заполнится автоматически, если распознается — иначе введите вручную.")}</p>
@@ -5351,13 +5447,13 @@
     }
 
     function renderPaymentMethodSettings(method) {
-      const icon = method.id === 'CASH' ? '💵' : method.id === 'CARD' ? '💳' : method.id === 'CLICK' ? '⚡' : '🔳';
+      const icon = method.id === 'CASH' ? ICON_CASH : method.id === 'CARD' ? ICON_CARD : method.id === 'CLICK' ? ICON_BOLT : ICON_QR;
       const label = method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.id === 'CLICK' ? tr('Click orqali (avtomatik)', 'Click (автоматически)') : tr('QR orqali', 'По QR');
       const clickReady = clickConnectionStatus?.status === 'CONNECTED';
       return `<div class="border rounded-2xl p-3 space-y-3">
-        <label class="flex items-center justify-between font-black"><span>${icon} ${escapeHtml(label)}</span><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setPaymentMethodEnabled('${method.id}',this.checked)"></label>
+        <label class="flex items-center justify-between font-black"><span class="flex items-center gap-1.5">${icon} ${escapeHtml(label)}</span><span class="fc-toggle"><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setPaymentMethodEnabled('${method.id}',this.checked)"><span class="fc-toggle-track"></span></span></label>
         ${method.id === 'CLICK' && !clickReady ? `<p class="text-[10px] text-amber-600 font-bold">${tr("Avval Do'kon sozlamalari → Click bo'limidan hisobingizni ulang.", "Сначала подключите аккаунт в Настройки магазина → Click.")}</p>` : ''}
-        ${method.enabled ? `${method.id === 'CARD' ? `<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2"><input type="text" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000" class="w-full p-2 border rounded-xl font-mono"><input type="text" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Karta egasi','Владелец карты')}" class="w-full p-2 border rounded-xl"><label class="flex items-center gap-2 font-bold"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label><p class="text-[10px] text-blue-700">${tr('Faqat xaridorga ko‘rsatiladigan karta raqami va egasi. CVV/PIN/SMS saqlanmaydi.','Только номер и владелец карты для показа покупателю. CVV/PIN/SMS не сохраняются.')}</p></div>` : ''}${method.id === 'QR' ? `<div class="space-y-2">${(method.providers || []).map(renderQrProviderSettings).join('')}</div>` : ''}${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}<div class="space-y-2">${TOP_LEVEL_REGIONS.map(region => `<label class="flex items-center justify-between border rounded-xl p-2.5 font-bold"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><input type="checkbox" ${method.regions[region.id]?.enabled ? 'checked' : ''} onchange="setPaymentRegionEnabled('${method.id}','${encodedRegionId(region.id)}',this.checked)"></label>`).join('')}</div>` : ''}
+        ${method.enabled ? `${method.id === 'CARD' ? `<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2"><input type="text" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000" class="w-full p-2 border rounded-xl font-mono"><input type="text" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Karta egasi','Владелец карты')}" class="w-full p-2 border rounded-xl"><label class="flex items-center gap-2 font-bold"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label><p class="text-[10px] text-blue-700">${tr('Faqat xaridorga ko‘rsatiladigan karta raqami va egasi. CVV/PIN/SMS saqlanmaydi.','Только номер и владелец карты для показа покупателю. CVV/PIN/SMS не сохраняются.')}</p></div>` : ''}${method.id === 'QR' ? `<div class="space-y-2">${(method.providers || []).map(renderQrProviderSettings).join('')}</div>` : ''}${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}<div class="divide-y border rounded-xl overflow-hidden">${TOP_LEVEL_REGIONS.map(region => `<label class="flex items-center justify-between px-3 py-2 text-xs font-bold bg-white"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><span class="fc-toggle"><input type="checkbox" ${method.regions[region.id]?.enabled ? 'checked' : ''} onchange="setPaymentRegionEnabled('${method.id}','${encodedRegionId(region.id)}',this.checked)"><span class="fc-toggle-track"></span></span></label>`).join('')}</div>` : ''}
       </div>`;
     }
 
@@ -5425,10 +5521,10 @@
       const methods = fulfillmentDraft.payments.methods.filter(m => m.id !== 'CLICK' || clickAccessGranted);
       return `<div class="space-y-3">
         <div class="grid grid-cols-3 gap-2">${methods.map(m => `
-          <button type="button" onclick="setFulfillmentExpandedPayment('${m.id}')" class="p-3 rounded-2xl border font-black flex flex-col items-center gap-1 ${fulfillmentExpandedPayment === m.id ? 'bg-slate-900 text-white border-slate-900' : 'bg-gray-50 text-gray-700 border-gray-200'}">
-            <span class="text-lg">${m.id === 'CASH' ? '💵' : m.id === 'CARD' ? '💳' : m.id === 'CLICK' ? '⚡' : '🔳'}</span>
+          <button type="button" onclick="setFulfillmentExpandedPayment('${m.id}')" class="p-3 rounded-2xl border font-black flex flex-col items-center gap-1 ${fulfillmentExpandedPayment === m.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-700 border-gray-200'}">
+            ${m.id === 'CASH' ? ICON_CASH : m.id === 'CARD' ? ICON_CARD : m.id === 'CLICK' ? ICON_BOLT : ICON_QR}
             <span>${escapeHtml(m.name)}</span>
-            <span class="text-[9px] font-bold ${m.enabled ? (fulfillmentExpandedPayment === m.id ? 'text-emerald-300' : 'text-emerald-600') : 'text-gray-400'}">${m.enabled ? tr('Yoqilgan','Включено') : tr("O'chirilgan",'Выключено')}</span>
+            <span class="text-[9px] font-bold ${m.enabled ? (fulfillmentExpandedPayment === m.id ? 'text-emerald-200' : 'text-emerald-600') : 'text-gray-400'}">${m.enabled ? tr('Yoqilgan','Включено') : tr("O'chirilgan",'Выключено')}</span>
           </button>`).join('')}</div>
         <div id="fulfillment-body">${fulfillmentExpandedPayment ? renderPaymentMethodSettings(paymentMethodConfig(fulfillmentExpandedPayment)) : ''}</div>
       </div>`;
@@ -6486,10 +6582,7 @@
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
                 <input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
                 <input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                  <button id="m-prod-image-button" type="button" onclick="document.getElementById('m-prod-image-input').click()" class="bg-slate-800 text-white font-bold py-3 rounded-xl shadow-sm">🖼 ${tr("Galereyadan tanlash", "Из галереи")}</button>
-                  <button type="button" onclick="document.getElementById('m-prod-image-input-files').click()" class="bg-slate-100 text-slate-700 font-bold py-3 rounded-xl">📁 ${tr("Fayldan tanlash", "Из файлов")}</button>
-                </div>
+                <button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr("Rasm tanlash", "Выбрать фото")}</button>
                 <input id="m-prod-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-prod-prev', 'm-prod-image-url-error', 'm-prod-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="m-prod-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
                 <img id="m-prod-prev" src="" class="w-24 h-24 object-cover rounded-xl mt-2 hidden border">
@@ -6520,8 +6613,7 @@
                 <input id="m-cat-image-input-files" type="file" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
                 <div class="flex items-center gap-3 mt-1 flex-wrap">
                   <img id="m-cat-prev" src="" class="w-16 h-16 object-cover rounded-xl hidden border">
-                  <button id="m-cat-image-button" type="button" onclick="document.getElementById('m-cat-image-input').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">🖼️ ${tr('Galereyadan', 'Из галереи')}</button>
-                  <button type="button" onclick="document.getElementById('m-cat-image-input-files').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700">📁 ${tr('Fayldan', 'Из файлов')}</button>
+                  <button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-btn fc-btn-secondary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Rasm tanlash', 'Выбрать фото')}</button>
                 </div>
                 <input id="m-cat-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-cat-prev', 'm-cat-image-url-error', 'm-cat-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="m-cat-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
@@ -6552,8 +6644,7 @@
                 <input id="ec-image-input-files" type="file" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
                 <div class="flex items-center gap-3 mt-1 flex-wrap">
                   <img id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-cover rounded-xl ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border">
-                  <button id="ec-image-button" type="button" onclick="document.getElementById('ec-image-input').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? `🔄 ${tr('Almashtirish', 'Заменить')}` : `🖼️ ${tr('Galereyadan', 'Из галереи')}`}</button>
-                  <button type="button" onclick="document.getElementById('ec-image-input-files').click()" class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700">📁 ${tr('Fayldan', 'Из файлов')}</button>
+                  <button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-btn fc-btn-secondary"><i data-lucide="image-plus" class="w-4 h-4"></i>${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото')}</button>
                 </div>
                 <input id="ec-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'ec-img-prev', 'ec-image-url-error', 'ec-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="ec-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
@@ -6593,7 +6684,8 @@
                   <div id="miq-empty-preview" class="h-32 flex items-center justify-center text-center text-gray-400 font-bold">🖼<br>${tr('Rasm preview','Предпросмотр фото')}</div>
                 </div>
                 <input id="miq-image-input" type="file" accept="image/*" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
-                <button id="miq-image-button" type="button" onclick="document.getElementById('miq-image-input').click()" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl shadow-sm">🖼 ${tr('Rasm tanlash','Выбрать фото')}</button>
+                <input id="miq-image-input-files" type="file" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
+                <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-btn fc-btn-secondary w-full"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Rasm tanlash','Выбрать фото')}</button>
                 <input id="miq-image-url" type="url" inputmode="url" oninput="document.getElementById('miq-empty-preview')?.classList.toggle('hidden', !!this.value.trim()); onImageUrlInput(this.value, 'miq-img-prev', 'miq-image-url-error', 'miq-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full p-2.5 border rounded-xl">
                 <p id="miq-image-url-error" class="hidden text-[10px] fc-text-danger"></p>
                 <button onclick="saveMissingImageQueueItem('${p.id}')" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('⏳ Saqlanmoqda…','⏳ Сохранение…') : tr('✅ Saqlash','✅ Сохранить')}</button>
@@ -6801,10 +6893,7 @@
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
                 <input id="ef-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
                 <input id="ef-image-input-files" type="file" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                  <button id="ef-image-button" type="button" onclick="document.getElementById('ef-image-input').click()" class="bg-slate-800 text-white font-bold py-3 rounded-xl shadow-sm">🖼 ${hasProductImage(p) ? tr("Almashtirish", "Заменить") : tr("Galereyadan", "Из галереи")}</button>
-                  <button type="button" onclick="document.getElementById('ef-image-input-files').click()" class="bg-slate-100 text-slate-700 font-bold py-3 rounded-xl">📁 ${tr("Fayldan", "Из файлов")}</button>
-                </div>
+                <button id="ef-image-button" type="button" onclick="openImagePickerSheet('ef-image-input','ef-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${hasProductImage(p) ? tr("Almashtirish", "Заменить") : tr("Rasm tanlash", "Выбрать фото")}</button>
                 <input id="ef-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'ef-img-prev', 'ef-image-url-error', 'ef-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="ef-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
                 <img id="ef-img-prev" src="${escapeHtml(hasProductImage(p) ? p.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-24 h-24 object-cover rounded-xl mt-2 border ${hasProductImage(p) ? '' : 'hidden'}">
@@ -6969,10 +7058,11 @@
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("Logotip", "Логотип")}</h3>
               ${shopLogoUrl ? `<img src="${escapeHtml(shopLogoUrl)}" class="h-16 mx-auto rounded-xl bg-slate-50 p-1 border object-contain">` : ''}
+              <input id="shop-logo-input" type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
+              <input id="shop-logo-input-files" type="file" class="hidden" onchange="saveShopLogoFromPicker(event)">
               <div class="flex items-center gap-2 flex-wrap justify-center">
-                <label class="cursor-pointer inline-flex items-center gap-1.5 font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white">🖼 ${tr('Galereyadan tanlash', 'Выбрать из галереи')}<input type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)"></label>
-                <label class="cursor-pointer inline-flex items-center gap-1.5 font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">📁 ${tr('Fayldan tanlash', 'Выбрать файл')}<input type="file" class="hidden" onchange="saveShopLogoFromPicker(event)"></label>
-                <button onclick="activePopupModal='SHOP_LOGO_URL'; render();" class="inline-flex items-center gap-1.5 font-bold px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">🔗 ${tr('URL orqali', 'По URL')}</button>
+                <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Rasm tanlash', 'Выбрать фото')}</button>
+                <button onclick="activePopupModal='SHOP_LOGO_URL'; render();" class="fc-btn fc-btn-secondary"><i data-lucide="link" class="w-4 h-4"></i>${tr('URL orqali', 'По URL')}</button>
               </div>
               <button onclick="activePopupModal=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
             </div>
@@ -7072,7 +7162,7 @@
                    uni yashirmaydi, faqat manzil/filial maydonlari almashadi. -->
               <div>
                 <label class="text-xs font-bold text-gray-600">${tr("Yetkazib berish usuli *", "Способ доставки *")}</label>
-                <div id="delivery-method-wrap" class="space-y-2 mt-1"></div>
+                <div id="delivery-method-wrap" class="grid grid-cols-2 gap-2 mt-1"></div>
               </div>
 
               <div id="delivery-notice" class="hidden bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-[11px] text-amber-900"></div>
@@ -7114,22 +7204,34 @@
 
       // KATALOG FILTR/SARALASH PANELI
       if (activePopupModal === 'CAT_FILTER') {
-        const sortBtnClass = (key) => {
-          const v = categoryFilter[key];
-          if (v === 'asc') return 'bg-blue-600 text-white';
-          if (v === 'desc') return 'bg-blue-600 text-white';
-          return 'bg-gray-100 text-gray-600';
+        const activeSortMode = currentCategorySortMode();
+        const sortRowClass = (mode) => activeSortMode === mode ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600';
+        const sortRow = (mode, label) => `
+          <button onclick="setCategorySortMode('${mode}')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold ${sortRowClass(mode)}">
+            <span>${label}</span><span>${activeSortMode === mode ? '✓' : ''}</span>
+          </button>`;
+        const pricePresetLabel = (min, max) => {
+          if (!min) return tr(`${Number(max).toLocaleString('ru-RU')} so'mgacha`, `До ${Number(max).toLocaleString('ru-RU')}`);
+          if (!max) return tr(`${Number(min).toLocaleString('ru-RU')} so'mdan yuqori`, `От ${Number(min).toLocaleString('ru-RU')}`);
+          return `${Number(min).toLocaleString('ru-RU')}–${Number(max).toLocaleString('ru-RU')}`;
         };
-        const sortBtnArrow = (key) => {
-          const v = categoryFilter[key];
-          if (v === 'asc') return '↑';
-          if (v === 'desc') return '↓';
-          return '';
-        };
+        // Joriy kontekst (Bosh sahifa yoki Katalog sahifasi)dagi bazaviy ro'yxatga
+        // filtrni qo'llab, natija sonini hisoblaydi — mavjud render funksiyalaridagi
+        // (renderHome/renderCategories) bazaviy ro'yxat mantig'ini FAQAT o'qish
+        // uchun takrorlaydi, ularning o'ziga tegilmaydi.
+        let filterResultCount;
+        if (currentTab === 'home') {
+          let base = searchProducts(homeSearchQuery || '');
+          if (!(homeSearchQuery || '').trim()) base = base.filter(p => p.isFeatured === true);
+          filterResultCount = applyCategoryFilter(base).length;
+        } else {
+          const catBase = products.filter(p => p.categoryId === adminCatParentId && p.status !== 'DELETED');
+          filterResultCount = applyCategoryFilter(catBase).length;
+        }
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="closeCategoryFilterModal();">
-            <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl text-xs" onclick="event.stopPropagation()">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("🔍 Filtr va saralash", "🔍 Фильтр и сортировка")}</h3>
+            <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl text-xs max-h-[88vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("Filtr va saralash", "Фильтр и сортировка")}</h3>
 
               <div>
                 <label class="font-bold text-gray-600">${tr("Tovar qidirish", "Поиск товара")}</label>
@@ -7147,25 +7249,24 @@
                   <span class="text-gray-400">—</span>
                   <input type="number" inputmode="numeric" placeholder="${tr('Gacha','До')}" value="${escapeHtml(categoryFilter.maxPrice)}" oninput="setCategoryPriceBound('maxPrice', this.value)" class="w-full p-2.5 border rounded-xl">
                 </div>
+                <div class="flex flex-wrap gap-1.5 mt-2">
+                  ${CATEGORY_PRICE_PRESETS.map(p => `
+                    <button onclick="applyCategoryPricePreset('${p.min}','${p.max}')" class="px-2.5 py-1.5 rounded-lg font-bold text-[10px] ${String(categoryFilter.minPrice || '') === p.min && String(categoryFilter.maxPrice || '') === p.max ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${pricePresetLabel(p.min, p.max)}</button>
+                  `).join('')}
+                </div>
               </div>
 
-              <div class="space-y-2">
+              <div class="space-y-1.5">
                 <label class="font-bold text-gray-600">${tr("Saralash", "Сортировка")}</label>
-                <button onclick="toggleCategorySortOption('sortPrice')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold ${sortBtnClass('sortPrice')}">
-                  <span>${tr("💰 Narx bo'yicha", "💰 По цене")}</span><span>${sortBtnArrow('sortPrice')}</span>
-                </button>
-                <button onclick="toggleCategorySortOption('sortNew')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold ${sortBtnClass('sortNew')}">
-                  <span>${tr("🆕 Yangiligi bo'yicha", "🆕 По новизне")}</span><span>${sortBtnArrow('sortNew')}</span>
-                </button>
-                <button onclick="toggleCategorySortOption('sortSold')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold ${sortBtnClass('sortSold')}">
-                  <span>${tr("🔥 Ko'p sotib olinganlari", "🔥 По популярности")}</span><span>${sortBtnArrow('sortSold')}</span>
-                </button>
-                <p class="text-[10px] text-gray-400">${tr("Har birini bosganda: o'chiq → o'suvchi (↑) → kamayuvchi (↓) → o'chiq. Bir nechtasi yoqilsa, tepadagisi ustuvor.", "Нажатие меняет режим: выкл. → по возрастанию (↑) → по убыванию (↓) → выкл. Если выбрано несколько, верхний имеет приоритет.")}</p>
+                ${sortRow('priceAsc', tr("Narx: arzondan qimmatga", "Цена: сначала дешевле"))}
+                ${sortRow('priceDesc', tr("Narx: qimmatdan arzonga", "Цена: сначала дороже"))}
+                ${sortRow('new', tr("Eng yangi", "Сначала новые"))}
+                ${sortRow('sold', tr("Ko'p sotilgan", "Популярное"))}
               </div>
 
               <div class="flex gap-2 pt-1">
-                <button onclick="clearCategoryFilter()" class="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5">${ICON_TRASH} ${tr("Filtrni tozalash", "Сбросить фильтр")}</button>
-                <button onclick="closeCategoryFilterModal()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("✅ Tayyor", "✅ Готово")}</button>
+                <button onclick="clearCategoryFilter()" class="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl flex items-center justify-center gap-1.5">${ICON_TRASH} ${tr("Tozalash", "Сбросить")}</button>
+                <button onclick="closeCategoryFilterModal()" class="flex-[2] bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr(`Natijalarni ko'rish (${filterResultCount} ta)`, `Показать результаты (${filterResultCount})`)}</button>
               </div>
             </div>
           </div>
@@ -7353,13 +7454,15 @@
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2">📎 ${tr('Yangi chek yuborish', 'Отправить новый чек')}</h3>
               <div>
                 <label class="block font-bold">${tr("To'lov cheki/skrinshoti *", 'Чек/скриншот оплаты *')}</label>
+                <input id="resubmit-receipt-input" type="file" accept="image/*" onchange="onResubmitReceiptPicked(event)" class="hidden">
+                <input id="resubmit-receipt-input-files" type="file" onchange="onResubmitReceiptPicked(event)" class="hidden">
                 ${resubmitReceiptPreviewUrl ? `
                   <div class="flex items-center gap-3 mt-1">
                     <img src="${resubmitReceiptPreviewUrl}" class="h-16 w-16 object-cover rounded-xl border" alt="">
-                    <label class="cursor-pointer inline-flex items-center gap-1.5 text-[11px] font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">🔄 ${tr('Almashtirish', 'Заменить')}<input type="file" accept="image/*" onchange="onResubmitReceiptPicked(event)" class="hidden"></label>
+                    <button type="button" onclick="openImagePickerSheet('resubmit-receipt-input','resubmit-receipt-input-files')" class="fc-btn fc-btn-secondary" style="min-height:2.5rem;padding:0 .875rem"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Almashtirish', 'Заменить')}</button>
                   </div>
                 ` : `
-                  <label class="cursor-pointer inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-2.5 rounded-xl bg-blue-600 text-white mt-1">📎 ${tr('Chekni tanlash', 'Выбрать чек')}<input type="file" accept="image/*" onchange="onResubmitReceiptPicked(event)" class="hidden"></label>
+                  <button type="button" onclick="openImagePickerSheet('resubmit-receipt-input','resubmit-receipt-input-files')" class="fc-btn fc-btn-primary mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Chekni tanlash', 'Выбрать чек')}</button>
                 `}
               </div>
               <div class="flex gap-2 pt-1">
