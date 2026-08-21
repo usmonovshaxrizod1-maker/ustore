@@ -454,6 +454,9 @@
   .w-full {
     width: 100%;
   }
+  .h-full {
+    height: 100%;
+  }
   .max-w-\[90px\] {
     max-width: 90px;
   }

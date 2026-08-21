@@ -586,6 +586,8 @@
     let billzBrowseLoading = false;
     let billzBrowseItems = []; // hozirgi sahifadagi hali import qilinmagan Billz tovarlari
     let billzBrowseCount = 0;
+    let billzBrowsePage = 1;
+    let billzBrowseLoadingMore = false;
     let billzBrowseSelectedIds = new Set(); // tanlangan billzProductId'lar
     let billzImportTargetCategoryId = null; // "B" tugmasi bosilgan katalogdan oldindan to'ldiriladi
     let billzImporting = false;
@@ -2777,7 +2779,7 @@
           <div>
             <div class="relative">
               <div class="w-full h-32 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
-                <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="max-w-full max-h-full object-contain" loading="lazy">
+                <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-full object-contain" loading="lazy">
               </div>
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
@@ -5493,51 +5495,50 @@
           <div class="shop-about-card bg-white p-4 rounded-2xl shadow-sm border space-y-3">
             <!-- 6-band: LOGOTIP endi bu yerda YO'Q — u faqat yuqoridagi
                  header'da (STORE/ADMIN qatorida) tahrirlanadi, takrorlanmaydi. -->
-            <div class="flex items-center gap-3 border-b pb-2">
-              <div class="min-w-0 flex-1">
-                <h3 class="font-bold text-base text-gray-900 truncate">📍 ${escapeHtml(shopDisplayName())}</h3>
-                <div class="flex items-center gap-2 flex-wrap mt-1">
-                  <div class="flex items-center gap-1.5 flex-shrink-0">
-                    ${instagramNick ? `<a href="https://instagram.com/${encodeURIComponent(instagramNick)}" target="_blank" title="Instagram" class="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 text-gray-600"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>` : ''}
-                    ${telegramNick ? `<a href="https://t.me/${encodeURIComponent(telegramNick)}" target="_blank" title="Telegram" class="w-6 h-6 flex items-center justify-center rounded-full bg-gray-100 text-gray-600"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"></path><path d="M22 2 15 22 11 13 2 9z"></path></svg></a>` : ''}
-                    ${facebookNick ? `<a href="https://facebook.com/${encodeURIComponent(facebookNick)}" target="_blank" title="Facebook" class="w-6 h-6 flex items-center justify-center rounded-full bg-blue-600 text-white"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h2.6l.4-4H14V7a1 1 0 0 1 1-1h3z"></path></svg></a>` : ''}
-                  </div>
-                  ${(isUserAnAdmin && isAdminMode) ? `
-                    <button onclick="activePopupModal='SHOP_INFO'; render();" class="text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">${ICON_EDIT} ${tr("Tahrirlash", "Изменить")}</button>
-                  ` : ''}
-                </div>
-              </div>
+            <div class="flex items-center gap-3 border-b pb-3">
+              <h3 class="font-bold text-base text-gray-900 truncate flex-1 min-w-0">📍 ${escapeHtml(shopDisplayName())}</h3>
+              ${(isUserAnAdmin && isAdminMode) ? `
+                <button onclick="activePopupModal='SHOP_INFO'; render();" class="flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">${ICON_EDIT} ${tr("Tahrirlash", "Изменить")}</button>
+              ` : ''}
             </div>
 
-            ${shopContact.address ? `
-              <div class="flex items-start space-x-3">
-                <i data-lucide="map-pin" class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"></i>
-                <p class="text-xs font-bold text-gray-800">${escapeHtml((uiLang === 'ru' && shopContact.addressRu) ? shopContact.addressRu : shopContact.address)}</p>
-              </div>
-            ` : ''}
-
-            ${mapsUrl ? `
-              <a href="${escapeHtml(mapsUrl)}" target="_blank" class="flex items-center space-x-3 active:bg-gray-50 rounded-xl p-1 -m-1">
-                <i data-lucide="navigation" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
-                <div>
-                  <p class="text-xs font-bold text-blue-700">${tr("Joylashuv", "Местоположение")} →</p>
+            <div class="space-y-2.5">
+              ${shopContact.address ? `
+                <div class="flex items-start space-x-3 rounded-xl p-1 -m-1">
+                  <i data-lucide="map-pin" class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"></i>
+                  <p class="text-xs font-bold text-gray-800">${escapeHtml((uiLang === 'ru' && shopContact.addressRu) ? shopContact.addressRu : shopContact.address)}</p>
                 </div>
-              </a>
-            ` : ''}
+              ` : ''}
 
-            ${shopContact.workHours ? `
-              <div class="flex items-center space-x-3">
-                <i data-lucide="clock" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
-                <p class="text-xs font-bold text-gray-800">${tr("Ish vaqti", "Время работы")}: ${escapeHtml(shopContact.workHours)}</p>
+              ${mapsUrl ? `
+                <a href="${escapeHtml(mapsUrl)}" target="_blank" class="flex items-center space-x-3 active:bg-gray-50 rounded-xl p-1 -m-1">
+                  <i data-lucide="navigation" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
+                  <p class="text-xs font-bold text-blue-700">${tr("Joylashuv", "Местоположение")} →</p>
+                </a>
+              ` : ''}
+
+              ${shopContact.workHours ? `
+                <div class="flex items-center space-x-3 rounded-xl p-1 -m-1">
+                  <i data-lucide="clock" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
+                  <p class="text-xs font-bold text-gray-800">${tr("Ish vaqti", "Время работы")}: ${escapeHtml(shopContact.workHours)}</p>
+                </div>
+              ` : ''}
+
+              ${phones.map(phone => `
+                <a href="tel:${escapeHtml(String(phone).replace(/[^\d+]/g, ''))}" class="flex items-center space-x-3 active:bg-gray-50 rounded-xl p-1 -m-1">
+                  <i data-lucide="phone" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
+                  <p class="text-xs font-bold text-gray-800">${escapeHtml(phone)}</p>
+                </a>
+              `).join('')}
+            </div>
+
+            ${(instagramNick || telegramNick || facebookNick) ? `
+              <div class="flex items-center gap-2 pt-2.5 border-t">
+                ${instagramNick ? `<a href="https://instagram.com/${encodeURIComponent(instagramNick)}" target="_blank" title="Instagram" class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-600"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>` : ''}
+                ${telegramNick ? `<a href="https://t.me/${encodeURIComponent(telegramNick)}" target="_blank" title="Telegram" class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-600"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"></path><path d="M22 2 15 22 11 13 2 9z"></path></svg></a>` : ''}
+                ${facebookNick ? `<a href="https://facebook.com/${encodeURIComponent(facebookNick)}" target="_blank" title="Facebook" class="w-7 h-7 flex items-center justify-center rounded-full bg-blue-600 text-white"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h2.6l.4-4H14V7a1 1 0 0 1 1-1h3z"></path></svg></a>` : ''}
               </div>
             ` : ''}
-
-            ${phones.map(phone => `
-              <a href="tel:${escapeHtml(String(phone).replace(/[^\d+]/g, ''))}" class="flex items-center space-x-3 active:bg-gray-50 rounded-xl p-1 -m-1">
-                <i data-lucide="phone" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
-                <p class="text-xs font-bold text-gray-800">${escapeHtml(phone)}</p>
-              </a>
-            `).join('')}
 
             ${shopInfoIsEmpty() ? `
               <p class="text-[11px] text-gray-400 text-center py-2">${(isUserAnAdmin && isAdminMode) ? tr("Do'kon ma'lumotlarini ✏️ Tahrirlash orqali kiriting.", "Заполните данные магазина через ✏️ Изменить.") : ''}</p>
@@ -5877,6 +5878,7 @@
       if (activePage === 'BILLZ') render();
     }
     async function loadBillzBrowseItems() {
+      billzBrowsePage = 1;
       billzBrowseLoading = true;
       render();
       try {
@@ -5900,6 +5902,40 @@
         billzBrowseLoading = false;
         if (activePage === 'BILLZ') render();
       }
+    }
+    // "Yana yuklash" — keyingi sahifani ORQASIGA qo'shadi (almashtirmaydi),
+    // shunda "hali import qilinmaganlar hammasi" bosqichma-bosqich to'liq
+    // ko'rinadi, 30 tadan cheklanib qolmaydi.
+    async function loadMoreBillzBrowseItems() {
+      if (billzBrowseLoadingMore) return;
+      billzBrowseLoadingMore = true;
+      render();
+      try {
+        const nextPage = billzBrowsePage + 1;
+        const result = await callApi('billz_browse_products', {
+          billzCategoryId: billzBrowseSelectedCatId || undefined,
+          search: billzBrowseSearch || undefined,
+          page: nextPage,
+        });
+        billzBrowseItems = billzBrowseItems.concat(result.items || []);
+        billzBrowseCount = result.count || billzBrowseCount;
+        billzBrowsePage = nextPage;
+      } catch (e) {
+        console.error(e);
+        alert(tr("Ko'proq tovar yuklab bo'lmadi: ", "Не удалось загрузить ещё товары: ") + (e.message || e));
+      } finally {
+        billzBrowseLoadingMore = false;
+        render();
+      }
+    }
+    // Barcha filtr(lar)ni tozalab, hali import qilinmagan tovarlarning
+    // TO'LIQ ro'yxatini (birinchi sahifadan) ko'rsatadi.
+    function showAllUnimportedBillzItems() {
+      billzBrowseSelectedCatId = '';
+      billzBrowseSearch = '';
+      const searchInput = document.getElementById('billz-browse-search-input');
+      if (searchInput) searchInput.value = '';
+      loadBillzBrowseItems();
     }
     function setBillzBrowseCategory(catId) {
       billzBrowseSelectedCatId = catId || '';
@@ -5980,19 +6016,26 @@
           <button onclick="setBillzSubTab('DELETED')" class="flex-1 py-2 rounded-xl text-xs font-bold ${billzSubTab === 'DELETED' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr("O'chirilganlar", "Удалённые")}${billzDeletedItems.length ? ` (${billzDeletedItems.length})` : ''}</button>
         </div>
       `;
+      const hasMoreBillzItems = billzBrowseItems.length < billzBrowseCount;
       const importBody = `
         <div class="space-y-3" style="padding-bottom:4rem">
+          <button onclick="showAllUnimportedBillzItems()" class="w-full py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">🆕 ${tr("Hali import qilinmaganlar (hammasi)", "Ещё не импортированные (все)")}</button>
           <select id="billz-browse-cat-select" onchange="setBillzBrowseCategory(this.value)" class="w-full p-2 border rounded-xl bg-gray-50 text-xs">
             <option value="">${tr("Barcha kategoriyalar (Billz)", "Все категории (Billz)")}</option>
             ${(billzBrowseCategories || []).map((c) => `<option value="${escapeHtml(c.id)}" ${c.id === billzBrowseSelectedCatId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
           </select>
-          <input type="text" value="${escapeHtml(billzBrowseSearch)}" oninput="handleBillzBrowseSearchDebounced(this.value)" placeholder="${tr('Qidirish...', 'Поиск...')}" class="w-full p-2 border rounded-xl text-xs">
+          <input id="billz-browse-search-input" type="text" value="${escapeHtml(billzBrowseSearch)}" oninput="handleBillzBrowseSearchDebounced(this.value)" placeholder="${tr('Qidirish...', 'Поиск...')}" class="w-full p-2 border rounded-xl text-xs">
           ${billzBrowseLoading ? `
             <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
           ` : !billzBrowseItems.length ? `
             <p class="text-center text-gray-400 py-6 text-xs">${tr("Hali tortib olinmagan tovar topilmadi.", "Не найдено ещё не импортированных товаров.")}</p>
           ` : `
             <div class="space-y-2">${billzBrowseItems.map(renderBillzBrowseItemRow).join('')}</div>
+            ${hasMoreBillzItems ? `
+              <button onclick="loadMoreBillzBrowseItems()" ${billzBrowseLoadingMore ? 'disabled' : ''} class="w-full py-2 rounded-xl text-xs font-bold bg-gray-100 text-gray-600">
+                ${billzBrowseLoadingMore ? tr('Yuklanmoqda...', 'Загрузка...') : tr(`Yana yuklash (${billzBrowseItems.length}/${billzBrowseCount})`, `Загрузить ещё (${billzBrowseItems.length}/${billzBrowseCount})`)}
+              </button>
+            ` : ''}
           `}
         </div>
         ${billzBrowseSelectedIds.size ? `
@@ -6930,7 +6973,7 @@
             <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl" onclick="event.stopPropagation()">
               <div class="relative">
                 <div class="w-full h-48 rounded-2xl border bg-gray-50 overflow-hidden flex items-center justify-center p-2">
-                  <img src="${escapeHtml(p.img || FALLBACK_IMG.replace('150','300'))}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="max-w-full max-h-full object-contain">
+                  <img src="${escapeHtml(p.img || FALLBACK_IMG.replace('150','300'))}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-full object-contain">
                 </div>
                 ${(isAdminMode && isUserAnAdmin) ? `
                   <button onclick="openEditFieldModal('${p.id}', 'img')" class="absolute bottom-2 right-2 bg-blue-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center space-x-1 shadow">
