@@ -565,6 +565,13 @@
     let warehouseKirimSelectedVariantSku = null;
     let warehouseKirimQty = '';
     let warehouseKirimSaving = false;
+    // ROUND 10: Qoldiq + Kirim bitta katalog-brauzer oqimida. Backend actionlar o'zgarmaydi.
+    let warehouseBrowseCategoryId = null;
+    let warehouseBulkPanelOpen = false;
+    let warehouseStockAdjustProductId = null;
+    let warehouseStockAdjustVariantSku = null;
+    let warehouseStockAdjustDraft = '';
+    let warehouseStockAdjustSaving = false;
     let warehouseMovements = [];
     let warehouseMovementsLoading = false;
     let warehouseMovementsLoaded = false;
@@ -2951,23 +2958,22 @@
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
             <h4 class="font-bold text-sm text-gray-800 mt-1 leading-tight line-clamp-2">${escapeHtml(productName(p))}</h4>
 
-            <div class="mt-1">
-              ${hasDiscount ? `
-                <div class="flex items-center gap-1.5 flex-wrap">
+            <div class="fc-product-price-drag-row mt-1">
+              <div class="fc-product-price-wrap">
+                ${hasDiscount ? `
                   <span class="text-xs fc-text-danger font-black">${money(p.price)}</span>
                   <span class="text-[10px] bg-amber-100 text-amber-700 font-black px-1.5 py-0.5 rounded-md">-${discountPercent(p)}%</span>
-                </div>
-                <p class="text-[10px] text-gray-400 line-through font-bold mt-0.5">${money(p.oldPrice)}</p>
-              ` : `
-                <p class="text-xs text-blue-600 font-black">${money(p.price)}</p>
-              `}
+                  <span class="text-[10px] text-gray-400 line-through font-bold">${money(p.oldPrice)}</span>
+                ` : `
+                  <span class="text-xs text-blue-600 font-black">${money(p.price)}</span>
+                `}
+              </div>
+              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-drag-handle fc-product-drag-inline" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>` : ''}
             </div>
             ${variantSizes.length ? `<p class="text-[9px] text-gray-400 mt-0.5">${tr("O'lcham", "Размер")}: ${variantSizes.map(escapeHtml).join(', ')}</p>` : ''}
             ${variantColors.length ? `<p class="text-[9px] text-gray-400 mt-0.5">${tr("Rang", "Цвет")}: ${variantColors.map(escapeHtml).join(', ')}</p>` : ''}
             ${productDesc(p) ? `<p class="text-[10px] text-gray-400 italic mt-0.5 line-clamp-1">${escapeHtml(truncateText(productDesc(p), 40))}</p>` : ''}
           </div>
-
-          ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-drag-handle fc-product-drag-overlay" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>` : ''}
 
           <!-- ADMIN: tahrirlash kartaning o'zini bosish orqali; pin/3-nuqta rasm ustida, drag esa kartochkaning pastki o'ng burchagida. -->
           ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `` : `
@@ -4363,15 +4369,15 @@
       render();
     }
 
-    // 5. WAREHOUSE TAB — 11-16-band: uch sub-bo'lim (Holat / Qoldiqni yangilash / Kirim).
-    // 9-band: Ombor — 4 ta aniq bo'lim: Holat / Qoldiq / Kirim / Harakatlar.
+    // ROUND 10: Ombor — Holat / Qoldiq / Harakatlar. Kirim alohida tab emas:
+    // Qoldiq ichida katalog bo'ylab mahsulotga kirib + / − / aniq qoldiq beriladi.
     function renderWarehouse(container) {
       const tabs = [
         { key: 'HOLAT', label: tr('Holat', 'Состояние'), icon: 'activity' },
         { key: 'QOLDIQ', label: tr('Qoldiq', 'Остаток'), icon: 'package' },
-        { key: 'KIRIM', label: tr('Kirim', 'Приход'), icon: 'package-plus' },
         { key: 'HARAKATLAR', label: tr('Harakatlar', 'Движения'), icon: 'history' },
       ];
+      if (warehouseSubTab === 'KIRIM') warehouseSubTab = 'QOLDIQ'; // eski session state mosligi
       container.innerHTML = `
         <div class="fc-warehouse-page">
           <div class="fc-warehouse-heading"><h2>${t('warehouse_title')}</h2></div>
@@ -4381,7 +4387,6 @@
           <div class="fc-warehouse-content">
             ${warehouseSubTab === 'HOLAT' ? renderWarehouseHolatHtml()
               : warehouseSubTab === 'QOLDIQ' ? renderWarehouseUpdateHtml()
-              : warehouseSubTab === 'KIRIM' ? renderWarehouseKirimHtml()
               : renderWarehouseHarakatlarHtml()}
           </div>
         </div>
@@ -4474,40 +4479,107 @@
       const variantSummary = vars.length ? vars.map(v => `${escapeHtml(variantLabel(v))}: ${v.qty}`).join(', ') : null;
       const catLabel = productCategoryLabel(p);
       return `
-        <div class="fc-card flex items-center gap-3">
+        <button type="button" onclick="openProductDetailModal('${p.id}')" class="fc-card fc-warehouse-stock-card w-full flex items-center gap-3 text-left">
           <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-12 h-12 object-cover rounded-xl flex-shrink-0">
           <div class="min-w-0 flex-1">
             <p class="font-bold text-xs text-gray-800 truncate">${escapeHtml(productName(p))}</p>
             <p class="text-[10px] text-gray-400">ID: ${escapeHtml(p.sku)}${catLabel ? ` · ${escapeHtml(catLabel)}` : ''}</p>
             ${variantSummary ? `<p class="text-[10px] text-gray-500 mt-0.5 truncate">${variantSummary}</p>` : `<p class="text-[10px] text-gray-500 mt-0.5">${tr('Qoldiq', 'Остаток')}: ${p.stock}</p>`}
           </div>
-        </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400 shrink-0"></i>
+        </button>
       `;
     }
 
-    // 14-16-band: "Qoldiqni yangilash" — mavjud daraxt + tezkor SKU/ID
-    // yangilash, O'ZGARISHSIZ saqlangan (faqat Holatdan alohida sub-tabga ko'chdi).
+    // ROUND 10: Qoldiq — katalog brauzeri. Birinchi ochilganda faqat bosh kataloglar;
+    // katalog ichiga kirilganda ichki kataloglar va tovarlar. Kirim shu oqimga birlashtirildi.
+    function warehouseCategoryChildren(parentId) {
+      return categories.filter(c => String(c.parentId || '') === String(parentId || ''))
+        .sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0)||categoryName(a).localeCompare(categoryName(b)));
+    }
+    function warehouseCategoryProducts(categoryId) {
+      return products.filter(p => String(p.categoryId || '') === String(categoryId || '') && p.status !== 'DELETED'
+        && (!warehouseMissingImageOnly || !hasProductImage(p))
+        && (!warehouseImportedMissingImageOnly || (!hasProductImage(p) && p.importBatchId)))
+        .sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0)||productName(a).localeCompare(productName(b)));
+    }
+    function warehouseCategoryPath(categoryId) {
+      const out=[]; let cur=categories.find(c=>String(c.id)===String(categoryId||'')); const seen=new Set();
+      while(cur && !seen.has(String(cur.id))){ seen.add(String(cur.id)); out.unshift(cur); cur=categories.find(c=>String(c.id)===String(cur.parentId||'')); }
+      return out;
+    }
+    function openWarehouseBrowseCategory(id){ warehouseBrowseCategoryId=id||null; render(); }
+    function warehouseBrowseBack(){ const cur=categories.find(c=>String(c.id)===String(warehouseBrowseCategoryId||'')); warehouseBrowseCategoryId=cur?.parentId||null; render(); }
+    function warehouseBrowseRoot(){ warehouseBrowseCategoryId=null; render(); }
+    function renderWarehouseBrowseBreadcrumbHtml(){
+      const path=warehouseCategoryPath(warehouseBrowseCategoryId);
+      return `<div class="fc-warehouse-breadcrumb"><button type="button" onclick="warehouseBrowseRoot()"><i data-lucide="home" class="w-3.5 h-3.5"></i>${tr('Bosh katalog','Главный каталог')}</button>${path.map(c=>`<i data-lucide="chevron-right" class="w-3 h-3"></i><button type="button" onclick="openWarehouseBrowseCategory('${c.id}')">${escapeHtml(categoryName(c))}</button>`).join('')}</div>`;
+    }
     function renderWarehouseUpdateHtml() {
-      const topCats = categories.filter(c => !c.parentId);
+      const childCats=warehouseCategoryChildren(warehouseBrowseCategoryId);
+      const catProducts=warehouseBrowseCategoryId ? warehouseCategoryProducts(warehouseBrowseCategoryId) : [];
+      const currentCat=categories.find(c=>String(c.id)===String(warehouseBrowseCategoryId||''));
       return `
         <div class="fc-warehouse-stack">
-          <section class="fc-warehouse-bulk-card">
-            <div class="fc-warehouse-section-head"><span><i data-lucide="zap" class="w-5 h-5"></i></span><div><h3>${tr("ID orqali ko'p tovar qoldig'ini yangilash", "Массовое обновление остатков по ID")}</h3><p>${tr("SKU va sonini kiriting (Masalan: 111001 35)", "Введите SKU и количество (например: 111001 35)")}</p></div></div>
-            <textarea id="bulk-input" rows="4" class="fc-warehouse-textarea" placeholder="111001 35&#10;111002 20"></textarea>
-            <button onclick="saveBulkStock()" class="fc-btn fc-btn-primary w-full"><i data-lucide="save" class="w-4 h-4"></i>${tr("Barchasini saqlash", "Сохранить все")}</button>
-          </section>
-
-          <div class="fc-warehouse-filter-chips">
-            <button onclick="warehouseMissingImageOnly=!warehouseMissingImageOnly; if(warehouseMissingImageOnly)warehouseImportedMissingImageOnly=false; render();" class="fc-warehouse-filter-chip is-warning ${warehouseMissingImageOnly ? 'is-active' : ''}"><i data-lucide="image-off" class="w-4 h-4"></i><span>${tr('Rasmsiz', 'Без фото')} (${getMissingImageProducts().length})</span></button>
-            <button onclick="warehouseImportedMissingImageOnly=!warehouseImportedMissingImageOnly; if(warehouseImportedMissingImageOnly)warehouseMissingImageOnly=false; render();" class="fc-warehouse-filter-chip is-primary ${warehouseImportedMissingImageOnly ? 'is-active' : ''}"><i data-lucide="chart-no-axes-column" class="w-4 h-4"></i><span>${tr('Import rasmsiz', 'Импорт без фото')} (${products.filter(p => p.status !== 'DELETED' && !hasProductImage(p) && p.importBatchId).length})</span></button>
+          <div class="fc-warehouse-tools">
+            <button type="button" onclick="warehouseBulkPanelOpen=!warehouseBulkPanelOpen;render();" class="fc-warehouse-tool-btn ${warehouseBulkPanelOpen?'is-active':''}"><i data-lucide="list-plus" class="w-4 h-4"></i><span>${tr("Ko'p tovarni yangilash","Массовое обновление")}</span></button>
+            <button onclick="warehouseMissingImageOnly=!warehouseMissingImageOnly; if(warehouseMissingImageOnly)warehouseImportedMissingImageOnly=false; render();" class="fc-warehouse-tool-icon ${warehouseMissingImageOnly?'is-active is-warning':''}" title="${tr('Rasmsiz','Без фото')}"><i data-lucide="image-off" class="w-4 h-4"></i><small>${getMissingImageProducts().length}</small></button>
+            <button onclick="warehouseImportedMissingImageOnly=!warehouseImportedMissingImageOnly; if(warehouseImportedMissingImageOnly)warehouseMissingImageOnly=false; render();" class="fc-warehouse-tool-icon ${warehouseImportedMissingImageOnly?'is-active':''}" title="${tr('Import rasmsiz','Импорт без фото')}"><i data-lucide="cloud-upload" class="w-4 h-4"></i><small>${products.filter(p=>p.status!=='DELETED'&&!hasProductImage(p)&&p.importBatchId).length}</small></button>
           </div>
 
-          <p class="fc-warehouse-hint">${tr("Daraxtdan mahsulotni bosib to'g'ridan-to'g'ri qoldig'ini tahrirlang.", "Нажмите на товар в дереве, чтобы сразу изменить остаток.")}</p>
-          <section class="fc-warehouse-tree">
-            ${topCats.map(parent => renderCategoryTreeNodeHTML(parent, 0)).join('')}
+          ${warehouseBulkPanelOpen ? `<section class="fc-warehouse-bulk-card fc-warehouse-bulk-collapsible">
+            <div class="fc-warehouse-section-head"><span><i data-lucide="zap" class="w-5 h-5"></i></span><div><h3>${tr("ID orqali ko'p tovar qoldig'ini yangilash","Массовое обновление остатков по ID")}</h3><p>${tr("SKU va sonini kiriting (Masalan: 111001 35)","Введите SKU и количество (например: 111001 35)")}</p></div></div>
+            <textarea id="bulk-input" rows="4" class="fc-warehouse-textarea" placeholder="111001 35&#10;111002 20"></textarea>
+            <button onclick="saveBulkStock()" class="fc-btn fc-btn-primary w-full"><i data-lucide="save" class="w-4 h-4"></i>${tr("Barchasini saqlash","Сохранить все")}</button>
+          </section>` : ''}
+
+          <section class="fc-warehouse-browser">
+            <div class="fc-warehouse-browser-head">
+              ${warehouseBrowseCategoryId ? `<button type="button" onclick="warehouseBrowseBack()" class="fc-btn fc-btn-icon fc-warehouse-browser-back"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>` : `<span class="fc-warehouse-browser-icon"><i data-lucide="folders" class="w-5 h-5"></i></span>`}
+              <div><h3>${currentCat ? escapeHtml(categoryName(currentCat)) : tr('Kataloglar','Каталоги')}</h3><p>${currentCat ? tr('Ichki katalog yoki tovarni tanlang','Выберите вложенный каталог или товар') : tr('Qoldiqni boshqarish uchun katalogga kiring','Откройте каталог для управления остатками')}</p></div>
+            </div>
+            ${renderWarehouseBrowseBreadcrumbHtml()}
+            <div class="fc-warehouse-folder-list">
+              ${childCats.map(c=>`<button type="button" onclick="openWarehouseBrowseCategory('${c.id}')" class="fc-warehouse-folder-row"><span class="fc-warehouse-folder-row-icon"><i data-lucide="folder" class="w-5 h-5"></i></span><span class="fc-warehouse-folder-row-copy"><b>${escapeHtml(categoryName(c))}</b><small>${warehouseCategoryChildren(c.id).length} ${tr('ichki katalog','подкат.')}, ${warehouseCategoryProducts(c.id).length} ${tr('tovar','тов.')}</small></span><i data-lucide="chevron-right" class="w-4 h-4"></i></button>`).join('')}
+            </div>
+            ${warehouseBrowseCategoryId ? `<div class="fc-warehouse-product-list">
+              ${catProducts.length ? catProducts.map(p=>renderWarehouseBrowseProductHtml(p)).join('') : (!childCats.length ? `<div class="fc-empty-state compact"><i data-lucide="package-open" class="w-7 h-7"></i><p>${tr('Bu katalogda tovar yo‘q','В этом каталоге нет товаров')}</p></div>` : '')}
+            </div>` : ''}
           </section>
-        </div>
-      `;
+        </div>`;
+    }
+    function renderWarehouseBrowseProductHtml(p){
+      const vars=productVariants(p); const total=vars.length?vars.reduce((n,v)=>n+(Number(v.qty)||0),0):Number(p.stock||0);
+      return `<button type="button" onclick="openWarehouseStockAdjust('${p.id}')" class="fc-warehouse-product-row"><img src="${escapeHtml(p.img||FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';"><span class="fc-warehouse-product-row-copy"><b>${escapeHtml(productName(p))}</b><small>ID: ${escapeHtml(p.sku)}${vars.length?` · ${vars.length} ${tr('variant','вариант')}`:''}</small></span><strong class="${total>0?'is-in':'is-out'}">${total} ${tr('ta','шт.')}</strong><i data-lucide="chevron-right" class="w-4 h-4"></i></button>`;
+    }
+    function openWarehouseStockAdjust(productId){
+      const p=products.find(x=>String(x.id)===String(productId)); if(!p)return;
+      const vars=productVariants(p); warehouseStockAdjustProductId=p.id; warehouseStockAdjustVariantSku=vars[0]?.sku||null;
+      warehouseStockAdjustDraft=String(vars.length?(Number(vars[0]?.qty)||0):(Number(p.stock)||0)); activePopupModal='WAREHOUSE_STOCK_ADJUST'; render();
+    }
+    function warehouseStockAdjustCurrent(){
+      const p=products.find(x=>String(x.id)===String(warehouseStockAdjustProductId)); if(!p)return 0;
+      const vars=productVariants(p); if(vars.length){ return Number(vars.find(v=>String(v.sku)===String(warehouseStockAdjustVariantSku))?.qty)||0; }
+      return Number(p.stock)||0;
+    }
+    function setWarehouseStockAdjustVariant(sku){
+      warehouseStockAdjustVariantSku=sku||null; const p=products.find(x=>String(x.id)===String(warehouseStockAdjustProductId));
+      const v=productVariants(p).find(x=>String(x.sku)===String(sku)); warehouseStockAdjustDraft=String(Number(v?.qty)||0); renderModalContainer(); if(window.lucide)lucide.createIcons();
+    }
+    function changeWarehouseStockDraft(delta){ const cur=Math.max(0,Number.parseInt(warehouseStockAdjustDraft,10)||0); warehouseStockAdjustDraft=String(Math.max(0,cur+delta)); renderModalContainer(); if(window.lucide)lucide.createIcons(); }
+    function closeWarehouseStockAdjust(){ activePopupModal=null; warehouseStockAdjustProductId=null; warehouseStockAdjustVariantSku=null; warehouseStockAdjustDraft=''; warehouseStockAdjustSaving=false; render(); }
+    async function saveWarehouseStockAdjust(){
+      const p=products.find(x=>String(x.id)===String(warehouseStockAdjustProductId)); if(!p||warehouseStockAdjustSaving)return;
+      const vars=productVariants(p); const sku=vars.length?warehouseStockAdjustVariantSku:p.sku; const stock=Number.parseInt(warehouseStockAdjustDraft,10);
+      if(!sku)return alert(tr('SKU topilmadi.','SKU не найден.')); if(!Number.isInteger(stock)||stock<0)return alert(tr('0 yoki undan katta son kiriting.','Введите число 0 или больше.'));
+      warehouseStockAdjustSaving=true; renderModalContainer(); showActionToast(tr('Saqlanmoqda...','Сохранение...'),'saving');
+      try{
+        const result=await callApi('bulk_stock_update',{updates:[{sku:String(sku).toUpperCase(),stock}]});
+        (result.products||[]).forEach(row=>{const mapped=mapProductFromDB(row);const idx=products.findIndex(x=>String(x.id)===String(mapped.id));if(idx>=0)products[idx]=mapped;});
+        if((result.errors||[]).length)throw new Error(result.errors[0]?.error||tr('Qoldiq yangilanmadi','Остаток не обновлён'));
+        saveCatalogCache(); warehouseSummaryLoaded=false; warehouseMovementsLoaded=false; activePopupModal=null; warehouseStockAdjustSaving=false; warehouseStockAdjustProductId=null; warehouseStockAdjustVariantSku=null; warehouseStockAdjustDraft=''; render();
+        showActionToast(tr('Qoldiq saqlandi','Остаток сохранён'),'success',1400); loadWarehouseMovements(true);
+      }catch(e){warehouseStockAdjustSaving=false;renderModalContainer();console.error(e);showActionToast(tr('Saqlanmadi','Не сохранено'),'error',1800);alert(tr('Xatolik: ','Ошибка: ')+(e.message||e));}
     }
 
     // 15-16-band: Kirim (stock-in ADD). Harakatlar tarixi ALOHIDA HARAKATLAR
@@ -4804,10 +4876,12 @@
       }
     }
     function switchWarehouseSubTab(tabName) {
-      warehouseSubTab = tabName;
+      const previous = warehouseSubTab;
+      warehouseSubTab = tabName === 'KIRIM' ? 'QOLDIQ' : tabName;
       warehouseStockFilter = null;
+      if (warehouseSubTab === 'QOLDIQ' && previous !== 'QOLDIQ') warehouseBrowseCategoryId = null;
       render();
-      if (tabName === 'HARAKATLAR') loadWarehouseMovements();
+      if (warehouseSubTab === 'HARAKATLAR') loadWarehouseMovements();
     }
     function openWarehouseStockFilter(kind) {
       warehouseStockFilter = kind;
@@ -4937,24 +5011,24 @@
         { key: 'custom', label: tr('Oraliq', 'Период') },
       ];
       const showPeriodFilter = dashboardTab !== 'UMUMIY' && dashboardTab !== 'MIJOZLAR';
+      const tabIcons = { UMUMIY:'layout-dashboard', BUYURTMALAR:'package-check', SAVDO:'chart-no-axes-combined', MIJOZLAR:'users', MAHSULOTLAR:'boxes' };
       const body = `
-        <div class="space-y-4">
-          <div class="grid grid-cols-5 gap-1">
-            ${tabs.map(tb => `<button onclick="switchDashboardTab('${tb.key}')" class="py-2 rounded-xl text-[10px] font-bold ${dashboardTab === tb.key ? 'bg-slate-900 text-white' : 'bg-white border text-slate-600'}">${tb.label}</button>`).join('')}
+        <div class="fc-report-page">
+          <div class="fc-report-tabs">
+            ${tabs.map(tb => `<button onclick="switchDashboardTab('${tb.key}')" class="fc-report-tab ${dashboardTab === tb.key ? 'is-active' : ''}"><i data-lucide="${tabIcons[tb.key]}" class="w-4 h-4"></i><span>${tb.label}</span></button>`).join('')}
           </div>
           ${showPeriodFilter ? `
-            <div class="flex gap-1.5 flex-wrap">
-              ${periodChips.map(c => `<button onclick="setDashboardPeriod('${c.key}')" class="fc-badge ${dashboardPeriod === c.key ? 'fc-badge-primary' : 'fc-badge-muted'}">${c.label}</button>`).join('')}
+            <div class="fc-report-periods">
+              ${periodChips.map(c => `<button onclick="setDashboardPeriod('${c.key}')" class="fc-report-period ${dashboardPeriod === c.key ? 'is-active' : ''}">${c.label}</button>`).join('')}
             </div>
             ${dashboardPeriod === 'custom' ? `
-              <div class="flex gap-2 items-center">
-                <input type="date" value="${escapeHtml(dashboardCustomFrom)}" onchange="dashboardCustomFrom=this.value; reloadDashboardRange();" class="flex-1 p-2 border rounded-xl text-xs">
-                <span class="text-gray-400 text-xs">—</span>
-                <input type="date" value="${escapeHtml(dashboardCustomTo)}" onchange="dashboardCustomTo=this.value; reloadDashboardRange();" class="flex-1 p-2 border rounded-xl text-xs">
+              <div class="fc-report-date-range">
+                <label><span>${tr('Boshlanish','Начало')}</span><input type="date" value="${escapeHtml(dashboardCustomFrom)}" onchange="dashboardCustomFrom=this.value; reloadDashboardRange();"></label>
+                <label><span>${tr('Tugash','Конец')}</span><input type="date" value="${escapeHtml(dashboardCustomTo)}" onchange="dashboardCustomTo=this.value; reloadDashboardRange();"></label>
               </div>
             ` : ''}
           ` : ''}
-          ${renderDashboardTabBodyHtml(d)}
+          <div class="fc-report-content">${renderDashboardTabBodyHtml(d)}</div>
         </div>
       `;
       renderPageShell(container, tr('Hisobot', 'Отчёт'), body);
@@ -4980,7 +5054,7 @@
         </div>`;
       return `
         <section>
-          <h3 class="font-bold text-sm text-gray-700 mb-2">💰 ${tr('Savdo', 'Продажи')}</h3>
+          <h3 class="fc-report-section-title"><i data-lucide="wallet-cards" class="w-4 h-4"></i>${tr('Savdo', 'Продажи')}</h3>
           <div class="grid grid-cols-2 gap-2">
             ${salesCard(tr('Bugungi savdo', 'Продажи сегодня'), d.sales.today, d.sales.todayCount)}
             ${salesCard(tr('7 kun', '7 дней'), d.sales.week, d.sales.weekCount)}
@@ -4995,7 +5069,7 @@
         </section>
 
         <section>
-          <h3 class="font-bold text-sm text-gray-700 mb-2">📦 ${tr('Buyurtmalar', 'Заказы')}</h3>
+          <h3 class="fc-report-section-title"><i data-lucide="package-check" class="w-4 h-4"></i>${tr('Buyurtmalar', 'Заказы')}</h3>
           <div class="grid grid-cols-2 gap-2">
             ${orderStatusBadge(tr('Yangi', 'Новые'), d.orders.NEW, 'warning', 'NEW')}
             ${orderStatusBadge(tr('Tayyorlanmoqda', 'В обработке'), d.orders.PROCESSING, 'primary', 'PROCESSING')}
@@ -5005,7 +5079,7 @@
         </section>
 
         <section>
-          <h3 class="font-bold text-sm text-gray-700 mb-2">🏷️ ${tr('Tovarlar', 'Товары')}</h3>
+          <h3 class="fc-report-section-title"><i data-lucide="boxes" class="w-4 h-4"></i>${tr('Tovarlar', 'Товары')}</h3>
           <div class="grid grid-cols-2 gap-2">
             <div class="fc-card"><p class="text-gray-500 text-[11px]">${tr('Jami mahsulot', 'Всего товаров')}</p><b class="text-lg block">${d.products.total}</b></div>
             <div onclick="dashboardGoToWarehouseFilter('LOW')" class="fc-card fc-border-warning cursor-pointer hover:bg-gray-50"><p class="text-gray-500 text-[11px]">${tr('Kam qolgan', 'Заканчивается')}</p><b class="text-lg block fc-text-warning">${d.products.lowStock}</b></div>
@@ -5015,7 +5089,7 @@
 
         ${d.regions.length ? `
           <section>
-            <h3 class="font-bold text-sm text-gray-700 mb-2">📍 ${tr('Hududlar', 'Регионы')}</h3>
+            <h3 class="fc-report-section-title"><i data-lucide="map-pin" class="w-4 h-4"></i>${tr('Hududlar', 'Регионы')}</h3>
             <div class="fc-card space-y-1.5">
               ${d.regions.map((r, i) => `<div class="flex items-center justify-between text-xs ${i ? 'border-t pt-1.5' : ''}"><span>${i + 1}. ${escapeHtml(r.label)}</span><b>${r.count} ${tr('ta buyurtma', 'заказов')}</b></div>`).join('')}
             </div>
@@ -5097,14 +5171,14 @@
             <div onclick="dashboardGoToWarehouseFilter('LOW')" class="fc-card fc-border-warning cursor-pointer hover:bg-gray-50"><p class="text-gray-500 text-[11px]">${tr('Kam qolgan', 'Заканчивается')}</p><b class="text-lg block fc-text-warning">${d.products.lowStock}</b></div>
           </div>
 
-          <h3 class="font-bold text-sm text-gray-700 mb-2 mt-3">🏆 ${tr('Eng ko‘p sotilgan (hammasi)', 'Самые продаваемые (всё время)')}</h3>
+          <h3 class="fc-report-section-title mt-3"><i data-lucide="trophy" class="w-4 h-4"></i>${tr('Eng ko‘p sotilgan (hammasi)', 'Самые продаваемые (всё время)')}</h3>
           ${d.products.bestSellers.length ? `
             <div class="fc-card">
               ${d.products.bestSellers.map((p, i) => `<div class="flex items-center justify-between py-1 ${i ? 'border-t' : ''}"><span class="text-xs truncate">${i + 1}. ${escapeHtml(p.name)}</span><b class="text-xs shrink-0">${p.soldCount}</b></div>`).join('')}
             </div>
           ` : `<div class="fc-empty-state"><p>${tr('Ma’lumot yo‘q', 'Нет данных')}</p></div>`}
 
-          <h3 class="font-bold text-sm text-gray-700 mb-2 mt-3">💵 ${tr('Tanlangan davrda tushum (mahsulot bo‘yicha)', 'Выручка за период (по товарам)')}</h3>
+          <h3 class="fc-report-section-title mt-3"><i data-lucide="badge-dollar-sign" class="w-4 h-4"></i>${tr('Tanlangan davrda tushum (mahsulot bo‘yicha)', 'Выручка за период (по товарам)')}</h3>
           ${revenueByProduct.length ? `
             <div class="fc-card">
               ${revenueByProduct.map((r, i) => `<div class="flex items-center justify-between py-1 ${i ? 'border-t' : ''}"><span class="text-xs truncate flex-1">${i + 1}. ${escapeHtml(r.name)}${r.sku ? ` <span class="text-gray-400">(${escapeHtml(r.sku)})</span>` : ''}</span><b class="text-xs shrink-0 ml-2">${money(r.revenue)}</b></div>`).join('')}
@@ -5112,7 +5186,7 @@
           ` : `<div class="fc-empty-state"><p>${tr('Tanlangan davrda savdo yo‘q', 'Нет продаж за выбранный период')}</p></div>`}
 
           ${topCategories.length ? `
-            <h3 class="font-bold text-sm text-gray-700 mb-2 mt-3">📂 ${tr('Yetakchi kategoriyalar (tanlangan davr)', 'Топ категорий (за период)')}</h3>
+            <h3 class="fc-report-section-title mt-3"><i data-lucide="folder-kanban" class="w-4 h-4"></i>${tr('Yetakchi kategoriyalar (tanlangan davr)', 'Топ категорий (за период)')}</h3>
             <div class="fc-card space-y-1.5">
               ${topCategories.map((c, i) => `<div class="flex items-center justify-between text-xs ${i ? 'border-t pt-1.5' : ''}"><span>${i + 1}. ${escapeHtml(c.label)}</span><b>${money(c.revenue)}</b></div>`).join('')}
             </div>
@@ -5260,10 +5334,10 @@
     // 4.1: kamida 5 ta tayyor mavzu. Har biri barcha 8 rolni belgilaydi.
     const DESIGN_THEMES = {
       minimal: { label: tr('Minimal', 'Минимал'), colors: { primary: '#2563eb', accent: '#2563eb', button: '#2563eb', pageBg: '#f6f8fb', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#1f2937' } },
-      dark: { label: tr('Dark', 'Тёмная'), colors: { primary: '#60a5fa', accent: '#818cf8', button: '#2563eb', pageBg: '#0f172a', cardBg: '#1e293b', headerBg: '#111827', bottomNavBg: '#111827', text: '#f1f5f9' } },
-      sport: { label: tr('Sport', 'Спорт'), colors: { primary: '#f97316', accent: '#fb923c', button: '#ea580c', pageBg: '#fff7ed', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#1f2937' } },
-      elegant: { label: tr('Elegant', 'Элегант'), colors: { primary: '#7c3aed', accent: '#a78bfa', button: '#7c3aed', pageBg: '#f8f7ff', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#312e81' } },
-      bright: { label: tr('Bright', 'Яркая'), colors: { primary: '#e11d48', accent: '#fb7185', button: '#e11d48', pageBg: '#fff7fb', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#3f3f46' } },
+      dark: { label: tr('Dark', 'Тёмная'), colors: { primary: '#60a5fa', accent: '#22d3ee', button: '#2563eb', pageBg: '#0b1220', cardBg: '#111c2e', headerBg: '#0d1728', bottomNavBg: '#0d1728', text: '#f8fafc' } },
+      sport: { label: tr('Sport', 'Спорт'), colors: { primary: '#1d4ed8', accent: '#f97316', button: '#2563eb', pageBg: '#f5f8fc', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#172033' } },
+      elegant: { label: tr('Elegant', 'Элегант'), colors: { primary: '#6d28d9', accent: '#c084fc', button: '#7c3aed', pageBg: '#faf7ff', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#2e1065' } },
+      bright: { label: tr('Bright', 'Яркая'), colors: { primary: '#0f766e', accent: '#f59e0b', button: '#0d9488', pageBg: '#f3faf9', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#17324d' } },
     };
 
     // ---- 4.3: WCAG kontrast hisoblash ----
@@ -5327,6 +5401,8 @@
       root.setProperty('--ustore-header-bg', c.headerBg);
       root.setProperty('--ustore-bottomnav-bg', c.bottomNavBg);
       root.setProperty('--ustore-text', c.text);
+      const dark = (relLuminance(c.pageBg) ?? 1) < 0.18;
+      document.documentElement.classList.toggle('ustore-dark-theme', dark);
     }
 
     function openDesignSettings() {
@@ -5345,14 +5421,14 @@
       designDraft.themeId = themeId;
       designDraft.colors = { ...theme.colors };
       applyDesignColors(designDraft.colors); // 4.1: tugmani bosganda darhol preview
-      renderModalContainer();
+      render();
     }
     function setDesignColor(key, value) {
       if (!DESIGN_COLOR_KEYS.includes(key)) return;
       designDraft.themeId = 'custom';
       designDraft.colors = { ...designDraft.colors, [key]: value };
       applyDesignColors(designDraft.colors);
-      renderModalContainer();
+      render();
     }
     async function saveDesignSettings() {
       const issues = findContrastIssues(designDraft.colors);
@@ -6038,7 +6114,7 @@
             </div>
 
             ${(instagramNick || telegramNick || facebookNick) ? `<div class="fc-shop-social-actions">
-              ${instagramNick ? `<a href="https://instagram.com/${encodeURIComponent(instagramNick)}" target="_blank" class="fc-shop-social-chip" title="Instagram"><span class="fc-shop-social-chip-icon"><i data-lucide="instagram" class="w-4 h-4"></i></span><span>Instagram</span></a>` : ''}
+              ${instagramNick ? `<a href="https://instagram.com/${encodeURIComponent(instagramNick)}" target="_blank" class="fc-shop-social-chip" title="Instagram"><span class="fc-shop-social-chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5" ry="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"></circle></svg></span><span>Instagram</span></a>` : ''}
               ${telegramNick ? `<a href="https://t.me/${encodeURIComponent(telegramNick)}" target="_blank" class="fc-shop-social-chip" title="Telegram"><span class="fc-shop-social-chip-icon"><i data-lucide="send" class="w-4 h-4"></i></span><span>Telegram</span></a>` : ''}
               ${facebookNick ? `<a href="https://facebook.com/${encodeURIComponent(facebookNick)}" target="_blank" class="fc-shop-social-chip" title="Facebook"><span class="fc-shop-social-chip-icon"><i data-lucide="globe-2" class="w-4 h-4"></i></span><span>Facebook</span></a>` : ''}
             </div>` : ''}
@@ -7046,6 +7122,40 @@
       // shunday — endi modal emas, to'liq sahifa (renderOrderInfoPage,
       // renderDesignSettingsPage, renderDeliverySettingsPage,
       // renderPaymentSettingsPage — activePage router'da, pastda qarang).
+
+      if (activePopupModal === 'WAREHOUSE_STOCK_ADJUST') {
+        const p = products.find(x => String(x.id) === String(warehouseStockAdjustProductId));
+        if (!p) { activePopupModal = null; render(); return; }
+        const vars = productVariants(p);
+        const current = warehouseStockAdjustCurrent();
+        const draft = Math.max(0, Number.parseInt(warehouseStockAdjustDraft, 10) || 0);
+        container.innerHTML = `
+          <div class="fc-sheet-overlay" onclick="if(event.target===this) closeWarehouseStockAdjust();">
+            <div class="fc-sheet fc-stock-adjust-sheet" onclick="event.stopPropagation()">
+              <div class="fc-sheet-handle"></div>
+              <div class="fc-stock-adjust-head">
+                <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';">
+                <div><small>${tr('Qoldiqni boshqarish','Управление остатком')}</small><h3>${escapeHtml(productName(p))}</h3><p>ID: ${escapeHtml(p.sku)}</p></div>
+                <button type="button" onclick="closeWarehouseStockAdjust()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button>
+              </div>
+              <div class="fc-stock-adjust-body">
+                ${vars.length ? `<label class="fc-stock-adjust-field"><span>${tr('Variant','Вариант')}</span><select onchange="setWarehouseStockAdjustVariant(this.value)">${vars.map(v=>`<option value="${escapeHtml(v.sku)}" ${String(v.sku)===String(warehouseStockAdjustVariantSku)?'selected':''}>${escapeHtml(variantLabel(v))} · ${v.qty} ${tr('ta','шт.')}</option>`).join('')}</select></label>` : ''}
+                <div class="fc-stock-adjust-current"><span>${tr('Hozirgi qoldiq','Текущий остаток')}</span><b>${current}</b></div>
+                <div class="fc-stock-adjust-stepper">
+                  <button type="button" onclick="changeWarehouseStockDraft(-1)" aria-label="${tr('Kamaytirish','Уменьшить')}"><i data-lucide="minus" class="w-5 h-5"></i></button>
+                  <input type="number" min="0" value="${draft}" oninput="warehouseStockAdjustDraft=this.value" aria-label="${tr('Yangi qoldiq','Новый остаток')}">
+                  <button type="button" onclick="changeWarehouseStockDraft(1)" aria-label="${tr('Ko‘paytirish','Увеличить')}"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                </div>
+                <div class="fc-stock-adjust-preview"><span>${current}</span><i data-lucide="arrow-right" class="w-4 h-4"></i><strong>${draft}</strong></div>
+              </div>
+              <div class="fc-sheet-footer fc-stock-adjust-footer">
+                <button type="button" onclick="closeWarehouseStockAdjust()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button>
+                <button type="button" onclick="saveWarehouseStockAdjust()" ${warehouseStockAdjustSaving?'disabled':''} class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${warehouseStockAdjustSaving?tr('Saqlanmoqda...','Сохранение...'):tr('Saqlash','Сохранить')}</button>
+              </div>
+            </div>
+          </div>`;
+        return;
+      }
 
       if (activePopupModal === 'ADD_PROD') {
         container.innerHTML = `
