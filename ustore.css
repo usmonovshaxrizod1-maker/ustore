@@ -1883,3 +1883,49 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 /* Checkout: sectionlar bir qarashda ajralsin, ammo rang-barang bo'lib ketmasin. */
 .fc-checkout-sheet{background:#f6f9fd}.fc-checkout-section{background:#fff;border-width:1px}.fc-checkout-section:nth-of-type(1){border-color:#bfdbfe}.fc-checkout-section:nth-of-type(2){border-color:#bbf7d0}.fc-checkout-section:nth-of-type(3){border-color:#fed7aa}.fc-checkout-section-head h4{color:#0f172a}.fc-checkout-section-head p{color:#64748b}.fc-checkout-input,.fc-checkout-select{color:#1e293b}.fc-checkout-input::placeholder{color:#94a3b8}.fc-checkout-summary{background:#f0f7ff;border-color:#bfdbfe}.fc-checkout-summary>div{color:#475569}.fc-checkout-submit{background:#2563eb!important;color:#fff!important;box-shadow:0 9px 20px rgba(37,99,235,.24)!important}
 .fc-orders-filter-compact{display:flex;align-items:center;justify-content:flex-end;gap:.5rem;min-height:2.65rem}.fc-orders-range-label{font-size:.62rem;font-weight:750;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:.72rem;padding:.48rem .62rem}
+
+/* ROUND 5 — requested safe interaction fixes (checkout/calendar/selection/drag) */
+/* Checkout: .fc-checkout-field/.fc-checkout-branch-wrap keyingi qoidalari .hidden ni bosib yubormasin. */
+.fc-checkout-field.hidden,.fc-checkout-branch-wrap.hidden{display:none!important}
+
+/* Orders: qidiruv yonida ixcham calendar trigger; tashqarida sana matni yo'q. */
+.fc-orders-search-calendar-row{display:grid;grid-template-columns:minmax(0,1fr) 2.7rem;gap:.5rem;align-items:center}
+.fc-orders-search-calendar-row>input{width:100%;min-width:0;height:2.7rem;background:#fff;border-color:#dbe4ef!important}
+.fc-orders-calendar-trigger{width:2.7rem;height:2.7rem;min-width:2.7rem;border-radius:.85rem;background:#fff;border:1px solid #cbd5e1;color:#2563eb;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+.fc-orders-calendar-trigger.is-active{background:#eff6ff;border-color:#60a5fa;box-shadow:0 0 0 2px rgba(37,99,235,.07)}
+.fc-orders-popover-overlay{position:fixed;inset:0;z-index:72;background:rgba(15,23,42,.04)}
+.fc-orders-popover{position:fixed;z-index:73;max-height:calc(100dvh - 96px);overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:1.15rem;box-shadow:0 18px 50px rgba(15,23,42,.20),0 4px 14px rgba(15,23,42,.10);padding:.35rem}
+.fc-orders-popover .fc-orders-calendar-card{border:0;box-shadow:none;border-radius:.9rem;padding:.55rem}
+.fc-orders-popover .fc-orders-calendar-day{min-height:1.82rem;font-size:.64rem;border-radius:.55rem}
+.fc-orders-popover .fc-orders-calendar-top{padding-bottom:.45rem}
+.fc-orders-popover .fc-orders-calendar-monthbar{padding:.2rem 0 .4rem}
+.fc-orders-calendar-actions{display:flex;justify-content:flex-end;gap:.45rem;padding-top:.55rem;margin-top:.5rem;border-top:1px solid #eef2f7}
+.fc-orders-calendar-actions button{width:2.2rem;height:2.2rem;border-radius:.72rem;border:1px solid #dbe4ef;background:#fff;color:#64748b;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(15,23,42,.04)}
+.fc-orders-calendar-actions button.is-primary{background:#2563eb;border-color:#2563eb;color:#fff}
+.fc-orders-calendar-actions button:disabled{opacity:.35;cursor:not-allowed}
+
+/* Tovar card: faqat pin + 6 nuqtali drag rasm ustida; edit/delete kartadan olib tashlangan. */
+.fc-product-pin-overlay,.fc-product-drag-overlay{position:absolute;top:.45rem;z-index:24;width:2rem;height:2rem;border-radius:.68rem;border:1px solid rgba(203,213,225,.95);background:rgba(255,255,255,.96);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(15,23,42,.10);backdrop-filter:blur(6px)}
+.fc-product-pin-overlay{left:.45rem;color:#64748b}.fc-product-pin-overlay.is-active{background:#fff7ed;border-color:#fed7aa;color:#d97706}
+.fc-product-drag-overlay{right:.45rem!important;left:auto!important;top:.45rem!important;color:#475569!important;background:rgba(255,255,255,.98)!important;border-color:#cbd5e1!important}
+.fc-product-drag-overlay svg{width:1.05rem;height:1.05rem}
+
+/* Drag paytida karta barmoq bilan yuradi; asl joy va target aniq ko'rinadi. */
+.fc-drag-ghost{opacity:.96!important;transform:scale(1.015);box-shadow:0 18px 42px rgba(15,23,42,.22)!important;border-color:#60a5fa!important;background:#fff!important;transition:none!important;overflow:hidden}
+.fc-drag-source{opacity:.28!important}
+.fc-drag-target{box-shadow:0 0 0 2px rgba(37,99,235,.22)!important;border-color:#60a5fa!important}
+
+/* Bulk selection actionlari bottom-nav ustida doimiy och pin panel. */
+.fc-selection-toolbar{position:fixed!important;left:50%!important;right:auto!important;bottom:calc(5.15rem + env(safe-area-inset-bottom))!important;transform:translateX(-50%)!important;width:min(90vw,23rem);z-index:68!important;background:rgba(255,255,255,.98)!important;color:#334155!important;border:1px solid #dbe4ef;border-radius:1rem;padding:.48rem .55rem;box-shadow:0 14px 36px rgba(15,23,42,.16);backdrop-filter:blur(12px)}
+.fc-selection-toolbar>span{background:#eff6ff!important;color:#1d4ed8!important}
+.fc-selection-toolbar button{background:#f8fafc!important;color:#475569!important;border:1px solid #e2e8f0}
+.fc-selection-toolbar button.is-danger{background:#fff1f2!important;color:#dc2626!important;border-color:#fecdd3}
+.fc-selection-toolbar button:disabled{opacity:.35}
+
+/* Chiqindi: async reloaddan keyin iconlar kontrastli; actions qora emas. */
+.fc-trash-card-icon,.fc-trash-hold-hint,.fc-trash-search,.fc-trash-sheet .fc-section-icon,.fc-trash-sheet .fc-icon-btn{color:#475569}
+.fc-trash-card-icon svg,.fc-trash-hold-hint,.fc-trash-sheet svg{display:block}
+.fc-trash-actions{position:fixed;left:50%;right:auto;bottom:calc(.8rem + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(88vw,23rem);z-index:75;background:rgba(255,255,255,.98);color:#334155;border:1px solid #dbe4ef;box-shadow:0 14px 36px rgba(15,23,42,.18);backdrop-filter:blur(12px)}
+.fc-trash-actions>span{background:#eff6ff;color:#1d4ed8}.fc-trash-actions button{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}.fc-trash-actions button.is-danger{background:#fff1f2;color:#dc2626;border-color:#fecdd3}
+
+@media(max-width:360px){.fc-orders-search-calendar-row{grid-template-columns:minmax(0,1fr) 2.55rem}.fc-orders-calendar-trigger{width:2.55rem;height:2.55rem;min-width:2.55rem}.fc-orders-popover{max-width:calc(100vw - 16px)}}

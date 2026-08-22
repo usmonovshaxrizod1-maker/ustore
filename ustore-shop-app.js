@@ -62,6 +62,7 @@
     const ICON_UP = fcIcon('<polyline points="18 15 12 9 6 15"></polyline>');
     const ICON_DOWN = fcIcon('<polyline points="6 9 12 15 18 9"></polyline>');
     const ICON_PIN = fcIcon('<line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>');
+    const ICON_GRIP_6 = fcIcon('<circle cx="9" cy="7" r="1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="7" r="1" fill="currentColor" stroke="none"></circle><circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="9" cy="17" r="1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="17" r="1" fill="currentColor" stroke="none"></circle>', 'w-4 h-4');
     // Legacy audit, 6-band: admin katalog toolbar'idagi tasodifiy emoji
     // (🖼️🧭☑️🔳) o'rniga bir xil stroke uslubidagi ikonalar.
     const ICON_IMAGE = fcIcon('<rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path>');
@@ -592,6 +593,11 @@
     // aynan bitta kunlik intervalni (masalan 22.08.2026–22.08.2026) tanlaydi.
     let ordersDateFrom = '';
     let ordersDateTo = '';
+    // Calendar popup ichidagi tanlov committed filterdan alohida draftda turadi.
+    // Faqat tasdiqlash iconi bosilganda ordersDateFrom/To ga o'tadi.
+    let ordersCalendarDraftFrom = '';
+    let ordersCalendarDraftTo = '';
+    let ordersCalendarAnchorRect = null;
     let ordersCalendarMonth = (() => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -2881,13 +2887,13 @@
 
       return `
         <div data-product-card-id="${escapeHtml(p.id)}" onclick="handleProductCardClick('${p.id}', event)" onpointerdown="startProductLongPress('${p.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="bg-white rounded-2xl p-3 shadow-sm border ${bulkSelecting && bulkSelectedProductIds.has(String(p.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex flex-col justify-between relative cursor-pointer hover:shadow-md transition-all">
-          ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-drag-handle absolute top-2 right-2 z-20" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)"><i data-lucide="grip-vertical" class="w-4 h-4"></i></button>` : ''}
-          ${bulkSelecting ? `<div class="absolute top-2 left-2 z-10 w-7 h-7 rounded-full flex items-center justify-center font-black ${bulkSelectedProductIds.has(String(p.id)) ? 'bg-blue-600 text-white' : 'bg-white/95 text-gray-400 border'}">${bulkSelectedProductIds.has(String(p.id)) ? '<i data-lucide="check" class="w-4 h-4"></i>' : ''}</div>` : ''}
+          ${bulkSelecting ? `<div class="absolute top-2 left-2 z-30 w-7 h-7 rounded-full flex items-center justify-center font-black ${bulkSelectedProductIds.has(String(p.id)) ? 'bg-blue-600 text-white' : 'bg-white/95 text-gray-400 border'}">${bulkSelectedProductIds.has(String(p.id)) ? '<i data-lucide="check" class="w-4 h-4"></i>' : ''}</div>` : ''}
           <div>
             <div class="relative">
               <div class="w-full h-32 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
                 <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-full object-contain" loading="lazy">
               </div>
+              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-drag-handle fc-product-drag-overlay" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
@@ -2909,16 +2915,8 @@
             ${productDesc(p) ? `<p class="text-[10px] text-gray-400 italic mt-0.5 line-clamp-1">${escapeHtml(truncateText(productDesc(p), 40))}</p>` : ''}
           </div>
 
-          <!-- ADMIN CONTROLS -->
-          ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `
-            <div class="mt-2 pt-2 border-t flex flex-col space-y-1" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation()">
-              <div class="flex justify-between items-center text-[10px]">
-                <button onclick="toggleProductFeatured('${p.id}')" aria-label="${tr('Pin', 'Закрепить')}" class="px-1.5 py-0.5 ${p.isFeatured ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'} rounded font-bold">${ICON_PIN}</button>
-                <button onclick="openProductDetailModal('${p.id}')" class="px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded font-bold">${ICON_EDIT}</button>
-                <button onclick="deleteProduct('${p.id}')" aria-label="${tr("O'chirish", 'Удалить')}" class="px-1.5 py-0.5 fc-bg-danger-soft fc-text-danger rounded font-bold">${ICON_TRASH}</button>
-              </div>
-            </div>
-          ` : `
+          <!-- ADMIN: tahrirlash kartaning o'zini bosish orqali; pin/drag rasm ustida. -->
+          ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `` : `
             <!-- USER CART CONTROLS -->
             <div class="mt-2" onclick="event.stopPropagation()">
               ${p.stock > 0 ? (
@@ -2997,7 +2995,7 @@
           </div>
 
           <!-- SUBCATEGORIES LIST -->
-          <div class="space-y-2">
+          <div class="space-y-2" data-catalog-drag-list="category">
             ${subCats.map((sub, subIdx) => `
               <div data-category-row-id="${sub.id}" onclick="handleCategoryRowClick('${sub.id}', event)" onpointerdown="startCategoryLongPress('${sub.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="ustore-cat-row p-3.5 rounded-2xl border ${bulkCategorySelectMode && bulkSelectedCategoryIds.has(String(sub.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex items-center justify-between shadow-sm cursor-pointer">
                 <div class="flex items-center space-x-3">
@@ -3012,7 +3010,7 @@
                 </div>
                 <div class="flex items-center space-x-1">
                   ${(isAdminMode && isUserAnAdmin) ? (bulkCategorySelectMode ? `<span class="fc-select-dot ${bulkSelectedCategoryIds.has(String(sub.id)) ? 'is-selected' : ''}"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>` : `
-                    <button type="button" class="fc-drag-handle" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('category','${sub.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)"><i data-lucide="grip-vertical" class="w-4 h-4"></i></button>
+                    <button type="button" class="fc-drag-handle" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('category','${sub.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>
                     <button onpointerdown="event.stopPropagation()" onclick="openEditCategoryModal('${sub.id}', event)" class="p-1 bg-blue-100 text-blue-600 rounded text-xs font-bold">${ICON_EDIT}</button>
                     <button onpointerdown="event.stopPropagation()" onclick="deleteCategory('${sub.id}', event)" aria-label="${tr("O'chirish", 'Удалить')}" class="p-1 fc-bg-danger-soft fc-text-danger rounded text-xs font-bold">${ICON_TRASH}</button>
                   `) : ''}
@@ -3044,12 +3042,12 @@
                 <p>${filterActive ? tr('Mahsulot topilmadi. Boshqa so‘z bilan qidirib ko‘ring.', 'Товар не найден. Попробуйте другой запрос.') : tr('Bu katalogda hozircha tovar yo‘q.', 'В этом каталоге пока нет товаров.')}</p>
               </div>
             ` : `
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid grid-cols-2 gap-3" data-catalog-drag-list="product">
                 ${paginatedProds.map((p, idx) => renderProductCardHTML(p, idx, paginatedProds.length)).join('')}
               </div>
             `}
 
-            ${bulkProductSelectMode ? `<div class="fc-selection-toolbar sticky bottom-20 z-30"><span>${bulkSelectedProductIds.size}</span><button onclick="openBulkMoveProductsModal()" ${bulkSelectedProductIds.size?'':'disabled'} aria-label="${tr('Ko‘chirish','Переместить')}"><i data-lucide="folder-input" class="w-4 h-4"></i></button><button onclick="bulkTrashSelectedProducts()" ${bulkSelectedProductIds.size?'':'disabled'} class="is-danger" aria-label="${tr('O‘chirish','Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="clearBulkProductSelection()" aria-label="${tr('Tanlashni tugatish','Завершить выбор')}"><i data-lucide="x" class="w-4 h-4"></i></button></div>` : ''}
+            ${bulkProductSelectMode ? `<div class="fc-selection-toolbar"><span>${bulkSelectedProductIds.size}</span><button onclick="openBulkMoveProductsModal()" ${bulkSelectedProductIds.size?'':'disabled'} aria-label="${tr('Ko‘chirish','Переместить')}"><i data-lucide="folder-input" class="w-4 h-4"></i></button><button onclick="bulkTrashSelectedProducts()" ${bulkSelectedProductIds.size?'':'disabled'} class="is-danger" aria-label="${tr('O‘chirish','Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="clearBulkProductSelection()" aria-label="${tr('Tanlashni tugatish','Завершить выбор')}"><i data-lucide="x" class="w-4 h-4"></i></button></div>` : ''}
 
             ${totalPages > 1 ? `
               <div class="flex justify-center items-center space-x-2 pt-4">
@@ -4019,33 +4017,55 @@
 
     function selectOrdersCalendarDate(key) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key || ''))) return;
-      if (!ordersDateFrom || ordersDateTo) {
-        ordersDateFrom = key;
-        ordersDateTo = '';
+      if (!ordersCalendarDraftFrom || ordersCalendarDraftTo) {
+        ordersCalendarDraftFrom = key;
+        ordersCalendarDraftTo = '';
       } else {
-        if (key < ordersDateFrom) { ordersDateTo = ordersDateFrom; ordersDateFrom = key; }
-        else ordersDateTo = key;
+        if (key < ordersCalendarDraftFrom) { ordersCalendarDraftTo = ordersCalendarDraftFrom; ordersCalendarDraftFrom = key; }
+        else ordersCalendarDraftTo = key;
       }
-      ordersPage = 1;
-      if (ordersDateFrom && ordersDateTo) activePopupModal = null;
       render();
     }
-    function openOrdersCalendarModal() {
-      if (!ordersDateFrom && !ordersDateTo) {
-        const d = new Date();
-        ordersCalendarMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    function openOrdersCalendarModal(event) {
+      const btn = event?.currentTarget || event?.target?.closest?.('.fc-orders-calendar-trigger');
+      if (btn?.getBoundingClientRect) {
+        const r = btn.getBoundingClientRect();
+        ordersCalendarAnchorRect = { left:r.left, right:r.right, top:r.top, bottom:r.bottom, width:r.width, height:r.height };
       }
+      // Default oxirgi 1 oy filtr sifatida ishlaydi, ammo kalendarda bo'yalmaydi.
+      ordersCalendarDraftFrom = ordersDateFrom || '';
+      ordersCalendarDraftTo = ordersDateTo || '';
+      const basis = ordersCalendarDraftFrom ? parseOrderDateKey(ordersCalendarDraftFrom) : new Date();
+      ordersCalendarMonth = `${basis.getFullYear()}-${String(basis.getMonth()+1).padStart(2,'0')}`;
       activePopupModal = 'ORDERS_CALENDAR';
       render();
     }
-
+    function cancelOrdersCalendarSelection() {
+      ordersCalendarDraftFrom = '';
+      ordersCalendarDraftTo = '';
+      activePopupModal = null;
+      render();
+    }
+    function applyOrdersCalendarSelection() {
+      if (!ordersCalendarDraftFrom || !ordersCalendarDraftTo) return;
+      ordersDateFrom = ordersCalendarDraftFrom;
+      ordersDateTo = ordersCalendarDraftTo;
+      ordersPage = 1;
+      activePopupModal = null;
+      render();
+    }
     function clearOrdersDateRange() {
+      // Popup ichidagi reset committed filtrni darrov o'zgartirmaydi.
+      ordersCalendarDraftFrom = '';
+      ordersCalendarDraftTo = '';
+      render();
+    }
+    function clearCommittedOrdersDateRange() {
       ordersDateFrom = '';
       ordersDateTo = '';
       ordersPage = 1;
       render();
     }
-
     function changeOrdersCalendarMonth(delta) {
       const m = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
       const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, 1) : new Date();
@@ -4085,18 +4105,17 @@
       for (let i=0;i<firstOffset;i++) cells.push('<span class="fc-orders-calendar-empty"></span>');
       for (let day=1;day<=dayCount;day++) {
         const key = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-        const isStart=key===ordersDateFrom,isEnd=key===ordersDateTo,inRange=!!(ordersDateFrom&&ordersDateTo&&key>ordersDateFrom&&key<ordersDateTo),pending=!!(ordersDateFrom&&!ordersDateTo&&isStart),single=!!(isStart&&isEnd);
+        const isStart=key===ordersCalendarDraftFrom,isEnd=key===ordersCalendarDraftTo,inRange=!!(ordersCalendarDraftFrom&&ordersCalendarDraftTo&&key>ordersCalendarDraftFrom&&key<ordersCalendarDraftTo),pending=!!(ordersCalendarDraftFrom&&!ordersCalendarDraftTo&&isStart),single=!!(isStart&&isEnd);
         const cls=['fc-orders-calendar-day',isStart?'is-start':'',isEnd?'is-end':'',inRange?'is-in-range':'',pending?'is-pending':'',single?'is-single':'',key===todayKey?'is-today':''].filter(Boolean).join(' ');
         cells.push(`<button type="button" onclick="selectOrdersCalendarDate('${key}')" class="${cls}">${day}</button>`);
       }
-      const rangeText=ordersDateFrom&&ordersDateTo?`${formatOrderRangeDate(ordersDateFrom)} — ${formatOrderRangeDate(ordersDateTo)}`:ordersDateFrom?tr(`${formatOrderRangeDate(ordersDateFrom)} — tugash sanasini tanlang`,`${formatOrderRangeDate(ordersDateFrom)} — выберите дату окончания`):tr('Sana oralig‘ini tanlang','Выберите период');
-      return `<div class="fc-orders-calendar-card"><div class="fc-orders-calendar-top"><div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>${(ordersDateFrom||ordersDateTo)?`<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>`:''}</div><div class="fc-orders-calendar-monthbar"><button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-left" class="w-4 h-4"></i></button><strong>${uiLang==='ru'?monthNamesRu[month]:monthNamesUz[month]} ${year}</strong><button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div><div class="fc-orders-calendar-weekdays">${weekDays.map(d=>`<span>${d}</span>`).join('')}</div><div class="fc-orders-calendar-grid">${cells.join('')}</div><p class="fc-orders-calendar-hint">${tr('Bitta kun uchun sanani ikki marta bosing. Oraliq uchun boshlanish va tugash sanasini tanlang.','Для одного дня нажмите дату дважды. Для периода выберите начало и конец.')}</p></div>`;
+      const rangeText=ordersCalendarDraftFrom&&ordersCalendarDraftTo?`${formatOrderRangeDate(ordersCalendarDraftFrom)} — ${formatOrderRangeDate(ordersCalendarDraftTo)}`:ordersCalendarDraftFrom?tr(`${formatOrderRangeDate(ordersCalendarDraftFrom)} — tugash sanasini tanlang`,`${formatOrderRangeDate(ordersCalendarDraftFrom)} — выберите дату окончания`):tr('Sana oralig‘ini tanlang','Выберите период');
+      return `<div class="fc-orders-calendar-card"><div class="fc-orders-calendar-top"><div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>${(ordersCalendarDraftFrom||ordersCalendarDraftTo)?`<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear" aria-label="${tr('Tozalash','Сбросить')}"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>`:''}</div><div class="fc-orders-calendar-monthbar"><button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-left" class="w-4 h-4"></i></button><strong>${uiLang==='ru'?monthNamesRu[month]:monthNamesUz[month]} ${year}</strong><button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div><div class="fc-orders-calendar-weekdays">${weekDays.map(d=>`<span>${d}</span>`).join('')}</div><div class="fc-orders-calendar-grid">${cells.join('')}</div><p class="fc-orders-calendar-hint">${tr('Bitta kun uchun sanani ikki marta bosing. Oraliq uchun boshlanish va tugash sanasini tanlang.','Для одного дня нажмите дату дважды. Для периода выберите начало и конец.')}</p>${ordersCalendarDraftFrom?`<div class="fc-orders-calendar-actions"><button type="button" onclick="cancelOrdersCalendarSelection()" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-4 h-4"></i></button><button type="button" onclick="applyOrdersCalendarSelection()" ${ordersCalendarDraftTo?'':'disabled'} class="is-primary" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></div>`:''}</div>`;
     }
 
     function renderOrdersDateFilterHtml() {
       const explicit=!!(ordersDateFrom&&ordersDateTo);
-      const label=explicit?`${formatOrderRangeDate(ordersDateFrom)} — ${formatOrderRangeDate(ordersDateTo)}`:'';
-      return `<div class="fc-orders-filter-compact">${explicit?`<span class="fc-orders-range-label">${escapeHtml(label)}</span>`:''}<button type="button" onclick="openOrdersCalendarModal()" class="fc-orders-calendar-trigger ${explicit?'is-active':''}" aria-label="${tr('Kalendar','Календарь')}" title="${tr('Kalendar','Календарь')}"><i data-lucide="calendar-days" class="w-5 h-5"></i></button></div>`;
+      return `<button type="button" onclick="openOrdersCalendarModal(event)" class="fc-orders-calendar-trigger ${explicit?'is-active':''}" aria-label="${tr('Kalendar','Календарь')}" title="${tr('Kalendar','Календарь')}"><i data-lucide="calendar-days" class="w-5 h-5"></i></button>`;
     }
 
     function renderOrders(container) {
@@ -4122,10 +4141,9 @@
         container.innerHTML = `
           <div class="space-y-4">
             <h2 class="text-lg font-bold text-slate-800">${t('all_orders')}</h2>
-            ${renderOrdersDateFilterHtml()}
 
             <div class="bg-white p-3 rounded-2xl border space-y-2 text-xs shadow-sm">
-              <input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Mijoz ismi yoki tel raqami...','Имя клиента или номер телефона...')}" value="${escapeHtml(adminOrderFilters.search)}" class="w-full p-2 border rounded-xl">
+              <div class="fc-orders-search-calendar-row"><input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Mijoz ismi yoki tel raqami...','Имя клиента или номер телефона...')}" value="${escapeHtml(adminOrderFilters.search)}" class="p-2 border rounded-xl">${renderOrdersDateFilterHtml()}</div>
 
               <div class="flex gap-1 flex-wrap">
                 <button onclick="setAdminStatusFilter('ALL')" class="px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === 'ALL' ? 'bg-slate-800 text-white' : 'bg-gray-100 text-gray-600'}">${tr("Barchasi", "Все")}</button>
@@ -4187,8 +4205,7 @@
 
       container.innerHTML = `
         <div class="space-y-3">
-          <h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>
-          ${renderOrdersDateFilterHtml()}
+          <div class="flex items-center justify-between gap-2"><h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>${renderOrdersDateFilterHtml()}</div>
 
           <div class="flex space-x-1 overflow-x-auto pb-1 text-xs">
             <button onclick="userOrderFilter='ALL'; render();" class="px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border text-gray-600'}">${tr("Barchasi", "Все")}</button>
@@ -7474,7 +7491,12 @@
       }
 
       if (activePopupModal === 'ORDERS_CALENDAR') {
-        container.innerHTML = `<div class="fixed inset-0 bg-black/55 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="activePopupModal=null; render();"><div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full p-4 shadow-2xl" onclick="event.stopPropagation()"><div class="fc-modal-head"><div><h3>${tr('Sana oralig‘i','Период')}</h3><p>${tr('Buyurtmalarni sana bo‘yicha filtrlash','Фильтр заказов по дате')}</p></div><button onclick="activePopupModal=null; render();"><i data-lucide="x" class="w-4 h-4"></i></button></div>${renderOrdersCalendarBodyHtml()}</div></div>`;
+        const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+        const popW = Math.min(330, Math.max(280, vw - 24));
+        const a = ordersCalendarAnchorRect || { left: vw - 56, right: vw - 12, top: 180, bottom: 224 };
+        const left = Math.max(12, Math.min(vw - popW - 12, a.right - popW));
+        const top = Math.max(82, Math.min((window.innerHeight || 700) - 465, a.bottom + 8));
+        container.innerHTML = `<div class="fc-orders-popover-overlay" onclick="cancelOrdersCalendarSelection()"><div class="fc-orders-popover" style="left:${Math.round(left)}px;top:${Math.round(top)}px;width:${Math.round(popW)}px" onclick="event.stopPropagation()">${renderOrdersCalendarBodyHtml()}</div></div>`;
         return;
       }
 
@@ -8889,10 +8911,58 @@
     function startCategoryLongPress(categoryId,event){if(!(isAdminMode&&isUserAnAdmin)||catalogDragState)return;cancelCatalogLongPress();catalogLongPressTimer=setTimeout(()=>{bulkCategorySelectMode=true;bulkProductSelectMode=false;bulkSelectedProductIds.clear();bulkSelectedCategoryIds.add(String(categoryId));suppressCatalogClickOnce=true;render();},450);}
     function handleCategoryRowClick(categoryId,event){if(suppressCatalogClickOnce){suppressCatalogClickOnce=false;return;}if(bulkCategorySelectMode){event?.stopPropagation();const id=String(categoryId);if(bulkSelectedCategoryIds.has(id))bulkSelectedCategoryIds.delete(id);else bulkSelectedCategoryIds.add(id);return render();}adminCatParentId=categoryId;categoryPage=1;render();}
     function clearBulkCategorySelection(){bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();}
-    function beginCatalogDrag(kind,id,event){if(!(isAdminMode&&isUserAnAdmin))return;event.preventDefault();event.stopPropagation();cancelCatalogLongPress();try{event.currentTarget.setPointerCapture(event.pointerId);}catch(_){}catalogDragState={kind,id:String(id),targetId:String(id),pointerId:event.pointerId,handle:event.currentTarget};event.currentTarget.classList.add('is-dragging');}
-    function moveCatalogDrag(event){if(!catalogDragState||catalogDragState.pointerId!==event.pointerId)return;const hit=document.elementFromPoint(event.clientX,event.clientY);const row=catalogDragState.kind==='product'?hit?.closest?.('[data-product-card-id]'):hit?.closest?.('[data-category-row-id]');const target=row?.dataset?.[catalogDragState.kind==='product'?'productCardId':'categoryRowId'];if(target)catalogDragState.targetId=String(target);}
-    async function endCatalogDrag(event){if(!catalogDragState||catalogDragState.pointerId!==event.pointerId)return;event.preventDefault();event.stopPropagation();const st=catalogDragState;catalogDragState=null;suppressCatalogClickOnce=true;st.handle?.classList.remove('is-dragging');if(!st.targetId||st.targetId===st.id)return;if(st.kind==='product')await reorderProductToTarget(st.id,st.targetId);else await reorderCategoryToTarget(st.id,st.targetId);}
-    function cancelCatalogDrag(event){if(!catalogDragState)return;catalogDragState.handle?.classList.remove('is-dragging');catalogDragState=null;suppressCatalogClickOnce=true;}
+    function cleanupCatalogDragVisual(st){
+      if(!st)return;
+      st.handle?.classList.remove('is-dragging');
+      st.source?.classList.remove('fc-drag-source');
+      st.targetEl?.classList.remove('fc-drag-target');
+      st.ghost?.remove?.();
+    }
+    function beginCatalogDrag(kind,id,event){
+      if(!(isAdminMode&&isUserAnAdmin))return;
+      event.preventDefault();event.stopPropagation();cancelCatalogLongPress();
+      const source=kind==='product'?event.currentTarget.closest('[data-product-card-id]'):event.currentTarget.closest('[data-category-row-id]');
+      if(!source)return;
+      try{event.currentTarget.setPointerCapture(event.pointerId);}catch(_){}
+      const rect=source.getBoundingClientRect();
+      const list=source.closest(`[data-catalog-drag-list="${kind}"]`)||source.parentElement;
+      const ghost=source.cloneNode(true);
+      ghost.removeAttribute('onclick');ghost.removeAttribute('onpointerdown');
+      ghost.classList.add('fc-drag-ghost');
+      Object.assign(ghost.style,{position:'fixed',left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,margin:'0',zIndex:'9999',pointerEvents:'none'});
+      document.body.appendChild(ghost);
+      source.classList.add('fc-drag-source');
+      event.currentTarget.classList.add('is-dragging');
+      catalogDragState={kind,id:String(id),targetId:String(id),pointerId:event.pointerId,handle:event.currentTarget,source,list,ghost,targetEl:null,pointerOffsetX:event.clientX-rect.left,pointerOffsetY:event.clientY-rect.top};
+    }
+    function moveCatalogDrag(event){
+      const st=catalogDragState;if(!st||st.pointerId!==event.pointerId)return;
+      event.preventDefault();
+      const listRect=st.list?.getBoundingClientRect?.()||{left:0,right:window.innerWidth,top:0,bottom:window.innerHeight};
+      const ghostRect=st.ghost.getBoundingClientRect();
+      const maxLeft=Math.max(listRect.left,listRect.right-ghostRect.width),maxTop=Math.max(listRect.top,listRect.bottom-ghostRect.height);
+      const left=Math.min(maxLeft,Math.max(listRect.left,event.clientX-st.pointerOffsetX));
+      const top=Math.min(maxTop,Math.max(listRect.top,event.clientY-st.pointerOffsetY));
+      st.ghost.style.left=`${left}px`;st.ghost.style.top=`${top}px`;
+      // Ekran chetiga yaqinlashganda listni sekin scroll qilamiz.
+      const edge=86;
+      if(event.clientY<edge) window.scrollBy({top:-10,behavior:'auto'});
+      else if(event.clientY>(window.innerHeight-edge)) window.scrollBy({top:10,behavior:'auto'});
+      const hit=document.elementFromPoint(event.clientX,event.clientY);
+      const row=st.kind==='product'?hit?.closest?.('[data-product-card-id]'):hit?.closest?.('[data-category-row-id]');
+      const target=row?.dataset?.[st.kind==='product'?'productCardId':'categoryRowId'];
+      if(target){
+        st.targetId=String(target);
+        if(st.targetEl!==row){st.targetEl?.classList.remove('fc-drag-target');st.targetEl=row;st.targetEl.classList.add('fc-drag-target');}
+      }
+    }
+    async function endCatalogDrag(event){
+      if(!catalogDragState||catalogDragState.pointerId!==event.pointerId)return;
+      event.preventDefault();event.stopPropagation();const st=catalogDragState;catalogDragState=null;suppressCatalogClickOnce=true;cleanupCatalogDragVisual(st);
+      if(!st.targetId||st.targetId===st.id)return;
+      if(st.kind==='product')await reorderProductToTarget(st.id,st.targetId);else await reorderCategoryToTarget(st.id,st.targetId);
+    }
+    function cancelCatalogDrag(event){if(!catalogDragState)return;const st=catalogDragState;catalogDragState=null;cleanupCatalogDragVisual(st);}
     async function reorderProductToTarget(id,targetId){const list=[...currentVisibleProductIds].map(String),from=list.indexOf(String(id)),to=list.indexOf(String(targetId));if(from<0||to<0||from===to)return;const dir=to>from?1:-1;for(let i=0;i<Math.abs(to-from);i++)await moveProductSort(id,dir);}
     async function reorderCategoryToTarget(id,targetId){const cat=categories.find(c=>String(c.id)===String(id));if(!cat)return;const list=categories.filter(c=>String(c.parentId||'')===String(cat.parentId||'')).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)).map(c=>String(c.id));const from=list.indexOf(String(id)),to=list.indexOf(String(targetId));if(from<0||to<0||from===to)return;const dir=to>from?1:-1;for(let i=0;i<Math.abs(to-from);i++)await moveCategoryOrder(id,dir,null);}
     function openBulkMoveCategoriesModal(){if(!bulkSelectedCategoryIds.size)return;movePickerParentId=null;movePickerSearch='';activePopupModal='BULK_MOVE_CATEGORIES';render();}
@@ -9098,7 +9168,7 @@
         console.error(e);
         trashBatches = [];
       }
-      if (activePopupModal === 'TRASH') renderModalContainer();
+      if (activePopupModal === 'TRASH') { renderModalContainer(); if (window.lucide) lucide.createIcons(); }
     }
     async function restoreTrashBatch(batchId) {
       showActionToast(tr('⏳ Tiklanmoqda...', '⏳ Восстановление...'), 'saving');
