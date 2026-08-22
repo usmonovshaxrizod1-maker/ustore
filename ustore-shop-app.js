@@ -679,6 +679,9 @@
     let checkoutDistrictOptionsLoading = false;
     let checkoutDistrictOptionsLoadedFor = null; // regionKey
     let activePopupModal = null;
+    // Do'kon ma'lumotlari formasida logo tanlash/URL oynasiga o'tishda
+    // hali saqlanmagan input qiymatlari yo'qolib ketmasligi uchun vaqtinchalik draft.
+    let shopInfoDraft = null;
     let editingFieldData = null;
     // Universal 2-ustunli variant konstruktori (Add + Edit bir xil komponent).
     // Har qator: {level1, level2, qty} — level1->size, level2->color (mavjud
@@ -2094,21 +2097,10 @@
       if (logoImg) {
         if (shopLogoUrl) { logoImg.src = shopLogoUrl; logoImg.classList.remove('hidden'); }
         else { logoImg.classList.add('hidden'); }
-        // 6-band: logotip tahrirlash endi shu asosiy header logotipining
-        // o'zida — "Do'kon haqida"dagi alohida logotip bo'limi olib
-        // tashlandi (openShopLogoManager() pastda).
-        const canEditLogo = isUserAnAdmin && isAdminMode;
-        logoImg.onclick = canEditLogo ? openShopLogoManager : null;
-        logoImg.classList.toggle('cursor-pointer', canEditLogo);
-      }
-      // 6-band: logotip hali umuman qo'yilmagan bo'lsa, yuqoridagi
-      // #shop-logo-img yashirin qoladi — o'sha holatda bosadigan joy
-      // qolmasligi uchun ADMIN belgisi yonidagi bu tugma DOIM ko'rinadi
-      // (admin+admin rejimida), logotip bor-yo'qligidan qat'iy nazar.
-      const logoEditBtn = document.getElementById('header-logo-edit-btn');
-      if (logoEditBtn) {
-        logoEditBtn.classList.toggle('hidden', !(isUserAnAdmin && isAdminMode));
-        logoEditBtn.onclick = openShopLogoManager;
+        // Headerdagi logo endi faqat brend ko'rinishi. Uni tahrirlash
+        // "Profil → Do'kon haqida" ichidagi yagona zamonaviy logo blokida.
+        logoImg.onclick = null;
+        logoImg.classList.remove('cursor-pointer');
       }
       const flagBtn = document.getElementById('lang-flag-btn');
       if (flagBtn) flagBtn.innerText = uiLang === 'uz' ? '🇷🇺' : '🇺🇿';
@@ -5623,7 +5615,7 @@
             <div class="flex items-center gap-3 border-b pb-3">
               <h3 class="font-bold text-base text-gray-900 truncate flex-1 min-w-0">📍 ${escapeHtml(shopDisplayName())}</h3>
               ${(isUserAnAdmin && isAdminMode) ? `
-                <button onclick="activePopupModal='SHOP_INFO'; render();" class="flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">${ICON_EDIT} ${tr("Tahrirlash", "Изменить")}</button>
+                <button onclick="openShopInfoModal()" class="fc-btn fc-btn-secondary flex-shrink-0" style="min-height:2.25rem;padding:0 .75rem;font-size:.6875rem"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>${tr("Tahrirlash", "Изменить")}</button>
               ` : ''}
             </div>
 
@@ -5704,20 +5696,65 @@
       `;
     }
 
-    async function saveShopContact() {
-      const next = {
-        name: document.getElementById('sc-name').value.trim() || null,
-        address: document.getElementById('sc-address').value.trim() || null,
-        addressRu: document.getElementById('sc-address-ru').value.trim() || null,
-        coordinates: document.getElementById('sc-coordinates').value.trim() || null,
-        workHours: document.getElementById('sc-work-hours').value.trim() || null,
-        phone: document.getElementById('sc-phone1').value.trim() || null,
-        phone2: document.getElementById('sc-phone2').value.trim() || null,
-        phone3: document.getElementById('sc-phone3').value.trim() || null,
-        instagram: cleanSocialNick(document.getElementById('sc-instagram').value) || null,
-        telegram: cleanSocialNick(document.getElementById('sc-telegram').value) || null,
-        facebook: cleanSocialNick(document.getElementById('sc-facebook').value) || null,
+    function readShopContactFormValues() {
+      const value = id => String(document.getElementById(id)?.value || '').trim() || null;
+      return {
+        name: value('sc-name'),
+        address: value('sc-address'),
+        addressRu: value('sc-address-ru'),
+        coordinates: value('sc-coordinates'),
+        workHours: value('sc-work-hours'),
+        phone: value('sc-phone1'),
+        phone2: value('sc-phone2'),
+        phone3: value('sc-phone3'),
+        instagram: cleanSocialNick(value('sc-instagram')) || null,
+        telegram: cleanSocialNick(value('sc-telegram')) || null,
+        facebook: cleanSocialNick(value('sc-facebook')) || null,
       };
+    }
+
+    function openShopInfoModal() {
+      shopInfoDraft = null;
+      activePopupModal = 'SHOP_INFO';
+      render();
+    }
+
+    function closeShopInfoModal() {
+      shopInfoDraft = null;
+      activePopupModal = null;
+      render();
+    }
+
+    // URL orqali logo kiritish eski imkoniyat sifatida saqlanadi. SHOP_INFO'dan
+    // kirilganda formadagi hali saqlanmagan qiymatlar draftga olinadi va orqaga
+    // qaytganda tiklanadi.
+    function openShopLogoUrlFromShopInfo() {
+      shopInfoDraft = readShopContactFormValues();
+      activePopupModal = 'SHOP_LOGO_URL';
+      render();
+    }
+
+    function closeShopLogoUrlModal() {
+      activePopupModal = shopInfoDraft ? 'SHOP_INFO' : null;
+      render();
+    }
+
+    function updateShopInfoLogoPreview(url) {
+      const preview = document.getElementById('shop-info-logo-preview');
+      if (preview) {
+        preview.innerHTML = url
+          ? `<img src="${escapeHtml(url)}" alt="${tr('Do\'kon logotipi', 'Логотип магазина')}" class="fc-shop-logo-image">`
+          : `<div class="fc-shop-logo-placeholder"><i data-lucide="image" class="w-6 h-6"></i></div>`;
+      }
+      const status = document.getElementById('shop-info-logo-status');
+      if (status) status.textContent = url ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен');
+      const buttonLabel = document.getElementById('shop-info-logo-button-label');
+      if (buttonLabel) buttonLabel.textContent = url ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    async function saveShopContact() {
+      const next = readShopContactFormValues();
 
       if (next.coordinates && !/^\s*-?\d{1,3}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?\s*$/.test(next.coordinates)) {
         return alert(tr("Kordinatani '41.217408,69.211225' ko'rinishida yozing.", "Введите координаты в формате '41.217408,69.211225'."));
@@ -5725,14 +5762,18 @@
 
       const old = { ...shopContact };
       shopContact = { ...next, startMessage: shopContact.startMessage };
+      shopInfoDraft = null;
       activePopupModal = null;
       render(); // optimistic UI — darhol ko'rinadi
+      showActionToast(tr("⏳ Do'kon ma'lumotlari saqlanmoqda...", '⏳ Данные магазина сохраняются...'), 'saving');
       try {
         await callApi('set_shop_contact', next);
+        showActionToast(tr('✅ Do‘kon ma’lumotlari saqlandi', '✅ Данные магазина сохранены'), 'success', 1400);
       } catch (e) {
         console.error(e);
         shopContact = old;
         render();
+        showActionToast(tr('❌ Ma’lumotlar saqlanmadi', '❌ Данные не сохранены'), 'error', 1800);
         alert(tr("❌ Do'kon ma'lumotlarini saqlab bo'lmadi: ", "❌ Не удалось сохранить данные магазина: ") + (e.message || e));
       }
     }
@@ -5776,17 +5817,36 @@
       }
 
       const localPreview = URL.createObjectURL(prepared);
+      const editingInsideShopInfo = activePopupModal === 'SHOP_INFO';
       shopLogoUrl = localPreview;
-      render(); // darhol preview
+      if (editingInsideShopInfo) {
+        updateShopInfoLogoPreview(localPreview);
+        updateHeaderChrome();
+      } else {
+        render(); // eski logo-manager oqimi uchun darhol preview
+      }
+      showActionToast(tr('⏳ Logo yuklanmoqda...', '⏳ Логотип загружается...'), 'saving');
       try {
         const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, old, true);
         await callApi('set_shop_logo', { logoUrl: url });
         shopLogoUrl = url;
-        render();
+        if (editingInsideShopInfo) {
+          updateShopInfoLogoPreview(url);
+          updateHeaderChrome();
+        } else {
+          render();
+        }
+        showActionToast(tr('✅ Logo saqlandi', '✅ Логотип сохранён'), 'success', 1400);
       } catch (e) {
         console.error(e);
         shopLogoUrl = old;
-        render();
+        if (editingInsideShopInfo) {
+          updateShopInfoLogoPreview(old);
+          updateHeaderChrome();
+        } else {
+          render();
+        }
+        showActionToast(tr('❌ Logo saqlanmadi', '❌ Логотип не сохранён'), 'error', 1800);
         alert(tr("❌ Logotipni saqlab bo'lmadi: ", "❌ Не удалось сохранить логотип: ") + (e.message || e));
       } finally {
         URL.revokeObjectURL(localPreview);
@@ -5812,12 +5872,13 @@
         return;
       }
       const old = shopLogoUrl;
-      activePopupModal = null;
+      const returnToShopInfo = !!shopInfoDraft;
       shopLogoUrl = validUrl;
-      render();
       showActionToast(tr("⏳ Logotip saqlanmoqda...", "⏳ Логотип сохраняется..."), 'saving');
       try {
         await callApi('set_shop_logo', { logoUrl: validUrl });
+        activePopupModal = returnToShopInfo ? 'SHOP_INFO' : null;
+        render();
         showActionToast(tr("✅ Saqlandi", "✅ Сохранено"), 'success', 1200);
       } catch (e) {
         console.error(e);
@@ -6419,90 +6480,113 @@
       }
 
       if (activePopupModal === 'SHOP_INFO') {
-        // 6-band: butun forma bir xil "bo'lim-kartochka" naqshiga o'tkazildi
-        // (gray-50 fon, rounded-2xl, ichida bir xil space-y-2 oraliq, har bir
-        // input bir xil p-2.5/border/rounded-xl/bg-white) — avvalgi versiyada
-        // ba'zi maydonlar bevosita tashqi space-y-3'ga, ba'zilari ichki
-        // grid gap-2'ga bog'liq edi, shu sabab oraliqlar notekis ko'rinardi.
+        const form = shopInfoDraft || shopContact;
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; render();">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-xl text-xs" onclick="event.stopPropagation()">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">${ICON_EDIT} ${tr("Do'kon haqida", "О магазине")}</h3>
-
-              <div class="bg-gray-50 rounded-2xl p-3 space-y-2">
-                <label class="font-bold text-gray-600 block">${tr("Do'kon nomi", "Название магазина")}</label>
-                <input type="text" id="sc-name" value="${escapeHtml(shopContact.name || '')}" placeholder="${tr("Do'kon nomi", "Название магазина")}" class="w-full p-2.5 border rounded-xl bg-white">
-                <p class="text-[9px] text-gray-400">${tr("Bo'sh qoldirilsa, standart \"Do'kon\" nomi ishlatiladi.", "Если оставить пустым, используется название \"Магазин\" по умолчанию.")}</p>
-              </div>
-
-              <div class="bg-gray-50 rounded-2xl p-3 space-y-2">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wide">📍 ${tr("Manzil", "Адрес")}</p>
-                <div class="space-y-2">
-                  <div>
-                    <label class="font-bold text-gray-600 block mb-1">${tr("Manzil", "Адрес")}</label>
-                    <input type="text" id="sc-address" value="${escapeHtml(shopContact.address || '')}" placeholder="Sergeli tumani, ..." class="w-full p-2.5 border rounded-xl bg-white">
-                  </div>
-                  <div>
-                    <label class="font-bold text-gray-600 block mb-1">${tr("Manzil (ruscha, ixtiyoriy)", "Адрес (по-русски, необязательно)")}</label>
-                    <input type="text" id="sc-address-ru" value="${escapeHtml(shopContact.addressRu || '')}" placeholder="Сергелийский район, ..." class="w-full p-2.5 border rounded-xl bg-white">
-                    <p class="text-[9px] text-gray-400 mt-1">${tr("Bo'sh qoldirilsa, ruscha rejimda ham o'zbekcha manzil ko'rsatiladi.", "Если оставить пустым, в русском режиме тоже отображается узбекский адрес.")}</p>
-                  </div>
-                  <div>
-                    <label class="font-bold text-gray-600 block mb-1">${tr("Kordinata", "Координаты")}</label>
-                    <input type="text" id="sc-coordinates" value="${escapeHtml(shopContact.coordinates || '')}" placeholder="41.217408,69.211225" class="w-full p-2.5 border rounded-xl bg-white font-mono">
-                    <p class="text-[9px] text-gray-400 mt-1">${tr("Google Maps'dan koordinatani nusxa qilib qo'ying.", "Вставьте координаты из Google Maps.")}</p>
-                  </div>
+          <div class="fc-sheet-overlay fc-shop-info-overlay" onclick="if(event.target===this) closeShopInfoModal();">
+            <div class="fc-sheet fc-shop-info-sheet" onclick="event.stopPropagation()">
+              <div class="fc-sheet-handle"></div>
+              <div class="fc-sheet-header fc-shop-info-header">
+                <div class="min-w-0">
+                  <div class="fc-sheet-title">${tr("Do'kon haqida", "О магазине")}</div>
+                  <p class="fc-shop-info-subtitle">${tr("Brend, manzil va aloqa ma'lumotlarini bir joydan boshqaring", "Управляйте брендом, адресом и контактами в одном месте")}</p>
                 </div>
+                <button type="button" onclick="closeShopInfoModal()" class="fc-btn fc-btn-icon" style="min-width:2.25rem;min-height:2.25rem" aria-label="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-4 h-4"></i></button>
               </div>
 
-              <div class="bg-gray-50 rounded-2xl p-3 space-y-2">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wide">🕐 ${tr("Ish vaqti", "Часы работы")}</p>
-                <input type="text" id="sc-work-hours" value="${escapeHtml(shopContact.workHours || '')}" placeholder="${tr('Masalan: 09:00–22:00 yoki Du–Yak 09:00–22:00','Например: 09:00–22:00 или Пн–Вс 09:00–22:00')}" class="w-full p-2.5 border rounded-xl bg-white">
+              <div class="fc-sheet-body fc-shop-info-body">
+                <section class="fc-shop-settings-section fc-shop-brand-section">
+                  <div class="fc-shop-settings-head">
+                    <span class="fc-shop-settings-icon"><i data-lucide="store" class="w-4 h-4"></i></span>
+                    <div><h4>${tr('Brend', 'Бренд')}</h4><p>${tr("Do'kon nomi va logotipi", 'Название и логотип магазина')}</p></div>
+                  </div>
+
+                  <div class="fc-shop-logo-editor">
+                    <div id="shop-info-logo-preview" class="fc-shop-logo-preview">
+                      ${shopLogoUrl ? `<img src="${escapeHtml(shopLogoUrl)}" alt="${tr("Do'kon logotipi", 'Логотип магазина')}" class="fc-shop-logo-image">` : `<div class="fc-shop-logo-placeholder"><i data-lucide="image" class="w-6 h-6"></i></div>`}
+                    </div>
+                    <div class="fc-shop-logo-copy">
+                      <p class="fc-shop-logo-title">${tr('Do‘kon logotipi', 'Логотип магазина')}</p>
+                      <p id="shop-info-logo-status" class="fc-shop-logo-status">${shopLogoUrl ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен')}</p>
+                      <div class="fc-shop-logo-actions">
+                        <input id="shop-logo-input" type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
+                        <input id="shop-logo-input-files" type="file" class="hidden" onchange="saveShopLogoFromPicker(event)">
+                        <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary fc-shop-logo-action"><i data-lucide="image-plus" class="w-4 h-4"></i><span id="shop-info-logo-button-label">${shopLogoUrl ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото')}</span></button>
+                        <button type="button" onclick="openShopLogoUrlFromShopInfo()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="link" class="w-4 h-4"></i>${tr('URL orqali', 'По URL')}</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="fc-shop-field">
+                    <label for="sc-name">${tr("Do'kon nomi", "Название магазина")}</label>
+                    <input type="text" id="sc-name" value="${escapeHtml(form.name || '')}" placeholder="${tr("Do'kon nomi", "Название магазина")}" class="fc-shop-input">
+                    <p class="fc-shop-field-help">${tr("Bo'sh qoldirilsa, standart \"Do'kon\" nomi ishlatiladi.", "Если оставить пустым, используется название \"Магазин\" по умолчанию.")}</p>
+                  </div>
+                </section>
+
+                <section class="fc-shop-settings-section">
+                  <div class="fc-shop-settings-head">
+                    <span class="fc-shop-settings-icon"><i data-lucide="map-pin" class="w-4 h-4"></i></span>
+                    <div><h4>${tr('Manzil', 'Адрес')}</h4><p>${tr("Mijoz ko'radigan manzil va xarita koordinatasi", 'Адрес для клиента и координаты карты')}</p></div>
+                  </div>
+                  <div class="fc-shop-fields-stack">
+                    <div class="fc-shop-field">
+                      <label for="sc-address">${tr("Manzil", "Адрес")}</label>
+                      <input type="text" id="sc-address" value="${escapeHtml(form.address || '')}" placeholder="Sergeli tumani, ..." class="fc-shop-input">
+                    </div>
+                    <div class="fc-shop-field">
+                      <label for="sc-address-ru">${tr("Manzil (ruscha, ixtiyoriy)", "Адрес (по-русски, необязательно)")}</label>
+                      <input type="text" id="sc-address-ru" value="${escapeHtml(form.addressRu || '')}" placeholder="Сергелийский район, ..." class="fc-shop-input">
+                      <p class="fc-shop-field-help">${tr("Bo'sh qoldirilsa, ruscha rejimda ham o'zbekcha manzil ko'rsatiladi.", "Если оставить пустым, в русском режиме тоже отображается узбекский адрес.")}</p>
+                    </div>
+                    <div class="fc-shop-field">
+                      <label for="sc-coordinates">${tr("Koordinata", "Координаты")}</label>
+                      <div class="fc-shop-input-with-icon"><i data-lucide="navigation" class="w-4 h-4"></i><input type="text" id="sc-coordinates" value="${escapeHtml(form.coordinates || '')}" placeholder="41.217408,69.211225" class="fc-shop-input font-mono"></div>
+                      <p class="fc-shop-field-help">${tr("Google Maps'dan koordinatani nusxa qilib qo'ying.", "Вставьте координаты из Google Maps.")}</p>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="fc-shop-settings-section">
+                  <div class="fc-shop-settings-head">
+                    <span class="fc-shop-settings-icon"><i data-lucide="clock-3" class="w-4 h-4"></i></span>
+                    <div><h4>${tr('Ish vaqti', 'Часы работы')}</h4><p>${tr("Mijozlarga ko'rinadigan ish tartibi", 'График, который видят клиенты')}</p></div>
+                  </div>
+                  <div class="fc-shop-field">
+                    <label for="sc-work-hours">${tr('Ish vaqti', 'Часы работы')}</label>
+                    <input type="text" id="sc-work-hours" value="${escapeHtml(form.workHours || '')}" placeholder="${tr('Masalan: 09:00–22:00 yoki Du–Yak 09:00–22:00','Например: 09:00–22:00 или Пн–Вс 09:00–22:00')}" class="fc-shop-input">
+                  </div>
+                </section>
+
+                <section class="fc-shop-settings-section">
+                  <div class="fc-shop-settings-head">
+                    <span class="fc-shop-settings-icon"><i data-lucide="phone" class="w-4 h-4"></i></span>
+                    <div><h4>${tr('Aloqa', 'Контакты')}</h4><p>${tr("Asosiy va qo'shimcha telefon raqamlari", 'Основной и дополнительные номера')}</p></div>
+                  </div>
+                  <div class="fc-shop-fields-stack">
+                    <div class="fc-shop-field"><label for="sc-phone1">${tr("Telefon 1", "Телефон 1")}</label><input type="text" id="sc-phone1" value="${escapeHtml(form.phone || '')}" placeholder="+998 90 123 45 67" class="fc-shop-input font-mono"></div>
+                    <div class="fc-shop-field"><label for="sc-phone2">${tr("Telefon 2 (ixtiyoriy)", "Телефон 2 (необязательно)")}</label><input type="text" id="sc-phone2" value="${escapeHtml(form.phone2 || '')}" placeholder="+998 90 123 45 67" class="fc-shop-input font-mono"></div>
+                    <div class="fc-shop-field"><label for="sc-phone3">${tr("Telefon 3 (ixtiyoriy)", "Телефон 3 (необязательно)")}</label><input type="text" id="sc-phone3" value="${escapeHtml(form.phone3 || '')}" placeholder="+998 90 123 45 67" class="fc-shop-input font-mono"></div>
+                  </div>
+                </section>
+
+                <section class="fc-shop-settings-section">
+                  <div class="fc-shop-settings-head">
+                    <span class="fc-shop-settings-icon"><i data-lucide="share-2" class="w-4 h-4"></i></span>
+                    <div><h4>${tr('Ijtimoiy tarmoqlar', 'Социальные сети')}</h4><p>${tr("Nickname'ni @ belgisiz kiriting", 'Введите никнейм без символа @')}</p></div>
+                  </div>
+                  <div class="fc-shop-fields-stack">
+                    <div class="fc-shop-field"><label for="sc-instagram">Instagram</label><div class="fc-shop-social-input"><span>@</span><input type="text" id="sc-instagram" value="${escapeHtml(cleanSocialNick(form.instagram))}" placeholder="mystore.uz"></div></div>
+                    <div class="fc-shop-field"><label for="sc-telegram">Telegram</label><div class="fc-shop-social-input"><span>@</span><input type="text" id="sc-telegram" value="${escapeHtml(cleanSocialNick(form.telegram))}" placeholder="mystore_uz"></div></div>
+                    <div class="fc-shop-field"><label for="sc-facebook">Facebook</label><div class="fc-shop-social-input"><span>@</span><input type="text" id="sc-facebook" value="${escapeHtml(cleanSocialNick(form.facebook))}" placeholder="mystore.uz"></div></div>
+                  </div>
+                </section>
+
+                <p class="fc-shop-info-note"><i data-lucide="info" class="w-4 h-4"></i><span>${tr("Bo'sh qoldirilgan maydonlar foydalanuvchiga ko'rsatilmaydi.", "Пустые поля не показываются пользователю.")}</span></p>
               </div>
 
-              <div class="bg-gray-50 rounded-2xl p-3 space-y-2">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wide">📞 ${tr("Aloqa", "Контакты")}</p>
-                <div class="space-y-2">
-                  <div>
-                    <label class="font-bold text-gray-600 block mb-1">${tr("Telefon 1", "Телефон 1")}</label>
-                    <input type="text" id="sc-phone1" value="${escapeHtml(shopContact.phone || '')}" placeholder="+998 90 123 45 67" class="w-full p-2.5 border rounded-xl bg-white font-mono">
-                  </div>
-                  <div>
-                    <label class="font-bold text-gray-600 block mb-1">${tr("Telefon 2 (ixtiyoriy)", "Телефон 2 (необязательно)")}</label>
-                    <input type="text" id="sc-phone2" value="${escapeHtml(shopContact.phone2 || '')}" placeholder="+998 90 123 45 67" class="w-full p-2.5 border rounded-xl bg-white font-mono">
-                  </div>
-                  <div>
-                    <label class="font-bold text-gray-600 block mb-1">${tr("Telefon 3 (ixtiyoriy)", "Телефон 3 (необязательно)")}</label>
-                    <input type="text" id="sc-phone3" value="${escapeHtml(shopContact.phone3 || '')}" placeholder="+998 90 123 45 67" class="w-full p-2.5 border rounded-xl bg-white font-mono">
-                  </div>
-                  <div>
-                    <label class="font-bold text-gray-600 block mb-1">Instagram ${tr("nickname", "никнейм")}</label>
-                    <div class="flex items-center rounded-xl border bg-white overflow-hidden">
-                      <span class="px-2.5 py-2.5 bg-slate-50 text-gray-500 border-r flex-shrink-0">@</span>
-                      <input type="text" id="sc-instagram" value="${escapeHtml(cleanSocialNick(shopContact.instagram))}" placeholder="mystore.uz" class="flex-1 min-w-0 p-2.5">
-                    </div>
-                  </div>
-                  <div>
-                    <label class="font-bold text-gray-600 block mb-1">Telegram ${tr("nickname", "никнейм")}</label>
-                    <div class="flex items-center rounded-xl border bg-white overflow-hidden">
-                      <span class="px-2.5 py-2.5 bg-slate-50 text-gray-500 border-r flex-shrink-0">@</span>
-                      <input type="text" id="sc-telegram" value="${escapeHtml(cleanSocialNick(shopContact.telegram))}" placeholder="mystore_uz" class="flex-1 min-w-0 p-2.5">
-                    </div>
-                  </div>
-                  <div>
-                    <label class="font-bold text-gray-600 block mb-1">Facebook ${tr("nickname", "никнейм")}</label>
-                    <div class="flex items-center rounded-xl border bg-white overflow-hidden">
-                      <span class="px-2.5 py-2.5 bg-slate-50 text-gray-500 border-r flex-shrink-0">@</span>
-                      <input type="text" id="sc-facebook" value="${escapeHtml(cleanSocialNick(shopContact.facebook))}" placeholder="mystore.uz" class="flex-1 min-w-0 p-2.5">
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <p class="text-[10px] text-gray-400">${tr("Bo'sh qoldirilgan maydonlar foydalanuvchiga umuman ko'rinmaydi.", "Пустые поля вообще не показываются пользователю.")}</p>
-              <div class="flex gap-2 pt-1">
-                <button onclick="saveShopContact()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">✅ ${tr("Saqlash", "Сохранить")}</button>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+              <div class="fc-sheet-footer fc-shop-info-footer">
+                <button type="button" onclick="closeShopInfoModal()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
+                <button type="button" onclick="saveShopContact()" class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash', 'Сохранить')}</button>
               </div>
             </div>
           </div>
@@ -7080,7 +7164,7 @@
               <p id="shop-logo-url-error" class="hidden text-[10px] fc-text-danger"></p>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveShopLogoFromUrl()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
+                <button onclick="closeShopLogoUrlModal()" class="fc-btn fc-btn-secondary">${tr("Bekor qilish", "Отмена")}</button>
               </div>
             </div>
           </div>

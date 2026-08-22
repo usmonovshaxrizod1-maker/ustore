@@ -1785,3 +1785,53 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .fc-accordion-row.fc-accordion-open .fc-accordion-chevron { transform: rotate(180deg); }
 .fc-accordion-body { padding: 0 .875rem .875rem; display: none; }
 .fc-accordion-row.fc-accordion-open .fc-accordion-body { display: block; }
+
+
+/* ============================================================
+   Shop info / "Do'kon haqida" — modern, compact settings sheet.
+   Business logic o'zgarmaydi; bu faqat SHOP_INFO render qatlamidir.
+   ============================================================ */
+.fc-shop-info-overlay { background: rgba(15, 23, 42, .58); backdrop-filter: blur(2px); }
+.fc-shop-info-sheet { max-width: 30rem; max-height: 92vh; box-shadow: 0 -12px 40px rgba(15, 23, 42, .16); }
+@media (min-width: 640px) { .fc-shop-info-sheet { max-height: 88vh; box-shadow: 0 20px 60px rgba(15, 23, 42, .18); } }
+.fc-shop-info-header { padding-top: .7rem; padding-bottom: .7rem; }
+.fc-shop-info-subtitle { margin-top: .125rem; color: var(--fc-muted); font-size: .6875rem; line-height: 1.35; }
+.fc-shop-info-body { display: flex; flex-direction: column; gap: .75rem; background: #f8fafc; }
+.fc-shop-settings-section { background: var(--fc-surface); border: 1px solid var(--fc-border); border-radius: 1rem; padding: .875rem; box-shadow: 0 1px 2px rgba(15, 23, 42, .025); }
+.fc-shop-settings-head { display: flex; align-items: center; gap: .625rem; margin-bottom: .75rem; }
+.fc-shop-settings-head h4 { color: var(--color-gray-900); font-size: .8125rem; font-weight: 800; line-height: 1.2; }
+.fc-shop-settings-head p { margin-top: .125rem; color: var(--fc-muted); font-size: .625rem; line-height: 1.35; }
+.fc-shop-settings-icon { width: 2rem; height: 2rem; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: .65rem; background: #eff6ff; color: var(--fc-primary); }
+.fc-shop-fields-stack { display: flex; flex-direction: column; gap: .675rem; }
+.fc-shop-field { min-width: 0; }
+.fc-shop-field > label { display: block; margin-bottom: .3rem; color: var(--color-gray-700); font-size: .6875rem; font-weight: 700; }
+.fc-shop-input { width: 100%; min-height: 2.625rem; padding: .625rem .75rem; border: 1px solid var(--fc-border); border-radius: .75rem; background: #fff; color: var(--color-gray-900); font-size: .8125rem; line-height: 1.35; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
+.fc-shop-input::placeholder { color: #9ca3af; }
+.fc-shop-input:focus { outline: none; border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(59, 130, 246, .08); }
+.fc-shop-field-help { margin-top: .3rem; color: var(--fc-muted); font-size: .625rem; line-height: 1.4; }
+.fc-shop-input-with-icon { position: relative; }
+.fc-shop-input-with-icon > svg { position: absolute; left: .7rem; top: 50%; transform: translateY(-50%); color: var(--fc-muted); pointer-events: none; }
+.fc-shop-input-with-icon .fc-shop-input { padding-left: 2.15rem; }
+.fc-shop-social-input { display: flex; align-items: stretch; overflow: hidden; border: 1px solid var(--fc-border); border-radius: .75rem; background: #fff; transition: border-color .15s ease, box-shadow .15s ease; }
+.fc-shop-social-input:focus-within { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(59, 130, 246, .08); }
+.fc-shop-social-input > span { display: flex; align-items: center; padding: 0 .7rem; color: var(--fc-muted); font-size: .75rem; font-weight: 700; border-right: 1px solid var(--fc-border); background: var(--fc-muted-bg); }
+.fc-shop-social-input > input { flex: 1; min-width: 0; min-height: 2.625rem; padding: .625rem .75rem; background: transparent; color: var(--color-gray-900); font-size: .8125rem; outline: none; }
+.fc-shop-logo-editor { display: flex; gap: .75rem; align-items: center; margin-bottom: .8rem; padding: .75rem; border: 1px solid #e5eaf1; border-radius: .875rem; background: #fbfdff; }
+.fc-shop-logo-preview { width: 4.5rem; height: 4.5rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--fc-border); border-radius: .9rem; background: #fff; }
+.fc-shop-logo-image { width: 100%; height: 100%; object-fit: contain; padding: .35rem; }
+.fc-shop-logo-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #94a3b8; background: linear-gradient(145deg, #f8fafc, #eef2f7); }
+.fc-shop-logo-copy { min-width: 0; flex: 1; }
+.fc-shop-logo-title { color: var(--color-gray-900); font-size: .75rem; font-weight: 800; }
+.fc-shop-logo-status { margin-top: .1rem; color: var(--fc-muted); font-size: .625rem; }
+.fc-shop-logo-actions { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .55rem; }
+.fc-shop-logo-action { min-height: 2.25rem; padding: 0 .7rem; font-size: .6875rem; }
+.fc-shop-info-note { display: flex; align-items: flex-start; gap: .45rem; padding: .7rem .75rem; border-radius: .75rem; background: #eff6ff; color: #475569; font-size: .65rem; line-height: 1.45; }
+.fc-shop-info-note svg { flex-shrink: 0; margin-top: .05rem; color: var(--fc-primary); }
+.fc-shop-info-footer { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: .5rem; background: rgba(255,255,255,.98); }
+.fc-shop-info-footer .fc-btn { width: 100%; }
+@media (max-width: 360px) {
+  .fc-shop-logo-editor { align-items: flex-start; }
+  .fc-shop-logo-preview { width: 4rem; height: 4rem; }
+  .fc-shop-logo-actions { flex-direction: column; }
+  .fc-shop-logo-action { width: 100%; }
+}
