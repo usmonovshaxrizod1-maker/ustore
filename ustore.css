@@ -1929,3 +1929,27 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .fc-trash-actions>span{background:#eff6ff;color:#1d4ed8}.fc-trash-actions button{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}.fc-trash-actions button.is-danger{background:#fff1f2;color:#dc2626;border-color:#fecdd3}
 
 @media(max-width:360px){.fc-orders-search-calendar-row{grid-template-columns:minmax(0,1fr) 2.55rem}.fc-orders-calendar-trigger{width:2.55rem;height:2.55rem;min-width:2.55rem}.fc-orders-popover{max-width:calc(100vw - 16px)}}
+
+/* ROUND 6 — calendar month/year picker + live drag placeholder + compact item menu */
+.fc-orders-calendar-period{display:flex;align-items:center;justify-content:center;gap:.35rem;min-width:0}
+.fc-orders-calendar-period button{border:1px solid #dbe4ef;background:#f8fbff;color:#0f172a;border-radius:.65rem;padding:.32rem .55rem;font-size:.7rem;font-weight:850;line-height:1.1}
+.fc-orders-calendar-period button:active{transform:scale(.96);background:#eff6ff;border-color:#93c5fd}
+.fc-orders-picker-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.42rem;padding:.35rem .05rem .2rem}
+.fc-orders-picker-grid button{min-height:2.35rem;border:1px solid #e2e8f0;background:#fff;border-radius:.72rem;color:#475569;font-size:.68rem;font-weight:800;box-shadow:0 1px 3px rgba(15,23,42,.03)}
+.fc-orders-picker-grid button.is-current{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;box-shadow:0 0 0 2px rgba(37,99,235,.06)}
+.fc-orders-year-nav{display:grid;grid-template-columns:2rem 1fr 2rem;align-items:center;gap:.45rem;padding:.15rem 0 .35rem}
+.fc-orders-year-nav b{text-align:center;font-size:.7rem;color:#334155}
+
+.fc-drag-placeholder{box-sizing:border-box;border:2px dashed #93c5fd!important;background:rgba(239,246,255,.78)!important;border-radius:1rem!important;box-shadow:inset 0 0 0 1px rgba(37,99,235,.04);transition:transform .08s ease,height .08s ease;min-height:2.75rem}
+[data-catalog-drag-list="product"] .fc-drag-placeholder{min-width:0}
+.fc-drag-ghost{cursor:grabbing!important;will-change:transform,left,top}
+
+.fc-product-more-overlay{position:absolute;right:.45rem;top:2.75rem;z-index:25;width:2rem;height:2rem;border-radius:.68rem;border:1px solid #dbe4ef;background:rgba(255,255,255,.97);color:#64748b;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(15,23,42,.09);backdrop-filter:blur(6px)}
+.fc-card-more-btn{width:1.9rem;height:1.9rem;border:1px solid #e2e8f0;border-radius:.65rem;background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.ustore-cat-row{position:relative}
+.fc-card-action-menu{position:absolute;right:.45rem;top:5rem;z-index:48;width:9.75rem;background:#fff;border:1px solid #dbe4ef;border-radius:.85rem;padding:.28rem;box-shadow:0 14px 34px rgba(15,23,42,.17);display:flex;flex-direction:column;gap:.12rem;text-align:left}
+.ustore-cat-row .fc-card-action-menu{top:calc(100% - .3rem);right:.4rem}
+.fc-card-action-menu button{width:100%;display:flex;align-items:center;gap:.5rem;padding:.52rem .6rem;border-radius:.62rem;color:#334155;background:transparent;font-size:.68rem;font-weight:750}
+.fc-card-action-menu button:active{background:#f1f5f9}
+.fc-card-action-menu button.is-danger{color:#dc2626}
+.fc-card-action-menu button.is-danger:active{background:#fff1f2}

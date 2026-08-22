@@ -598,6 +598,9 @@
     let ordersCalendarDraftFrom = '';
     let ordersCalendarDraftTo = '';
     let ordersCalendarAnchorRect = null;
+    let ordersCalendarPickerMode = 'days'; // days | months | years
+    let ordersCalendarYearPageStart = null;
+    let cardActionMenu = null; // {kind:'product'|'category', id}
     let ordersCalendarMonth = (() => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -2877,6 +2880,26 @@
       `;
     }
 
+    function openCardActionMenu(kind, id, event) {
+      event?.preventDefault?.(); event?.stopPropagation?.(); cancelCatalogLongPress();
+      cardActionMenu = { kind, id: String(id) };
+      render();
+    }
+    function closeCardActionMenu(event) { event?.stopPropagation?.(); cardActionMenu = null; render(); }
+    function cardActionMenuHtml(kind, id) {
+      if (!cardActionMenu || cardActionMenu.kind !== kind || String(cardActionMenu.id) !== String(id)) return '';
+      const edit = kind === 'product'
+        ? `openProductDetailModal('${id}');cardActionMenu=null;render();`
+        : `openEditCategoryModal('${id}', event);cardActionMenu=null;`;
+      const move = kind === 'product'
+        ? `openMoveProductModal('${id}');cardActionMenu=null;`
+        : `openMoveCategoryModal('${id}', event);cardActionMenu=null;`;
+      const del = kind === 'product'
+        ? `deleteProduct('${id}');cardActionMenu=null;`
+        : `deleteCategory('${id}', event);cardActionMenu=null;`;
+      return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="${edit}"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" onclick="${move}"><i data-lucide="folder-input" class="w-4 h-4"></i><span>${tr('Ko‘chirish','Переместить')}</span></button><button type="button" class="is-danger" onclick="${del}"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
+    }
+
     function renderProductCardHTML(p, idx, totalLen) {
       const inCart = cart[p.id];
       const vars = productVariants(p);
@@ -2893,7 +2916,7 @@
               <div class="w-full h-32 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
                 <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-full object-contain" loading="lazy">
               </div>
-              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-drag-handle fc-product-drag-overlay" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>` : ''}
+              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-drag-handle fc-product-drag-overlay" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
@@ -3011,8 +3034,8 @@
                 <div class="flex items-center space-x-1">
                   ${(isAdminMode && isUserAnAdmin) ? (bulkCategorySelectMode ? `<span class="fc-select-dot ${bulkSelectedCategoryIds.has(String(sub.id)) ? 'is-selected' : ''}"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>` : `
                     <button type="button" class="fc-drag-handle" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('category','${sub.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>
-                    <button onpointerdown="event.stopPropagation()" onclick="openEditCategoryModal('${sub.id}', event)" class="p-1 bg-blue-100 text-blue-600 rounded text-xs font-bold">${ICON_EDIT}</button>
-                    <button onpointerdown="event.stopPropagation()" onclick="deleteCategory('${sub.id}', event)" aria-label="${tr("O'chirish", 'Удалить')}" class="p-1 fc-bg-danger-soft fc-text-danger rounded text-xs font-bold">${ICON_TRASH}</button>
+                    <button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('category','${sub.id}',event)" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
+                    ${cardActionMenuHtml('category', sub.id)}
                   `) : ''}
                   <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400"></i>
                 </div>
@@ -4037,6 +4060,7 @@
       ordersCalendarDraftTo = ordersDateTo || '';
       const basis = ordersCalendarDraftFrom ? parseOrderDateKey(ordersCalendarDraftFrom) : new Date();
       ordersCalendarMonth = `${basis.getFullYear()}-${String(basis.getMonth()+1).padStart(2,'0')}`;
+      ordersCalendarPickerMode = 'days';
       activePopupModal = 'ORDERS_CALENDAR';
       render();
     }
@@ -4074,6 +4098,33 @@
       render();
     }
 
+    function setOrdersCalendarPickerMode(mode) {
+      ordersCalendarPickerMode = mode || 'days';
+      const m = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
+      const year = m ? Number(m[1]) : new Date().getFullYear();
+      if (ordersCalendarPickerMode === 'years') ordersCalendarYearPageStart = Math.floor(year / 12) * 12;
+      render();
+    }
+    function selectOrdersCalendarMonth(monthIndex) {
+      const m = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
+      const year = m ? Number(m[1]) : new Date().getFullYear();
+      ordersCalendarMonth = `${year}-${String(Number(monthIndex)+1).padStart(2,'0')}`;
+      ordersCalendarPickerMode = 'days';
+      render();
+    }
+    function selectOrdersCalendarYear(year) {
+      const m = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
+      const month = m ? Number(m[2]) : (new Date().getMonth()+1);
+      ordersCalendarMonth = `${Number(year)}-${String(month).padStart(2,'0')}`;
+      ordersCalendarPickerMode = 'months';
+      render();
+    }
+    function changeOrdersCalendarYearPage(delta) {
+      const base = Number.isFinite(Number(ordersCalendarYearPageStart)) ? Number(ordersCalendarYearPageStart) : Math.floor(new Date().getFullYear()/12)*12;
+      ordersCalendarYearPageStart = base + Number(delta || 0) * 12;
+      render();
+    }
+
     function formatOrderRangeDate(key) {
       const d = parseOrderDateKey(key);
       if (!d) return '';
@@ -4099,18 +4150,29 @@
       const year = base.getFullYear(), month = base.getMonth();
       const monthNamesUz = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
       const monthNamesRu = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+      const monthNames = uiLang === 'ru' ? monthNamesRu : monthNamesUz;
       const weekDays = uiLang === 'ru' ? ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'] : ['Du','Se','Cho','Pa','Ju','Sha','Ya'];
-      const firstOffset = (new Date(year, month, 1).getDay() + 6) % 7, dayCount = new Date(year, month + 1, 0).getDate();
-      const todayKey = orderDateKey(new Date()), cells = [];
-      for (let i=0;i<firstOffset;i++) cells.push('<span class="fc-orders-calendar-empty"></span>');
-      for (let day=1;day<=dayCount;day++) {
-        const key = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-        const isStart=key===ordersCalendarDraftFrom,isEnd=key===ordersCalendarDraftTo,inRange=!!(ordersCalendarDraftFrom&&ordersCalendarDraftTo&&key>ordersCalendarDraftFrom&&key<ordersCalendarDraftTo),pending=!!(ordersCalendarDraftFrom&&!ordersCalendarDraftTo&&isStart),single=!!(isStart&&isEnd);
-        const cls=['fc-orders-calendar-day',isStart?'is-start':'',isEnd?'is-end':'',inRange?'is-in-range':'',pending?'is-pending':'',single?'is-single':'',key===todayKey?'is-today':''].filter(Boolean).join(' ');
-        cells.push(`<button type="button" onclick="selectOrdersCalendarDate('${key}')" class="${cls}">${day}</button>`);
-      }
       const rangeText=ordersCalendarDraftFrom&&ordersCalendarDraftTo?`${formatOrderRangeDate(ordersCalendarDraftFrom)} — ${formatOrderRangeDate(ordersCalendarDraftTo)}`:ordersCalendarDraftFrom?tr(`${formatOrderRangeDate(ordersCalendarDraftFrom)} — tugash sanasini tanlang`,`${formatOrderRangeDate(ordersCalendarDraftFrom)} — выберите дату окончания`):tr('Sana oralig‘ini tanlang','Выберите период');
-      return `<div class="fc-orders-calendar-card"><div class="fc-orders-calendar-top"><div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>${(ordersCalendarDraftFrom||ordersCalendarDraftTo)?`<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear" aria-label="${tr('Tozalash','Сбросить')}"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>`:''}</div><div class="fc-orders-calendar-monthbar"><button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-left" class="w-4 h-4"></i></button><strong>${uiLang==='ru'?monthNamesRu[month]:monthNamesUz[month]} ${year}</strong><button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div><div class="fc-orders-calendar-weekdays">${weekDays.map(d=>`<span>${d}</span>`).join('')}</div><div class="fc-orders-calendar-grid">${cells.join('')}</div><p class="fc-orders-calendar-hint">${tr('Bitta kun uchun sanani ikki marta bosing. Oraliq uchun boshlanish va tugash sanasini tanlang.','Для одного дня нажмите дату дважды. Для периода выберите начало и конец.')}</p>${ordersCalendarDraftFrom?`<div class="fc-orders-calendar-actions"><button type="button" onclick="cancelOrdersCalendarSelection()" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-4 h-4"></i></button><button type="button" onclick="applyOrdersCalendarSelection()" ${ordersCalendarDraftTo?'':'disabled'} class="is-primary" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></div>`:''}</div>`;
+      let body = '';
+      if (ordersCalendarPickerMode === 'months') {
+        body = `<div class="fc-orders-picker-grid fc-orders-month-grid">${monthNames.map((name,i)=>`<button type="button" class="${i===month?'is-current':''}" onclick="selectOrdersCalendarMonth(${i})">${escapeHtml(name)}</button>`).join('')}</div>`;
+      } else if (ordersCalendarPickerMode === 'years') {
+        const start = Number.isFinite(Number(ordersCalendarYearPageStart)) ? Number(ordersCalendarYearPageStart) : Math.floor(year/12)*12;
+        const years = Array.from({length:12},(_,i)=>start+i);
+        body = `<div class="fc-orders-year-nav"><button type="button" onclick="changeOrdersCalendarYearPage(-1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-left" class="w-4 h-4"></i></button><b>${start}–${start+11}</b><button type="button" onclick="changeOrdersCalendarYearPage(1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div><div class="fc-orders-picker-grid fc-orders-year-grid">${years.map(y=>`<button type="button" class="${y===year?'is-current':''}" onclick="selectOrdersCalendarYear(${y})">${y}</button>`).join('')}</div>`;
+      } else {
+        const firstOffset = (new Date(year, month, 1).getDay() + 6) % 7, dayCount = new Date(year, month + 1, 0).getDate();
+        const todayKey = orderDateKey(new Date()), cells = [];
+        for (let i=0;i<firstOffset;i++) cells.push('<span class="fc-orders-calendar-empty"></span>');
+        for (let day=1;day<=dayCount;day++) {
+          const key = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+          const isStart=key===ordersCalendarDraftFrom,isEnd=key===ordersCalendarDraftTo,inRange=!!(ordersCalendarDraftFrom&&ordersCalendarDraftTo&&key>ordersCalendarDraftFrom&&key<ordersCalendarDraftTo),pending=!!(ordersCalendarDraftFrom&&!ordersCalendarDraftTo&&isStart),single=!!(isStart&&isEnd);
+          const cls=['fc-orders-calendar-day',isStart?'is-start':'',isEnd?'is-end':'',inRange?'is-in-range':'',pending?'is-pending':'',single?'is-single':'',key===todayKey?'is-today':''].filter(Boolean).join(' ');
+          cells.push(`<button type="button" onclick="selectOrdersCalendarDate('${key}')" class="${cls}">${day}</button>`);
+        }
+        body = `<div class="fc-orders-calendar-weekdays">${weekDays.map(d=>`<span>${d}</span>`).join('')}</div><div class="fc-orders-calendar-grid">${cells.join('')}</div><p class="fc-orders-calendar-hint">${tr('Bitta kun uchun sanani ikki marta bosing. Oraliq uchun boshlanish va tugash sanasini tanlang.','Для одного дня нажмите дату дважды. Для периода выберите начало и конец.')}</p>`;
+      }
+      return `<div class="fc-orders-calendar-card"><div class="fc-orders-calendar-top"><div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>${(ordersCalendarDraftFrom||ordersCalendarDraftTo)?`<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear" aria-label="${tr('Tozalash','Сбросить')}"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>`:''}</div><div class="fc-orders-calendar-monthbar"><button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-left" class="w-4 h-4"></i></button><div class="fc-orders-calendar-period"><button type="button" onclick="setOrdersCalendarPickerMode('months')">${escapeHtml(monthNames[month])}</button><button type="button" onclick="setOrdersCalendarPickerMode('years')">${year}</button></div><button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div>${body}${ordersCalendarDraftFrom?`<div class="fc-orders-calendar-actions"><button type="button" onclick="cancelOrdersCalendarSelection()" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-4 h-4"></i></button><button type="button" onclick="applyOrdersCalendarSelection()" ${ordersCalendarDraftTo?'':'disabled'} class="is-primary" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></div>`:''}</div>`;
     }
 
     function renderOrdersDateFilterHtml() {
@@ -8916,11 +8978,16 @@
       st.handle?.classList.remove('is-dragging');
       st.source?.classList.remove('fc-drag-source');
       st.targetEl?.classList.remove('fc-drag-target');
+      st.placeholder?.replaceWith?.(st.source);
+      if (st.source && st.source.parentElement !== st.list) st.list?.appendChild?.(st.source);
       st.ghost?.remove?.();
+      window.removeEventListener('pointermove', moveCatalogDrag);
+      window.removeEventListener('pointerup', endCatalogDrag);
+      window.removeEventListener('pointercancel', cancelCatalogDrag);
     }
     function beginCatalogDrag(kind,id,event){
       if(!(isAdminMode&&isUserAnAdmin))return;
-      event.preventDefault();event.stopPropagation();cancelCatalogLongPress();
+      event.preventDefault();event.stopPropagation();cancelCatalogLongPress();cardActionMenu=null;
       const source=kind==='product'?event.currentTarget.closest('[data-product-card-id]'):event.currentTarget.closest('[data-category-row-id]');
       if(!source)return;
       try{event.currentTarget.setPointerCapture(event.pointerId);}catch(_){}
@@ -8930,10 +8997,21 @@
       ghost.removeAttribute('onclick');ghost.removeAttribute('onpointerdown');
       ghost.classList.add('fc-drag-ghost');
       Object.assign(ghost.style,{position:'fixed',left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,margin:'0',zIndex:'9999',pointerEvents:'none'});
+      const placeholder=document.createElement(source.tagName||'div');
+      placeholder.className='fc-drag-placeholder';
+      placeholder.style.height=`${rect.height}px`;
+      placeholder.style.width=`${rect.width}px`;
+      placeholder.dataset.dragPlaceholder='1';
+      source.replaceWith(placeholder);
       document.body.appendChild(ghost);
-      source.classList.add('fc-drag-source');
       event.currentTarget.classList.add('is-dragging');
-      catalogDragState={kind,id:String(id),targetId:String(id),pointerId:event.pointerId,handle:event.currentTarget,source,list,ghost,targetEl:null,pointerOffsetX:event.clientX-rect.left,pointerOffsetY:event.clientY-rect.top};
+      // Handle DOM ichida ko‘chsa ham drag uzilmasligi uchun pointer eventlarni windowda ushlaymiz.
+      window.addEventListener('pointermove', moveCatalogDrag, {passive:false});
+      window.addEventListener('pointerup', endCatalogDrag);
+      window.addEventListener('pointercancel', cancelCatalogDrag);
+      const orderedIds = Array.from(list.children).filter(el=>el!==placeholder).map(el=>kind==='product'?el.dataset.productCardId:el.dataset.categoryRowId).filter(Boolean).map(String);
+      const originalIndex = kind==='product' ? [...currentVisibleProductIds].map(String).indexOf(String(id)) : categories.filter(c=>String(c.parentId||'')===String(categories.find(x=>String(x.id)===String(id))?.parentId||'')).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)).map(c=>String(c.id)).indexOf(String(id));
+      catalogDragState={kind,id:String(id),pointerId:event.pointerId,handle:event.currentTarget,source,list,ghost,placeholder,targetEl:null,pointerOffsetX:event.clientX-rect.left,pointerOffsetY:event.clientY-rect.top,originalIndex,dropIndex:originalIndex,orderedIds};
     }
     function moveCatalogDrag(event){
       const st=catalogDragState;if(!st||st.pointerId!==event.pointerId)return;
@@ -8944,27 +9022,48 @@
       const left=Math.min(maxLeft,Math.max(listRect.left,event.clientX-st.pointerOffsetX));
       const top=Math.min(maxTop,Math.max(listRect.top,event.clientY-st.pointerOffsetY));
       st.ghost.style.left=`${left}px`;st.ghost.style.top=`${top}px`;
-      // Ekran chetiga yaqinlashganda listni sekin scroll qilamiz.
       const edge=86;
-      if(event.clientY<edge) window.scrollBy({top:-10,behavior:'auto'});
-      else if(event.clientY>(window.innerHeight-edge)) window.scrollBy({top:10,behavior:'auto'});
-      const hit=document.elementFromPoint(event.clientX,event.clientY);
-      const row=st.kind==='product'?hit?.closest?.('[data-product-card-id]'):hit?.closest?.('[data-category-row-id]');
-      const target=row?.dataset?.[st.kind==='product'?'productCardId':'categoryRowId'];
-      if(target){
-        st.targetId=String(target);
-        if(st.targetEl!==row){st.targetEl?.classList.remove('fc-drag-target');st.targetEl=row;st.targetEl.classList.add('fc-drag-target');}
+      if(event.clientY<edge) window.scrollBy({top:-12,behavior:'auto'});
+      else if(event.clientY>(window.innerHeight-edge)) window.scrollBy({top:12,behavior:'auto'});
+      const items=Array.from(st.list.children).filter(el=>el!==st.placeholder && (st.kind==='product'?el.matches('[data-product-card-id]'):el.matches('[data-category-row-id]')));
+      let inserted=false;
+      for(const item of items){
+        const r=item.getBoundingClientRect();
+        const horizontal = st.kind==='product' && Math.abs(r.left - st.placeholder.getBoundingClientRect().left) > 8;
+        const before = horizontal ? (event.clientY < r.top+r.height/2 || (event.clientY < r.bottom && event.clientX < r.left+r.width/2)) : event.clientY < r.top+r.height/2;
+        if(before){ if(st.placeholder.nextSibling!==item) st.list.insertBefore(st.placeholder,item); inserted=true; break; }
       }
+      if(!inserted) st.list.appendChild(st.placeholder);
+      const slots=Array.from(st.list.children).filter(el=>el===st.placeholder || (st.kind==='product'?el.matches('[data-product-card-id]'):el.matches('[data-category-row-id]')));
+      st.dropIndex=slots.indexOf(st.placeholder);
     }
     async function endCatalogDrag(event){
       if(!catalogDragState||catalogDragState.pointerId!==event.pointerId)return;
-      event.preventDefault();event.stopPropagation();const st=catalogDragState;catalogDragState=null;suppressCatalogClickOnce=true;cleanupCatalogDragVisual(st);
-      if(!st.targetId||st.targetId===st.id)return;
-      if(st.kind==='product')await reorderProductToTarget(st.id,st.targetId);else await reorderCategoryToTarget(st.id,st.targetId);
+      event.preventDefault();event.stopPropagation();const st=catalogDragState;catalogDragState=null;suppressCatalogClickOnce=true;
+      const to=st.dropIndex, from=st.originalIndex;
+      cleanupCatalogDragVisual(st);
+      if(from<0||to<0||from===to)return;
+      if(st.kind==='product')await reorderProductToIndex(st.id,from,to);else await reorderCategoryToIndex(st.id,from,to);
     }
     function cancelCatalogDrag(event){if(!catalogDragState)return;const st=catalogDragState;catalogDragState=null;cleanupCatalogDragVisual(st);}
-    async function reorderProductToTarget(id,targetId){const list=[...currentVisibleProductIds].map(String),from=list.indexOf(String(id)),to=list.indexOf(String(targetId));if(from<0||to<0||from===to)return;const dir=to>from?1:-1;for(let i=0;i<Math.abs(to-from);i++)await moveProductSort(id,dir);}
-    async function reorderCategoryToTarget(id,targetId){const cat=categories.find(c=>String(c.id)===String(id));if(!cat)return;const list=categories.filter(c=>String(c.parentId||'')===String(cat.parentId||'')).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)).map(c=>String(c.id));const from=list.indexOf(String(id)),to=list.indexOf(String(targetId));if(from<0||to<0||from===to)return;const dir=to>from?1:-1;for(let i=0;i<Math.abs(to-from);i++)await moveCategoryOrder(id,dir,null);}
+    async function reorderProductToIndex(id,from,to){
+      const list=[...currentVisibleProductIds].map(String); if(from<0) from=list.indexOf(String(id)); if(from<0||to<0||from===to)return;
+      const moving=products.find(p=>String(p.id)===String(id)); if(!moving)return;
+      const ordered=list.map(x=>products.find(p=>String(p.id)===x)).filter(Boolean); const [item]=ordered.splice(from,1); ordered.splice(Math.min(to,ordered.length),0,item);
+      const old=new Map(ordered.map(p=>[String(p.id),p.sortOrder]));
+      const sortedOrders=[...ordered].map(p=>Number(p.sortOrder||0)).sort((a,b)=>a-b); ordered.forEach((p,i)=>p.sortOrder=sortedOrders[i]??i);
+      render();
+      try{for(let i=0;i<ordered.length-1;i++){const a=ordered[i],b=ordered[i+1]; await callApi('move_sort',{idA:a.id,sortOrderA:a.sortOrder,idB:b.id,sortOrderB:b.sortOrder});} saveCatalogCache();}
+      catch(e){for(const p of ordered)if(old.has(String(p.id)))p.sortOrder=old.get(String(p.id));render();console.error(e);alert(tr("❌ Tartibni saqlab bo'lmadi: ","❌ Не удалось сохранить порядок: ")+(e.message||e));}
+    }
+    async function reorderCategoryToIndex(id,from,to){
+      const cat=categories.find(c=>String(c.id)===String(id));if(!cat)return;
+      const siblings=categories.filter(c=>String(c.parentId||'')===String(cat.parentId||'')).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)); if(from<0)from=siblings.findIndex(c=>String(c.id)===String(id)); if(from<0||to<0||from===to)return;
+      const old=new Map(siblings.map(c=>[String(c.id),c.sortOrder])); const [item]=siblings.splice(from,1); siblings.splice(Math.min(to,siblings.length),0,item); const orders=[...siblings].map(c=>Number(c.sortOrder||0)).sort((a,b)=>a-b); siblings.forEach((c,i)=>c.sortOrder=orders[i]??i); render();
+      try{await callApi('reorder_categories',{items:siblings.map(c=>({id:c.id,sortOrder:c.sortOrder}))});saveCatalogCache();}
+      catch(e){for(const c of siblings)if(old.has(String(c.id)))c.sortOrder=old.get(String(c.id));render();console.error(e);alert(tr("❌ Tartibni saqlab bo'lmadi: ","❌ Не удалось сохранить порядок: ")+(e.message||e));}
+    }
+
     function openBulkMoveCategoriesModal(){if(!bulkSelectedCategoryIds.size)return;movePickerParentId=null;movePickerSearch='';activePopupModal='BULK_MOVE_CATEGORIES';render();}
     async function bulkTrashSelectedCategories(){const ids=[...bulkSelectedCategoryIds];if(!ids.length)return;let prods=0;try{for(const id of ids){const p=await callApi('get_category_delete_preview',{categoryId:id});prods+=Number(p.productCount||0);}}catch(e){return alert(tr('Tekshirishda xatolik: ','Ошибка проверки: ')+(e.message||e));}const ok=await fcConfirm(tr('Tanlangan kataloglar o‘chirilsinmi?','Удалить выбранные каталоги?'),tr(`${ids.length} ta katalog va ularning ichidagi ${prods} ta tovar 24 soatlik Chiqindiga o‘tadi.`,`${ids.length} каталог(ов) и ${prods} товар(ов) будут перемещены в корзину на 24 часа.`));if(!ok)return;showActionToast(tr('O‘chirilmoqda...','Удаление...'),'saving');try{for(const id of ids)await callApi('delete_category',{categoryId:id});await loadCatalog();bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();showActionToast(tr('Chiqindiga o‘tkazildi','Перемещено в корзину'),'success',1500);}catch(e){console.error(e);await loadCatalog();bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();alert(tr('O‘chirishda xatolik: ','Ошибка удаления: ')+(e.message||e));}}
 
