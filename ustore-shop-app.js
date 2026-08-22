@@ -2187,9 +2187,22 @@
     document.addEventListener('click', (event) => {
       const popover = document.getElementById('role-mode-popover');
       const personBtn = document.getElementById('header-person-btn');
-      if (!popover || popover.classList.contains('hidden')) return;
-      if (popover.contains(event.target) || (personBtn && personBtn.contains(event.target))) return;
-      popover.classList.add('hidden');
+      if (popover && !popover.classList.contains('hidden')) {
+        if (!(popover.contains(event.target) || (personBtn && personBtn.contains(event.target)))) {
+          popover.classList.add('hidden');
+        }
+      }
+
+      // Product/katalogdagi uch nuqta menyusi: tashqariga bosilganda yopiladi.
+      if (cardActionMenu) {
+        const target = event.target;
+        const insideMenu = target?.closest?.('.fc-card-action-menu');
+        const onMenuButton = target?.closest?.('.fc-product-more-overlay, .fc-card-more-btn');
+        if (!insideMenu && !onMenuButton) {
+          cardActionMenu = null;
+          render();
+        }
+      }
     });
 
     function render() {
@@ -3037,7 +3050,6 @@
                     <button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('category','${sub.id}',event)" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
                     ${cardActionMenuHtml('category', sub.id)}
                   `) : ''}
-                  <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400"></i>
                 </div>
               </div>
             `).join('')}
@@ -9047,14 +9059,56 @@
     }
     function cancelCatalogDrag(event){if(!catalogDragState)return;const st=catalogDragState;catalogDragState=null;cleanupCatalogDragVisual(st);}
     async function reorderProductToIndex(id,from,to){
-      const list=[...currentVisibleProductIds].map(String); if(from<0) from=list.indexOf(String(id)); if(from<0||to<0||from===to)return;
-      const moving=products.find(p=>String(p.id)===String(id)); if(!moving)return;
-      const ordered=list.map(x=>products.find(p=>String(p.id)===x)).filter(Boolean); const [item]=ordered.splice(from,1); ordered.splice(Math.min(to,ordered.length),0,item);
-      const old=new Map(ordered.map(p=>[String(p.id),p.sortOrder]));
-      const sortedOrders=[...ordered].map(p=>Number(p.sortOrder||0)).sort((a,b)=>a-b); ordered.forEach((p,i)=>p.sortOrder=sortedOrders[i]??i);
+      const list=[...currentVisibleProductIds].map(String);
+      if(from<0) from=list.indexOf(String(id));
+      to=Math.max(0,Math.min(Number(to),list.length-1));
+      if(from<0||to<0||from===to)return;
+
+      // move_sort backend actioni ikki qo'shni tovarning sort_order qiymatini
+      // almashtirish uchun ishlaydi. Drag UI esa birdan yakuniy joyni ko'rsatadi:
+      // local tartib avval optimistik yangilanadi, keyin shu o'zgarish serverga
+      // qo'shni swaplar ketma-ketligi sifatida persist qilinadi.
+      const ordered=list.map(x=>products.find(p=>String(p.id)===x)).filter(Boolean);
+      if(ordered.length!==list.length)return;
+      const oldOrders=new Map(ordered.map(p=>[String(p.id),p.sortOrder]));
+      const oldProductOrder=products.slice();
+      const swaps=[];
+
+      if(to>from){
+        for(let i=from;i<to;i++){
+          const a=ordered[i], b=ordered[i+1];
+          const oldA=a.sortOrder, oldB=b.sortOrder;
+          a.sortOrder=oldB; b.sortOrder=oldA;
+          ordered[i]=b; ordered[i+1]=a;
+          swaps.push({idA:a.id,sortOrderA:a.sortOrder,idB:b.id,sortOrderB:b.sortOrder});
+        }
+      }else{
+        for(let i=from;i>to;i--){
+          const a=ordered[i], b=ordered[i-1];
+          const oldA=a.sortOrder, oldB=b.sortOrder;
+          a.sortOrder=oldB; b.sortOrder=oldA;
+          ordered[i]=b; ordered[i-1]=a;
+          swaps.push({idA:a.id,sortOrderA:a.sortOrder,idB:b.id,sortOrderB:b.sortOrder});
+        }
+      }
+
+      // Drop qilingach karta darhol yangi joyida ko'rinadi; serverni kutib
+      // eski joyiga "sakrab" qaytmaydi.
+      products.sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0));
       render();
-      try{for(let i=0;i<ordered.length-1;i++){const a=ordered[i],b=ordered[i+1]; await callApi('move_sort',{idA:a.id,sortOrderA:a.sortOrder,idB:b.id,sortOrderB:b.sortOrder});} saveCatalogCache();}
-      catch(e){for(const p of ordered)if(old.has(String(p.id)))p.sortOrder=old.get(String(p.id));render();console.error(e);alert(tr("❌ Tartibni saqlab bo'lmadi: ","❌ Не удалось сохранить порядок: ")+(e.message||e));}
+
+      try{
+        for(const swap of swaps) await callApi('move_sort',swap);
+        saveCatalogCache();
+      }catch(e){
+        for(const p of products){
+          if(oldOrders.has(String(p.id))) p.sortOrder=oldOrders.get(String(p.id));
+        }
+        products.splice(0,products.length,...oldProductOrder);
+        render();
+        console.error(e);
+        alert(tr("❌ Tartibni saqlab bo'lmadi: ","❌ Не удалось сохранить порядок: ")+(e.message||e));
+      }
     }
     async function reorderCategoryToIndex(id,from,to){
       const cat=categories.find(c=>String(c.id)===String(id));if(!cat)return;
