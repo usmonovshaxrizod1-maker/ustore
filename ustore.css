@@ -2071,9 +2071,10 @@ input::placeholder,textarea::placeholder{color:var(--ustore-muted-text)!importan
 .fc-card-action-menu button:active{background:var(--ustore-panel-bg)!important}
 
 /* Catalog page gets the same breadcrumb language as Ombor. */
-.fc-catalog-breadcrumb-wrap{display:flex;align-items:center;gap:.45rem;min-width:0}
-.fc-catalog-breadcrumb-wrap>.fc-cat-nav-btn{flex:0 0 auto}
-.fc-catalog-breadcrumb{flex:1;min-width:0;margin-bottom:0!important;background:var(--ustore-panel-bg)!important;border:1px solid var(--ustore-border)}
+.fc-catalog-breadcrumb-wrap{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.45rem;min-width:0;width:100%}
+.fc-catalog-breadcrumb-wrap>.fc-catalog-breadcrumb{grid-column:1;grid-row:1;justify-self:stretch}
+.fc-catalog-breadcrumb-wrap>.fc-catalog-nav-pills{grid-column:2;grid-row:1;justify-self:end}
+.fc-catalog-breadcrumb{min-width:0;width:100%;margin-bottom:0!important;background:var(--ustore-panel-bg)!important;border:1px solid var(--ustore-border)}
 .fc-catalog-breadcrumb button{color:var(--ustore-secondary-text)}
 .fc-catalog-breadcrumb button:last-of-type{color:var(--ustore-primary)}
 
@@ -2174,7 +2175,7 @@ html.ustore-dark-theme .fc-card-action-menu{background:var(--ustore-card-bg)!imp
 .border-green-200,.border-emerald-200{border-color:color-mix(in srgb,var(--ustore-success) 36%,var(--ustore-border))!important}
 
 .fc-warehouse-tab{color:var(--ustore-secondary-text)}
-.fc-warehouse-tab.is-active{background:var(--ustore-button)!important;color:var(--ustore-button-text)!important;box-shadow:0 7px 16px color-mix(in srgb,var(--ustore-button) 25%,transparent)}
+.fc-warehouse-tab.is-active{background:var(--ustore-button)!important;color:var(--ustore-button-text,#fff)!important;box-shadow:0 7px 16px color-mix(in srgb,var(--ustore-button) 25%,transparent)}
 .fc-warehouse-tool-btn,.fc-warehouse-tool-icon{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important;color:var(--ustore-secondary-text)!important}
 .fc-warehouse-tool-btn.is-active,.fc-warehouse-tool-icon.is-active{background:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg))!important;border-color:color-mix(in srgb,var(--ustore-primary) 45%,var(--ustore-border))!important;color:var(--ustore-primary)!important}
 .fc-warehouse-tool-icon.is-warning.is-active{background:color-mix(in srgb,var(--ustore-warning) 10%,var(--ustore-card-bg))!important;border-color:color-mix(in srgb,var(--ustore-warning) 42%,var(--ustore-border))!important;color:var(--ustore-warning)!important}
@@ -2190,3 +2191,32 @@ html.ustore-dark-theme .fc-card-action-menu{background:var(--ustore-card-bg)!imp
 .fc-report-tab.is-active,.fc-report-period.is-active{background:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg))!important;border-color:color-mix(in srgb,var(--ustore-primary) 38%,var(--ustore-border))!important;color:var(--ustore-primary)!important}
 .fc-report-date-range input{background:var(--ustore-input-bg)!important;border-color:var(--ustore-border)!important;color:var(--ustore-text)!important}
 .fc-report-section-title{color:var(--ustore-text)!important}.fc-report-section-title svg{color:var(--ustore-primary)!important}
+
+
+/* ================= ROUND 12 — small UI color/alignment fixes ================= */
+/* Excel: global theme mapping intentionally turns bg-slate into a neutral surface;
+   this dedicated semantic button keeps Excel visibly green in every theme. */
+.fc-excel-btn{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--ustore-success) 82%,#064e3b),var(--ustore-success))!important;
+  color:#fff!important;
+  border:1px solid color-mix(in srgb,var(--ustore-success) 74%,#064e3b)!important;
+  box-shadow:0 6px 14px color-mix(in srgb,var(--ustore-success) 20%,transparent);
+  transition:transform .12s ease,filter .12s ease,box-shadow .12s ease;
+}
+.fc-excel-btn:active{transform:scale(.97);filter:brightness(.95);box-shadow:0 3px 8px color-mix(in srgb,var(--ustore-success) 16%,transparent)}
+
+/* Orders > Barchasi: use the theme's primary accent rather than the neutral
+   secondary-button role, so the selected filter is immediately visible. */
+.fc-orders-all-filter{
+  background:color-mix(in srgb,var(--ustore-primary) 9%,var(--ustore-card-bg))!important;
+  color:var(--ustore-primary)!important;
+  border:1px solid color-mix(in srgb,var(--ustore-primary) 34%,var(--ustore-border))!important;
+  box-shadow:0 2px 7px color-mix(in srgb,var(--ustore-primary) 6%,transparent);
+}
+.fc-orders-all-filter.is-active{
+  background:var(--ustore-primary)!important;
+  color:var(--ustore-button-text,#fff)!important;
+  border-color:var(--ustore-primary)!important;
+  box-shadow:0 6px 14px color-mix(in srgb,var(--ustore-primary) 24%,transparent);
+}
+.fc-orders-all-filter:active{transform:scale(.97)}

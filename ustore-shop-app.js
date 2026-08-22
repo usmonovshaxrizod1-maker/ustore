@@ -3048,7 +3048,7 @@
               <div class="flex space-x-2 pt-1 border-t">
                 <button onclick="openAddCatModal()" class="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="folder-plus" class="w-3.5 h-3.5"></i>${tr("Katalog", "Каталог")}</button>
                 <button onclick="openAddProductModal()" class="flex-1 flex items-center justify-center gap-1 bg-emerald-600 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="package-plus" class="w-3.5 h-3.5"></i>${tr("Tovar", "Товар")}</button>
-                <button onclick="openExcelImportModal()" class="flex-1 flex items-center justify-center gap-1 bg-slate-800 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="table" class="w-3.5 h-3.5"></i>Excel</button>
+                <button onclick="openExcelImportModal()" class="fc-excel-btn flex-1 flex items-center justify-center gap-1 font-bold py-1.5 rounded-xl text-xs"><i data-lucide="table" class="w-3.5 h-3.5"></i>Excel</button>
               </div>
               <div class="flex flex-wrap gap-1.5 pt-1">
                 <button onclick="openMissingImageQueue()" title="${tr('Rasmsiz tovarlar','Товары без фото')} · ${globalMissingImageCount}" aria-label="${tr('Rasmsiz tovarlar','Товары без фото')}" class="flex items-center justify-center gap-1 min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">${ICON_IMAGE}${globalMissingImageCount > 0 ? `<span>${globalMissingImageCount}</span>` : ''}</button>
@@ -4249,7 +4249,7 @@
               <div class="fc-orders-search-calendar-row"><input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Mijoz ismi yoki tel raqami...','Имя клиента или номер телефона...')}" value="${escapeHtml(adminOrderFilters.search)}" class="p-2 border rounded-xl">${renderOrdersDateFilterHtml()}</div>
 
               <div class="flex gap-1 flex-wrap">
-                <button onclick="setAdminStatusFilter('ALL')" class="px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === 'ALL' ? 'bg-slate-800 text-white' : 'bg-gray-100 text-gray-600'}">${tr("Barchasi", "Все")}</button>
+                <button onclick="setAdminStatusFilter('ALL')" class="fc-orders-all-filter px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === 'ALL' ? 'is-active' : ''}">${tr("Barchasi", "Все")}</button>
                 ${['NEW', 'PROCESSING', 'DELIVERED', 'CANCELLED'].map(st => `
                   <button onclick="setAdminStatusFilter('${st}')" class="px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === st ? statusColorClass(st) + ' ring-2 ring-offset-1 ring-current' : 'bg-gray-100 text-gray-500'}">
                     ${statusLabel(st)}
@@ -4311,7 +4311,7 @@
           <div class="flex items-center justify-between gap-2"><h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>${renderOrdersDateFilterHtml()}</div>
 
           <div class="flex space-x-1 overflow-x-auto pb-1 text-xs">
-            <button onclick="userOrderFilter='ALL'; render();" class="px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border text-gray-600'}">${tr("Barchasi", "Все")}</button>
+            <button onclick="userOrderFilter='ALL'; render();" class="fc-orders-all-filter px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === 'ALL' ? 'is-active' : ''}">${tr("Barchasi", "Все")}</button>
             ${['NEW', 'PROCESSING', 'DELIVERED', 'CANCELLED'].map(st => `
               <button onclick="userOrderFilter='${st}'; render();" class="px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === st ? statusColorClass(st) + ' ring-2 ring-offset-1 ring-current' : 'bg-white border text-gray-500'}">${statusLabel(st)}</button>
             `).join('')}
