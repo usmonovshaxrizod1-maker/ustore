@@ -586,6 +586,10 @@
     let homeSearchQuery = '';
     let ordersPage = 1;
     let userOrderFilter = 'ALL';
+    // Buyurtmalar uchun umumiy sana oralig'i filtri — user/admin bir xil state.
+    let ordersDatePreset = 'ALL'; // ALL | TODAY | YESTERDAY | 7D | 30D | MONTH | CUSTOM
+    let ordersDateFrom = '';
+    let ordersDateTo = '';
     let selectedProductModal = null;
     let selectedOrderModal = null;
     let rejectReceiptOrderId = null; // 14-band: REJECT_RECEIPT modali qaysi buyurtma uchun ochilgani
@@ -641,6 +645,8 @@
     let fulfillmentSettingsSection = 'MENU';
     let fulfillmentDeliveryKind = 'FREE'; // FREE | FIXED | TAXI | POST (faqat DELIVERY bo'limida)
     let fulfillmentExpandedPayment = null; // CASH | CARD | null (faqat PAYMENTS bo'limida, 1.2: yonma-yon + inline ochilish)
+    // Yetkazib berish parametrlarida bir vaqtda faqat kerakli hudud kartasi ochiq turadi.
+    let fulfillmentExpandedRegionKey = null;
     let selectedDeliveryMethodId = checkoutDraft.deliveryMethodId || null;
     let selectedPayMethod = checkoutDraft.paymentMethodId || null;
     let selectedQrProviderId = null;
@@ -682,6 +688,9 @@
     // Do'kon ma'lumotlari formasida logo tanlash/URL oynasiga o'tishda
     // hali saqlanmagan input qiymatlari yo'qolib ketmasligi uchun vaqtinchalik draft.
     let shopInfoDraft = null;
+    // Do'kon logosi form draftining bir qismi: tanlash = faqat preview; real saqlash
+    // faqat SHOP_INFO pastidagi "Saqlash" bosilganda bajariladi.
+    let shopLogoDraft = null; // { kind:'file', file, previewUrl } | { kind:'url', url }
     let editingFieldData = null;
     // Universal 2-ustunli variant konstruktori (Add + Edit bir xil komponent).
     // Har qator: {level1, level2, qty} — level1->size, level2->color (mavjud
@@ -1040,6 +1049,8 @@
       firstName: registeredUser?.firstName || tg?.initDataUnsafe?.user?.first_name || tr("Mijoz", "Клиент"),
       lastName: registeredUser?.lastName || tg?.initDataUnsafe?.user?.last_name || "",
       phone: registeredUser?.phone || "+998",
+      username: tg?.initDataUnsafe?.user?.username || '',
+      photoUrl: tg?.initDataUnsafe?.user?.photo_url || '',
       tgId: null
     };
 
@@ -1203,7 +1214,7 @@
         console.error('Adminlarni yuklashda xatolik:', e);
       } finally {
         adminsLoading = false;
-        if (currentTab === 'profile' && !isCatalogEditorModalOpen()) render();
+        if ((currentTab === 'profile' || activePage === 'STAFF') && !isCatalogEditorModalOpen()) render();
       }
     }
 
@@ -1283,7 +1294,7 @@
       openSupportTicketId = null;
       supportMessages = [];
       supportReplyTarget = null;
-      openPage('SUPPORT', 'nav-support-btn');
+      openPage('SUPPORT', 'nav-profile');
       loadMySupportTicketsLazy().then(resolveActiveSupportTicket);
     }
     // Shu order (yoki umumiy) uchun yopilmagan ticket bo'lsa, to'g'ridan-
@@ -1357,7 +1368,7 @@
       adminSupportSelectedUser = null;
       adminSupportSelectedTicketId = null;
       supportReplyTarget = null;
-      openPage('SUPPORT', 'nav-support-btn');
+      openPage('SUPPORT', 'nav-profile');
       loadAdminSupportTicketsLazy();
       loadUsersLazy();
     }
@@ -1477,6 +1488,7 @@
       if (tab === 'warehouse') loadWarehouseSummary();
       if (tab === 'profile' && isSuperAdmin) loadAdminsLazy();
       if (tab === 'profile' && isUserAnAdmin) loadAdminSupportTicketsLazy();
+      if (tab === 'profile' && !(isAdminMode && isUserAnAdmin)) loadMySupportTicketsLazy();
     }
 
     function toggleAdminRole() {
@@ -2107,7 +2119,11 @@
       const cartBtn = document.getElementById('header-cart-btn');
       if (cartBtn) cartBtn.classList.toggle('hidden', isAdminMode && isUserAnAdmin);
       const personBtn = document.getElementById('header-person-btn');
-      if (personBtn) personBtn.onclick = isUserAnAdmin ? togglePersonMenu : (() => switchTab('profile'));
+      if (personBtn) {
+        // Oddiy user Profilga pastki menyudan kiradi; tepada foydasiz odamcha ko'rinmaydi.
+        personBtn.classList.toggle('hidden', !isUserAnAdmin);
+        personBtn.onclick = isUserAnAdmin ? togglePersonMenu : null;
+      }
       // Sozlama (⚙️) tugmasi faqat admin uchun — oddiy userga bosilganda hech
       // narsa qilmaydigan "o'lik" icon ko'rsatmaslik uchun.
       const settingsBtn = document.getElementById('header-settings-btn');
@@ -2294,6 +2310,7 @@
     function renderActivePage(container) {
       switch (activePage) {
         case 'SUPPORT': renderSupportPage(container); break;
+        case 'STAFF': renderStaffPage(container); break;
         case 'SETTINGS': renderSettingsPage(container); break;
         case 'DASHBOARD': renderDashboardPage(container); break;
         case 'FAVORITES': renderFavoritesPage(container); break;
@@ -2625,9 +2642,9 @@
         <div class="space-y-3 text-xs">
           <p class="text-[10px] text-gray-500">${TOP_LEVEL_REGIONS.length} ${tr('ta top-level hudud mavjud ro‘yxatdan olindi', 'регионов взято из текущего списка')}</p>
           <div id="fulfillment-panel">${renderFulfillmentDeliveryPanel()}</div>
-          <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
-            <button onclick="saveFulfillmentSettings()" class="bg-blue-600 text-white font-black py-3 rounded-xl">✅ ${tr('Saqlash','Сохранить')}</button>
-            <button onclick="closeFulfillmentSettingsPage()" class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl">${tr('Bekor qilish','Отмена')}</button>
+          <div class="grid grid-cols-2 gap-2 sticky bottom-0 fc-delivery-footer">
+            <button onclick="saveFulfillmentSettings()" class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash','Сохранить')}</button>
+            <button onclick="closeFulfillmentSettingsPage()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button>
           </div>
         </div>
       `;
@@ -3953,6 +3970,81 @@
     }
 
     // 4. ORDERS TAB (USER & ADMIN)
+    function orderCreatedDate(o) {
+      const d = new Date(o?.createdAt || o?.date || 0);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function setOrdersDatePreset(preset) {
+      ordersDatePreset = preset || 'ALL';
+      if (ordersDatePreset !== 'CUSTOM') {
+        ordersDateFrom = '';
+        ordersDateTo = '';
+      }
+      ordersPage = 1;
+      render();
+    }
+
+    function setOrdersCustomDate(field, value) {
+      ordersDatePreset = 'CUSTOM';
+      if (field === 'from') ordersDateFrom = String(value || '');
+      if (field === 'to') ordersDateTo = String(value || '');
+      ordersPage = 1;
+      render();
+    }
+
+    function filterOrdersBySelectedDate(source) {
+      const now = new Date();
+      let from = null, to = null;
+      const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const endOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+      if (ordersDatePreset === 'TODAY') {
+        from = startOfDay(now); to = endOfDay(now);
+      } else if (ordersDatePreset === 'YESTERDAY') {
+        const y = new Date(now); y.setDate(y.getDate() - 1); from = startOfDay(y); to = endOfDay(y);
+      } else if (ordersDatePreset === '7D') {
+        from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)); to = endOfDay(now);
+      } else if (ordersDatePreset === '30D') {
+        from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)); to = endOfDay(now);
+      } else if (ordersDatePreset === 'MONTH') {
+        from = new Date(now.getFullYear(), now.getMonth(), 1); to = endOfDay(now);
+      } else if (ordersDatePreset === 'CUSTOM') {
+        if (ordersDateFrom) { const d = new Date(`${ordersDateFrom}T00:00:00`); if (!Number.isNaN(d.getTime())) from = d; }
+        if (ordersDateTo) { const d = new Date(`${ordersDateTo}T23:59:59.999`); if (!Number.isNaN(d.getTime())) to = d; }
+      }
+      if (!from && !to) return [...source];
+      return source.filter(o => {
+        const d = orderCreatedDate(o); if (!d) return false;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+      });
+    }
+
+    function renderOrdersDateFilterHtml() {
+      const presets = [
+        ['ALL', tr('Barchasi','Все')], ['TODAY', tr('Bugun','Сегодня')], ['YESTERDAY', tr('Kecha','Вчера')],
+        ['7D', tr('7 kun','7 дней')], ['30D', tr('30 kun','30 дней')], ['MONTH', tr('Oy','Месяц')], ['CUSTOM', tr('Sana oralig‘i','Период')],
+      ];
+      return `<div class="fc-orders-date-filter">
+        <div class="fc-orders-date-chips">${presets.map(([id,label]) => `<button type="button" onclick="setOrdersDatePreset('${id}')" class="fc-orders-date-chip ${ordersDatePreset === id ? 'is-active' : ''}">${label}</button>`).join('')}</div>
+        ${ordersDatePreset === 'CUSTOM' ? `<div class="fc-orders-custom-range"><label><span>${tr('Dan','С')}</span><input type="date" value="${escapeHtml(ordersDateFrom)}" onchange="setOrdersCustomDate('from',this.value)"></label><label><span>${tr('Gacha','По')}</span><input type="date" value="${escapeHtml(ordersDateTo)}" onchange="setOrdersCustomDate('to',this.value)"></label></div>` : ''}
+      </div>`;
+    }
+
+    function renderOrdersSummaryHtml(periodOrders) {
+      const nonCancelled = periodOrders.filter(o => o.status !== 'CANCELLED');
+      const total = nonCancelled.reduce((sum, o) => sum + (Number(o.payableTotal ?? o.totalPrice) || 0), 0);
+      const counts = Object.fromEntries(['NEW','PROCESSING','DELIVERED','CANCELLED'].map(st => [st, periodOrders.filter(o => o.status === st).length]));
+      return `<div class="fc-orders-summary">
+        <div class="fc-orders-summary-main"><div><span>${tr('Jami buyurtma','Всего заказов')}</span><strong>${periodOrders.length}</strong></div><div><span>${tr('Jami summa','Общая сумма')}</span><strong>${money(total)}</strong></div></div>
+        <div class="fc-orders-summary-statuses">
+          <span><b>${counts.NEW}</b>${tr('Yangi','Новые')}</span><span><b>${counts.PROCESSING}</b>${tr('Jarayonda','В работе')}</span><span><b>${counts.DELIVERED}</b>${tr('Yetkazilgan','Доставлены')}</span><span><b>${counts.CANCELLED}</b>${tr('Bekor','Отменены')}</span>
+        </div>
+        <p>${tr("Bekor qilingan buyurtmalar jami summaga kiritilmaydi.", "Отменённые заказы не входят в общую сумму.")}</p>
+      </div>`;
+    }
+
     function renderOrders(container) {
       if (ordersLoading || !ordersLoaded) {
         container.innerHTML = `<div class="py-16 text-center text-sm text-gray-500"><div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>${tr("Buyurtmalar yuklanmoqda...", "Заказы загружаются...")}</div>`;
@@ -3960,7 +4052,8 @@
       }
       if (isAdminMode && isUserAnAdmin) {
         // ADMIN ORDERS VIEW
-        let filteredOrders = orders.filter(o => {
+        const periodOrders = filterOrdersBySelectedDate(orders);
+        let filteredOrders = periodOrders.filter(o => {
           const matchStatus = adminOrderFilters.status === 'ALL' || o.status === adminOrderFilters.status;
           const matchRegion = adminOrderFilters.region === 'ALL' || o.region === adminOrderFilters.region;
           const matchPayment = adminOrderFilters.payment === 'ALL' || o.payMethod === adminOrderFilters.payment;
@@ -3975,6 +4068,8 @@
         container.innerHTML = `
           <div class="space-y-4">
             <h2 class="text-lg font-bold text-slate-800">${t('all_orders')}</h2>
+            ${renderOrdersDateFilterHtml()}
+            ${renderOrdersSummaryHtml(periodOrders)}
 
             <div class="bg-white p-3 rounded-2xl border space-y-2 text-xs shadow-sm">
               <input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Mijoz ismi yoki tel raqami...','Имя клиента или номер телефона...')}" value="${escapeHtml(adminOrderFilters.search)}" class="w-full p-2 border rounded-xl">
@@ -4034,11 +4129,14 @@
       }
 
       // USER ORDERS VIEW
-      let userOrders = orders.filter(o => userOrderFilter === 'ALL' || o.status === userOrderFilter);
+      const periodOrders = filterOrdersBySelectedDate(orders);
+      let userOrders = periodOrders.filter(o => userOrderFilter === 'ALL' || o.status === userOrderFilter);
 
       container.innerHTML = `
         <div class="space-y-3">
           <h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>
+          ${renderOrdersDateFilterHtml()}
+          ${renderOrdersSummaryHtml(periodOrders)}
 
           <div class="flex space-x-1 overflow-x-auto pb-1 text-xs">
             <button onclick="userOrderFilter='ALL'; render();" class="px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border text-gray-600'}">${tr("Barchasi", "Все")}</button>
@@ -4653,7 +4751,7 @@
     function renderDashboardPage(container) {
       const d = dashboardLiteData;
       if (dashboardLiteLoading || !d) {
-        renderPageShell(container, tr('Dashboard / Hisobot', 'Dashboard / Отчёт'), `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`);
+        renderPageShell(container, tr('Hisobot', 'Отчёт'), `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`);
         return;
       }
       const tabs = [
@@ -4691,7 +4789,7 @@
           ${renderDashboardTabBodyHtml(d)}
         </div>
       `;
-      renderPageShell(container, tr('Dashboard / Hisobot', 'Dashboard / Отчёт'), body);
+      renderPageShell(container, tr('Hisobot', 'Отчёт'), body);
     }
     function renderDashboardTabBodyHtml(d) {
       if (dashboardTab === 'UMUMIY') return renderDashboardUmumiyHtml(d);
@@ -5146,6 +5244,7 @@
     function rerenderFulfillmentPanel() {
       const el = document.getElementById('fulfillment-panel');
       if (el) el.innerHTML = renderFulfillmentPanel();
+      if (window.lucide) lucide.createIcons();
     }
 
     // 1.3: checkbox/toggle bosilganda FAQAT ro'yxat qismi (#fulfillment-body)
@@ -5160,6 +5259,7 @@
       } else {
         el.innerHTML = renderFulfillmentDeliveryBody();
       }
+      if (window.lucide) lucide.createIcons();
     }
 
     function setFulfillmentSettingsSection(section) {
@@ -5171,6 +5271,7 @@
 
     function setFulfillmentDeliveryKind(kind) {
       fulfillmentDeliveryKind = kind;
+      fulfillmentExpandedRegionKey = null;
       rerenderFulfillmentPanel();
     }
 
@@ -5180,6 +5281,11 @@
     function setFulfillmentExpandedPayment(methodId) {
       fulfillmentExpandedPayment = fulfillmentExpandedPayment === methodId ? null : methodId;
       rerenderFulfillmentPanel();
+    }
+
+    function toggleFulfillmentRegionPanel(key) {
+      fulfillmentExpandedRegionKey = fulfillmentExpandedRegionKey === key ? null : key;
+      rerenderFulfillmentBody();
     }
 
     function setDeliveryMethodEnabled(kind, enabled) {
@@ -5199,8 +5305,13 @@
       const key = DELIVERY_CONFIG_KEYS[kind];
       const regionId = decodedRegionId(encodedId);
       if (!key || !TOP_LEVEL_REGION_IDS.includes(regionId)) return;
-      if (enabled) fulfillmentDraft.delivery[key].regions[regionId] = { ...(fulfillmentDraft.delivery[key].regions[regionId] || defaultRegionSetting(kind)), enabled: true };
-      else delete fulfillmentDraft.delivery[key].regions[regionId];
+      if (enabled) {
+        fulfillmentDraft.delivery[key].regions[regionId] = { ...(fulfillmentDraft.delivery[key].regions[regionId] || defaultRegionSetting(kind)), enabled: true };
+        fulfillmentExpandedRegionKey = `${kind}:${regionId}`;
+      } else {
+        delete fulfillmentDraft.delivery[key].regions[regionId];
+        if (fulfillmentExpandedRegionKey === `${kind}:${regionId}`) fulfillmentExpandedRegionKey = null;
+      }
       rerenderFulfillmentBody();
     }
 
@@ -5279,8 +5390,13 @@
     function setPostRegionEnabled(providerId, encodedId, enabled) {
       const provider = postProvider(providerId), regionId = decodedRegionId(encodedId);
       if (!provider || !TOP_LEVEL_REGION_IDS.includes(regionId)) return;
-      if (enabled) provider.regions[regionId] = { ...(provider.regions[regionId] || { payer: 'CUSTOMER' }), enabled: true };
-      else delete provider.regions[regionId];
+      if (enabled) {
+        provider.regions[regionId] = { ...(provider.regions[regionId] || { payer: 'CUSTOMER' }), enabled: true };
+        fulfillmentExpandedRegionKey = `POST:${providerId}:${regionId}`;
+      } else {
+        delete provider.regions[regionId];
+        if (fulfillmentExpandedRegionKey === `POST:${providerId}:${regionId}`) fulfillmentExpandedRegionKey = null;
+      }
       rerenderFulfillmentBody();
     }
 
@@ -5339,29 +5455,47 @@
 
     function renderDeliveryRegionRows(kind) {
       const key = DELIVERY_CONFIG_KEYS[kind], regions = fulfillmentDraft.delivery[key].regions;
-      return TOP_LEVEL_REGIONS.map(region => {
+      return `<div class="fc-delivery-region-list">${TOP_LEVEL_REGIONS.map(region => {
         const entry = regions[region.id], encoded = encodedRegionId(region.id);
-        return `<div class="border rounded-xl p-2.5 space-y-2">
-          <label class="flex items-center justify-between gap-2 font-bold"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setDeliveryRegionEnabled('${kind}','${encoded}',this.checked)"></label>
-          ${entry?.enabled && kind === 'FIXED' ? `<div class="flex items-center gap-2"><input type="number" min="0" value="${entry.fee || ''}" oninput="setDeliveryRegionNumber('FIXED','${encoded}','fee',this.value)" class="flex-1 p-2 border rounded-xl"><span>${tr("so'm",'сум')}</span></div>` : ''}
-          ${entry?.enabled && kind === 'TAXI' ? `
-            <input type="number" min="0" value="${entry.exactFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','exactFee',this.value)" placeholder="${tr('Aniq narx (ixtiyoriy)', 'Точная цена (необязательно)')}" class="w-full p-2 border rounded-xl">
-            <div class="grid grid-cols-2 gap-2"><input type="number" min="0" value="${entry.minFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','minFee',this.value)" placeholder="Min" class="p-2 border rounded-xl"><input type="number" min="0" value="${entry.maxFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','maxFee',this.value)" placeholder="Max" class="p-2 border rounded-xl"></div>
-            <p class="text-[9px] text-gray-400">${tr("Bo'sh qoldirilsa, umumiy qiymat yoki standart matn ishlatiladi.", "Если оставить пустым, используется общее значение или стандартный текст.")}</p>
-          ` : ''}
-          ${entry?.enabled ? `<input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setDeliveryRegionComment('${kind}','${encoded}',this.value)" placeholder="${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}" maxlength="200" class="w-full p-2 border rounded-xl text-[11px]">` : ''}
-          ${entry?.enabled ? `<input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setDeliveryRegionEstimatedTime('${kind}','${encoded}',this.value)" placeholder="${tr("Yetkazib berish vaqti (ixtiyoriy, masalan: 30-60 daqiqa)","Время доставки (необязательно, например: 30-60 минут)")}" maxlength="60" class="w-full p-2 border rounded-xl text-[11px]">` : ''}
+        const rowKey = `${kind}:${region.id}`;
+        const open = !!entry?.enabled && fulfillmentExpandedRegionKey === rowKey;
+        const subtitle = !entry?.enabled ? tr("O'chirilgan", 'Выключено')
+          : kind === 'FIXED' && entry.fee != null ? `${money(entry.fee)}`
+          : kind === 'TAXI' && entry.exactFee != null ? `${money(entry.exactFee)}`
+          : tr('Sozlangan', 'Настроено');
+        return `<div class="fc-delivery-region-card ${open ? 'is-open' : ''}">
+          <div class="fc-delivery-region-head">
+            <button type="button" class="fc-delivery-region-main" onclick="toggleFulfillmentRegionPanel('${rowKey}')" ${entry?.enabled ? '' : 'disabled'}>
+              <span><b>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</b><small>${escapeHtml(subtitle)}</small></span>
+              ${entry?.enabled ? `<i data-lucide="chevron-down" class="w-4 h-4 fc-delivery-region-chevron"></i>` : ''}
+            </button>
+            <label class="fc-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setDeliveryRegionEnabled('${kind}','${encoded}',this.checked)"><span class="fc-toggle-track"></span></label>
+          </div>
+          ${open ? `<div class="fc-delivery-region-body">
+            ${kind === 'FIXED' ? `<label class="fc-mini-field"><span>${tr('Yetkazish narxi','Стоимость доставки')}</span><div class="fc-money-input"><input type="number" min="0" value="${entry.fee ?? ''}" oninput="setDeliveryRegionNumber('FIXED','${encoded}','fee',this.value)"><em>${tr("so'm",'сум')}</em></div></label>` : ''}
+            ${kind === 'TAXI' ? `<label class="fc-mini-field"><span>${tr('Aniq narx (ixtiyoriy)','Точная цена (необязательно)')}</span><input type="number" min="0" value="${entry.exactFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','exactFee',this.value)"></label><div class="grid grid-cols-2 gap-2"><label class="fc-mini-field"><span>Min</span><input type="number" min="0" value="${entry.minFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','minFee',this.value)"></label><label class="fc-mini-field"><span>Max</span><input type="number" min="0" value="${entry.maxFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','maxFee',this.value)"></label></div>` : ''}
+            <label class="fc-mini-field"><span>${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}</span><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setDeliveryRegionComment('${kind}','${encoded}',this.value)" maxlength="200"></label>
+            <label class="fc-mini-field"><span>${tr('Yetkazib berish vaqti (ixtiyoriy)','Время доставки (необязательно)')}</span><input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setDeliveryRegionEstimatedTime('${kind}','${encoded}',this.value)" placeholder="${tr('Masalan: 30–60 daqiqa','Например: 30–60 минут')}" maxlength="60"></label>
+          </div>` : ''}
         </div>`;
-      }).join('');
+      }).join('')}</div>`;
     }
 
     function renderPostProviderSettings(provider) {
-      return `<div class="border rounded-2xl p-3 space-y-3">
-        <label class="flex items-center justify-between font-black"><span>📦 ${escapeHtml(provider.name)}</span><input type="checkbox" ${provider.enabled ? 'checked' : ''} onchange="setPostProviderEnabled('${provider.id}',this.checked)"></label>
-        ${provider.id === 'OTHER' ? `<input type="text" value="${escapeHtml(provider.name)}" oninput="setPostProviderName('OTHER',this.value)" placeholder="${tr('Pochta nomi','Название почты')}" class="w-full p-2 border rounded-xl">` : ''}
-        ${provider.enabled ? `${settingsBulkButtons(`bulkPostRegions('${provider.id}',true)`, `bulkPostRegions('${provider.id}',false)`)}<div class="space-y-2">${TOP_LEVEL_REGIONS.map(region => {
+      return `<div class="fc-delivery-provider-card">
+        <div class="fc-delivery-provider-head">
+          <div class="min-w-0"><b>${escapeHtml(provider.name)}</b><small>${provider.enabled ? tr('Yoqilgan','Включено') : tr("O'chirilgan",'Выключено')}</small></div>
+          <label class="fc-toggle"><input type="checkbox" ${provider.enabled ? 'checked' : ''} onchange="setPostProviderEnabled('${provider.id}',this.checked)"><span class="fc-toggle-track"></span></label>
+        </div>
+        ${provider.id === 'OTHER' ? `<label class="fc-mini-field"><span>${tr('Pochta nomi','Название почты')}</span><input type="text" value="${escapeHtml(provider.name)}" oninput="setPostProviderName('OTHER',this.value)"></label>` : ''}
+        ${provider.enabled ? `<div class="fc-delivery-provider-tools">${settingsBulkButtons(`bulkPostRegions('${provider.id}',true)`, `bulkPostRegions('${provider.id}',false)`)}</div><div class="fc-delivery-region-list">${TOP_LEVEL_REGIONS.map(region => {
           const entry = provider.regions[region.id], encoded = encodedRegionId(region.id);
-          return `<div class="border rounded-xl p-2 space-y-2"><label class="flex justify-between gap-2 font-bold"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setPostRegionEnabled('${provider.id}','${encoded}',this.checked)"></label>${entry?.enabled ? `<select onchange="setPostRegionPayer('${provider.id}','${encoded}',this.value)" class="w-full p-2 border rounded-xl bg-gray-50"><option value="CUSTOMER" ${entry.payer !== 'SELLER' ? 'selected' : ''}>${tr('Pochta xarajati mijoz hisobidan','Почта за счёт клиента')}</option><option value="SELLER" ${entry.payer === 'SELLER' ? 'selected' : ''}>${tr('Pochta xarajati sotuvchi hisobidan','Почта за счёт продавца')}</option></select><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setPostRegionComment('${provider.id}','${encoded}',this.value)" placeholder="${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}" maxlength="200" class="w-full p-2 border rounded-xl text-[11px]"><input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setPostRegionEstimatedTime('${provider.id}','${encoded}',this.value)" placeholder="${tr("Yetkazib berish vaqti (ixtiyoriy)","Время доставки (необязательно)")}" maxlength="60" class="w-full p-2 border rounded-xl text-[11px]">` : ''}</div>`;
+          const rowKey = `POST:${provider.id}:${region.id}`;
+          const open = !!entry?.enabled && fulfillmentExpandedRegionKey === rowKey;
+          return `<div class="fc-delivery-region-card ${open ? 'is-open' : ''}">
+            <div class="fc-delivery-region-head"><button type="button" class="fc-delivery-region-main" onclick="toggleFulfillmentRegionPanel('${rowKey}')" ${entry?.enabled ? '' : 'disabled'}><span><b>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</b><small>${entry?.enabled ? (entry.payer === 'SELLER' ? tr('Sotuvchi hisobidan','За счёт продавца') : tr('Mijoz hisobidan','За счёт клиента')) : tr("O'chirilgan",'Выключено')}</small></span>${entry?.enabled ? `<i data-lucide="chevron-down" class="w-4 h-4 fc-delivery-region-chevron"></i>` : ''}</button><label class="fc-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setPostRegionEnabled('${provider.id}','${encoded}',this.checked)"><span class="fc-toggle-track"></span></label></div>
+            ${open ? `<div class="fc-delivery-region-body"><label class="fc-mini-field"><span>${tr('Pochta xarajati','Почтовые расходы')}</span><select onchange="setPostRegionPayer('${provider.id}','${encoded}',this.value)"><option value="CUSTOMER" ${entry.payer !== 'SELLER' ? 'selected' : ''}>${tr('Mijoz hisobidan','За счёт клиента')}</option><option value="SELLER" ${entry.payer === 'SELLER' ? 'selected' : ''}>${tr('Sotuvchi hisobidan','За счёт продавца')}</option></select></label><label class="fc-mini-field"><span>${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}</span><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setPostRegionComment('${provider.id}','${encoded}',this.value)" maxlength="200"></label><label class="fc-mini-field"><span>${tr('Yetkazib berish vaqti (ixtiyoriy)','Время доставки (необязательно)')}</span><input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setPostRegionEstimatedTime('${provider.id}','${encoded}',this.value)" maxlength="60"></label></div>` : ''}
+          </div>`;
         }).join('')}</div>` : ''}
       </div>`;
     }
@@ -5451,25 +5585,32 @@
 
     function renderFulfillmentDeliveryBody() {
       const kind = fulfillmentDeliveryKind;
-      if (kind === 'POST') return `<div class="space-y-3"><label class="flex items-center justify-between font-black"><span>${tr('Pochta orqali yetkazib berishni yoqish','Включить доставку почтой')}</span><input type="checkbox" ${fulfillmentDraft.delivery.post.enabled ? 'checked' : ''} onchange="setPostEnabled(this.checked)"></label><p class="text-[10px] text-gray-500">${tr('BTS va EMU filiallari bazadan olinadi: mijoz viloyat → tuman/shahar → provider → filialni tanlaydi.','Филиалы BTS и EMU берутся из базы: клиент выбирает регион → район/город → службу → отделение.')}</p>${fulfillmentDraft.delivery.post.enabled ? fulfillmentDraft.delivery.post.providers.map(renderPostProviderSettings).join('') : ''}</div>`;
+      if (kind === 'POST') {
+        return `<div class="space-y-3">
+          <div class="fc-delivery-master-toggle"><div><b>${tr('Pochta orqali yetkazib berish','Доставка почтой')}</b><small>${tr('BTS, EMU va boshqa pochta xizmatlari','BTS, EMU и другие почтовые службы')}</small></div><label class="fc-toggle"><input type="checkbox" ${fulfillmentDraft.delivery.post.enabled ? 'checked' : ''} onchange="setPostEnabled(this.checked)"><span class="fc-toggle-track"></span></label></div>
+          ${fulfillmentDraft.delivery.post.enabled ? fulfillmentDraft.delivery.post.providers.map(renderPostProviderSettings).join('') : `<div class="fc-empty-state compact"><p>${tr('Pochta usuli o‘chirilgan.','Почтовая доставка выключена.')}</p></div>`}
+        </div>`;
+      }
       const key = DELIVERY_CONFIG_KEYS[kind], method = fulfillmentDraft.delivery[key];
       const descriptions = {
-        FREE: tr('Tanlangan hududlarda checkoutda faqat bepul variant chiqadi.', 'В выбранных регионах появится бесплатный вариант.'),
-        FIXED: tr('Har tanlangan hudud uchun uyigacha aniq narx kiriting.', 'Укажите точную стоимость доставки до дома для каждого региона.'),
-        TAXI: tr("Aniq narx yoki min/max diapazon — ikkalasi ham ixtiyoriy, informatsion; buyurtma summasiga qo‘shilmaydi.", "Точная цена или диапазон min/max — оба необязательны, информационные; не включаются в сумму заказа."),
+        FREE: tr('Tanlangan hududlarda bepul yetkazib berish chiqadi.', 'В выбранных регионах будет бесплатная доставка.'),
+        FIXED: tr('Har hudud uchun aniq yetkazish narxini kiriting.', 'Укажите точную стоимость доставки для каждого региона.'),
+        TAXI: tr("Aniq narx yoki min/max diapazon ixtiyoriy va informatsion.", "Точная цена или диапазон min/max необязательны и носят информационный характер."),
       };
       const taxiGeneralHtml = kind === 'TAXI' ? (() => {
         const g = fulfillmentDraft.delivery.taxi.general || { exactFee: null, minFee: null, maxFee: null, comment: null };
-        return `<div class="border-2 border-dashed rounded-xl p-2.5 space-y-2 bg-white">
-          <p class="font-bold text-gray-700">⚙️ ${tr('Umumiy qiymat (barcha viloyatlar uchun)', 'Общее значение (для всех регионов)')}</p>
-          <input type="number" min="0" value="${g.exactFee ?? ''}" oninput="setTaxiGeneralNumber('exactFee',this.value)" placeholder="${tr('Aniq narx (ixtiyoriy)', 'Точная цена (необязательно)')}" class="w-full p-2 border rounded-xl">
-          <div class="grid grid-cols-2 gap-2"><input type="number" min="0" value="${g.minFee ?? ''}" oninput="setTaxiGeneralNumber('minFee',this.value)" placeholder="Min" class="p-2 border rounded-xl"><input type="number" min="0" value="${g.maxFee ?? ''}" oninput="setTaxiGeneralNumber('maxFee',this.value)" placeholder="Max" class="p-2 border rounded-xl"></div>
-          <input type="text" value="${escapeHtml(g.comment || '')}" oninput="setTaxiGeneralComment(this.value)" placeholder="${tr('Umumiy izoh (ixtiyoriy)', 'Общий комментарий (необязательно)')}" maxlength="200" class="w-full p-2 border rounded-xl text-[11px]">
-          <input type="text" value="${escapeHtml(g.estimatedTime || '')}" oninput="setTaxiGeneralEstimatedTime(this.value)" placeholder="${tr("Umumiy yetkazib berish vaqti (ixtiyoriy)","Общее время доставки (необязательно)")}" maxlength="60" class="w-full p-2 border rounded-xl text-[11px]">
-          <p class="text-[9px] text-gray-400">${tr("Bu qiymat faqat o'z narxini kiritmagan viloyatlar uchun ishlatiladi.", "Это значение применяется только к регионам, где своя цена не указана.")}</p>
+        return `<div class="fc-delivery-general-card">
+          <div class="fc-delivery-general-head"><span class="fc-shop-settings-icon"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i></span><div><b>${tr('Umumiy qiymat','Общее значение')}</b><small>${tr('O‘z narxi kiritilmagan hududlar uchun','Для регионов без собственной цены')}</small></div></div>
+          <label class="fc-mini-field"><span>${tr('Aniq narx (ixtiyoriy)','Точная цена (необязательно)')}</span><input type="number" min="0" value="${g.exactFee ?? ''}" oninput="setTaxiGeneralNumber('exactFee',this.value)"></label>
+          <div class="grid grid-cols-2 gap-2"><label class="fc-mini-field"><span>Min</span><input type="number" min="0" value="${g.minFee ?? ''}" oninput="setTaxiGeneralNumber('minFee',this.value)"></label><label class="fc-mini-field"><span>Max</span><input type="number" min="0" value="${g.maxFee ?? ''}" oninput="setTaxiGeneralNumber('maxFee',this.value)"></label></div>
+          <label class="fc-mini-field"><span>${tr('Umumiy izoh','Общий комментарий')}</span><input type="text" value="${escapeHtml(g.comment || '')}" oninput="setTaxiGeneralComment(this.value)" maxlength="200"></label>
+          <label class="fc-mini-field"><span>${tr('Yetkazib berish vaqti','Время доставки')}</span><input type="text" value="${escapeHtml(g.estimatedTime || '')}" oninput="setTaxiGeneralEstimatedTime(this.value)" maxlength="60"></label>
         </div>`;
       })() : '';
-      return `<div class="space-y-3"><label class="flex items-center justify-between font-black"><span>${tr('Usulni yoqish','Включить способ')}</span><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setDeliveryMethodEnabled('${kind}',this.checked)"></label><p class="text-[10px] text-gray-500">${descriptions[kind]}</p>${method.enabled ? `${taxiGeneralHtml}${settingsBulkButtons(`bulkDeliveryRegions('${kind}',true)`, `bulkDeliveryRegions('${kind}',false)`)}<div class="space-y-2">${renderDeliveryRegionRows(kind)}</div>` : ''}</div>`;
+      return `<div class="space-y-3">
+        <div class="fc-delivery-master-toggle"><div><b>${tr('Usulni yoqish','Включить способ')}</b><small>${descriptions[kind]}</small></div><label class="fc-toggle"><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setDeliveryMethodEnabled('${kind}',this.checked)"><span class="fc-toggle-track"></span></label></div>
+        ${method.enabled ? `${taxiGeneralHtml}<div class="fc-delivery-bulk-tools">${settingsBulkButtons(`bulkDeliveryRegions('${kind}',true)`, `bulkDeliveryRegions('${kind}',false)`)}</div>${renderDeliveryRegionRows(kind)}` : `<div class="fc-empty-state compact"><p>${tr('Bu yetkazib berish usuli o‘chirilgan.','Этот способ доставки выключен.')}</p></div>`}
+      </div>`;
     }
 
     function fulfillmentBackButton() {
@@ -5494,14 +5635,14 @@
 
     function renderFulfillmentDeliveryPanel() {
       const kinds = [
-        ['FREE', tr('🆓 Bepul', '🆓 Бесплатно')],
-        ['FIXED', tr('🚚 Aniq narx', '🚚 Фикс. цена')],
-        ['TAXI', tr('🚕 Taksi', '🚕 Такси')],
-        ['POST', tr('📦 Pochta', '📦 Почта')],
+        ['FREE', tr('Bepul', 'Бесплатно'), 'badge-check'],
+        ['FIXED', tr('Aniq narx', 'Фикс. цена'), 'truck'],
+        ['TAXI', tr('Taksi', 'Такси'), 'car-front'],
+        ['POST', tr('Pochta', 'Почта'), 'package-open'],
       ];
       return `<div class="space-y-3">
-        <div class="flex gap-1 flex-wrap">${kinds.map(([id, label]) => `<button type="button" onclick="setFulfillmentDeliveryKind('${id}')" class="px-2.5 py-1.5 rounded-xl font-bold ${fulfillmentDeliveryKind === id ? 'bg-slate-900 text-white' : 'bg-gray-100 text-gray-600'}">${label}</button>`).join('')}</div>
-        <div id="fulfillment-body" class="bg-gray-50 border rounded-2xl p-3">${renderFulfillmentDeliveryBody()}</div>
+        <div class="fc-delivery-kind-grid">${kinds.map(([id, label, icon]) => `<button type="button" onclick="setFulfillmentDeliveryKind('${id}')" class="fc-delivery-kind ${fulfillmentDeliveryKind === id ? 'is-active' : ''}"><i data-lucide="${icon}" class="w-4 h-4"></i><span>${label}</span></button>`).join('')}</div>
+        <div id="fulfillment-body" class="fc-delivery-body-shell">${renderFulfillmentDeliveryBody()}</div>
       </div>`;
     }
 
@@ -5561,139 +5702,182 @@
       }
     }
 
+    function currentProfileDisplayName() {
+      return [currentUser.firstName, currentUser.lastName].filter(Boolean).join(' ').trim() || tr('Foydalanuvchi', 'Пользователь');
+    }
+
+    function currentProfileAvatarHtml() {
+      const photo = String(currentUser.photoUrl || '').trim();
+      if (photo) {
+        return `<img src="${escapeHtml(photo)}" alt="${escapeHtml(currentProfileDisplayName())}" class="fc-profile-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');"><span class="fc-profile-avatar-fallback hidden"><i data-lucide="user" class="w-6 h-6"></i></span>`;
+      }
+      return `<span class="fc-profile-avatar-fallback"><i data-lucide="user" class="w-6 h-6"></i></span>`;
+    }
+
+    function profileSupportNeedsBadge() {
+      return (isAdminMode && isUserAnAdmin)
+        ? adminSupportTickets.some(t => t.status === 'OPEN' || supportNeedsAttention(t))
+        : supportTickets.some(t => t.status === 'ANSWERED');
+    }
+
+    function profileMenuRowHtml({ icon, title, subtitle = '', onclick, badge = '', danger = false }) {
+      return `<button type="button" onclick="${onclick}" class="fc-profile-menu-row">
+        <span class="fc-profile-menu-icon ${danger ? 'is-danger' : ''}"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+        <span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${title}</span>${subtitle ? `<span class="fc-profile-menu-subtitle">${subtitle}</span>` : ''}</span>
+        ${badge ? `<span class="fc-profile-menu-badge">${badge}</span>` : ''}
+        <i data-lucide="chevron-right" class="w-4 h-4 fc-profile-menu-chevron"></i>
+      </button>`;
+    }
+
+    function openStaffPage() {
+      if (!(isSuperAdmin && isAdminMode)) return;
+      openPage('STAFF', 'nav-profile');
+      loadAdminsLazy();
+    }
+
+    function renderStaffPage(container) {
+      if (!(isSuperAdmin && isAdminMode)) {
+        renderPageShell(container, tr('Xodimlar', 'Сотрудники'), `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Bu bo'lim faqat Bosh Admin uchun.", 'Этот раздел доступен только главному администратору.')}</p></div>`);
+        return;
+      }
+      const rows = adminsLoading && !adminsLoaded
+        ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
+        : adminsList.map(admId => {
+            const isOwner = String(admId) === String(currentTgId);
+            return `<div class="fc-staff-row">
+              <div class="fc-staff-avatar"><i data-lucide="${isOwner ? 'crown' : 'user-round'}" class="w-4 h-4"></i></div>
+              <div class="min-w-0 flex-1">
+                <div class="fc-staff-name">${isOwner ? tr('Bosh Admin', 'Главный администратор') : tr('Admin', 'Администратор')}</div>
+                <div class="fc-staff-id">ID: ${escapeHtml(String(admId))}</div>
+              </div>
+              ${isOwner ? `<span class="fc-badge fc-badge-warning">${tr('Bosh Admin', 'Главный')}</span>` : `<button type="button" onclick="removeAdmin('${escapeHtml(String(admId))}')" class="fc-btn fc-btn-icon fc-btn-danger" aria-label="${tr("O'chirish", 'Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`}
+            </div>`;
+          }).join('');
+      const body = `<div class="space-y-3">
+        <div class="fc-card fc-staff-intro">
+          <div><h3>${tr('Xodimlar', 'Сотрудники')}</h3><p>${tr("Hozircha mavjud adminlarni qo'shish va olib tashlash shu yerda. Granular huquqlar keyingi bosqichda qo'shiladi.", 'Пока здесь можно добавлять и удалять администраторов. Детальные права будут добавлены на следующем этапе.')}</p></div>
+          <button type="button" onclick="activePopupModal='ADD_ADMIN'; render();" class="fc-btn fc-btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr("Xodim qo'shish", 'Добавить')}</button>
+        </div>
+        <div class="fc-card p-0 overflow-hidden"><div class="fc-staff-list">${rows || `<div class="fc-empty-state"><p>${tr('Xodimlar topilmadi.', 'Сотрудники не найдены.')}</p></div>`}</div></div>
+      </div>`;
+      renderPageShell(container, tr('Xodimlar', 'Сотрудники'), body);
+    }
+
+    function shopLocationQuery() {
+      const coords = String(shopContact.coordinates || '').trim();
+      const address = String((uiLang === 'ru' && shopContact.addressRu) ? shopContact.addressRu : (shopContact.address || '')).trim();
+      return { coords, address };
+    }
+
+    function buildShopMapUrls() {
+      const { coords, address } = shopLocationQuery();
+      if (coords) {
+        const parts = coords.split(',').map(v => v.trim());
+        if (parts.length === 2) {
+          const lat = encodeURIComponent(parts[0]);
+          const lon = encodeURIComponent(parts[1]);
+          return {
+            google: `https://www.google.com/maps/search/?api=1&query=${lat}%2C${lon}`,
+            yandex: `https://yandex.com/maps/?pt=${lon}%2C${lat}&z=16&l=map`,
+          };
+        }
+      }
+      const q = encodeURIComponent(address);
+      return {
+        google: `https://www.google.com/maps/search/?api=1&query=${q}`,
+        yandex: `https://yandex.com/maps/?text=${q}`,
+      };
+    }
+
+    function openShopLocationChooser() {
+      const { coords, address } = shopLocationQuery();
+      if (!coords && !address) return;
+      const urls = buildShopMapUrls();
+      const old = document.getElementById('fc-map-sheet-root');
+      if (old) old.remove();
+      const root = document.createElement('div');
+      root.id = 'fc-map-sheet-root';
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeShopLocationChooser();">
+        <div class="fc-sheet fc-map-choice-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div><div class="fc-sheet-title">${tr('Xaritada ochish', 'Открыть на карте')}</div><p class="fc-shop-info-subtitle">${escapeHtml(address || coords)}</p></div><button type="button" onclick="closeShopLocationChooser()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-2">
+            <button type="button" onclick="openSafeExternalUrl('${escapeHtml(urls.google)}'); closeShopLocationChooser();" class="fc-map-choice-row"><span class="fc-map-choice-icon"><i data-lucide="map" class="w-5 h-5"></i></span><span><b>Google Maps</b><small>${tr('Google xaritasida ochish', 'Открыть в Google Maps')}</small></span><i data-lucide="external-link" class="w-4 h-4"></i></button>
+            <button type="button" onclick="openSafeExternalUrl('${escapeHtml(urls.yandex)}'); closeShopLocationChooser();" class="fc-map-choice-row"><span class="fc-map-choice-icon"><i data-lucide="navigation" class="w-5 h-5"></i></span><span><b>Yandex Maps</b><small>${tr('Yandex xaritasida ochish', 'Открыть в Яндекс Картах')}</small></span><i data-lucide="external-link" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+      </div>`;
+      document.body.appendChild(root);
+      lucide.createIcons();
+    }
+
+    function closeShopLocationChooser() {
+      const root = document.getElementById('fc-map-sheet-root');
+      if (root) root.remove();
+    }
+
     function renderProfile(container) {
       const phones = [shopContact.phone, shopContact.phone2, shopContact.phone3].filter(Boolean);
       const instagramNick = cleanSocialNick(shopContact.instagram);
       const telegramNick = cleanSocialNick(shopContact.telegram);
       const facebookNick = cleanSocialNick(shopContact.facebook);
-      const coords = String(shopContact.coordinates || '').trim();
-      const mapsUrl = coords ? `https://www.google.com/maps?q=${encodeURIComponent(coords)}` : null;
+      const { coords, address } = shopLocationQuery();
+      const locationAvailable = !!(coords || address);
+      const supportBadge = profileSupportNeedsBadge() ? '•' : '';
+
+      const adminMenu = (isAdminMode && isUserAnAdmin) ? `
+        <div class="fc-profile-menu">
+          ${profileMenuRowHtml({ icon: 'chart-no-axes-combined', title: tr('Hisobot', 'Отчёт'), subtitle: tr("Savdo va do'kon ko'rsatkichlari", 'Показатели продаж и магазина'), onclick: "openDashboardLite()" })}
+          ${(isSuperAdmin) ? profileMenuRowHtml({ icon: 'users-round', title: tr('Xodimlar', 'Сотрудники'), subtitle: tr("Adminlarni qo'shish va boshqarish", 'Добавление и управление администраторами'), onclick: 'openStaffPage()' }) : ''}
+          ${profileMenuRowHtml({ icon: 'messages-square', title: tr("Qo'llab-quvvatlash", 'Поддержка'), subtitle: tr('Murojaatlar va yozishmalar', 'Обращения и переписка'), onclick: 'openAdminSupportOrUserSupport()', badge: supportBadge })}
+        </div>` : '';
+
+      const userQuick = !(isAdminMode && isUserAnAdmin) ? `
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="openPage('FAVORITES','nav-profile')" class="fc-card flex items-center gap-2 text-left"><i data-lucide="heart" class="w-5 h-5 fc-text-danger shrink-0"></i><span class="font-bold text-xs">${tr('Sevimlilar', 'Избранное')}</span></button>
+          <button onclick="openPage('RECENT','nav-profile')" class="fc-card flex items-center gap-2 text-left"><i data-lucide="history" class="w-5 h-5 text-blue-500 shrink-0"></i><span class="font-bold text-xs">${tr('Yaqinda ko‘rilgan', 'Недавно просмотренные')}</span></button>
+        </div>
+        <div class="fc-profile-menu">${profileMenuRowHtml({ icon: 'messages-square', title: tr("Qo'llab-quvvatlash", 'Поддержка'), subtitle: tr('Savol yoki muammo bo‘yicha yozish', 'Написать по вопросу или проблеме'), onclick: 'openAdminSupportOrUserSupport()', badge: supportBadge })}</div>` : '';
 
       container.innerHTML = `
         <div class="space-y-4">
-          <div class="bg-white p-5 rounded-2xl shadow-sm flex items-center space-x-4 border">
-            <div class="bg-blue-100 p-3 rounded-full text-blue-600">
-              <i data-lucide="user" class="w-8 h-8"></i>
+          <section class="fc-profile-card">
+            <div class="fc-profile-avatar">${currentProfileAvatarHtml()}</div>
+            <div class="fc-profile-copy">
+              <div class="fc-profile-eyebrow">${tr("Profil ma'lumotlari", 'Данные профиля')}</div>
+              <h2>${escapeHtml(currentProfileDisplayName())}</h2>
+              ${currentUser.username ? `<p class="fc-profile-username">@${escapeHtml(currentUser.username)}</p>` : ''}
+              ${currentUser.phone && currentUser.phone !== '+998' ? `<p class="fc-profile-phone">${escapeHtml(currentUser.phone)}</p>` : ''}
             </div>
-            <div>
-              <h2 class="text-lg font-bold">${escapeHtml(currentUser.firstName)} ${escapeHtml(currentUser.lastName)}</h2>
-              <p class="text-xs text-gray-500">${tr("Tel:", "Тел:")} ${escapeHtml(currentUser.phone)}</p>
-              <button onclick="activePopupModal='REGISTRATION'; render();" class="mt-1 text-[10px] text-blue-600 font-bold underline">${tr("Ma'lumotlarni tahrirlash", "Изменить данные")}</button>
-            </div>
-          </div>
+            <button type="button" onclick="activePopupModal='REGISTRATION'; render();" class="fc-btn fc-btn-icon fc-profile-edit" title="${tr("Ma'lumotlarni tahrirlash", 'Изменить данные')}"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+          </section>
 
-          ${!(isAdminMode && isUserAnAdmin) ? `
-          <div class="grid grid-cols-2 gap-2">
-            <button onclick="openPage('FAVORITES')" class="fc-card flex items-center gap-2 text-left">
-              <svg class="w-5 h-5 fc-text-danger shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"></path></svg>
-              <span class="font-bold text-xs">${tr('Sevimlilar', 'Избранное')}</span>
-            </button>
-            <button onclick="openPage('RECENT')" class="fc-card flex items-center gap-2 text-left">
-              <i data-lucide="history" class="w-5 h-5 text-blue-500 shrink-0"></i>
-              <span class="font-bold text-xs">${tr('Yaqinda ko‘rilgan', 'Недавно просмотренные')}</span>
-            </button>
-          </div>
-          ` : ''}
+          ${adminMenu}
+          ${userQuick}
 
-          ${myStatus.isBlocked ? `
-            <div class="fc-bg-danger-soft border fc-border-danger p-4 rounded-2xl text-xs">
-              <p class="font-bold fc-text-danger">${tr("🚫 Siz botdan foydalanish huquqidan mahrum qilingansiz", "🚫 Доступ к оформлению заказов заблокирован")}</p>
-              <p class="fc-text-danger mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.blockReason || tr("ko'rsatilmagan", "не указана"))}</p>
-              <p class="fc-text-danger mt-1 text-[10px]">${tr("Buyurtma berish imkoni yopilgan. Savol bo'lsa, do'kon bilan bog'laning.", "Оформление заказов недоступно. По вопросам свяжитесь с магазином.")}</p>
-            </div>
-          ` : myStatus.isWarned ? `
-            <div class="bg-amber-50 border border-amber-300 p-4 rounded-2xl text-xs">
-              <p class="font-bold text-amber-800">${tr("⚠️ Sizga ogohlantirish berilgan", "⚠️ Вам вынесено предупреждение")}</p>
-              <p class="text-amber-700 mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.warnReason || tr("ko'rsatilmagan", "не указана"))}</p>
-              <p class="text-amber-600 mt-1 text-[10px]">${tr("Takrorlansa, hisobingiz bloklanishi mumkin.", "При повторении аккаунт может быть заблокирован.")}</p>
-            </div>
-          ` : ''}
+          ${myStatus.isBlocked ? `<div class="fc-bg-danger-soft border fc-border-danger p-4 rounded-2xl text-xs"><p class="font-bold fc-text-danger">${tr("Siz botdan foydalanish huquqidan mahrum qilingansiz", "Доступ к оформлению заказов заблокирован")}</p><p class="fc-text-danger mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.blockReason || tr("ko'rsatilmagan", "не указана"))}</p></div>` : myStatus.isWarned ? `<div class="bg-amber-50 border border-amber-300 p-4 rounded-2xl text-xs"><p class="font-bold text-amber-800">${tr("Sizga ogohlantirish berilgan", "Вам вынесено предупреждение")}</p><p class="text-amber-700 mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.warnReason || tr("ko'rsatilmagan", "не указана"))}</p></div>` : ''}
 
-          <div class="shop-about-card bg-white p-4 rounded-2xl shadow-sm border space-y-3">
-            <!-- 6-band: LOGOTIP endi bu yerda YO'Q — u faqat yuqoridagi
-                 header'da (STORE/ADMIN qatorida) tahrirlanadi, takrorlanmaydi. -->
-            <div class="flex items-center gap-3 border-b pb-3">
-              <h3 class="font-bold text-base text-gray-900 truncate flex-1 min-w-0">📍 ${escapeHtml(shopDisplayName())}</h3>
-              ${(isUserAnAdmin && isAdminMode) ? `
-                <button onclick="openShopInfoModal()" class="fc-btn fc-btn-secondary flex-shrink-0" style="min-height:2.25rem;padding:0 .75rem;font-size:.6875rem"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>${tr("Tahrirlash", "Изменить")}</button>
-              ` : ''}
+          <section class="shop-about-card fc-shop-public-card">
+            <div class="fc-shop-public-head">
+              <div class="min-w-0 flex-1"><div class="fc-shop-public-eyebrow">${tr("Do'kon ma'lumotlari", 'Данные магазина')}</div><h3>${escapeHtml(shopDisplayName())}</h3></div>
+              ${(isUserAnAdmin && isAdminMode) ? `<button onclick="openShopInfoModal()" class="fc-btn fc-btn-secondary fc-shop-public-edit"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>${tr("Tahrirlash", "Изменить")}</button>` : ''}
             </div>
 
-            <div class="space-y-2.5">
-              ${shopContact.address ? `
-                <div class="flex items-start space-x-3 rounded-xl p-1 -m-1">
-                  <i data-lucide="map-pin" class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0"></i>
-                  <p class="text-xs font-bold text-gray-800">${escapeHtml((uiLang === 'ru' && shopContact.addressRu) ? shopContact.addressRu : shopContact.address)}</p>
-                </div>
-              ` : ''}
-
-              ${mapsUrl ? `
-                <a href="${escapeHtml(mapsUrl)}" target="_blank" class="flex items-center space-x-3 active:bg-gray-50 rounded-xl p-1 -m-1">
-                  <i data-lucide="navigation" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
-                  <p class="text-xs font-bold text-blue-700">${tr("Joylashuv", "Местоположение")} →</p>
-                </a>
-              ` : ''}
-
-              ${shopContact.workHours ? `
-                <div class="flex items-center space-x-3 rounded-xl p-1 -m-1">
-                  <i data-lucide="clock" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
-                  <p class="text-xs font-bold text-gray-800">${tr("Ish vaqti", "Время работы")}: ${escapeHtml(shopContact.workHours)}</p>
-                </div>
-              ` : ''}
-
-              ${phones.map(phone => `
-                <a href="tel:${escapeHtml(String(phone).replace(/[^\d+]/g, ''))}" class="flex items-center space-x-3 active:bg-gray-50 rounded-xl p-1 -m-1">
-                  <i data-lucide="phone" class="w-4 h-4 text-blue-600 flex-shrink-0"></i>
-                  <p class="text-xs font-bold text-gray-800">${escapeHtml(phone)}</p>
-                </a>
-              `).join('')}
+            <div class="fc-shop-contact-list">
+              ${address ? `<button type="button" ${locationAvailable ? 'onclick="openShopLocationChooser()"' : ''} class="fc-shop-contact-row ${locationAvailable ? 'is-clickable' : ''}"><span class="fc-shop-contact-icon"><i data-lucide="map-pin" class="w-4 h-4"></i></span><span class="fc-shop-contact-value">${escapeHtml(address)}</span>${locationAvailable ? `<i data-lucide="chevron-right" class="w-4 h-4 fc-shop-contact-chevron"></i>` : '<span></span>'}</button>` : (coords ? `<button type="button" onclick="openShopLocationChooser()" class="fc-shop-contact-row is-clickable"><span class="fc-shop-contact-icon"><i data-lucide="map-pin" class="w-4 h-4"></i></span><span class="fc-shop-contact-value">${tr('Xaritada joylashuvni ko‘rish','Посмотреть расположение на карте')}</span><i data-lucide="chevron-right" class="w-4 h-4 fc-shop-contact-chevron"></i></button>` : '')}
+              ${shopContact.workHours ? `<div class="fc-shop-contact-row"><span class="fc-shop-contact-icon"><i data-lucide="clock-3" class="w-4 h-4"></i></span><span class="fc-shop-contact-value">${escapeHtml(shopContact.workHours)}</span><span></span></div>` : ''}
+              ${phones.map(phone => `<a href="tel:${escapeHtml(String(phone).replace(/[^\d+]/g, ''))}" class="fc-shop-contact-row is-clickable"><span class="fc-shop-contact-icon"><i data-lucide="phone" class="w-4 h-4"></i></span><span class="fc-shop-contact-value">${escapeHtml(phone)}</span><span></span></a>`).join('')}
             </div>
 
-            ${(instagramNick || telegramNick || facebookNick) ? `
-              <div class="flex items-center gap-2 pt-2.5 border-t">
-                ${instagramNick ? `<a href="https://instagram.com/${encodeURIComponent(instagramNick)}" target="_blank" title="Instagram" class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-600"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg></a>` : ''}
-                ${telegramNick ? `<a href="https://t.me/${encodeURIComponent(telegramNick)}" target="_blank" title="Telegram" class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-600"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"></path><path d="M22 2 15 22 11 13 2 9z"></path></svg></a>` : ''}
-                ${facebookNick ? `<a href="https://facebook.com/${encodeURIComponent(facebookNick)}" target="_blank" title="Facebook" class="w-7 h-7 flex items-center justify-center rounded-full bg-blue-600 text-white"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h2.6l.4-4H14V7a1 1 0 0 1 1-1h3z"></path></svg></a>` : ''}
-              </div>
-            ` : ''}
+            ${(instagramNick || telegramNick || facebookNick) ? `<div class="fc-shop-social-actions">
+              ${instagramNick ? `<a href="https://instagram.com/${encodeURIComponent(instagramNick)}" target="_blank" class="fc-shop-social-chip" title="Instagram"><span class="fc-shop-social-chip-icon"><i data-lucide="instagram" class="w-4 h-4"></i></span><span>Instagram</span></a>` : ''}
+              ${telegramNick ? `<a href="https://t.me/${encodeURIComponent(telegramNick)}" target="_blank" class="fc-shop-social-chip" title="Telegram"><span class="fc-shop-social-chip-icon"><i data-lucide="send" class="w-4 h-4"></i></span><span>Telegram</span></a>` : ''}
+              ${facebookNick ? `<a href="https://facebook.com/${encodeURIComponent(facebookNick)}" target="_blank" class="fc-shop-social-chip" title="Facebook"><span class="fc-shop-social-chip-icon"><i data-lucide="globe-2" class="w-4 h-4"></i></span><span>Facebook</span></a>` : ''}
+            </div>` : ''}
 
-            ${shopInfoIsEmpty() ? `
-              <p class="text-[11px] text-gray-400 text-center py-2">${(isUserAnAdmin && isAdminMode) ? tr("Do'kon ma'lumotlarini ✏️ Tahrirlash orqali kiriting.", "Заполните данные магазина через ✏️ Изменить.") : ''}</p>
-            ` : ''}
-          </div>
-
-          ${(isUserAnAdmin && isAdminMode) ? `
-            <button onclick="openDashboardLite()" class="w-full bg-white text-slate-800 p-4 rounded-2xl flex items-center justify-between font-bold shadow-sm border border-slate-200 text-xs">
-              <span>📊 ${tr("Dashboard / Hisobot", 'Dashboard / Отчёт')}</span>
-              <span>›</span>
-            </button>
-          ` : ''}
-
-
-          <!-- BOSH ADMINGA VA ADMINLARGA KO'RINADIGAN BO'LIM -->
-          ${(isSuperAdmin && isAdminMode) ? `
-            <div class="bg-white p-4 rounded-2xl border space-y-3 shadow-sm">
-              <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-xs text-amber-900">${tr("👑 Adminlarni boshqarish (Bosh Admin)", "👑 Управление администраторами (Главный админ)")}</h3>
-                <button onclick="activePopupModal='ADD_ADMIN'; render();" title="${tr("Yangi admin qo'shish", "Добавить администратора")}" class="bg-amber-600 hover:bg-amber-700 text-white font-bold w-7 h-7 flex items-center justify-center rounded-xl text-sm shadow-sm">
-                  ➕
-                </button>
-              </div>
-
-              <div class="space-y-1 text-xs">
-                ${adminsList.map(admId => `
-                  <div class="flex justify-between items-center p-2 bg-gray-50 rounded-xl border">
-                    <span class="font-mono text-gray-700">ID: ${escapeHtml(admId)} ${admId === currentTgId && isSuperAdmin ? `<b>${tr("(Bosh Admin)", "(Главный админ)")}</b>` : ''}</span>
-                    ${!(admId === currentTgId && isSuperAdmin) ? `
-                      <button onclick="removeAdmin('${admId}')" aria-label="${tr("O'chirish", 'Удалить')}" class="fc-text-danger font-bold px-2 py-0.5 fc-bg-danger-soft rounded-lg">${ICON_TRASH}</button>
-                    ` : ''}
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
-        </div>
-      `;
+            ${shopInfoIsEmpty() ? `<p class="text-[11px] text-gray-400 text-center py-2">${(isUserAnAdmin && isAdminMode) ? tr("Do'kon ma'lumotlarini Tahrirlash orqali kiriting.", "Заполните данные магазина через Изменить.") : ''}</p>` : ''}
+          </section>
+        </div>`;
     }
 
     function readShopContactFormValues() {
@@ -5713,14 +5897,29 @@
       };
     }
 
+    function clearShopLogoDraft() {
+      if (shopLogoDraft?.previewUrl && String(shopLogoDraft.previewUrl).startsWith('blob:')) {
+        try { URL.revokeObjectURL(shopLogoDraft.previewUrl); } catch (_) {}
+      }
+      shopLogoDraft = null;
+    }
+
+    function shopInfoLogoPreviewUrl() {
+      if (shopLogoDraft?.kind === 'file') return shopLogoDraft.previewUrl || '';
+      if (shopLogoDraft?.kind === 'url') return shopLogoDraft.url || '';
+      return shopLogoUrl || '';
+    }
+
     function openShopInfoModal() {
       shopInfoDraft = null;
+      clearShopLogoDraft();
       activePopupModal = 'SHOP_INFO';
       render();
     }
 
     function closeShopInfoModal() {
       shopInfoDraft = null;
+      clearShopLogoDraft();
       activePopupModal = null;
       render();
     }
@@ -5747,7 +5946,9 @@
           : `<div class="fc-shop-logo-placeholder"><i data-lucide="image" class="w-6 h-6"></i></div>`;
       }
       const status = document.getElementById('shop-info-logo-status');
-      if (status) status.textContent = url ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен');
+      if (status) status.textContent = shopLogoDraft
+        ? tr('Yangi logo tanlandi — Saqlashni bosing', 'Новый логотип выбран — нажмите Сохранить')
+        : (url ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен'));
       const buttonLabel = document.getElementById('shop-info-logo-button-label');
       if (buttonLabel) buttonLabel.textContent = url ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото');
       if (window.lucide) lucide.createIcons();
@@ -5760,19 +5961,31 @@
         return alert(tr("Kordinatani '41.217408,69.211225' ko'rinishida yozing.", "Введите координаты в формате '41.217408,69.211225'."));
       }
 
-      const old = { ...shopContact };
-      shopContact = { ...next, startMessage: shopContact.startMessage };
-      shopInfoDraft = null;
-      activePopupModal = null;
-      render(); // optimistic UI — darhol ko'rinadi
-      showActionToast(tr("⏳ Do'kon ma'lumotlari saqlanmoqda...", '⏳ Данные магазина сохраняются...'), 'saving');
+      // Logo fayli tanlangan bo'lsa, avval Storage'ga tayyor URL olinadi, lekin
+      // set_shop_logo faqat pastdagi umumiy Saqlash bosilgandan keyin chaqiriladi.
+      let nextLogoUrl = shopLogoUrl || null;
       try {
+        showActionToast(tr("⏳ Do'kon ma'lumotlari saqlanmoqda...", '⏳ Данные магазина сохраняются...'), 'saving');
+        if (shopLogoDraft?.kind === 'file' && shopLogoDraft.file) {
+          nextLogoUrl = await uploadImageSnapshot({ file: shopLogoDraft.file, preparing: Promise.resolve(shopLogoDraft.file), url: null }, shopLogoUrl, true);
+        } else if (shopLogoDraft?.kind === 'url') {
+          nextLogoUrl = shopLogoDraft.url || null;
+        }
+
+        // Optimistic render QILINMAYDI: ikkala server amali muvaffaqiyatli bo'lgachgina
+        // profil/header yangilanadi. Shunda Bekor qilish va xato holatlari toza qoladi.
         await callApi('set_shop_contact', next);
+        if (shopLogoDraft) await callApi('set_shop_logo', { logoUrl: nextLogoUrl });
+
+        shopContact = { ...next, startMessage: shopContact.startMessage };
+        if (shopLogoDraft) shopLogoUrl = nextLogoUrl;
+        shopInfoDraft = null;
+        clearShopLogoDraft();
+        activePopupModal = null;
+        render();
         showActionToast(tr('✅ Do‘kon ma’lumotlari saqlandi', '✅ Данные магазина сохранены'), 'success', 1400);
       } catch (e) {
         console.error(e);
-        shopContact = old;
-        render();
         showActionToast(tr('❌ Ma’lumotlar saqlanmadi', '❌ Данные не сохранены'), 'error', 1800);
         alert(tr("❌ Do'kon ma'lumotlarini saqlab bo'lmadi: ", "❌ Не удалось сохранить данные магазина: ") + (e.message || e));
       }
@@ -5800,13 +6013,6 @@
         return alert(pickedImageErrorMessage(e, file));
       }
 
-      // 5.3 root cause (hamon amal qiladi): bu picker render()ni chaqirishdan
-      // OLDIN mustaqil nusxa tayyorlaydi — render() <input type=file>ni
-      // DOM'dan qayta yaratishi mumkin, shu orada Telegram WebView native File
-      // handle'ni yaroqsiz qilib qo'yardi. V2: captureAndPrepareImageV2
-      // FileReader/ArrayBuffer orqali oldindan o'qishga hojatsiz — to'g'ridan-
-      // to'g'ri createImageBitmap(file) orqali xavfsiz dekodlaydi.
-      const old = shopLogoUrl;
       let prepared;
       try {
         prepared = await captureAndPrepareImageV2(file, TARGET_PRODUCT_IMAGE_BYTES, 1000, 0.8);
@@ -5816,36 +6022,34 @@
         return alert(tr("Logotip faylini o'qib bo'lmadi. Qaytadan tanlab ko'ring.", "Не удалось прочитать файл логотипа. Попробуйте выбрать заново."));
       }
 
-      const localPreview = URL.createObjectURL(prepared);
       const editingInsideShopInfo = activePopupModal === 'SHOP_INFO';
-      shopLogoUrl = localPreview;
       if (editingInsideShopInfo) {
-        updateShopInfoLogoPreview(localPreview);
-        updateHeaderChrome();
-      } else {
-        render(); // eski logo-manager oqimi uchun darhol preview
+        // MUHIM: bu yerda serverga HECH NARSA yuborilmaydi. Faqat draft+preview.
+        clearShopLogoDraft();
+        const previewUrl = URL.createObjectURL(prepared);
+        shopLogoDraft = { kind: 'file', file: prepared, previewUrl };
+        updateShopInfoLogoPreview(previewUrl);
+        showActionToast(tr('Logo tanlandi — Saqlashni bosing', 'Логотип выбран — нажмите Сохранить'), 'success', 1500);
+        event.target.value = '';
+        return;
       }
+
+      // Legacy manager oqimi (agar qayerdadir chaqirilsa) avvalgi xulqini saqlaydi.
+      const old = shopLogoUrl;
+      const localPreview = URL.createObjectURL(prepared);
+      shopLogoUrl = localPreview;
+      render();
       showActionToast(tr('⏳ Logo yuklanmoqda...', '⏳ Логотип загружается...'), 'saving');
       try {
         const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, old, true);
         await callApi('set_shop_logo', { logoUrl: url });
         shopLogoUrl = url;
-        if (editingInsideShopInfo) {
-          updateShopInfoLogoPreview(url);
-          updateHeaderChrome();
-        } else {
-          render();
-        }
+        render();
         showActionToast(tr('✅ Logo saqlandi', '✅ Логотип сохранён'), 'success', 1400);
       } catch (e) {
         console.error(e);
         shopLogoUrl = old;
-        if (editingInsideShopInfo) {
-          updateShopInfoLogoPreview(old);
-          updateHeaderChrome();
-        } else {
-          render();
-        }
+        render();
         showActionToast(tr('❌ Logo saqlanmadi', '❌ Логотип не сохранён'), 'error', 1800);
         alert(tr("❌ Logotipni saqlab bo'lmadi: ", "❌ Не удалось сохранить логотип: ") + (e.message || e));
       } finally {
@@ -5871,13 +6075,24 @@
         if (errorEl) { errorEl.textContent = tr("URL kiriting.", "Введите URL."); errorEl.classList.remove('hidden'); }
         return;
       }
+
+      if (shopInfoDraft) {
+        // SHOP_INFO ichidan kelgan bo'lsa URL ham faqat draft. Real saqlash umumiy
+        // Saqlash tugmasigacha kutadi.
+        clearShopLogoDraft();
+        shopLogoDraft = { kind: 'url', url: validUrl };
+        activePopupModal = 'SHOP_INFO';
+        render();
+        showActionToast(tr('Logo tanlandi — Saqlashni bosing', 'Логотип выбран — нажмите Сохранить'), 'success', 1500);
+        return;
+      }
+
       const old = shopLogoUrl;
-      const returnToShopInfo = !!shopInfoDraft;
       shopLogoUrl = validUrl;
       showActionToast(tr("⏳ Logotip saqlanmoqda...", "⏳ Логотип сохраняется..."), 'saving');
       try {
         await callApi('set_shop_logo', { logoUrl: validUrl });
-        activePopupModal = returnToShopInfo ? 'SHOP_INFO' : null;
+        activePopupModal = null;
         render();
         showActionToast(tr("✅ Saqlandi", "✅ Сохранено"), 'success', 1200);
       } catch (e) {
@@ -6481,6 +6696,7 @@
 
       if (activePopupModal === 'SHOP_INFO') {
         const form = shopInfoDraft || shopContact;
+        const logoPreview = shopInfoLogoPreviewUrl();
         container.innerHTML = `
           <div class="fc-sheet-overlay fc-shop-info-overlay" onclick="if(event.target===this) closeShopInfoModal();">
             <div class="fc-sheet fc-shop-info-sheet" onclick="event.stopPropagation()">
@@ -6502,15 +6718,15 @@
 
                   <div class="fc-shop-logo-editor">
                     <div id="shop-info-logo-preview" class="fc-shop-logo-preview">
-                      ${shopLogoUrl ? `<img src="${escapeHtml(shopLogoUrl)}" alt="${tr("Do'kon logotipi", 'Логотип магазина')}" class="fc-shop-logo-image">` : `<div class="fc-shop-logo-placeholder"><i data-lucide="image" class="w-6 h-6"></i></div>`}
+                      ${logoPreview ? `<img src="${escapeHtml(logoPreview)}" alt="${tr("Do'kon logotipi", 'Логотип магазина')}" class="fc-shop-logo-image">` : `<div class="fc-shop-logo-placeholder"><i data-lucide="image" class="w-6 h-6"></i></div>`}
                     </div>
                     <div class="fc-shop-logo-copy">
                       <p class="fc-shop-logo-title">${tr('Do‘kon logotipi', 'Логотип магазина')}</p>
-                      <p id="shop-info-logo-status" class="fc-shop-logo-status">${shopLogoUrl ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен')}</p>
+                      <p id="shop-info-logo-status" class="fc-shop-logo-status">${shopLogoDraft ? tr('Yangi logo tanlandi — Saqlashni bosing', 'Новый логотип выбран — нажмите Сохранить') : (logoPreview ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен'))}</p>
                       <div class="fc-shop-logo-actions">
                         <input id="shop-logo-input" type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
                         <input id="shop-logo-input-files" type="file" class="hidden" onchange="saveShopLogoFromPicker(event)">
-                        <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary fc-shop-logo-action"><i data-lucide="image-plus" class="w-4 h-4"></i><span id="shop-info-logo-button-label">${shopLogoUrl ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото')}</span></button>
+                        <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary fc-shop-logo-action"><i data-lucide="image-plus" class="w-4 h-4"></i><span id="shop-info-logo-button-label">${logoPreview ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото')}</span></button>
                         <button type="button" onclick="openShopLogoUrlFromShopInfo()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="link" class="w-4 h-4"></i>${tr('URL orqali', 'По URL')}</button>
                       </div>
                     </div>
@@ -6531,11 +6747,12 @@
                   <div class="fc-shop-fields-stack">
                     <div class="fc-shop-field">
                       <label for="sc-address">${tr("Manzil", "Адрес")}</label>
-                      <input type="text" id="sc-address" value="${escapeHtml(form.address || '')}" placeholder="Sergeli tumani, ..." class="fc-shop-input">
+                      <textarea id="sc-address" rows="2" placeholder="${tr('Sergeli tumani, ko‘cha...\nMo‘ljal: ...','Сергелийский район, улица...\nОриентир: ...')}" class="fc-shop-input fc-shop-address-input">${escapeHtml(form.address || '')}</textarea>
+                      <p class="fc-shop-field-help">${tr("Kerakli joyda Enter bosing — masalan, mo‘ljalni yangi qatordan yozing.", "Нажмите Enter в нужном месте — например, напишите ориентир с новой строки.")}</p>
                     </div>
                     <div class="fc-shop-field">
                       <label for="sc-address-ru">${tr("Manzil (ruscha, ixtiyoriy)", "Адрес (по-русски, необязательно)")}</label>
-                      <input type="text" id="sc-address-ru" value="${escapeHtml(form.addressRu || '')}" placeholder="Сергелийский район, ..." class="fc-shop-input">
+                      <textarea id="sc-address-ru" rows="2" placeholder="Сергелийский район, улица...\nОриентир: ..." class="fc-shop-input fc-shop-address-input">${escapeHtml(form.addressRu || '')}</textarea>
                       <p class="fc-shop-field-help">${tr("Bo'sh qoldirilsa, ruscha rejimda ham o'zbekcha manzil ko'rsatiladi.", "Если оставить пустым, в русском режиме тоже отображается узбекский адрес.")}</p>
                     </div>
                     <div class="fc-shop-field">
@@ -6921,20 +7138,17 @@
 
       if (activePopupModal === 'ADD_ADMIN') {
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("👑 Yangi admin qo'shish", "👑 Добавить администратора")}</h3>
-              <div>
-                <label class="font-bold text-gray-600">${tr("Telegram ID raqami *", "Telegram ID *")}</label>
-                <input type="number" id="m-admin-id" placeholder="Masalan: 123456789" class="w-full mt-1 p-2 border rounded-xl font-mono">
+          <div class="fc-sheet-overlay" onclick="if(event.target===this){activePopupModal=null;render();}">
+            <div class="fc-sheet" onclick="event.stopPropagation()">
+              <div class="fc-sheet-handle"></div>
+              <div class="fc-sheet-header"><div><div class="fc-sheet-title">${tr("Yangi xodim", "Новый сотрудник")}</div><p class="fc-shop-info-subtitle">${tr("Hozircha xodim Admin huquqi bilan qo‘shiladi. Alohida huquqlar keyingi bosqichda.", "Пока сотрудник добавляется с правами администратора. Детальные права будут на следующем этапе.")}</p></div><button type="button" onclick="activePopupModal=null;render();" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+              <div class="fc-sheet-body">
+                <label class="fc-mini-field"><span>${tr("Telegram ID raqami", "Telegram ID")}</span><input type="number" id="m-admin-id" placeholder="123456789"></label>
+                <p class="fc-shop-field-help">${tr("Xodimning Telegram raqamli ID sini kiriting.", "Введите числовой Telegram ID сотрудника.")}</p>
               </div>
-              <div class="flex space-x-2 pt-2">
-                <button onclick="saveAdminFromModal()" class="flex-1 bg-amber-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
-              </div>
+              <div class="fc-sheet-footer grid grid-cols-2 gap-2"><button type="button" onclick="activePopupModal=null;render();" class="fc-btn fc-btn-secondary">${tr("Bekor qilish", "Отмена")}</button><button type="button" onclick="saveAdminFromModal()" class="fc-btn fc-btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr("Qo‘shish", "Добавить")}</button></div>
             </div>
-          </div>
-        `;
+          </div>`;
         return;
       }
 

@@ -17,14 +17,14 @@
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=16">
+  <link rel="stylesheet" href="./ustore.css?v=17">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=5"></script>
   <script defer src="./config.public.js?v=1"></script>
-  <script defer src="./ustore-shop-app.js?v=25"></script>
+  <script defer src="./ustore-shop-app.js?v=26"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
 
@@ -98,11 +98,6 @@
     <button onclick="switchTab('warehouse')" id="nav-warehouse-btn" class="nav-btn hidden flex-col items-center text-gray-500">
       <i data-lucide="warehouse" class="w-5 h-5"></i>
       <span class="text-[10px] mt-1" id="nav-label-warehouse">Ombor</span>
-    </button>
-    <!-- Boshqa nav tugmalaridan sal kattaroq/qalinroq — ko'proq ishlatiladigan bo'lim. -->
-    <button onclick="openAdminSupportOrUserSupport()" id="nav-support-btn" class="nav-btn flex flex-col items-center text-gray-600">
-      <i data-lucide="life-buoy" class="w-6 h-6"></i>
-      <span class="text-[10px] mt-1 font-bold text-center" id="nav-label-support">Qo'llab-quvvatlash</span>
     </button>
     <button onclick="switchTab('profile')" class="nav-btn flex flex-col items-center text-gray-500" id="nav-profile">
       <i data-lucide="user" class="w-5 h-5"></i>
