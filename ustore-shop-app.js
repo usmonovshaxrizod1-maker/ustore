@@ -62,7 +62,6 @@
     const ICON_UP = fcIcon('<polyline points="18 15 12 9 6 15"></polyline>');
     const ICON_DOWN = fcIcon('<polyline points="6 9 12 15 18 9"></polyline>');
     const ICON_PIN = fcIcon('<line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path>');
-    const ICON_GRIP_6 = fcIcon('<circle cx="9" cy="7" r="1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="7" r="1" fill="currentColor" stroke="none"></circle><circle cx="9" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"></circle><circle cx="9" cy="17" r="1" fill="currentColor" stroke="none"></circle><circle cx="15" cy="17" r="1" fill="currentColor" stroke="none"></circle>', 'w-4 h-4');
     // Legacy audit, 6-band: admin katalog toolbar'idagi tasodifiy emoji
     // (🖼️🧭☑️🔳) o'rniga bir xil stroke uslubidagi ikonalar.
     const ICON_IMAGE = fcIcon('<rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path>');
@@ -593,14 +592,6 @@
     // aynan bitta kunlik intervalni (masalan 22.08.2026–22.08.2026) tanlaydi.
     let ordersDateFrom = '';
     let ordersDateTo = '';
-    // Calendar popup ichidagi tanlov committed filterdan alohida draftda turadi.
-    // Faqat tasdiqlash iconi bosilganda ordersDateFrom/To ga o'tadi.
-    let ordersCalendarDraftFrom = '';
-    let ordersCalendarDraftTo = '';
-    let ordersCalendarAnchorRect = null;
-    let ordersCalendarPickerMode = 'days'; // days | months | years
-    let ordersCalendarYearPageStart = null;
-    let cardActionMenu = null; // {kind:'product'|'category', id}
     let ordersCalendarMonth = (() => {
       const d = new Date();
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -730,18 +721,6 @@
     let bulkProductSelectMode = false;
     const bulkSelectedProductIds = new Set();
     let bulkMoveTargetCategoryId = '';
-    let bulkCategorySelectMode = false;
-    const bulkSelectedCategoryIds = new Set();
-    let movePickerParentId = null;
-    let movePickerSearch = '';
-    let catalogLongPressTimer = null;
-    let suppressCatalogClickOnce = false;
-    let catalogDragState = null;
-    let trashBulkSelectMode = false;
-    const trashSelectedBatchIds = new Set();
-    let trashSearchQuery = '';
-    let trashLongPressTimer = null;
-    let suppressTrashClickOnce = false;
     // 17-band: Sevimlilar — boot'dan keyin bir marta yuklanadi (har card uchun
     // alohida so'rov yo'q, 48-band talabi).
     let favoriteProductIds = new Set();
@@ -2187,22 +2166,9 @@
     document.addEventListener('click', (event) => {
       const popover = document.getElementById('role-mode-popover');
       const personBtn = document.getElementById('header-person-btn');
-      if (popover && !popover.classList.contains('hidden')) {
-        if (!(popover.contains(event.target) || (personBtn && personBtn.contains(event.target)))) {
-          popover.classList.add('hidden');
-        }
-      }
-
-      // Product/katalogdagi uch nuqta menyusi: tashqariga bosilganda yopiladi.
-      if (cardActionMenu) {
-        const target = event.target;
-        const insideMenu = target?.closest?.('.fc-card-action-menu');
-        const onMenuButton = target?.closest?.('.fc-product-more-overlay, .fc-card-more-btn');
-        if (!insideMenu && !onMenuButton) {
-          cardActionMenu = null;
-          render();
-        }
-      }
+      if (!popover || popover.classList.contains('hidden')) return;
+      if (popover.contains(event.target) || (personBtn && personBtn.contains(event.target))) return;
+      popover.classList.add('hidden');
     });
 
     function render() {
@@ -2893,26 +2859,6 @@
       `;
     }
 
-    function openCardActionMenu(kind, id, event) {
-      event?.preventDefault?.(); event?.stopPropagation?.(); cancelCatalogLongPress();
-      cardActionMenu = { kind, id: String(id) };
-      render();
-    }
-    function closeCardActionMenu(event) { event?.stopPropagation?.(); cardActionMenu = null; render(); }
-    function cardActionMenuHtml(kind, id) {
-      if (!cardActionMenu || cardActionMenu.kind !== kind || String(cardActionMenu.id) !== String(id)) return '';
-      const edit = kind === 'product'
-        ? `openProductDetailModal('${id}');cardActionMenu=null;render();`
-        : `openEditCategoryModal('${id}', event);cardActionMenu=null;`;
-      const move = kind === 'product'
-        ? `openMoveProductModal('${id}');cardActionMenu=null;`
-        : `openMoveCategoryModal('${id}', event);cardActionMenu=null;`;
-      const del = kind === 'product'
-        ? `deleteProduct('${id}');cardActionMenu=null;`
-        : `deleteCategory('${id}', event);cardActionMenu=null;`;
-      return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="${edit}"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" onclick="${move}"><i data-lucide="folder-input" class="w-4 h-4"></i><span>${tr('Ko‘chirish','Переместить')}</span></button><button type="button" class="is-danger" onclick="${del}"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
-    }
-
     function renderProductCardHTML(p, idx, totalLen) {
       const inCart = cart[p.id];
       const vars = productVariants(p);
@@ -2920,16 +2866,16 @@
       const variantColors = [...new Set(vars.map(v => v.color).filter(Boolean))];
       const hasDiscount = p.oldPrice && p.oldPrice > p.price;
       const bulkSelecting = isAdminMode && isUserAnAdmin && bulkProductSelectMode;
+      const cardClick = bulkSelecting ? `toggleBulkProductSelection('${p.id}', event)` : `openProductDetailModal('${p.id}')`;
 
       return `
-        <div data-product-card-id="${escapeHtml(p.id)}" onclick="handleProductCardClick('${p.id}', event)" onpointerdown="startProductLongPress('${p.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="bg-white rounded-2xl p-3 shadow-sm border ${bulkSelecting && bulkSelectedProductIds.has(String(p.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex flex-col justify-between relative cursor-pointer hover:shadow-md transition-all">
-          ${bulkSelecting ? `<div class="absolute top-2 left-2 z-30 w-7 h-7 rounded-full flex items-center justify-center font-black ${bulkSelectedProductIds.has(String(p.id)) ? 'bg-blue-600 text-white' : 'bg-white/95 text-gray-400 border'}">${bulkSelectedProductIds.has(String(p.id)) ? '<i data-lucide="check" class="w-4 h-4"></i>' : ''}</div>` : ''}
+        <div data-product-card-id="${escapeHtml(p.id)}" onclick="${cardClick}" class="bg-white rounded-2xl p-3 shadow-sm border ${bulkSelecting && bulkSelectedProductIds.has(String(p.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex flex-col justify-between relative cursor-pointer hover:shadow-md transition-all">
+          ${bulkSelecting ? `<div class="absolute top-2 left-2 z-10 w-7 h-7 rounded-full flex items-center justify-center font-black ${bulkSelectedProductIds.has(String(p.id)) ? 'bg-blue-600 text-white' : 'bg-white/95 text-gray-400 border'}">${bulkSelectedProductIds.has(String(p.id)) ? '✓' : '○'}</div>` : ''}
           <div>
             <div class="relative">
               <div class="w-full h-32 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
                 <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-full object-contain" loading="lazy">
               </div>
-              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-drag-handle fc-product-drag-overlay" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
@@ -2951,8 +2897,18 @@
             ${productDesc(p) ? `<p class="text-[10px] text-gray-400 italic mt-0.5 line-clamp-1">${escapeHtml(truncateText(productDesc(p), 40))}</p>` : ''}
           </div>
 
-          <!-- ADMIN: tahrirlash kartaning o'zini bosish orqali; pin/drag rasm ustida. -->
-          ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `` : `
+          <!-- ADMIN CONTROLS -->
+          ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `
+            <div class="mt-2 pt-2 border-t flex flex-col space-y-1" onclick="event.stopPropagation()">
+              <div class="flex justify-between items-center text-[10px]">
+                <button onclick="moveProductSort('${p.id}', -1)" ${idx === 0 ? 'disabled' : ''} aria-label="${tr('Yuqoriga', 'Вверх')}" class="px-1.5 py-0.5 bg-gray-100 rounded font-bold">${ICON_UP}</button>
+                <button onclick="moveProductSort('${p.id}', 1)" ${idx === totalLen - 1 ? 'disabled' : ''} aria-label="${tr('Pastga', 'Вниз')}" class="px-1.5 py-0.5 bg-gray-100 rounded font-bold">${ICON_DOWN}</button>
+                <button onclick="toggleProductFeatured('${p.id}')" aria-label="${tr('Pin', 'Закрепить')}" class="px-1.5 py-0.5 ${p.isFeatured ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'} rounded font-bold">${ICON_PIN}</button>
+                <button onclick="openProductDetailModal('${p.id}')" class="px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded font-bold">${ICON_EDIT}</button>
+                <button onclick="deleteProduct('${p.id}')" aria-label="${tr("O'chirish", 'Удалить')}" class="px-1.5 py-0.5 fc-bg-danger-soft fc-text-danger rounded font-bold">${ICON_TRASH}</button>
+              </div>
+            </div>
+          ` : `
             <!-- USER CART CONTROLS -->
             <div class="mt-2" onclick="event.stopPropagation()">
               ${p.stock > 0 ? (
@@ -3022,6 +2978,7 @@
                 <button onclick="openExcelImportModal()" class="flex-1 flex items-center justify-center gap-1 bg-slate-800 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="table" class="w-3.5 h-3.5"></i>Excel</button>
               </div>
               <div class="flex flex-wrap gap-1.5 pt-1">
+                <button onclick="toggleBulkProductSelectMode()" title="${bulkProductSelectMode ? tr('Tanlashni tugatish','Завершить выбор') : tr('Tovarlarni tanlash','Выбрать товары')}" aria-label="${tr('Tovarlarni tanlash','Выбрать товары')}" class="flex items-center justify-center gap-1 min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold ${bulkProductSelectMode ? 'bg-blue-600 text-white' : 'bg-white border text-gray-700'}">${ICON_CHECK_SQUARE}</button>
                 <button onclick="openMissingImageQueue()" title="${tr('Rasmsiz tovarlar','Товары без фото')} · ${globalMissingImageCount}" aria-label="${tr('Rasmsiz tovarlar','Товары без фото')}" class="flex items-center justify-center gap-1 min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">${ICON_IMAGE}${globalMissingImageCount > 0 ? `<span>${globalMissingImageCount}</span>` : ''}</button>
                 <button onclick="openTrashModal()" title="${tr('Chiqindi (24 soat)','Корзина (24 часа)')}" aria-label="${tr('Chiqindi', 'Корзина')}" class="flex items-center justify-center min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-white border fc-text-danger">${ICON_TRASH}</button>
                 <button onclick="openDuplicateProductsModal()" title="${tr('Duplicate tovarlarni tekshirish','Проверить дубликаты товаров')}" aria-label="${tr('Duplicate tovarlarni tekshirish','Проверить дубликаты товаров')}" class="flex items-center justify-center min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-white border text-gray-600">${ICON_COPY_CHECK}</button>
@@ -3031,13 +2988,13 @@
           </div>
 
           <!-- SUBCATEGORIES LIST -->
-          <div class="space-y-2" data-catalog-drag-list="category">
+          <div class="space-y-2">
             ${subCats.map((sub, subIdx) => `
-              <div data-category-row-id="${sub.id}" onclick="handleCategoryRowClick('${sub.id}', event)" onpointerdown="startCategoryLongPress('${sub.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="ustore-cat-row p-3.5 rounded-2xl border ${bulkCategorySelectMode && bulkSelectedCategoryIds.has(String(sub.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex items-center justify-between shadow-sm cursor-pointer">
+              <div data-category-row-id="${sub.id}" onclick="adminCatParentId = '${sub.id}'; categoryPage=1; render();" class="ustore-cat-row p-3.5 rounded-2xl border border-gray-100 flex items-center justify-between shadow-sm cursor-pointer">
                 <div class="flex items-center space-x-3">
                   ${sub.img && (sub.img.startsWith('http') || sub.img.startsWith('data:')) ?
                     `<img src="${escapeHtml(sub.img)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-8 h-8 object-cover rounded-lg" loading="lazy">` :
-                    `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center"><i data-lucide="folder" class="w-4 h-4"></i></span>`
+                    `<span class="text-xl">${escapeHtml(sub.img) || '📁'}</span>`
                   }
                   <div>
                     <h5 class="font-bold text-sm text-gray-800">${escapeHtml(categoryName(sub))}</h5>
@@ -3045,27 +3002,28 @@
                   </div>
                 </div>
                 <div class="flex items-center space-x-1">
-                  ${(isAdminMode && isUserAnAdmin) ? (bulkCategorySelectMode ? `<span class="fc-select-dot ${bulkSelectedCategoryIds.has(String(sub.id)) ? 'is-selected' : ''}"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>` : `
-                    <button type="button" class="fc-drag-handle" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('category','${sub.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>
-                    <button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('category','${sub.id}',event)" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
-                    ${cardActionMenuHtml('category', sub.id)}
-                  `) : ''}
+                  ${(isAdminMode && isUserAnAdmin) ? `
+                    <button onclick="moveCategoryOrder('${sub.id}', -1, event)" ${subIdx === 0 ? 'disabled' : ''} aria-label="${tr('Yuqoriga', 'Вверх')}" class="px-1.5 py-0.5 bg-gray-100 rounded font-bold">${ICON_UP}</button>
+                    <button onclick="moveCategoryOrder('${sub.id}', 1, event)" ${subIdx === subCats.length - 1 ? 'disabled' : ''} aria-label="${tr('Pastga', 'Вниз')}" class="px-1.5 py-0.5 bg-gray-100 rounded font-bold">${ICON_DOWN}</button>
+                    <button onclick="openMoveCategoryModal('${sub.id}', event)" title="${tr("Boshqa katalogga ko'chirish", "Переместить в другой каталог")}" class="p-1 bg-slate-100 text-slate-600 rounded text-xs font-bold">📁⇢</button>
+                    <button onclick="openEditCategoryModal('${sub.id}', event)" class="p-1 bg-blue-100 text-blue-600 rounded text-xs font-bold">${ICON_EDIT}</button>
+                    <button onclick="deleteCategory('${sub.id}', event)" aria-label="${tr("O'chirish", 'Удалить')}" class="p-1 fc-bg-danger-soft fc-text-danger rounded text-xs font-bold">${ICON_TRASH}</button>
+                  ` : ''}
+                  <i data-lucide="chevron-right" class="w-5 h-5 text-gray-400"></i>
                 </div>
               </div>
             `).join('')}
           </div>
 
-          ${bulkCategorySelectMode ? `<div class="fc-selection-toolbar"><span>${bulkSelectedCategoryIds.size}</span><button onclick="openBulkMoveCategoriesModal()" ${bulkSelectedCategoryIds.size?'':'disabled'} aria-label="${tr('Ko‘chirish','Переместить')}"><i data-lucide="folder-input" class="w-4 h-4"></i></button><button onclick="bulkTrashSelectedCategories()" ${bulkSelectedCategoryIds.size?'':'disabled'} class="is-danger" aria-label="${tr('O‘chirish','Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="clearBulkCategorySelection()"><i data-lucide="x" class="w-4 h-4"></i></button></div>` : ''}
-
           <!-- PRODUCTS LIST -->
           <div class="space-y-2 pt-2">
             <div class="flex items-center justify-between px-1">
-              <h4 class="font-bold text-xs text-gray-500 uppercase flex items-center gap-1.5"><i data-lucide="package" class="w-4 h-4"></i>${tr("Tovarlar", "Товары")} (${catProds.length})</h4>
+              <h4 class="font-bold text-xs text-gray-500 uppercase">${tr("📦 Tovarlar", "📦 Товары")} (${catProds.length})</h4>
               <div class="flex gap-1">
                 ${catProdsRaw.length > 0 ? `
                   ${bulkProductSelectMode ? `<button onclick="selectAllVisibleProducts()" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700">${tr('Barchasini tanlash','Выбрать все')}</button>` : ''}
                   <button onclick="openCategoryFilterModal()" class="text-[11px] font-bold px-2.5 py-1 rounded-lg ${filterActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">
-                    <i data-lucide="search" class="w-3.5 h-3.5 inline-block mr-1"></i>${tr('Filtr','Фильтр')}${filterActive ? ' •' : ''}
+                    🔍 ${tr('Filtr','Фильтр')}${filterActive ? ' •' : ''}
                   </button>
                 ` : ''}
               </div>
@@ -3077,12 +3035,12 @@
                 <p>${filterActive ? tr('Mahsulot topilmadi. Boshqa so‘z bilan qidirib ko‘ring.', 'Товар не найден. Попробуйте другой запрос.') : tr('Bu katalogda hozircha tovar yo‘q.', 'В этом каталоге пока нет товаров.')}</p>
               </div>
             ` : `
-              <div class="grid grid-cols-2 gap-3" data-catalog-drag-list="product">
+              <div class="grid grid-cols-2 gap-3">
                 ${paginatedProds.map((p, idx) => renderProductCardHTML(p, idx, paginatedProds.length)).join('')}
               </div>
             `}
 
-            ${bulkProductSelectMode ? `<div class="fc-selection-toolbar"><span>${bulkSelectedProductIds.size}</span><button onclick="openBulkMoveProductsModal()" ${bulkSelectedProductIds.size?'':'disabled'} aria-label="${tr('Ko‘chirish','Переместить')}"><i data-lucide="folder-input" class="w-4 h-4"></i></button><button onclick="bulkTrashSelectedProducts()" ${bulkSelectedProductIds.size?'':'disabled'} class="is-danger" aria-label="${tr('O‘chirish','Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="clearBulkProductSelection()" aria-label="${tr('Tanlashni tugatish','Завершить выбор')}"><i data-lucide="x" class="w-4 h-4"></i></button></div>` : ''}
+            ${bulkProductSelectMode ? `<div class="sticky bottom-20 z-30 bg-slate-900 text-white rounded-2xl p-2.5 shadow-xl flex flex-wrap items-center gap-2"><b class="text-xs flex-1 min-w-[90px]">${bulkSelectedProductIds.size} ${tr('ta tanlandi','выбрано')}</b><button onclick="openBulkMoveProductsModal()" ${bulkSelectedProductIds.size ? '' : 'disabled'} class="px-3 py-2 rounded-xl bg-blue-600 disabled:opacity-40 text-[11px] font-bold flex items-center gap-1">${fcIcon('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>')} ${tr('Ko‘chirish','Переместить')}</button><button onclick="bulkTrashSelectedProducts()" ${bulkSelectedProductIds.size ? '' : 'disabled'} class="px-3 py-2 rounded-xl fc-bg-danger disabled:opacity-40 text-[11px] font-bold flex items-center gap-1">${ICON_TRASH} ${tr('Chiqindiga','В корзину')}</button><button onclick="clearBulkProductSelection()" class="px-3 py-2 rounded-xl bg-white/10 text-[11px] font-bold">✕</button></div>` : ''}
 
             ${totalPages > 1 ? `
               <div class="flex justify-center items-center space-x-2 pt-4">
@@ -3745,11 +3703,9 @@
       // o'rniga filial tanlash ro'yxati ko'rsatiladi) — tuman maydoni endi
       // BARCHA yetkazib berish usullari uchun umumiy va doim ko'rinadi.
       const isPost = selectedDelivery?.kind === 'POST';
-      const districtField = document.getElementById('chk-district-field');
       const addressField = document.getElementById('chk-address-field');
-      const branchWrap = document.getElementById('chk-branch-wrap');
-      if (districtField) districtField.classList.remove('hidden');
       if (addressField) addressField.classList.toggle('hidden', isPost);
+      const branchWrap = document.getElementById('chk-branch-wrap');
       if (branchWrap) branchWrap.classList.toggle('hidden', !isPost);
       if (isPost) renderBranchPicker();
 
@@ -4052,88 +4008,33 @@
 
     function selectOrdersCalendarDate(key) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key || ''))) return;
-      if (!ordersCalendarDraftFrom || ordersCalendarDraftTo) {
-        ordersCalendarDraftFrom = key;
-        ordersCalendarDraftTo = '';
+      if (!ordersDateFrom || ordersDateTo) {
+        ordersDateFrom = key;
+        ordersDateTo = '';
       } else {
-        if (key < ordersCalendarDraftFrom) { ordersCalendarDraftTo = ordersCalendarDraftFrom; ordersCalendarDraftFrom = key; }
-        else ordersCalendarDraftTo = key;
+        if (key < ordersDateFrom) {
+          ordersDateTo = ordersDateFrom;
+          ordersDateFrom = key;
+        } else {
+          ordersDateTo = key;
+        }
       }
-      render();
-    }
-    function openOrdersCalendarModal(event) {
-      const btn = event?.currentTarget || event?.target?.closest?.('.fc-orders-calendar-trigger');
-      if (btn?.getBoundingClientRect) {
-        const r = btn.getBoundingClientRect();
-        ordersCalendarAnchorRect = { left:r.left, right:r.right, top:r.top, bottom:r.bottom, width:r.width, height:r.height };
-      }
-      // Default oxirgi 1 oy filtr sifatida ishlaydi, ammo kalendarda bo'yalmaydi.
-      ordersCalendarDraftFrom = ordersDateFrom || '';
-      ordersCalendarDraftTo = ordersDateTo || '';
-      const basis = ordersCalendarDraftFrom ? parseOrderDateKey(ordersCalendarDraftFrom) : new Date();
-      ordersCalendarMonth = `${basis.getFullYear()}-${String(basis.getMonth()+1).padStart(2,'0')}`;
-      ordersCalendarPickerMode = 'days';
-      activePopupModal = 'ORDERS_CALENDAR';
-      render();
-    }
-    function cancelOrdersCalendarSelection() {
-      ordersCalendarDraftFrom = '';
-      ordersCalendarDraftTo = '';
-      activePopupModal = null;
-      render();
-    }
-    function applyOrdersCalendarSelection() {
-      if (!ordersCalendarDraftFrom || !ordersCalendarDraftTo) return;
-      ordersDateFrom = ordersCalendarDraftFrom;
-      ordersDateTo = ordersCalendarDraftTo;
       ordersPage = 1;
-      activePopupModal = null;
       render();
     }
+
     function clearOrdersDateRange() {
-      // Popup ichidagi reset committed filtrni darrov o'zgartirmaydi.
-      ordersCalendarDraftFrom = '';
-      ordersCalendarDraftTo = '';
-      render();
-    }
-    function clearCommittedOrdersDateRange() {
       ordersDateFrom = '';
       ordersDateTo = '';
       ordersPage = 1;
       render();
     }
+
     function changeOrdersCalendarMonth(delta) {
       const m = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
       const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, 1) : new Date();
       d.setMonth(d.getMonth() + Number(delta || 0));
       ordersCalendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      render();
-    }
-
-    function setOrdersCalendarPickerMode(mode) {
-      ordersCalendarPickerMode = mode || 'days';
-      const m = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
-      const year = m ? Number(m[1]) : new Date().getFullYear();
-      if (ordersCalendarPickerMode === 'years') ordersCalendarYearPageStart = Math.floor(year / 12) * 12;
-      render();
-    }
-    function selectOrdersCalendarMonth(monthIndex) {
-      const m = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
-      const year = m ? Number(m[1]) : new Date().getFullYear();
-      ordersCalendarMonth = `${year}-${String(Number(monthIndex)+1).padStart(2,'0')}`;
-      ordersCalendarPickerMode = 'days';
-      render();
-    }
-    function selectOrdersCalendarYear(year) {
-      const m = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
-      const month = m ? Number(m[2]) : (new Date().getMonth()+1);
-      ordersCalendarMonth = `${Number(year)}-${String(month).padStart(2,'0')}`;
-      ordersCalendarPickerMode = 'months';
-      render();
-    }
-    function changeOrdersCalendarYearPage(delta) {
-      const base = Number.isFinite(Number(ordersCalendarYearPageStart)) ? Number(ordersCalendarYearPageStart) : Math.floor(new Date().getFullYear()/12)*12;
-      ordersCalendarYearPageStart = base + Number(delta || 0) * 12;
       render();
     }
 
@@ -4144,52 +4045,68 @@
     }
 
     function filterOrdersBySelectedDate(source) {
-      let from, to;
-      if (ordersDateFrom && ordersDateTo) {
-        from = parseOrderDateKey(ordersDateFrom, false);
-        to = parseOrderDateKey(ordersDateTo, true);
-      } else {
-        to = new Date(); to.setHours(23,59,59,999);
-        from = new Date(to); from.setMonth(from.getMonth()-1); from.setHours(0,0,0,0);
-      }
+      // Interval faqat ikkinchi sana tanlangach yakunlanadi. Birinchi bosish paytida
+      // ro'yxatni keskin o'zgartirmaymiz — foydalanuvchi hali tugash sanasini tanlayapti.
+      if (!ordersDateFrom || !ordersDateTo) return [...source];
+      const from = parseOrderDateKey(ordersDateFrom, false);
+      const to = parseOrderDateKey(ordersDateTo, true);
       if (!from || !to) return [...source];
-      return source.filter(o => { const d = orderCreatedDate(o); return !!d && d >= from && d <= to; });
-    }
-
-    function renderOrdersCalendarBodyHtml() {
-      const monthMatch = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
-      const base = monthMatch ? new Date(Number(monthMatch[1]), Number(monthMatch[2]) - 1, 1) : new Date();
-      const year = base.getFullYear(), month = base.getMonth();
-      const monthNamesUz = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-      const monthNamesRu = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-      const monthNames = uiLang === 'ru' ? monthNamesRu : monthNamesUz;
-      const weekDays = uiLang === 'ru' ? ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'] : ['Du','Se','Cho','Pa','Ju','Sha','Ya'];
-      const rangeText=ordersCalendarDraftFrom&&ordersCalendarDraftTo?`${formatOrderRangeDate(ordersCalendarDraftFrom)} — ${formatOrderRangeDate(ordersCalendarDraftTo)}`:ordersCalendarDraftFrom?tr(`${formatOrderRangeDate(ordersCalendarDraftFrom)} — tugash sanasini tanlang`,`${formatOrderRangeDate(ordersCalendarDraftFrom)} — выберите дату окончания`):tr('Sana oralig‘ini tanlang','Выберите период');
-      let body = '';
-      if (ordersCalendarPickerMode === 'months') {
-        body = `<div class="fc-orders-picker-grid fc-orders-month-grid">${monthNames.map((name,i)=>`<button type="button" class="${i===month?'is-current':''}" onclick="selectOrdersCalendarMonth(${i})">${escapeHtml(name)}</button>`).join('')}</div>`;
-      } else if (ordersCalendarPickerMode === 'years') {
-        const start = Number.isFinite(Number(ordersCalendarYearPageStart)) ? Number(ordersCalendarYearPageStart) : Math.floor(year/12)*12;
-        const years = Array.from({length:12},(_,i)=>start+i);
-        body = `<div class="fc-orders-year-nav"><button type="button" onclick="changeOrdersCalendarYearPage(-1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-left" class="w-4 h-4"></i></button><b>${start}–${start+11}</b><button type="button" onclick="changeOrdersCalendarYearPage(1)" class="fc-orders-calendar-nav"><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div><div class="fc-orders-picker-grid fc-orders-year-grid">${years.map(y=>`<button type="button" class="${y===year?'is-current':''}" onclick="selectOrdersCalendarYear(${y})">${y}</button>`).join('')}</div>`;
-      } else {
-        const firstOffset = (new Date(year, month, 1).getDay() + 6) % 7, dayCount = new Date(year, month + 1, 0).getDate();
-        const todayKey = orderDateKey(new Date()), cells = [];
-        for (let i=0;i<firstOffset;i++) cells.push('<span class="fc-orders-calendar-empty"></span>');
-        for (let day=1;day<=dayCount;day++) {
-          const key = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-          const isStart=key===ordersCalendarDraftFrom,isEnd=key===ordersCalendarDraftTo,inRange=!!(ordersCalendarDraftFrom&&ordersCalendarDraftTo&&key>ordersCalendarDraftFrom&&key<ordersCalendarDraftTo),pending=!!(ordersCalendarDraftFrom&&!ordersCalendarDraftTo&&isStart),single=!!(isStart&&isEnd);
-          const cls=['fc-orders-calendar-day',isStart?'is-start':'',isEnd?'is-end':'',inRange?'is-in-range':'',pending?'is-pending':'',single?'is-single':'',key===todayKey?'is-today':''].filter(Boolean).join(' ');
-          cells.push(`<button type="button" onclick="selectOrdersCalendarDate('${key}')" class="${cls}">${day}</button>`);
-        }
-        body = `<div class="fc-orders-calendar-weekdays">${weekDays.map(d=>`<span>${d}</span>`).join('')}</div><div class="fc-orders-calendar-grid">${cells.join('')}</div><p class="fc-orders-calendar-hint">${tr('Bitta kun uchun sanani ikki marta bosing. Oraliq uchun boshlanish va tugash sanasini tanlang.','Для одного дня нажмите дату дважды. Для периода выберите начало и конец.')}</p>`;
-      }
-      return `<div class="fc-orders-calendar-card"><div class="fc-orders-calendar-top"><div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>${(ordersCalendarDraftFrom||ordersCalendarDraftTo)?`<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear" aria-label="${tr('Tozalash','Сбросить')}"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>`:''}</div><div class="fc-orders-calendar-monthbar"><button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-left" class="w-4 h-4"></i></button><div class="fc-orders-calendar-period"><button type="button" onclick="setOrdersCalendarPickerMode('months')">${escapeHtml(monthNames[month])}</button><button type="button" onclick="setOrdersCalendarPickerMode('years')">${year}</button></div><button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div>${body}${ordersCalendarDraftFrom?`<div class="fc-orders-calendar-actions"><button type="button" onclick="cancelOrdersCalendarSelection()" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-4 h-4"></i></button><button type="button" onclick="applyOrdersCalendarSelection()" ${ordersCalendarDraftTo?'':'disabled'} class="is-primary" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></div>`:''}</div>`;
+      return source.filter(o => {
+        const d = orderCreatedDate(o);
+        return !!d && d >= from && d <= to;
+      });
     }
 
     function renderOrdersDateFilterHtml() {
-      const explicit=!!(ordersDateFrom&&ordersDateTo);
-      return `<button type="button" onclick="openOrdersCalendarModal(event)" class="fc-orders-calendar-trigger ${explicit?'is-active':''}" aria-label="${tr('Kalendar','Календарь')}" title="${tr('Kalendar','Календарь')}"><i data-lucide="calendar-days" class="w-5 h-5"></i></button>`;
+      const monthMatch = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
+      const base = monthMatch ? new Date(Number(monthMatch[1]), Number(monthMatch[2]) - 1, 1) : new Date();
+      const year = base.getFullYear();
+      const month = base.getMonth();
+      const monthNamesUz = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+      const monthNamesRu = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+      const weekDays = uiLang === 'ru' ? ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'] : ['Du','Se','Cho','Pa','Ju','Sha','Ya'];
+      const firstOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+      const dayCount = new Date(year, month + 1, 0).getDate();
+      const todayKey = orderDateKey(new Date());
+      const cells = [];
+      for (let i = 0; i < firstOffset; i += 1) cells.push('<span class="fc-orders-calendar-empty"></span>');
+      for (let day = 1; day <= dayCount; day += 1) {
+        const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isStart = key === ordersDateFrom;
+        const isEnd = key === ordersDateTo;
+        const inRange = !!(ordersDateFrom && ordersDateTo && key > ordersDateFrom && key < ordersDateTo);
+        const pending = !!(ordersDateFrom && !ordersDateTo && isStart);
+        const isToday = key === todayKey;
+        const cls = [
+          'fc-orders-calendar-day',
+          isStart ? 'is-start' : '',
+          isEnd ? 'is-end' : '',
+          inRange ? 'is-in-range' : '',
+          pending ? 'is-pending' : '',
+          isToday ? 'is-today' : '',
+          isStart && isEnd ? 'is-single' : ''
+        ].filter(Boolean).join(' ');
+        cells.push(`<button type="button" onclick="selectOrdersCalendarDate('${key}')" class="${cls}" aria-label="${formatOrderRangeDate(key)}"><span>${day}</span></button>`);
+      }
+      const rangeText = ordersDateFrom && ordersDateTo
+        ? `${formatOrderRangeDate(ordersDateFrom)} — ${formatOrderRangeDate(ordersDateTo)}`
+        : ordersDateFrom
+          ? tr(`${formatOrderRangeDate(ordersDateFrom)} — tugash sanasini tanlang`, `${formatOrderRangeDate(ordersDateFrom)} — выберите дату окончания`)
+          : tr('Sana oralig‘ini tanlang', 'Выберите период');
+      return `<div class="fc-orders-calendar-card">
+        <div class="fc-orders-calendar-top">
+          <div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>
+          ${(ordersDateFrom || ordersDateTo) ? `<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear" aria-label="${tr('Tozalash','Очистить')}" title="${tr('Tozalash','Очистить')}"><i data-lucide="x" class="w-4 h-4"></i></button>` : ''}
+        </div>
+        <div class="fc-orders-calendar-monthbar">
+          <button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav" aria-label="${tr('Oldingi oy','Предыдущий месяц')}"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+          <strong>${uiLang === 'ru' ? monthNamesRu[month] : monthNamesUz[month]} ${year}</strong>
+          <button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav" aria-label="${tr('Keyingi oy','Следующий месяц')}"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+        </div>
+        <div class="fc-orders-calendar-weekdays">${weekDays.map(d => `<span>${d}</span>`).join('')}</div>
+        <div class="fc-orders-calendar-grid">${cells.join('')}</div>
+        <p class="fc-orders-calendar-hint">${tr('Bitta kun uchun shu sanani ikki marta bosing. Oraliq uchun boshlanish va tugash sanasini tanlang.','Для одного дня нажмите эту дату дважды. Для периода выберите дату начала и окончания.')}</p>
+      </div>`;
     }
 
     function renderOrders(container) {
@@ -4215,9 +4132,10 @@
         container.innerHTML = `
           <div class="space-y-4">
             <h2 class="text-lg font-bold text-slate-800">${t('all_orders')}</h2>
+            ${renderOrdersDateFilterHtml()}
 
             <div class="bg-white p-3 rounded-2xl border space-y-2 text-xs shadow-sm">
-              <div class="fc-orders-search-calendar-row"><input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Mijoz ismi yoki tel raqami...','Имя клиента или номер телефона...')}" value="${escapeHtml(adminOrderFilters.search)}" class="p-2 border rounded-xl">${renderOrdersDateFilterHtml()}</div>
+              <input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Mijoz ismi yoki tel raqami...','Имя клиента или номер телефона...')}" value="${escapeHtml(adminOrderFilters.search)}" class="w-full p-2 border rounded-xl">
 
               <div class="flex gap-1 flex-wrap">
                 <button onclick="setAdminStatusFilter('ALL')" class="px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === 'ALL' ? 'bg-slate-800 text-white' : 'bg-gray-100 text-gray-600'}">${tr("Barchasi", "Все")}</button>
@@ -4279,7 +4197,8 @@
 
       container.innerHTML = `
         <div class="space-y-3">
-          <div class="flex items-center justify-between gap-2"><h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>${renderOrdersDateFilterHtml()}</div>
+          <h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>
+          ${renderOrdersDateFilterHtml()}
 
           <div class="flex space-x-1 overflow-x-auto pb-1 text-xs">
             <button onclick="userOrderFilter='ALL'; render();" class="px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border text-gray-600'}">${tr("Barchasi", "Все")}</button>
@@ -6673,8 +6592,8 @@
       const checked = billzBrowseSelectedIds.has(item.billzProductId);
       const totalStock = item.isVariative ? (item.variants || []).reduce((sum, v) => sum + (Number(v.stock) || 0), 0) : item.stock;
       return `
-        <label class="fc-card fc-billz-product-card flex items-center gap-3 cursor-pointer">
-          <input class="fc-billz-check" type="checkbox" ${checked ? 'checked' : ''} onchange="toggleBillzItemSelected('${escapeHtml(item.billzProductId)}')">
+        <label class="fc-card flex items-center gap-3 cursor-pointer">
+          <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleBillzItemSelected('${escapeHtml(item.billzProductId)}')">
           <div class="flex-1 min-w-0">
             <p class="font-bold text-xs truncate">${escapeHtml(item.name)}</p>
             <p class="text-[10px] text-gray-500">${money(item.price)} · ${tr('Qoldiq', 'Остаток')}: ${totalStock}${item.isVariative ? ` (${(item.variants || []).length} ${tr('variant', 'вариант')})` : ''}</p>
@@ -6684,10 +6603,10 @@
     }
     function renderBillzPage(container) {
       const tabsBar = `
-        <div class="fc-tabs fc-billz-tabs">
-          <button onclick="setBillzSubTab('IMPORT')" class="fc-tab ${billzSubTab === 'IMPORT' ? 'fc-tab-active' : ''}">${tr('Import', 'Импорт')}</button>
-          <button onclick="setBillzSubTab('IMPORTED')" class="fc-tab ${billzSubTab === 'IMPORTED' ? 'fc-tab-active' : ''}">${tr('Import qilinganlar', 'Импортированные')}${billzImportedItems.length ? ` (${billzImportedItems.length})` : ''}</button>
-          <button onclick="setBillzSubTab('DELETED')" class="fc-tab ${billzSubTab === 'DELETED' ? 'fc-tab-active' : ''}">${tr("O'chirilganlar", "Удалённые")}${billzDeletedItems.length ? ` (${billzDeletedItems.length})` : ''}</button>
+        <div class="flex gap-2">
+          <button onclick="setBillzSubTab('IMPORT')" class="flex-1 py-2 rounded-xl text-xs font-bold ${billzSubTab === 'IMPORT' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr('Import', 'Импорт')}</button>
+          <button onclick="setBillzSubTab('IMPORTED')" class="flex-1 py-2 rounded-xl text-xs font-bold ${billzSubTab === 'IMPORTED' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr('Import qilinganlar', 'Импортированные')}${billzImportedItems.length ? ` (${billzImportedItems.length})` : ''}</button>
+          <button onclick="setBillzSubTab('DELETED')" class="flex-1 py-2 rounded-xl text-xs font-bold ${billzSubTab === 'DELETED' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr("O'chirilganlar", "Удалённые")}${billzDeletedItems.length ? ` (${billzDeletedItems.length})` : ''}</button>
         </div>
       `;
       // 9-band: sahifa hajmi tanlovi + (100 tanlanib, 100 tadan ko'p bo'lsa)
@@ -6698,7 +6617,7 @@
       const pagerBar = `
         <div class="flex items-center gap-2">
           <label class="text-[10px] font-bold text-gray-500 shrink-0">${tr('Ko\'rsatish', 'Показывать')}:</label>
-          <select onchange="setBillzBrowsePageSize(this.value)" class="fc-billz-control flex-1">
+          <select onchange="setBillzBrowsePageSize(this.value)" class="flex-1 p-1.5 border rounded-lg bg-gray-50 text-xs">
             ${[10, 25, 50, 100].map((n) => `<option value="${n}" ${billzBrowsePageSize === n ? 'selected' : ''}>${n}</option>`).join('')}
             <option value="ALL" ${billzBrowsePageSize === 'ALL' ? 'selected' : ''}>${tr('Barchasi', 'Все')}</option>
           </select>
@@ -6713,12 +6632,12 @@
       `;
       const importBody = `
         <div class="space-y-3" style="padding-bottom:4rem">
-          <button onclick="showAllUnimportedBillzItems()" class="fc-billz-info"><i data-lucide="sparkles" class="w-4 h-4 inline-block mr-1"></i>${tr("Hali import qilinmaganlar (hammasi)", "Ещё не импортированные (все)")}</button>
-          <select id="billz-browse-cat-select" onchange="setBillzBrowseCategory(this.value)" class="fc-billz-control w-full">
+          <button onclick="showAllUnimportedBillzItems()" class="w-full py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">🆕 ${tr("Hali import qilinmaganlar (hammasi)", "Ещё не импортированные (все)")}</button>
+          <select id="billz-browse-cat-select" onchange="setBillzBrowseCategory(this.value)" class="w-full p-2 border rounded-xl bg-gray-50 text-xs">
             <option value="">${tr("Barcha kategoriyalar (Billz)", "Все категории (Billz)")}</option>
             ${(billzBrowseCategories || []).map((c) => `<option value="${escapeHtml(c.id)}" ${c.id === billzBrowseSelectedCatId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
           </select>
-          <input id="billz-browse-search-input" type="text" value="${escapeHtml(billzBrowseSearch)}" oninput="handleBillzBrowseSearchDebounced(this.value)" placeholder="${tr('Qidirish...', 'Поиск...')}" class="fc-billz-control w-full">
+          <input id="billz-browse-search-input" type="text" value="${escapeHtml(billzBrowseSearch)}" oninput="handleBillzBrowseSearchDebounced(this.value)" placeholder="${tr('Qidirish...', 'Поиск...')}" class="w-full p-2 border rounded-xl text-xs">
           ${pagerBar}
           ${billzBrowseLoading ? `
             <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
@@ -6780,8 +6699,8 @@
         </div>
       `;
       const bodyBySubTab = { IMPORT: importBody, IMPORTED: importedBody, DELETED: deletedBody };
-      const body = `<div class="fc-billz-page space-y-3">${tabsBar}${bodyBySubTab[billzSubTab] || importBody}</div>`;
-      renderPageShell(container, 'Billz', body);
+      const body = `<div class="space-y-3">${tabsBar}${bodyBySubTab[billzSubTab] || importBody}</div>`;
+      renderPageShell(container, '🔳 Billz', body);
     }
 
     async function removeAdmin(admId) {
@@ -6828,14 +6747,6 @@
         if (event.key === 'Escape' && container.innerHTML.trim()) closeAnyOpenModal();
       });
     }
-
-    function movePickerAllowedCategories(mode){let forbidden=new Set();if(mode==='category'&&moveCategoryId)forbidden=categoryDescendantIds(moveCategoryId);if(mode==='bulk-category')for(const id of bulkSelectedCategoryIds)for(const x of categoryDescendantIds(id))forbidden.add(String(x));return categories.filter(c=>!c.deletedAt&&!forbidden.has(String(c.id)));}
-    function movePickerEnter(id){movePickerParentId=id||null;movePickerSearch='';render();}
-    function movePickerBack(){if(!movePickerParentId)return;const c=categories.find(x=>String(x.id)===String(movePickerParentId));movePickerParentId=c?.parentId||null;movePickerSearch='';render();}
-    function setMovePickerSearch(v){movePickerSearch=String(v||'');render();}
-    function movePickerPathHtml(){const chain=categoryAncestorChain(movePickerParentId);return [`<button type="button" onclick="movePickerEnter(null)">${tr('Bosh katalog','Главный каталог')}</button>`,...chain.map(c=>`<span>/</span><button type="button" onclick="movePickerEnter('${c.id}')">${escapeHtml(categoryName(c))}</button>`)].join('');}
-    function renderMovePickerHtml(mode){const allowed=movePickerAllowedCategories(mode),q=normalizeText(movePickerSearch||'').latin;let rows=q?allowed.filter(c=>normalizeText(categoryName(c)).latin.includes(q)):allowed.filter(c=>String(c.parentId||'')===String(movePickerParentId||''));rows=rows.sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)||categoryName(a).localeCompare(categoryName(b)));const cur=categories.find(c=>String(c.id)===String(movePickerParentId||'')),targetLabel=cur?categoryName(cur):tr('Bosh katalog','Главный каталог');return `<div class="fc-move-picker"><div class="fc-move-picker-nav"><button type="button" onclick="movePickerBack()" ${!movePickerParentId?'disabled':''}><i data-lucide="arrow-left" class="w-4 h-4"></i></button><div class="fc-move-breadcrumb">${movePickerPathHtml()}</div></div><div class="fc-move-search"><i data-lucide="search" class="w-4 h-4"></i><input value="${escapeHtml(movePickerSearch)}" oninput="setMovePickerSearch(this.value)" placeholder="${tr('Katalog qidirish','Поиск каталога')}"></div><div class="fc-move-list">${rows.length?rows.map(c=>`<button type="button" onclick="movePickerEnter('${c.id}')" class="fc-move-folder"><span><i data-lucide="folder" class="w-4 h-4"></i><b>${escapeHtml(categoryName(c))}</b></span><i data-lucide="chevron-right" class="w-4 h-4"></i></button>`).join(''):`<div class="fc-empty-state"><i data-lucide="folder-search" class="w-7 h-7"></i><p>${tr('Katalog topilmadi','Каталог не найден')}</p></div>`}</div><div class="fc-move-target"><small>${tr('Tanlangan joy','Выбранное место')}</small><b>${escapeHtml(targetLabel)}</b></div></div>`;}
-    async function saveBulkMoveCategories(){const ids=[...bulkSelectedCategoryIds];if(!ids.length)return;const newParentId=movePickerParentId||null;showActionToast(tr('Ko‘chirilmoqda...','Перемещение...'),'saving');try{for(const id of ids)await callApi('move_category',{categoryId:id,newParentId});await loadCatalog();activePopupModal=null;bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();showActionToast(tr('Kataloglar ko‘chirildi','Каталоги перемещены'),'success',1500);}catch(e){console.error(e);await loadCatalog();activePopupModal=null;bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();alert(tr('Ko‘chirishda xatolik: ','Ошибка перемещения: ')+(e.message||e));}}
 
     function renderModalContainer() {
       const container = document.getElementById('modal-container');
@@ -7143,34 +7054,34 @@
           <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-sm w-full max-h-[94vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
               <div class="flex items-center justify-between border-b pb-2">
-                <div><h3 class="font-black text-base flex items-center gap-2"><i data-lucide="image-off" class="w-5 h-5 text-blue-600"></i>${tr('Rasmsiz tovarlar','Товары без фото')}</h3><p class="text-[10px] text-gray-400">${tr('Barcha kataloglar bo‘yicha global navbat','Общая очередь по всем каталогам')}</p></div>
-                <button onclick="clearTempImageSelection(); activePopupModal=null; render();" class="fc-icon-btn"><i data-lucide="x" class="w-4 h-4"></i></button>
+                <div><h3 class="font-black text-base">🖼 ${tr('Rasmsiz tovarlar','Товары без фото')}</h3><p class="text-[10px] text-gray-400">${tr('Barcha kataloglar bo‘yicha global navbat','Общая очередь по всем каталогам')}</p></div>
+                <button onclick="clearTempImageSelection(); activePopupModal=null; render();" class="bg-gray-100 rounded-xl px-3 py-1.5 font-bold">✕</button>
               </div>
               ${p ? `
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
                     <p class="font-black text-sm text-gray-900">${escapeHtml(productName(p))}</p>
-                    <p class="mt-1 text-[10px] text-blue-700 font-bold break-words flex items-center gap-1"><i data-lucide="folder" class="w-3.5 h-3.5"></i>${escapeHtml(categoryPathForProduct(p))}</p>
+                    <p class="mt-1 text-[10px] text-blue-700 font-bold break-words">📁 ${escapeHtml(categoryPathForProduct(p))}</p>
                     <p class="mt-1 text-[10px] font-mono text-gray-500">SKU: ${escapeHtml(p.sku || '—')}</p>
                   </div>
                   <span class="flex-shrink-0 bg-slate-100 text-slate-700 font-black px-2.5 py-1 rounded-xl">${missingImageQueueIndex + 1} / ${queue.length}</span>
                 </div>
                 <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3">
                   <img id="miq-img-prev" src="" class="hidden w-full h-48 object-contain rounded-xl bg-white">
-                  <div id="miq-empty-preview" class="h-32 flex flex-col gap-2 items-center justify-center text-center text-gray-400 font-bold"><i data-lucide="image" class="w-7 h-7"></i><span>${tr('Rasm preview','Предпросмотр фото')}</span></div>
+                  <div id="miq-empty-preview" class="h-32 flex items-center justify-center text-center text-gray-400 font-bold">🖼<br>${tr('Rasm preview','Предпросмотр фото')}</div>
                 </div>
                 <input id="miq-image-input" type="file" accept="image/*" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
                 <input id="miq-image-input-files" type="file" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
                 <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-btn fc-btn-secondary w-full"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Rasm tanlash','Выбрать фото')}</button>
                 <input id="miq-image-url" type="url" inputmode="url" oninput="document.getElementById('miq-empty-preview')?.classList.toggle('hidden', !!this.value.trim()); onImageUrlInput(this.value, 'miq-img-prev', 'miq-image-url-error', 'miq-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full p-2.5 border rounded-xl">
                 <p id="miq-image-url-error" class="hidden text-[10px] fc-text-danger"></p>
-                <button onclick="saveMissingImageQueueItem('${p.id}')" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('Saqlanmoqda…','Сохранение…') : tr('Saqlash','Сохранить')}</button>
+                <button onclick="saveMissingImageQueueItem('${p.id}')" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('⏳ Saqlanmoqda…','⏳ Сохранение…') : tr('✅ Saqlash','✅ Сохранить')}</button>
                 <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
-                  <button onclick="moveMissingImageQueue(-1)" ${missingImageQueueSaving || missingImageQueueIndex === 0 ? 'disabled' : ''} class="bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl disabled:opacity-40"><i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i>${tr('Oldingi','Предыдущий')}</button>
-                  <button onclick="moveMissingImageQueue(1)" ${missingImageQueueSaving || missingImageQueueIndex >= queue.length - 1 ? 'disabled' : ''} class="bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl disabled:opacity-40">${tr('Keyingi','Следующий')}<i data-lucide="arrow-right" class="w-4 h-4 inline-block ml-1"></i></button>
+                  <button onclick="moveMissingImageQueue(-1)" ${missingImageQueueSaving || missingImageQueueIndex === 0 ? 'disabled' : ''} class="bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl disabled:opacity-40">⬅️ ${tr('Oldingi','Предыдущий')}</button>
+                  <button onclick="moveMissingImageQueue(1)" ${missingImageQueueSaving || missingImageQueueIndex >= queue.length - 1 ? 'disabled' : ''} class="bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl disabled:opacity-40">${tr('Keyingi','Следующий')} ➡️</button>
                 </div>
               ` : `
-                <div class="py-10 text-center space-y-3"><div class="mx-auto w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i data-lucide="circle-check" class="w-6 h-6"></i></div><p class="font-black text-emerald-700">${tr('Rasmsiz tovar qolmadi.','Товаров без фото не осталось.')}</p><button onclick="clearTempImageSelection(); activePopupModal=null; render();" class="bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl">${tr('Yopish','Закрыть')}</button></div>
+                <div class="py-10 text-center space-y-3"><div class="text-5xl">✅</div><p class="font-black text-emerald-700">${tr('Rasmsiz tovar qolmadi.','Товаров без фото не осталось.')}</p><button onclick="clearTempImageSelection(); activePopupModal=null; render();" class="bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl">${tr('Yopish','Закрыть')}</button></div>
               `}
             </div>
           </div>
@@ -7187,17 +7098,50 @@
         return;
       }
 
-      // 2.3: tovarni boshqa katalogga ko'chirish — file-manager usuli.
+      // 2.3: tovarni boshqa katalogga ko'chirish.
       if (activePopupModal === 'MOVE_PRODUCT_CATEGORY') {
-        container.innerHTML = `<div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="activePopupModal=null;render();"><div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full max-h-[90dvh] flex flex-col overflow-hidden" onclick="event.stopPropagation()"><div class="fc-modal-head"><div><h3>${tr('Katalogni o‘zgartirish','Изменить каталог')}</h3><p>${tr('Katalog ichiga kirib kerakli joyni tanlang','Откройте нужный каталог')}</p></div><button onclick="activePopupModal=null;render();"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="p-4 overflow-y-auto">${renderMovePickerHtml('product')}</div><div class="p-3 border-t bg-white"><button onclick="saveMoveProduct()" class="fc-btn fc-btn-primary w-full"><i data-lucide="folder-input" class="w-4 h-4"></i>${tr('Shu katalogga ko‘chirish','Переместить сюда')}</button></div></div></div>`; return;
+        const flatCats = categories.slice().sort((a, b) => categoryName(a).localeCompare(categoryName(b)));
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; render();">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("Katalogni o'zgartirish", "Изменить каталог")}</h3>
+              <select id="move-product-target" onchange="moveTargetCategoryId=this.value" class="w-full p-2.5 border rounded-xl bg-gray-50">
+                <option value="">${tr("— Katalogsiz —", "— Без каталога —")}</option>
+                ${flatCats.map(c => `<option value="${c.id}">${escapeHtml(categoryName(c))}</option>`).join('')}
+              </select>
+              <div class="flex gap-2 pt-2">
+                <button onclick="saveMoveProduct()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">✅ ${tr("Saqlash", "Сохранить")}</button>
+                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
+              </div>
+            </div>
+          </div>`;
+        return;
       }
 
-      // 2.2: katalogni boshqa katalog ichiga ko'chirish — file-manager usuli.
+      // 2.2: katalogni boshqa katalog ichiga ko'chirish (o'ziga/o'z ichki
+      // kataloglariga ko'chirish variantlari ro'yxatdan chiqarib tashlanadi;
+      // server baribir mustaqil tekshiradi).
       if (activePopupModal === 'MOVE_CATEGORY') {
-        container.innerHTML = `<div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="activePopupModal=null;render();"><div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full max-h-[90dvh] flex flex-col overflow-hidden" onclick="event.stopPropagation()"><div class="fc-modal-head"><div><h3>${tr('Katalogni ko‘chirish','Переместить каталог')}</h3><p>${tr('Katalog ichiga kirib kerakli joyni tanlang','Откройте нужный каталог')}</p></div><button onclick="activePopupModal=null;render();"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="p-4 overflow-y-auto">${renderMovePickerHtml('category')}</div><div class="p-3 border-t bg-white"><button onclick="saveMoveCategory()" class="fc-btn fc-btn-primary w-full"><i data-lucide="folder-input" class="w-4 h-4"></i>${tr('Shu katalogga ko‘chirish','Переместить сюда')}</button></div></div></div>`; return;
+        const forbidden = categoryDescendantIds(moveCategoryId);
+        const validTargets = categories.filter(c => !forbidden.has(String(c.id))).sort((a, b) => categoryName(a).localeCompare(categoryName(b)));
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; render();">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("Katalogni ko'chirish", "Переместить каталог")}</h3>
+              <select id="move-category-target" onchange="moveCategoryTargetId=this.value" class="w-full p-2.5 border rounded-xl bg-gray-50">
+                <option value="">${tr("— Bosh katalog (root) —", "— Корневой каталог —")}</option>
+                ${validTargets.map(c => `<option value="${c.id}">${escapeHtml(categoryName(c))}</option>`).join('')}
+              </select>
+              <div class="flex gap-2 pt-2">
+                <button onclick="saveMoveCategory()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">✅ ${tr("Saqlash", "Сохранить")}</button>
+                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
+              </div>
+            </div>
+          </div>`;
+        return;
       }
 
-      // 2.8: narx tarixi.      // 2.8: narx tarixi.
+      // 2.8: narx tarixi.
       if (activePopupModal === 'PRICE_HISTORY') {
         const rows = priceHistoryList || [];
         container.innerHTML = `
@@ -7221,36 +7165,30 @@
       }
 
       if (activePopupModal === 'BULK_MOVE_PRODUCTS') {
-        container.innerHTML = `<div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="activePopupModal=null;render();"><div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full max-h-[90dvh] flex flex-col overflow-hidden" onclick="event.stopPropagation()"><div class="fc-modal-head"><div><h3>${tr('Tovarlarni ko‘chirish','Перемещение товаров')}</h3><p>${bulkSelectedProductIds.size} ${tr('ta tovar tanlandi','товаров выбрано')}</p></div><button onclick="activePopupModal=null;render();"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="p-4 overflow-y-auto">${renderMovePickerHtml('product')}</div><div class="p-3 border-t bg-white"><button onclick="saveBulkMoveProducts()" class="fc-btn fc-btn-primary w-full"><i data-lucide="folder-input" class="w-4 h-4"></i>${tr('Shu katalogga ko‘chirish','Переместить сюда')}</button></div></div></div>`; return;
-      }
-      if (activePopupModal === 'BULK_MOVE_CATEGORIES') {
-        container.innerHTML = `<div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="activePopupModal=null;render();"><div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full max-h-[90dvh] flex flex-col overflow-hidden" onclick="event.stopPropagation()"><div class="fc-modal-head"><div><h3>${tr('Kataloglarni ko‘chirish','Перемещение каталогов')}</h3><p>${bulkSelectedCategoryIds.size} ${tr('ta katalog tanlandi','каталогов выбрано')}</p></div><button onclick="activePopupModal=null;render();"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="p-4 overflow-y-auto">${renderMovePickerHtml('bulk-category')}</div><div class="p-3 border-t bg-white"><button onclick="saveBulkMoveCategories()" class="fc-btn fc-btn-primary w-full"><i data-lucide="folder-input" class="w-4 h-4"></i>${tr('Shu katalogga ko‘chirish','Переместить сюда')}</button></div></div></div>`; return;
+        const selectedCount = bulkSelectedProductIds.size;
+        const options = categories.filter(c => !c.deletedAt).map(c => `<option value="${escapeHtml(c.id)}" ${String(bulkMoveTargetCategoryId)===String(c.id)?'selected':''}>${escapeHtml(categoryName(c))}</option>`).join('');
+        container.innerHTML = `<div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="activePopupModal=null; render();"><div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full max-h-[90dvh] flex flex-col overflow-hidden" onclick="event.stopPropagation()"><div class="p-4 border-b flex justify-between items-center"><h3 class="font-bold">📁 ${tr('Tovarlarni ko‘chirish','Перемещение товаров')}</h3><button onclick="activePopupModal=null; render();" class="bg-gray-100 px-3 py-1.5 rounded-xl font-bold">✕</button></div><div class="p-4 overflow-y-auto space-y-3"><p class="text-xs text-gray-500">${selectedCount} ${tr('ta tovar tanlandi','товаров выбрано')}</p><select onchange="bulkMoveTargetCategoryId=this.value" class="w-full border rounded-xl p-2.5"><option value="">${tr('Bosh katalog','Главный каталог')}</option>${options}</select><button onclick="saveBulkMoveProducts()" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr('Ko‘chirish','Переместить')}</button></div></div></div>`;
+        return;
       }
 
       // POLISH ROUND 1-bosqich: Dashboard endi modal emas — renderDashboardPage()
       // (activePage='DASHBOARD') ga ko'chirildi, sezilarli kengaytirilgan.
 
-      // 2.5: Chiqindi — qidiruv + long-press multi-select, mavjud restore/purge API'lari saqlanadi.
+      // 2.5: Chiqindi (24 soatlik trash) ko'rinishi.
       if (activePopupModal === 'TRASH') {
-        const q = normalizeText(trashSearchQuery || '').latin;
-        const allBatches = trashBatches || [];
-        const batches = q ? allBatches.filter(b => trashBatchSearchText(b).includes(q)) : allBatches;
+        const batches = trashBatches || [];
         container.innerHTML = `
-          <div class="fc-sheet-overlay" onclick="activePopupModal=null; clearTrashBulkSelection();">
-            <div class="fc-sheet fc-trash-sheet" onclick="event.stopPropagation()">
-              <div class="fc-sheet-handle"></div>
-              <div class="fc-sheet-header">
-                <div class="flex items-center gap-2"><span class="fc-section-icon"><i data-lucide="trash-2" class="w-4 h-4"></i></span><div><div class="fc-sheet-title">${tr('Chiqindi','Корзина')}</div><div class="fc-trash-subtitle">${tr('24 soat ichida tiklash mumkin','Можно восстановить в течение 24 часов')}</div></div></div>
-                <button type="button" onclick="activePopupModal=null; clearTrashBulkSelection();" class="fc-icon-btn"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="activePopupModal=null; render();">
+            <div class="bg-white rounded-t-3xl sm:rounded-3xl max-w-sm w-full max-h-[90dvh] flex flex-col shadow-2xl text-xs overflow-hidden" onclick="event.stopPropagation()">
+              <div class="sticky top-0 z-10 bg-white flex items-center justify-between border-b p-4">
+                <h3 class="font-bold text-sm text-gray-900 flex items-center gap-1.5">${ICON_TRASH} ${tr("Chiqindi", "Корзина")}</h3>
+                <button onclick="activePopupModal=null; render();" class="bg-gray-100 px-3 py-1.5 rounded-xl font-bold">✕</button>
               </div>
-              <div class="fc-sheet-body fc-trash-body">
-                <label class="fc-trash-search"><i data-lucide="search" class="w-4 h-4"></i><input value="${escapeHtml(trashSearchQuery)}" oninput="setTrashSearchQuery(this.value)" placeholder="${tr('Tovar yoki katalog qidirish','Поиск товара или каталога')}"></label>
-                <p class="fc-trash-hint">${trashBulkSelectMode ? tr('Tanlash rejimi: kartalarni bir marta bosib belgilang.','Режим выбора: нажимайте карточки для выбора.') : tr('Tanlashni boshlash uchun kartani bosib turing.','Удерживайте карточку, чтобы начать выбор.')}</p>
-                ${trashBatches === null ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
-                  : batches.length === 0 ? `<div class="fc-empty-state"><i data-lucide="${q ? 'search-x' : 'trash-2'}" class="w-8 h-8"></i><p>${q ? tr('Mos element topilmadi.','Ничего не найдено.') : tr("Chiqindi bo'sh.", 'Корзина пуста.')}</p></div>`
-                  : `<div class="fc-trash-list">${batches.map(b => renderTrashBatchHtml(b)).join('')}</div>`}
+              <div class="overflow-y-auto p-4 space-y-3"><p class="text-[10px] text-gray-400">${tr("O'chirilgan kataloglar/tovarlar shu yerda 24 soat turadi, keyin butunlay o'chadi.", "Удалённые каталоги/товары хранятся здесь 24 часа, затем удаляются навсегда.")}</p>
+              ${trashBatches === null ? `<p class="text-center text-gray-400 py-6">${tr('Yuklanmoqda...', 'Загрузка...')}</p>`
+                : batches.length === 0 ? `<div class="fc-empty-state"><i data-lucide="trash-2" class="w-8 h-8"></i><p>${tr("Chiqindi bo'sh.", 'Корзина пуста.')}</p></div>`
+                : `<div class="space-y-2">${batches.map(b => renderTrashBatchHtml(b)).join('')}</div>`}
               </div>
-              ${trashBulkSelectMode ? `<div class="fc-trash-actions"><span>${trashSelectedBatchIds.size}</span><button onclick="restoreSelectedTrashBatches()" ${trashSelectedBatchIds.size ? '' : 'disabled'} aria-label="${tr('Tiklash','Восстановить')}"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></button><button onclick="purgeSelectedTrashBatches()" ${trashSelectedBatchIds.size ? '' : 'disabled'} class="is-danger" aria-label="${tr('Butunlay o‘chirish','Удалить навсегда')}"><i data-lucide="trash-2" class="w-5 h-5"></i></button><button onclick="clearTrashBulkSelection()" aria-label="${tr('Tanlashni tugatish','Завершить выбор')}"><i data-lucide="x" class="w-5 h-5"></i></button></div>` : ''}
             </div>
           </div>`;
         return;
@@ -7561,16 +7499,6 @@
             </div>
           </div>
         `;
-        return;
-      }
-
-      if (activePopupModal === 'ORDERS_CALENDAR') {
-        const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-        const popW = Math.min(330, Math.max(280, vw - 24));
-        const a = ordersCalendarAnchorRect || { left: vw - 56, right: vw - 12, top: 180, bottom: 224 };
-        const left = Math.max(12, Math.min(vw - popW - 12, a.right - popW));
-        const top = Math.max(82, Math.min((window.innerHeight || 700) - 465, a.bottom + 8));
-        container.innerHTML = `<div class="fc-orders-popover-overlay" onclick="cancelOrdersCalendarSelection()"><div class="fc-orders-popover" style="left:${Math.round(left)}px;top:${Math.round(top)}px;width:${Math.round(popW)}px" onclick="event.stopPropagation()">${renderOrdersCalendarBodyHtml()}</div></div>`;
         return;
       }
 
@@ -7928,65 +7856,89 @@
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onclick="selectedOrderModal=null; render();">
             <div class="bg-white rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
-              <div class="fc-order-modal-head"><div><h3>${tr('Buyurtma','Заказ')} #${o.id}</h3><p>${escapeHtml(o.date)}</p></div><span class="fc-order-status ${statusColorClass(orderDisplayStatus(o))}">${statusLabel(orderDisplayStatus(o))}</span></div>
-              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="user-round" class="w-4 h-4"></i>${tr('Mijoz','Клиент')}</div><div class="fc-order-kv"><span>${tr('Ism','Имя')}</span><b>${escapeHtml(o.user)}</b></div><div class="fc-order-kv"><span>${tr('Telefon','Телефон')}</span><b>${escapeHtml(o.phone)}</b></div></section>
-              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${tr('Hudud','Регион')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div><div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
-              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div></section>
-              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku&&isAdminMode&&isUserAnAdmin)?`ID: ${escapeHtml(i.sku)} · `:''}${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
-              <section class="fc-order-summary-card"><div><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div><span>${tr('Yetkazib berish','Доставка')}</span><b>${Number(o.deliveryFee)>0?money(o.deliveryFee):money(0)}</b></div><div class="is-total"><span>${tr('Jami','Итого')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
+              <div class="border-b pb-2 flex items-center justify-between gap-2">
+                <h3 class="font-black text-sm text-blue-600">${tr("Buyurtma", "Заказ")} #${o.id}</h3>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColorClass(orderDisplayStatus(o))}">${statusLabel(orderDisplayStatus(o))}</span>
+              </div>
+
+              <div class="space-y-1">
+                <p>👤 <b>${tr("Mijoz:", "Клиент:")}</b> ${escapeHtml(o.user)}</p>
+                <p>📞 <b>${tr("Tel:", "Тел:")}</b> ${escapeHtml(o.phone)}</p>
+                <p>📍 <b>${tr("Hudud:", "Регион:")}</b> ${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))} (${escapeHtml(districtLabelForUi(o.district))})</p>
+                <p>🏠 <b>${tr("Manzil:", "Адрес:")}</b> ${escapeHtml(o.address)}</p>
+                <p>🚚 <b>${tr("Yetkazib berish:", "Доставка:")}</b> ${escapeHtml(deliverySnapshotLabel(o))}</p>
+                <p>💳 <b>${tr("To'lov:", "Оплата:")}</b> ${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</p>
+                <p>📅 <b>${tr("Sana:", "Дата:")}</b> ${escapeHtml(o.date)}</p>
+              </div>
+
+              <div class="border-t pt-2 space-y-1.5">
+                <b>${tr("📦 Tovar:", "📦 Товары:")}</b>
+                ${o.items.map(i => `
+                  <div class="flex items-center gap-2">
+                    ${i.img ? `<img src="${escapeHtml(i.img)}" onerror="this.style.display='none'" class="w-7 h-7 object-cover rounded-lg flex-shrink-0" loading="lazy">` : ''}
+                    <p>• ${escapeHtml(orderItemName(i))} ${i.size ? `<span class="text-gray-500 font-mono">[${escapeHtml(i.size)}]</span>` : ''} ${i.color ? `<span class="text-gray-500">[${escapeHtml(i.color)}]</span>` : ''} ${(i.sku && isAdminMode && isUserAnAdmin) ? `<span class="text-gray-400 font-mono">(ID: ${escapeHtml(i.sku)})</span>` : ''} x ${i.qty} = ${money(i.price * i.qty)}</p>
+                  </div>
+                `).join('')}
+              </div>
+
+              <div class="border-t pt-2 space-y-1">
+                <div class="flex justify-between"><span>${tr('Tovarlar summasi','Сумма товаров')}:</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div>
+                <div class="flex justify-between"><span>${tr('Yetkazib berish','Доставка')}:</span><b>${(o.delivery?.kind === 'TAXI' || (o.delivery?.kind === 'POST' && o.delivery?.payer === 'CUSTOMER')) ? tr("Mijoz to'laydi", 'Оплачивает клиент') : (Number(o.deliveryFee) > 0 ? money(o.deliveryFee) : money(0))}</b></div>
+                <div class="flex justify-between font-black text-sm"><span>${tr("Hozir to'lanadigan jami",'Итого к оплате сейчас')}:</span><span class="text-green-600">${money(o.payableTotal ?? o.totalPrice)}</span></div>
+              </div>
 
               ${!isAdminMode ? `<button onclick="reorderFromOrder(${o.id})" class="fc-btn fc-btn-secondary w-full"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr('Qayta buyurtma', 'Повторить заказ')}</button>` : ''}
 
-              ${o.delivery?.warning ? `<div class="fc-order-note is-warning"><i data-lucide="info" class="w-4 h-4"></i><span>${escapeHtml(o.delivery.warning)}</span></div>` : ''}
-              ${o.delivery?.comment ? `<div class="fc-order-note is-info"><i data-lucide="message-square-text" class="w-4 h-4"></i><span>${escapeHtml(o.delivery.comment)}</span></div>` : ''}
+              ${o.delivery?.warning ? `<div class="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-[11px] text-amber-900">ℹ️ ${escapeHtml(o.delivery.warning)}</div>` : ''}
+              ${o.delivery?.comment ? `<div class="bg-blue-50 border border-blue-200 p-2.5 rounded-xl text-[11px] text-blue-900">💬 ${escapeHtml(o.delivery.comment)}</div>` : ''}
 
               <div class="bg-slate-50 border rounded-xl p-2.5 space-y-1">
-                <p class="font-bold flex items-center gap-1.5"><i data-lucide="truck" class="w-4 h-4 text-blue-600"></i>${tr('Jo‘natma holati','Статус отправления')}: ${escapeHtml(effectiveShipmentStatusLabel(o))}</p>
+                <p class="font-bold">🚚 ${tr('Jo‘natma holati','Статус отправления')}: ${escapeHtml(effectiveShipmentStatusLabel(o))}</p>
                 ${o.shipment?.kind === 'TAXI' && o.shipment?.carNumber ? `<p>${tr('Mashina','Машина')}: <b>${escapeHtml(o.shipment.carNumber)}</b></p><p>${tr('Haydovchi','Водитель')}: ${escapeHtml(o.shipment.driverPhone || '')}${o.shipment.driverName ? ` · ${escapeHtml(o.shipment.driverName)}` : ''}</p>` : ''}
                 ${o.shipment?.kind === 'POST' && o.shipment?.trackingNumber ? `<p>${tr("Jo'natma raqami",'Трек-номер')}: <b>${escapeHtml(o.shipment.trackingNumber)}</b></p>${o.shipment.originBranch ? `<p>${tr('Yuborilgan filial','Филиал отправки')}: ${escapeHtml(o.shipment.originBranch)}</p>` : ''}` : ''}
               </div>
 
-              ${(isAdminMode && isUserAnAdmin && o.hasReceipt) ? `<button onclick="openOrderReceipt(${o.id})" class="w-full bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5"><i data-lucide="receipt-text" class="w-4 h-4"></i>${tr("To'lov chekini ochish", 'Открыть чек оплаты')}</button>` : ''}
-              ${(isAdminMode && isUserAnAdmin && o.receiptSentToTelegram && botUsername) ? `<button onclick="openReceiptInTelegram()" class="w-full bg-sky-50 text-sky-700 border border-sky-200 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5"><i data-lucide="send" class="w-4 h-4"></i>${tr("Telegramda ko'rish", 'Смотреть в Telegram')}</button>` : ''}
+              ${(isAdminMode && isUserAnAdmin && o.hasReceipt) ? `<button onclick="openOrderReceipt(${o.id})" class="w-full bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-bold">🧾 ${tr("To'lov chekini ochish", 'Открыть чек оплаты')}</button>` : ''}
+              ${(isAdminMode && isUserAnAdmin && o.receiptSentToTelegram && botUsername) ? `<button onclick="openReceiptInTelegram()" class="w-full bg-sky-50 text-sky-700 border border-sky-200 py-2 rounded-xl font-bold">✈️ ${tr("Telegramda ko'rish", 'Смотреть в Telegram')}</button>` : ''}
               ${(isAdminMode && isUserAnAdmin && o.hasReceipt && o.status !== 'CANCELLED' && (o.receiptReviewStatus || 'PENDING') === 'PENDING') ? `
                 <div class="grid grid-cols-2 gap-2">
-                  <button onclick="approvePaymentReceipt(${o.id})" class="bg-emerald-600 text-white font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1"><i data-lucide="check" class="w-4 h-4"></i>${tr('Tasdiqlash', 'Подтвердить')}</button>
-                  <button onclick="openRejectReceiptModal(${o.id})" class="fc-bg-danger text-white font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1"><i data-lucide="x" class="w-4 h-4"></i>${tr('Rad etish', 'Отклонить')}</button>
+                  <button onclick="approvePaymentReceipt(${o.id})" class="bg-emerald-600 text-white font-bold py-2 rounded-xl text-[11px]">✅ ${tr('Tasdiqlash', 'Подтвердить')}</button>
+                  <button onclick="openRejectReceiptModal(${o.id})" class="fc-bg-danger text-white font-bold py-2 rounded-xl text-[11px]">❌ ${tr('Rad etish', 'Отклонить')}</button>
                 </div>
               ` : ''}
 
               ${(isAdminMode && isUserAnAdmin && o.delivery?.kind === 'TAXI' && o.status !== 'CANCELLED') ? `
                 <div class="border-t pt-2 space-y-2">
-                  <p class="font-black flex items-center gap-1.5"><i data-lucide="car-taxi-front" class="w-4 h-4 text-blue-600"></i>${tr('Taksi ma’lumoti','Данные такси')}</p>
+                  <p class="font-black">🚕 ${tr('Taksi ma’lumoti','Данные такси')}</p>
                   <input id="shipment-car" value="${escapeHtml(o.shipment?.carNumber || '')}" placeholder="01 A 123 BC" class="w-full p-2 border rounded-xl uppercase">
                   <input id="shipment-phone" value="${escapeHtml(o.shipment?.driverPhone || '')}" placeholder="+998 90 123 45 67" class="w-full p-2 border rounded-xl font-mono">
                   <input id="shipment-driver" value="${escapeHtml(o.shipment?.driverName || '')}" placeholder="${tr('Haydovchi ismi (ixtiyoriy)','Имя водителя (необязательно)')}" class="w-full p-2 border rounded-xl">
                   <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50">${o.shipment?.status === 'READY' || !o.shipment?.status ? `<option value="READY" selected disabled hidden>${tr('— Hali harakat qilinmagan —','— Действие ещё не выполнено —')}</option>` : ''}<option value="TAXI_ASSIGNED" ${o.shipment?.status === 'TAXI_ASSIGNED' ? 'selected' : ''}>${tr('Taksi biriktirildi','Такси назначено')}</option><option value="IN_TRANSIT" ${o.shipment?.status === 'IN_TRANSIT' ? 'selected' : ''}>${tr("Yo'lga chiqdi",'В пути')}</option><option value="DELIVERED" ${o.shipment?.status === 'DELIVERED' ? 'selected' : ''}>${tr('Yetkazildi','Доставлено')}</option></select>
-                  <button onclick="saveShipmentForOrder(${o.id})" class="w-full bg-blue-600 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5"><i data-lucide="save" class="w-4 h-4"></i>${tr('Jo‘natmani saqlash','Сохранить отправление')}</button>
+                  <button onclick="saveShipmentForOrder(${o.id})" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold">💾 ${tr('Jo‘natmani saqlash','Сохранить отправление')}</button>
                 </div>` : ''}
 
               ${(isAdminMode && isUserAnAdmin && o.delivery?.kind === 'POST' && o.status !== 'CANCELLED') ? `
                 <div class="border-t pt-2 space-y-2">
-                  <p class="font-black flex items-center gap-1.5"><i data-lucide="package-check" class="w-4 h-4 text-blue-600"></i>${escapeHtml(o.delivery.providerName || tr('Pochta','Почта'))}</p>
+                  <p class="font-black">📦 ${escapeHtml(o.delivery.providerName || tr('Pochta','Почта'))}</p>
                   ${o.delivery.branchName ? `<p class="text-[11px] text-gray-600">${tr('Mijoz tanlagan filial','Филиал, выбранный клиентом')}: <b>${escapeHtml(o.delivery.branchName)}</b></p>` : ''}
                   <input id="shipment-tracking" value="${escapeHtml(o.shipment?.trackingNumber || '')}" placeholder="${tr("Tracking/jo'natma raqami",'Трек-номер')}" class="w-full p-2 border rounded-xl font-mono">
                   <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50">${o.shipment?.status === 'READY' || !o.shipment?.status ? `<option value="READY" selected disabled hidden>${tr('— Hali harakat qilinmagan —','— Действие ещё не выполнено —')}</option>` : ''}<option value="HANDED_TO_CARRIER" ${o.shipment?.status === 'HANDED_TO_CARRIER' ? 'selected' : ''}>${tr('Pochtaga topshirildi','Передано почте')}</option></select>
-                  <button onclick="saveShipmentForOrder(${o.id})" class="w-full bg-blue-600 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5"><i data-lucide="save" class="w-4 h-4"></i>${tr('Jo‘natmani saqlash','Сохранить отправление')}</button>
+                  <button onclick="saveShipmentForOrder(${o.id})" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold">💾 ${tr('Jo‘natmani saqlash','Сохранить отправление')}</button>
                 </div>` : ''}
 
               ${o.status === 'CANCELLED' && o.cancelReason ? `
                 <div class="fc-bg-danger-soft border fc-border-danger p-2.5 rounded-xl text-[11px] fc-text-danger">
-                  <div class="flex items-start gap-1.5"><i data-lucide="circle-x" class="w-4 h-4 shrink-0 mt-0.5"></i><span>${tr('Bekor qilindi','Отменён')} (${o.cancelledBy === 'ADMIN' ? tr("do'kon tomonidan",'магазином') : tr('mijoz tomonidan','клиентом')}): ${escapeHtml(o.cancelReason)}</span></div>
+                  ❌ Bekor qilindi (${o.cancelledBy === 'ADMIN' ? "do'kon tomonidan" : 'mijoz tomonidan'}): ${escapeHtml(o.cancelReason)}
                 </div>
               ` : ''}
 
               ${o.receiptReviewStatus === 'REJECTED' ? `
                 <div class="fc-bg-danger-soft border fc-border-danger p-2.5 rounded-xl text-[11px] fc-text-danger space-y-2">
-                  <p class="flex items-start gap-1.5"><i data-lucide="circle-x" class="w-4 h-4 shrink-0"></i><span>${tr('Chek rad etildi', 'Чек отклонён')}${o.receiptRejectReason ? `: ${escapeHtml(o.receiptRejectReason)}` : ''}</span></p>
+                  <p>❌ ${tr('Chek rad etildi', 'Чек отклонён')}${o.receiptRejectReason ? `: ${escapeHtml(o.receiptRejectReason)}` : ''}</p>
                   ${!isAdminMode ? `
                     <div class="flex gap-2">
-                      <button onclick="openResubmitReceiptModal(${o.id})" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1"><i data-lucide="paperclip" class="w-4 h-4"></i>${tr('Yangi chek yuborish', 'Отправить новый чек')}</button>
-                      <button onclick="openSupportModal(${o.id})" class="flex-1 bg-white border fc-border-danger fc-text-danger font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1"><i data-lucide="life-buoy" class="w-4 h-4"></i>${tr("Qo'llab-quvvatlash", 'Поддержка')}</button>
+                      <button onclick="openResubmitReceiptModal(${o.id})" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-[11px]">📎 ${tr('Yangi chek yuborish', 'Отправить новый чек')}</button>
+                      <button onclick="openSupportModal(${o.id})" class="flex-1 bg-white border fc-border-danger fc-text-danger font-bold py-2 rounded-xl text-[11px]">💬 ${tr("Qo'llab-quvvatlash", 'Поддержка')}</button>
                     </div>
                   ` : ''}
                 </div>
@@ -7996,9 +7948,9 @@
                 <div class="border-t pt-2 space-y-2">
                   <label class="font-bold text-gray-700">${tr("Tezkor status o'zgartirish:", "Быстро изменить статус:")}</label>
                   <div class="grid grid-cols-2 gap-2">
-                    ${o.status === 'NEW' ? `<button onclick="updateOrderStatus(${o.id}, 'PROCESSING')" class="bg-blue-600 text-white font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1"><i data-lucide="clock-3" class="w-4 h-4"></i>${tr("Jarayonda", "В обработке")}</button>` : ''}
-                    <button onclick="updateOrderStatus(${o.id}, 'DELIVERED')" class="bg-green-600 text-white font-bold py-2 rounded-xl text-[11px] flex items-center justify-center gap-1 ${o.status === 'PROCESSING' ? 'col-span-2' : ''}"><i data-lucide="check-check" class="w-4 h-4"></i>${tr("Yetkazib berilgan", "Доставлен")}</button>
-                    <button onclick="updateOrderStatus(${o.id}, 'CANCELLED')" class="fc-bg-danger text-white font-bold py-2 rounded-xl text-[11px] col-span-2 flex items-center justify-center gap-1"><i data-lucide="x" class="w-4 h-4"></i>${tr("Bekor qilish", "Отмена")}</button>
+                    ${o.status === 'NEW' ? `<button onclick="updateOrderStatus(${o.id}, 'PROCESSING')" class="bg-blue-600 text-white font-bold py-2 rounded-xl text-[11px]">${tr("⏳ Jarayonda", "⏳ В обработке")}</button>` : ''}
+                    <button onclick="updateOrderStatus(${o.id}, 'DELIVERED')" class="bg-green-600 text-white font-bold py-2 rounded-xl text-[11px] ${o.status === 'PROCESSING' ? 'col-span-2' : ''}">${tr("✅ Yetkazib berilgan", "✅ Доставлен")}</button>
+                    <button onclick="updateOrderStatus(${o.id}, 'CANCELLED')" class="fc-bg-danger text-white font-bold py-2 rounded-xl text-[11px] col-span-2">❌ ${tr("Bekor qilish", "Отмена")}</button>
                   </div>
                 </div>
               ` : ''}
@@ -8857,11 +8809,13 @@
 
     // 2.3: "Katalogni o'zgartirish" — tovarni boshqa kategoriyaga ko'chirish.
     function openMoveProductModal(productId) {
-      moveProductId = productId; moveTargetCategoryId = ''; movePickerParentId = null; movePickerSearch = ''; activePopupModal = 'MOVE_PRODUCT_CATEGORY';
+      moveProductId = productId;
+      moveTargetCategoryId = '';
+      activePopupModal = 'MOVE_PRODUCT_CATEGORY';
       render();
     }
     async function saveMoveProduct() {
-      const newCategoryId = movePickerParentId || null;
+      const newCategoryId = moveTargetCategoryId || null;
       showActionToast(tr('⏳ Ko\'chirilmoqda...', '⏳ Перемещение...'), 'saving');
       try {
         const result = await callApi('edit_product_field', { productId: moveProductId, field: 'categoryId', value: newCategoryId });
@@ -8893,11 +8847,13 @@
     }
     function openMoveCategoryModal(categoryId, e) {
       if (e) e.stopPropagation();
-      moveCategoryId = categoryId; moveCategoryTargetId = ''; movePickerParentId = null; movePickerSearch = ''; activePopupModal = 'MOVE_CATEGORY';
+      moveCategoryId = categoryId;
+      moveCategoryTargetId = '';
+      activePopupModal = 'MOVE_CATEGORY';
       render();
     }
     async function saveMoveCategory() {
-      const newParentId = movePickerParentId || null;
+      const newParentId = moveCategoryTargetId || null;
       showActionToast(tr('⏳ Ko\'chirilmoqda...', '⏳ Перемещение...'), 'saving');
       try {
         await callApi('move_category', { categoryId: moveCategoryId, newParentId });
@@ -8979,148 +8935,6 @@
       render();
     }
 
-    function cancelCatalogLongPress(){if(catalogLongPressTimer)clearTimeout(catalogLongPressTimer);catalogLongPressTimer=null;}
-    function startProductLongPress(productId,event){if(!(isAdminMode&&isUserAnAdmin)||catalogDragState)return;cancelCatalogLongPress();catalogLongPressTimer=setTimeout(()=>{bulkProductSelectMode=true;bulkCategorySelectMode=false;bulkSelectedCategoryIds.clear();bulkSelectedProductIds.add(String(productId));suppressCatalogClickOnce=true;render();},450);}
-    function handleProductCardClick(productId,event){if(suppressCatalogClickOnce){suppressCatalogClickOnce=false;return;}if(bulkProductSelectMode)return toggleBulkProductSelection(productId,event);openProductDetailModal(productId);}
-    function startCategoryLongPress(categoryId,event){if(!(isAdminMode&&isUserAnAdmin)||catalogDragState)return;cancelCatalogLongPress();catalogLongPressTimer=setTimeout(()=>{bulkCategorySelectMode=true;bulkProductSelectMode=false;bulkSelectedProductIds.clear();bulkSelectedCategoryIds.add(String(categoryId));suppressCatalogClickOnce=true;render();},450);}
-    function handleCategoryRowClick(categoryId,event){if(suppressCatalogClickOnce){suppressCatalogClickOnce=false;return;}if(bulkCategorySelectMode){event?.stopPropagation();const id=String(categoryId);if(bulkSelectedCategoryIds.has(id))bulkSelectedCategoryIds.delete(id);else bulkSelectedCategoryIds.add(id);return render();}adminCatParentId=categoryId;categoryPage=1;render();}
-    function clearBulkCategorySelection(){bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();}
-    function cleanupCatalogDragVisual(st){
-      if(!st)return;
-      st.handle?.classList.remove('is-dragging');
-      st.source?.classList.remove('fc-drag-source');
-      st.targetEl?.classList.remove('fc-drag-target');
-      st.placeholder?.replaceWith?.(st.source);
-      if (st.source && st.source.parentElement !== st.list) st.list?.appendChild?.(st.source);
-      st.ghost?.remove?.();
-      window.removeEventListener('pointermove', moveCatalogDrag);
-      window.removeEventListener('pointerup', endCatalogDrag);
-      window.removeEventListener('pointercancel', cancelCatalogDrag);
-    }
-    function beginCatalogDrag(kind,id,event){
-      if(!(isAdminMode&&isUserAnAdmin))return;
-      event.preventDefault();event.stopPropagation();cancelCatalogLongPress();cardActionMenu=null;
-      const source=kind==='product'?event.currentTarget.closest('[data-product-card-id]'):event.currentTarget.closest('[data-category-row-id]');
-      if(!source)return;
-      try{event.currentTarget.setPointerCapture(event.pointerId);}catch(_){}
-      const rect=source.getBoundingClientRect();
-      const list=source.closest(`[data-catalog-drag-list="${kind}"]`)||source.parentElement;
-      const ghost=source.cloneNode(true);
-      ghost.removeAttribute('onclick');ghost.removeAttribute('onpointerdown');
-      ghost.classList.add('fc-drag-ghost');
-      Object.assign(ghost.style,{position:'fixed',left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,margin:'0',zIndex:'9999',pointerEvents:'none'});
-      const placeholder=document.createElement(source.tagName||'div');
-      placeholder.className='fc-drag-placeholder';
-      placeholder.style.height=`${rect.height}px`;
-      placeholder.style.width=`${rect.width}px`;
-      placeholder.dataset.dragPlaceholder='1';
-      source.replaceWith(placeholder);
-      document.body.appendChild(ghost);
-      event.currentTarget.classList.add('is-dragging');
-      // Handle DOM ichida ko‘chsa ham drag uzilmasligi uchun pointer eventlarni windowda ushlaymiz.
-      window.addEventListener('pointermove', moveCatalogDrag, {passive:false});
-      window.addEventListener('pointerup', endCatalogDrag);
-      window.addEventListener('pointercancel', cancelCatalogDrag);
-      const orderedIds = Array.from(list.children).filter(el=>el!==placeholder).map(el=>kind==='product'?el.dataset.productCardId:el.dataset.categoryRowId).filter(Boolean).map(String);
-      const originalIndex = kind==='product' ? [...currentVisibleProductIds].map(String).indexOf(String(id)) : categories.filter(c=>String(c.parentId||'')===String(categories.find(x=>String(x.id)===String(id))?.parentId||'')).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)).map(c=>String(c.id)).indexOf(String(id));
-      catalogDragState={kind,id:String(id),pointerId:event.pointerId,handle:event.currentTarget,source,list,ghost,placeholder,targetEl:null,pointerOffsetX:event.clientX-rect.left,pointerOffsetY:event.clientY-rect.top,originalIndex,dropIndex:originalIndex,orderedIds};
-    }
-    function moveCatalogDrag(event){
-      const st=catalogDragState;if(!st||st.pointerId!==event.pointerId)return;
-      event.preventDefault();
-      const listRect=st.list?.getBoundingClientRect?.()||{left:0,right:window.innerWidth,top:0,bottom:window.innerHeight};
-      const ghostRect=st.ghost.getBoundingClientRect();
-      const maxLeft=Math.max(listRect.left,listRect.right-ghostRect.width),maxTop=Math.max(listRect.top,listRect.bottom-ghostRect.height);
-      const left=Math.min(maxLeft,Math.max(listRect.left,event.clientX-st.pointerOffsetX));
-      const top=Math.min(maxTop,Math.max(listRect.top,event.clientY-st.pointerOffsetY));
-      st.ghost.style.left=`${left}px`;st.ghost.style.top=`${top}px`;
-      const edge=86;
-      if(event.clientY<edge) window.scrollBy({top:-12,behavior:'auto'});
-      else if(event.clientY>(window.innerHeight-edge)) window.scrollBy({top:12,behavior:'auto'});
-      const items=Array.from(st.list.children).filter(el=>el!==st.placeholder && (st.kind==='product'?el.matches('[data-product-card-id]'):el.matches('[data-category-row-id]')));
-      let inserted=false;
-      for(const item of items){
-        const r=item.getBoundingClientRect();
-        const horizontal = st.kind==='product' && Math.abs(r.left - st.placeholder.getBoundingClientRect().left) > 8;
-        const before = horizontal ? (event.clientY < r.top+r.height/2 || (event.clientY < r.bottom && event.clientX < r.left+r.width/2)) : event.clientY < r.top+r.height/2;
-        if(before){ if(st.placeholder.nextSibling!==item) st.list.insertBefore(st.placeholder,item); inserted=true; break; }
-      }
-      if(!inserted) st.list.appendChild(st.placeholder);
-      const slots=Array.from(st.list.children).filter(el=>el===st.placeholder || (st.kind==='product'?el.matches('[data-product-card-id]'):el.matches('[data-category-row-id]')));
-      st.dropIndex=slots.indexOf(st.placeholder);
-    }
-    async function endCatalogDrag(event){
-      if(!catalogDragState||catalogDragState.pointerId!==event.pointerId)return;
-      event.preventDefault();event.stopPropagation();const st=catalogDragState;catalogDragState=null;suppressCatalogClickOnce=true;
-      const to=st.dropIndex, from=st.originalIndex;
-      cleanupCatalogDragVisual(st);
-      if(from<0||to<0||from===to)return;
-      if(st.kind==='product')await reorderProductToIndex(st.id,from,to);else await reorderCategoryToIndex(st.id,from,to);
-    }
-    function cancelCatalogDrag(event){if(!catalogDragState)return;const st=catalogDragState;catalogDragState=null;cleanupCatalogDragVisual(st);}
-    async function reorderProductToIndex(id,from,to){
-      const list=[...currentVisibleProductIds].map(String);
-      if(from<0) from=list.indexOf(String(id));
-      to=Math.max(0,Math.min(Number(to),list.length-1));
-      if(from<0||to<0||from===to)return;
-
-      // move_sort backend actioni ikki qo'shni tovarning sort_order qiymatini
-      // almashtirish uchun ishlaydi. Drag UI esa birdan yakuniy joyni ko'rsatadi:
-      // local tartib avval optimistik yangilanadi, keyin shu o'zgarish serverga
-      // qo'shni swaplar ketma-ketligi sifatida persist qilinadi.
-      const ordered=list.map(x=>products.find(p=>String(p.id)===x)).filter(Boolean);
-      if(ordered.length!==list.length)return;
-      const oldOrders=new Map(ordered.map(p=>[String(p.id),p.sortOrder]));
-      const oldProductOrder=products.slice();
-      const swaps=[];
-
-      if(to>from){
-        for(let i=from;i<to;i++){
-          const a=ordered[i], b=ordered[i+1];
-          const oldA=a.sortOrder, oldB=b.sortOrder;
-          a.sortOrder=oldB; b.sortOrder=oldA;
-          ordered[i]=b; ordered[i+1]=a;
-          swaps.push({idA:a.id,sortOrderA:a.sortOrder,idB:b.id,sortOrderB:b.sortOrder});
-        }
-      }else{
-        for(let i=from;i>to;i--){
-          const a=ordered[i], b=ordered[i-1];
-          const oldA=a.sortOrder, oldB=b.sortOrder;
-          a.sortOrder=oldB; b.sortOrder=oldA;
-          ordered[i]=b; ordered[i-1]=a;
-          swaps.push({idA:a.id,sortOrderA:a.sortOrder,idB:b.id,sortOrderB:b.sortOrder});
-        }
-      }
-
-      // Drop qilingach karta darhol yangi joyida ko'rinadi; serverni kutib
-      // eski joyiga "sakrab" qaytmaydi.
-      products.sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0));
-      render();
-
-      try{
-        for(const swap of swaps) await callApi('move_sort',swap);
-        saveCatalogCache();
-      }catch(e){
-        for(const p of products){
-          if(oldOrders.has(String(p.id))) p.sortOrder=oldOrders.get(String(p.id));
-        }
-        products.splice(0,products.length,...oldProductOrder);
-        render();
-        console.error(e);
-        alert(tr("❌ Tartibni saqlab bo'lmadi: ","❌ Не удалось сохранить порядок: ")+(e.message||e));
-      }
-    }
-    async function reorderCategoryToIndex(id,from,to){
-      const cat=categories.find(c=>String(c.id)===String(id));if(!cat)return;
-      const siblings=categories.filter(c=>String(c.parentId||'')===String(cat.parentId||'')).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)); if(from<0)from=siblings.findIndex(c=>String(c.id)===String(id)); if(from<0||to<0||from===to)return;
-      const old=new Map(siblings.map(c=>[String(c.id),c.sortOrder])); const [item]=siblings.splice(from,1); siblings.splice(Math.min(to,siblings.length),0,item); const orders=[...siblings].map(c=>Number(c.sortOrder||0)).sort((a,b)=>a-b); siblings.forEach((c,i)=>c.sortOrder=orders[i]??i); render();
-      try{await callApi('reorder_categories',{items:siblings.map(c=>({id:c.id,sortOrder:c.sortOrder}))});saveCatalogCache();}
-      catch(e){for(const c of siblings)if(old.has(String(c.id)))c.sortOrder=old.get(String(c.id));render();console.error(e);alert(tr("❌ Tartibni saqlab bo'lmadi: ","❌ Не удалось сохранить порядок: ")+(e.message||e));}
-    }
-
-    function openBulkMoveCategoriesModal(){if(!bulkSelectedCategoryIds.size)return;movePickerParentId=null;movePickerSearch='';activePopupModal='BULK_MOVE_CATEGORIES';render();}
-    async function bulkTrashSelectedCategories(){const ids=[...bulkSelectedCategoryIds];if(!ids.length)return;let prods=0;try{for(const id of ids){const p=await callApi('get_category_delete_preview',{categoryId:id});prods+=Number(p.productCount||0);}}catch(e){return alert(tr('Tekshirishda xatolik: ','Ошибка проверки: ')+(e.message||e));}const ok=await fcConfirm(tr('Tanlangan kataloglar o‘chirilsinmi?','Удалить выбранные каталоги?'),tr(`${ids.length} ta katalog va ularning ichidagi ${prods} ta tovar 24 soatlik Chiqindiga o‘tadi.`,`${ids.length} каталог(ов) и ${prods} товар(ов) будут перемещены в корзину на 24 часа.`));if(!ok)return;showActionToast(tr('O‘chirilmoqda...','Удаление...'),'saving');try{for(const id of ids)await callApi('delete_category',{categoryId:id});await loadCatalog();bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();showActionToast(tr('Chiqindiga o‘tkazildi','Перемещено в корзину'),'success',1500);}catch(e){console.error(e);await loadCatalog();bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();alert(tr('O‘chirishda xatolik: ','Ошибка удаления: ')+(e.message||e));}}
-
     function toggleBulkProductSelectMode() {
       bulkProductSelectMode = !bulkProductSelectMode;
       bulkSelectedProductIds.clear();
@@ -9143,7 +8957,8 @@
     }
     function openBulkMoveProductsModal() {
       if (!bulkSelectedProductIds.size) return;
-      bulkMoveTargetCategoryId = ''; movePickerParentId = null; movePickerSearch = ''; activePopupModal = 'BULK_MOVE_PRODUCTS';
+      bulkMoveTargetCategoryId = '';
+      activePopupModal = 'BULK_MOVE_PRODUCTS';
       render();
     }
     async function saveBulkMoveProducts() {
@@ -9151,7 +8966,7 @@
       if (!ids.length) return;
       showActionToast(tr('⏳ Ko‘chirilmoqda...','⏳ Перемещение...'), 'saving');
       try {
-        const result = await callApi('bulk_move_products', { productIds: ids, categoryId: movePickerParentId || null });
+        const result = await callApi('bulk_move_products', { productIds: ids, categoryId: bulkMoveTargetCategoryId || null });
         for (const row of result.products || []) upsertLocalProduct(row);
         saveCatalogCache();
         activePopupModal = null; bulkProductSelectMode = false; bulkSelectedProductIds.clear();
@@ -9205,108 +9020,141 @@
     // BUTUN BATCH sifatida tiklanadi/o'chiriladi (kategoriyani "qisman"
     // tiklash struktura jihatidan mantiqsiz). PRODUCT-turdagi batch esa
     // mahsulot darajasida tanlab tiklash/o'chirish imkonini beradi.
-    function trashBatchSearchText(b) {
-      return normalizeText([
-        b.rootCategoryName || '',
-        ...(b.productNames || []),
-        ...((b.productItems || []).map(p => `${p.name || ''} ${p.sku || ''}`))
-      ].join(' ')).latin;
-    }
-    function setTrashSearchQuery(value) {
-      trashSearchQuery = String(value || '');
-      const q = normalizeText(trashSearchQuery).latin;
-      document.querySelectorAll('.fc-trash-card[data-search]').forEach(card => {
-        card.hidden = !!q && !String(card.dataset.search || '').includes(q);
-      });
-    }
-    function cancelTrashLongPress() {
-      if (trashLongPressTimer) clearTimeout(trashLongPressTimer);
-      trashLongPressTimer = null;
-    }
-    function startTrashLongPress(batchId, event) {
-      cancelTrashLongPress();
-      trashLongPressTimer = setTimeout(() => {
-        trashBulkSelectMode = true;
-        trashSelectedBatchIds.add(String(batchId));
-        suppressTrashClickOnce = true;
-        render();
-      }, 450);
-    }
-    function handleTrashBatchClick(batchId, event) {
-      cancelTrashLongPress();
-      if (suppressTrashClickOnce) { suppressTrashClickOnce = false; return; }
-      if (!trashBulkSelectMode) return;
-      event?.stopPropagation();
-      const id = String(batchId);
-      if (trashSelectedBatchIds.has(id)) trashSelectedBatchIds.delete(id); else trashSelectedBatchIds.add(id);
-      render();
-    }
-    function clearTrashBulkSelection() {
-      trashSelectedBatchIds.clear();
-      trashBulkSelectMode = false;
-      render();
-    }
-    async function restoreSelectedTrashBatches() {
-      const ids = [...trashSelectedBatchIds];
-      if (!ids.length) return;
-      showActionToast(tr('Tiklanmoqda...', 'Восстановление...'), 'saving');
-      try {
-        for (const id of ids) await callApi('restore_trash_batch', { batchId: Number(id) || id });
-        await loadCatalog();
-        trashBatches = (trashBatches || []).filter(b => !trashSelectedBatchIds.has(String(b.id)));
-        clearTrashBulkSelection();
-        showActionToast(tr('Tiklandi', 'Восстановлено'), 'success', 1500);
-      } catch (e) {
-        console.error(e);
-        await openTrashModal();
-        showActionToast(tr('Tiklanmadi', 'Не восстановлено'), 'error', 1800);
-        alert(tr('Xatolik: ', 'Ошибка: ') + (e.message || e));
-      }
-    }
-    async function purgeSelectedTrashBatches() {
-      const ids = [...trashSelectedBatchIds];
-      if (!ids.length) return;
-      const ok = await fcConfirm(
-        tr('Butunlay o‘chirilsinmi?', 'Удалить навсегда?'),
-        tr(`${ids.length} ta tanlangan element qaytarib bo‘lmaydigan tarzda o‘chiriladi.`, `${ids.length} выбранных элементов будут удалены без возможности восстановления.`)
-      );
-      if (!ok) return;
-      showActionToast(tr('Butunlay o‘chirilmoqda...', 'Удаление навсегда...'), 'saving');
-      try {
-        for (const id of ids) await callApi('purge_trash_batch_now', { batchId: Number(id) || id });
-        trashBatches = (trashBatches || []).filter(b => !trashSelectedBatchIds.has(String(b.id)));
-        await loadCatalog();
-        clearTrashBulkSelection();
-        showActionToast(tr('Butunlay o‘chirildi', 'Удалено навсегда'), 'success', 1500);
-      } catch (e) {
-        console.error(e);
-        await openTrashModal();
-        alert(tr('O‘chirishda xatolik: ', 'Ошибка удаления: ') + (e.message || e));
-      }
-    }
     function renderTrashBatchHtml(b) {
-      const selected = trashSelectedBatchIds.has(String(b.id));
-      const isCategory = b.kind !== 'PRODUCT';
-      const title = isCategory
-        ? (b.rootCategoryName || ('#' + b.id))
-        : ((b.productNames || [])[0] || (b.productItems || [])[0]?.name || ('#' + b.id));
-      const extra = !isCategory && (b.productItems || []).length > 1 ? ` +${(b.productItems || []).length - 1}` : '';
-      const countLine = isCategory
-        ? `${b.categoryCount ? `${b.categoryCount} ${tr('katalog','кат.')} · ` : ''}${b.productCount || 0} ${tr('tovar','тов.')}`
-        : `${(b.productItems || []).length || b.productCount || 1} ${tr('tovar','тов.')}`;
-      return `
-        <article data-trash-batch-id="${escapeHtml(String(b.id))}"
-          onpointerdown="startTrashLongPress('${escapeHtml(String(b.id))}', event)"
-          onpointerup="cancelTrashLongPress()" onpointercancel="cancelTrashLongPress()" onpointerleave="cancelTrashLongPress()"
-          onclick="handleTrashBatchClick('${escapeHtml(String(b.id))}', event)"
-          data-search="${escapeHtml(trashBatchSearchText(b))}" class="fc-trash-card ${selected ? 'is-selected' : ''} ${trashBulkSelectMode ? 'is-selecting' : ''}">
-          <div class="fc-trash-card-icon"><i data-lucide="${isCategory ? 'folder' : 'package'}" class="w-4 h-4"></i></div>
-          <div class="fc-trash-card-main">
-            <b>${escapeHtml(title)}${extra}</b>
-            <small>${escapeHtml(countLine)} · ${tr('Muddati','Истекает')}: ${escapeHtml(new Date(b.expiresAt).toLocaleString())}</small>
+      if (b.kind !== 'PRODUCT') {
+        return `
+          <div class="border rounded-xl p-2.5 space-y-1">
+            <p class="font-bold">📁 ${escapeHtml(b.rootCategoryName || ('#' + b.id))}</p>
+            <p class="text-[10px] text-gray-500">${b.categoryCount ? `${b.categoryCount} ${tr('katalog', 'кат.')} · ` : ''}${b.productCount} ${tr('tovar', 'тов.')}</p>
+            <p class="text-[10px] text-gray-400">${tr("Muddati", "Истекает")}: ${new Date(b.expiresAt).toLocaleString()}</p>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button onclick="restoreTrashBatch(${b.id})" class="bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold py-1.5 rounded-lg">${tr("♻️ Tiklash", "♻️ Восстановить")}</button>
+              <button onclick="purgeTrashBatchNow(${b.id})" class="fc-bg-danger-soft fc-text-danger border fc-border-danger font-bold py-1.5 rounded-lg flex items-center justify-center gap-1">${ICON_TRASH} ${tr("Butunlay", "Навсегда")}</button>
+            </div>
           </div>
-          ${trashBulkSelectMode ? `<span class="fc-select-dot ${selected ? 'is-selected' : ''}"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>` : `<i data-lucide="grip" class="w-4 h-4 fc-trash-hold-hint"></i>`}
-        </article>`;
+        `;
+      }
+
+      const items = b.productItems || [];
+      const selecting = !!trashSelectMode[b.id];
+      const selectedSet = trashSelectedProductIds[b.id] || new Set();
+      const selectedCount = selectedSet.size;
+
+      return `
+        <div class="border rounded-xl p-2.5 space-y-2">
+          <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <p class="font-bold truncate">📦 ${escapeHtml((b.productNames || [])[0] || ('#' + b.id))}${items.length > 1 ? ` +${items.length - 1}` : ''}</p>
+              <p class="text-[10px] text-gray-500">${items.length} ${tr('tovar', 'тов.')} · ${tr("Muddati", "Истекает")}: ${new Date(b.expiresAt).toLocaleString()}</p>
+            </div>
+            <button onclick="toggleTrashSelectMode(${b.id})" class="fc-badge ${selecting ? 'fc-badge-primary' : 'fc-badge-muted'} shrink-0">${selecting ? tr('Yopish', 'Закрыть') : tr('Tanlash', 'Выбрать')}</button>
+          </div>
+
+          ${!selecting ? `
+            <div class="text-[10px] text-gray-500 space-y-0.5">
+              ${items.slice(0, 5).map(p => `<p class="truncate">• ${escapeHtml(p.name)} ${p.sku ? `(ID: ${escapeHtml(p.sku)})` : ''}</p>`).join('')}
+              ${items.length > 5 ? `<p class="text-gray-400">… ${tr('va yana', 'и ещё')} ${items.length - 5}</p>` : ''}
+            </div>
+          ` : `
+            <div class="space-y-1.5 max-h-48 overflow-y-auto">
+              ${items.map(p => `
+                <div onclick="toggleTrashProductSelection(${b.id}, '${p.id}')" class="flex items-center gap-2 p-1.5 rounded-lg cursor-pointer ${selectedSet.has(p.id) ? 'ustore-selected-card border border-blue-500' : 'border border-transparent hover:bg-gray-50'}">
+                  <div class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${selectedSet.has(p.id) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-300'}">${selectedSet.has(p.id) ? '✓' : ''}</div>
+                  <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-8 h-8 object-cover rounded-lg shrink-0">
+                  <div class="min-w-0 flex-1">
+                    <p class="truncate font-bold">${escapeHtml(p.name)}</p>
+                    ${p.sku ? `<p class="text-[9px] text-gray-400">ID: ${escapeHtml(p.sku)}</p>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="flex items-center justify-between text-[10px]">
+              <button onclick="selectAllTrashProducts(${b.id})" class="font-bold text-blue-600">${tr('Barchasini tanlash', 'Выбрать все')}</button>
+              <button onclick="clearTrashSelection(${b.id})" class="font-bold text-gray-500">${tr('Tanlovni bekor qilish', 'Снять выбор')}</button>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button onclick="restoreSelectedTrashItems(${b.id})" ${selectedCount ? '' : 'disabled'} class="bg-emerald-50 text-emerald-700 border border-emerald-200 disabled:opacity-40 font-bold py-1.5 rounded-lg">${tr("♻️ Tiklash", "♻️ Восстановить")} ${selectedCount ? `(${selectedCount})` : ''}</button>
+              <button onclick="purgeSelectedTrashItems(${b.id})" ${selectedCount ? '' : 'disabled'} class="fc-bg-danger-soft fc-text-danger border fc-border-danger disabled:opacity-40 font-bold py-1.5 rounded-lg flex items-center justify-center gap-1">${ICON_TRASH} ${tr("Butunlay", "Навсегда")} ${selectedCount ? `(${selectedCount})` : ''}</button>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function toggleTrashSelectMode(batchId) {
+      trashSelectMode[batchId] = !trashSelectMode[batchId];
+      if (!trashSelectMode[batchId]) trashSelectedProductIds[batchId] = new Set();
+      render();
+    }
+    function toggleTrashProductSelection(batchId, productId) {
+      if (!trashSelectedProductIds[batchId]) trashSelectedProductIds[batchId] = new Set();
+      const set = trashSelectedProductIds[batchId];
+      if (set.has(productId)) set.delete(productId); else set.add(productId);
+      render();
+    }
+    function selectAllTrashProducts(batchId) {
+      const batch = (trashBatches || []).find(b => b.id === batchId);
+      if (!batch) return;
+      trashSelectedProductIds[batchId] = new Set((batch.productItems || []).map(p => p.id));
+      render();
+    }
+    function clearTrashSelection(batchId) {
+      trashSelectedProductIds[batchId] = new Set();
+      render();
+    }
+    // Batch to'liq hal qilingandan keyin (barcha itemlar tiklandi/o'chirildi)
+    // uni ro'yxatdan olib tashlaydi — 029 migratsiyasidagi RPC ham xuddi shu
+    // holatda trash_batches.restored_at/purged_at'ni belgilaydi.
+    function removeResolvedTrashItemsFromState(batchId, resolvedIds) {
+      const batch = (trashBatches || []).find(b => b.id === batchId);
+      if (!batch) return;
+      batch.productItems = (batch.productItems || []).filter(p => !resolvedIds.includes(p.id));
+      if (!batch.productItems.length) trashBatches = (trashBatches || []).filter(b => b.id !== batchId);
+      trashSelectedProductIds[batchId] = new Set();
+      trashSelectMode[batchId] = false;
+    }
+    async function restoreSelectedTrashItems(batchId) {
+      const ids = [...(trashSelectedProductIds[batchId] || [])];
+      if (!ids.length) return alert(tr('Kamida bitta mahsulot tanlang.', 'Выберите хотя бы один товар.'));
+      showActionToast(tr('⏳ Tiklanmoqda...', '⏳ Восстановление...'), 'saving');
+      try {
+        await callApi('restore_trash_items', { batchId, productIds: ids });
+        await loadCatalog();
+        removeResolvedTrashItemsFromState(batchId, ids);
+        render();
+        showActionToast(tr('✅ Tiklandi', '✅ Восстановлено'), 'success', 1500);
+      } catch (e) {
+        console.error(e);
+        if (String(e.message || '').includes('product_set_changed')) {
+          alert(tr("Tanlangan mahsulotlar ro'yxati o'zgargan (boshqa admin ham amal qilgan bo'lishi mumkin). Ro'yxat yangilanadi.", 'Список выбранных товаров изменился (возможно, другой админ тоже действовал). Список обновится.'));
+          openTrashModal();
+        } else {
+          showActionToast(tr('❌ Tiklanmadi', '❌ Не восстановлено'), 'error', 1800);
+          alert(tr('❌ Xatolik: ', '❌ Ошибка: ') + (e.message || e));
+        }
+      }
+    }
+    async function purgeSelectedTrashItems(batchId) {
+      const ids = [...(trashSelectedProductIds[batchId] || [])];
+      if (!ids.length) return alert(tr('Kamida bitta mahsulot tanlang.', 'Выберите хотя бы один товар.'));
+      const ok = await fcConfirm(tr('Butunlay o‘chirilsinmi?', 'Удалить навсегда?'), tr(`${ids.length} ta mahsulot darhol va qaytarib bo'lmaydigan tarzda o'chiriladi.`, `${ids.length} товар(ов) будут удалены немедленно и без возможности восстановления.`));
+      if (!ok) return;
+      showActionToast(tr('⏳ Butunlay o‘chirilmoqda...', '⏳ Удаление навсегда...'), 'saving');
+      try {
+        await callApi('purge_trash_items', { batchId, productIds: ids });
+        removeResolvedTrashItemsFromState(batchId, ids);
+        render();
+        showActionToast(tr('✅ Butunlay o‘chirildi', '✅ Удалено навсегда'), 'success', 1500);
+      } catch (e) {
+        console.error(e);
+        if (String(e.message || '').includes('product_set_changed')) {
+          alert(tr("Tanlangan mahsulotlar ro'yxati o'zgargan (boshqa admin ham amal qilgan bo'lishi mumkin). Ro'yxat yangilanadi.", 'Список выбранных товаров изменился (возможно, другой админ тоже действовал). Список обновится.'));
+          openTrashModal();
+        } else {
+          showActionToast(tr('❌ O‘chirilmadi', '❌ Не удалено'), 'error', 1800);
+          alert(tr('❌ Xatolik: ', '❌ Ошибка: ') + (e.message || e));
+        }
+      }
     }
 
     // 2.5: Chiqindi (trash) ko'rinishi.
@@ -9321,7 +9169,7 @@
         console.error(e);
         trashBatches = [];
       }
-      if (activePopupModal === 'TRASH') { renderModalContainer(); if (window.lucide) lucide.createIcons(); }
+      if (activePopupModal === 'TRASH') renderModalContainer();
     }
     async function restoreTrashBatch(batchId) {
       showActionToast(tr('⏳ Tiklanmoqda...', '⏳ Восстановление...'), 'saving');
