@@ -587,9 +587,15 @@
     let ordersPage = 1;
     let userOrderFilter = 'ALL';
     // Buyurtmalar uchun umumiy sana oralig'i filtri — user/admin bir xil state.
-    let ordersDatePreset = 'ALL'; // ALL | TODAY | YESTERDAY | 7D | 30D | MONTH | CUSTOM
+    // Buyurtmalar uchun bitta zamonaviy kalendar-range filtri.
+    // 1-bosish = boshlanish, 2-bosish = tugash. Shu kunni ikki marta bosish
+    // aynan bitta kunlik intervalni (masalan 22.08.2026–22.08.2026) tanlaydi.
     let ordersDateFrom = '';
     let ordersDateTo = '';
+    let ordersCalendarMonth = (() => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    })();
     let selectedProductModal = null;
     let selectedOrderModal = null;
     let rejectReceiptOrderId = null; // 14-band: REJECT_RECEIPT modali qaysi buyurtma uchun ochilgani
@@ -691,6 +697,7 @@
     // Do'kon logosi form draftining bir qismi: tanlash = faqat preview; real saqlash
     // faqat SHOP_INFO pastidagi "Saqlash" bosilganda bajariladi.
     let shopLogoDraft = null; // { kind:'file', file, previewUrl } | { kind:'url', url }
+    let shopLogoPreparing = false; // gallery/files tanlangach preview tayyor bo'lguncha spinner
     let editingFieldData = null;
     // Universal 2-ustunli variant konstruktori (Add + Edit bir xil komponent).
     // Har qator: {level1, level2, qty} — level1->size, level2->color (mavjud
@@ -2956,8 +2963,8 @@
               <span class="font-bold flex flex-wrap items-center gap-x-1 gap-y-0.5"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-gray-400 shrink-0"></i> ${breadcrumbHtml}</span>
               ${adminCatParentId ? `
                 <div class="flex space-x-1 shrink-0">
-                  <button onclick="goBackCatLevel()" class="fc-cat-nav-btn"><i data-lucide="chevron-left" class="w-3 h-3"></i>${tr("Orqaga", "Назад")}</button>
-                  <button onclick="adminCatParentId = null; categoryPage=1; render();" class="fc-cat-nav-btn"><i data-lucide="home" class="w-3 h-3"></i>${tr("Boshiga", "В начало")}</button>
+                  <button onclick="goBackCatLevel()" class="fc-cat-nav-btn" aria-label="${escapeHtml(tr('Orqaga','Назад'))}" title="${escapeHtml(tr('Orqaga','Назад'))}"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                  <button onclick="adminCatParentId = null; categoryPage=1; render();" class="fc-cat-nav-btn" aria-label="${escapeHtml(tr('Boshiga','В начало'))}" title="${escapeHtml(tr('Boshiga','В начало'))}"><i data-lucide="home" class="w-4 h-4"></i></button>
                 </div>
               ` : ''}
             </div>
@@ -3280,14 +3287,21 @@
     }
 
     function deliveryOptionLabel(option) {
-      if (option.kind === 'FREE') return tr('🆓 Bepul yetkazib berish', '🆓 Бесплатная доставка');
-      if (option.kind === 'FIXED') return `${tr('🚚 Uyigacha', '🚚 До дома')} · ${money(option.fee)}`;
+      if (option.kind === 'FREE') return tr('Bepul yetkazib berish', 'Бесплатная доставка');
+      if (option.kind === 'FIXED') return `${tr('Uyigacha', 'До дома')} · ${money(option.fee)}`;
       if (option.kind === 'TAXI') {
-        if (option.exactFee !== null && option.exactFee !== undefined) return `${tr('🚕 Taksi orqali', '🚕 На такси')} · ${formatNumber(option.exactFee)} ${tr("so'm", 'сум')}`;
-        if (option.minFee !== null && option.minFee !== undefined && option.maxFee !== null && option.maxFee !== undefined) return `${tr('🚕 Taksi orqali', '🚕 На такси')} · ${formatNumber(option.minFee)}–${formatNumber(option.maxFee)} ${tr("so'm", 'сум')}`;
-        return tr('🚕 Taksi orqali', '🚕 На такси');
+        if (option.exactFee !== null && option.exactFee !== undefined) return `${tr('Taksi orqali', 'На такси')} · ${formatNumber(option.exactFee)} ${tr("so'm", 'сум')}`;
+        if (option.minFee !== null && option.minFee !== undefined && option.maxFee !== null && option.maxFee !== undefined) return `${tr('Taksi orqali', 'На такси')} · ${formatNumber(option.minFee)}–${formatNumber(option.maxFee)} ${tr("so'm", 'сум')}`;
+        return tr('Taksi orqali', 'На такси');
       }
-      return `📦 ${escapeHtml(option.providerName || tr('Pochta', 'Почта'))}`;
+      return escapeHtml(option.providerName || tr('Pochta', 'Почта'));
+    }
+
+    function deliveryOptionIcon(option) {
+      if (option?.kind === 'TAXI') return 'car-front';
+      if (option?.kind === 'POST') return 'package';
+      if (option?.kind === 'FREE') return 'badge-check';
+      return 'truck';
     }
 
     function deliveryOptionNotice(option) {
@@ -3606,7 +3620,8 @@
       if (!el) return;
       if (!checkoutSelectedBranch) { el.classList.add('hidden'); el.innerHTML = ''; return; }
       el.classList.remove('hidden');
-      el.innerHTML = `<b>✅ ${escapeHtml(branchNameLabel(checkoutSelectedBranch))}</b><br>${escapeHtml(branchDistrictLabel(checkoutSelectedBranch))} — ${escapeHtml(branchAddressLabel(checkoutSelectedBranch))}`;
+      el.innerHTML = `<div class="flex items-start gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 mt-0.5 shrink-0"></i><span><b>${escapeHtml(branchNameLabel(checkoutSelectedBranch))}</b><br>${escapeHtml(branchDistrictLabel(checkoutSelectedBranch))} — ${escapeHtml(branchAddressLabel(checkoutSelectedBranch))}</span></div>`;
+      if (window.lucide) lucide.createIcons();
     }
 
     function selectCheckoutBranch(branchId) {
@@ -3663,8 +3678,8 @@
         // bosilsa selectDelivery o'zi aniq ogohlantirish ko'rsatadi.
         const disabledLook = option.kind === 'POST' && !districtValue;
         return `
-        <button type="button" onclick="selectDelivery('${escapeHtml(option.id)}')" class="p-2.5 border rounded-xl font-bold text-xs leading-snug ${option.id === selectedDeliveryMethodId ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-white text-gray-700'} ${disabledLook ? 'opacity-40' : ''}">
-          ${deliveryOptionLabel(option)}
+        <button type="button" onclick="selectDelivery('${escapeHtml(option.id)}')" class="fc-checkout-choice ${option.id === selectedDeliveryMethodId ? 'is-selected' : ''} ${disabledLook ? 'is-muted' : ''}">
+          <span class="fc-checkout-choice-icon"><i data-lucide="${deliveryOptionIcon(option)}" class="w-4 h-4"></i></span><span>${deliveryOptionLabel(option)}</span>
         </button>`;
       }).join('') : `<div class="fc-bg-danger-soft border fc-border-danger fc-text-danger p-3 rounded-xl font-bold">${tr('Bu hudud uchun yetkazib berish usuli yoqilmagan.', 'Для этого региона способы доставки не настроены.')}</div>`;
 
@@ -3680,7 +3695,7 @@
         // ichiga qo'yiladi.
         const estimatedTimeVal = selectedDelivery?.estimatedTime ? escapeHtml(selectedDelivery.estimatedTime) : '';
         const estimatedTime = estimatedTimeVal
-          ? `${(noticeText || comment) ? '<br>' : ''}⏱ ${tr(`${estimatedTimeVal} ichida yetkazib beriladi.`, `Доставка в течение ${estimatedTimeVal}.`)}` : '';
+          ? `${(noticeText || comment) ? '<br>' : ''}<span class="fc-checkout-notice-time"><i data-lucide="clock-3" class="w-3.5 h-3.5"></i><span>${tr(`${estimatedTimeVal} ichida yetkazib beriladi.`, `Доставка в течение ${estimatedTimeVal}.`)}</span></span>` : '';
         notice.innerHTML = noticeText + comment + estimatedTime;
         notice.classList.toggle('hidden', !selectedDelivery);
       }
@@ -3695,21 +3710,22 @@
       if (isPost) renderBranchPicker();
 
       const payWrap = document.getElementById('pay-method-wrap');
-      if (payWrap) payWrap.innerHTML = paymentOptions.length ? paymentOptions.map(method => `
-        <button type="button" onclick="selectPayment('${method.id}')" class="p-2.5 border rounded-xl font-bold text-xs ${method.id === selectedPayMethod ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-white text-gray-700'}">
-          ${method.id === 'CASH' ? '💵' : method.id === 'CARD' ? '💳' : method.id === 'CLICK' ? '⚡' : '🔳'} ${escapeHtml(method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.id === 'QR' ? tr('QR orqali', 'По QR') : method.name)}
-        </button>`).join('') : `<div class="col-span-2 fc-bg-danger-soft border fc-border-danger fc-text-danger p-3 rounded-xl font-bold">${tr("Bu hudud uchun to'lov usuli yoqilmagan.", 'Для этого региона способы оплаты не настроены.')}</div>`;
+      if (payWrap) payWrap.innerHTML = paymentOptions.length ? paymentOptions.map(method => {
+        const icon = method.id === 'CASH' ? 'banknote' : method.id === 'CARD' ? 'credit-card' : method.id === 'CLICK' ? 'zap' : 'qr-code';
+        const label = method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.id === 'QR' ? tr('QR orqali', 'По QR') : method.name;
+        return `<button type="button" onclick="selectPayment('${method.id}')" class="fc-checkout-choice ${method.id === selectedPayMethod ? 'is-selected' : ''}"><span class="fc-checkout-choice-icon"><i data-lucide="${icon}" class="w-4 h-4"></i></span><span>${escapeHtml(label)}</span></button>`;
+      }).join('') : `<div class="fc-checkout-choice-empty fc-bg-danger-soft border fc-border-danger fc-text-danger">${tr("Bu hudud uchun to'lov usuli yoqilmagan.", 'Для этого региона способы оплаты не настроены.')}</div>`;
 
       const cardDetails = document.getElementById('card-payment-details');
       if (cardDetails) {
         if (selectedPayment?.id === 'CARD') {
           cardDetails.classList.remove('hidden');
           cardDetails.innerHTML = `
-            <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-1">
-              <p class="font-bold text-blue-900">${tr("Pul o'tkaziladigan karta", 'Карта для перевода')}</p>
+            <div class="fc-checkout-info-card space-y-1">
+              <p class="font-bold text-slate-800 flex items-center gap-1.5"><i data-lucide="credit-card" class="w-4 h-4 text-blue-600"></i>${tr("Pul o'tkaziladigan karta", 'Карта для перевода')}</p>
               <div class="flex items-center gap-2">
                 <p id="chk-card-number-display" class="font-mono text-sm font-black">${escapeHtml(selectedPayment.cardNumber || '')}</p>
-                <button type="button" onclick="copyCardNumber(document.getElementById('chk-card-number-display').textContent)" class="text-[10px] font-bold text-blue-700 bg-white border border-blue-300 px-2 py-0.5 rounded-lg shrink-0">📋 ${tr('Nusxalash', 'Копировать')}</button>
+                <button type="button" onclick="copyCardNumber(document.getElementById('chk-card-number-display').textContent)" class="fc-btn fc-btn-secondary shrink-0" style="min-height:2rem;padding:0 .6rem;font-size:.62rem"><i data-lucide="copy" class="w-3.5 h-3.5"></i>${tr('Nusxalash', 'Копировать')}</button>
               </div>
               <p>${escapeHtml(selectedPayment.cardHolder || '')}</p>
               <p class="text-[10px] text-blue-700">${tr(`CVV, PIN, SMS kod yoki amal qilish muddatini hech kimga bermang — ${escapeHtml(shopDisplayName())} ularni so'ramaydi.`, `Никому не сообщайте CVV, PIN, SMS-код или срок действия — ${escapeHtml(shopDisplayName())} их не запрашивает.`)}</p>
@@ -3722,15 +3738,15 @@
           cardDetails.innerHTML = `
             <div class="space-y-2">
               <p class="font-bold text-gray-700 text-xs">${tr('Provayderni tanlang', 'Выберите провайдера')}</p>
-              <div class="grid grid-cols-2 gap-2">
-                ${enabledProviders.map(p => `<button type="button" onclick="selectQrProvider('${p.id}')" class="p-2.5 border rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 ${p.id === selectedQrProviderId ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-white text-gray-700'}">🔳 ${escapeHtml(p.name)}</button>`).join('')}
+              <div class="fc-checkout-choice-grid">
+                ${enabledProviders.map(p => `<button type="button" onclick="selectQrProvider('${p.id}')" class="fc-checkout-choice ${p.id === selectedQrProviderId ? 'is-selected' : ''}"><span class="fc-checkout-choice-icon"><i data-lucide="qr-code" class="w-4 h-4"></i></span><span>${escapeHtml(p.name)}</span></button>`).join('')}
               </div>
               ${!enabledProviders.length ? `<p class="text-[11px] fc-text-danger font-bold">${tr("Hozircha QR provayder sozlanmagan.", "QR-провайдер пока не настроен.")}</p>` : ''}
               ${activeProvider ? `
-                <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2 text-center">
+                <div class="fc-checkout-info-card space-y-2 text-center">
                   ${activeProvider.qrImageUrl ? `<img src="${escapeHtml(activeProvider.qrImageUrl)}" class="w-40 h-40 object-contain rounded-xl border bg-white mx-auto">` : ''}
                   <p class="font-bold text-blue-900">${escapeHtml(activeProvider.name)}</p>
-                  <button type="button" onclick="openSafeExternalUrl('${escapeHtml(activeProvider.paymentUrl)}')" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">🔗 ${tr("To'lov sahifasiga o'tish", "Перейти к оплате")}</button>
+                  <button type="button" onclick="openSafeExternalUrl('${escapeHtml(activeProvider.paymentUrl)}')" class="fc-btn fc-btn-primary w-full"><i data-lucide="external-link" class="w-4 h-4"></i>${tr("To'lov sahifasiga o'tish", "Перейти к оплате")}</button>
                 </div>
                 <div id="chk-receipt-wrap">${renderReceiptPicker(true)}</div>
               ` : ''}
@@ -3738,8 +3754,8 @@
         } else if (selectedPayment?.id === 'CLICK') {
           cardDetails.classList.remove('hidden');
           cardDetails.innerHTML = `
-            <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-1 text-center">
-              <p class="font-bold text-blue-900">⚡ ${tr("Click orqali avtomatik to'lov", "Автоматическая оплата через Click")}</p>
+            <div class="fc-checkout-info-card space-y-1 text-center">
+              <p class="font-bold text-slate-800 flex items-center justify-center gap-1.5"><i data-lucide="zap" class="w-4 h-4 text-blue-600"></i>${tr("Click orqali avtomatik to'lov", "Автоматическая оплата через Click")}</p>
               <p class="text-[11px] text-blue-700">${tr("Buyurtmani yuborganingizdan so'ng, to'lov so'rovi Click ilovangizga yuboriladi. To'lov tasdiqlanishi bilan buyurtma avtomatik qabul qilinadi — chek yuklash shart emas.", "После отправки заказа запрос на оплату придёт в ваше приложение Click. После подтверждения оплаты заказ будет принят автоматически — чек загружать не нужно.")}</p>
             </div>`;
         } else {
@@ -3753,6 +3769,7 @@
       if (subtotalEl) subtotalEl.textContent = money(totals.subtotal);
       if (deliveryFeeEl) deliveryFeeEl.textContent = selectedDelivery?.kind === 'FIXED' ? money(totals.deliveryFee) : (selectedDelivery?.kind === 'TAXI' ? tr('Alohida', 'Отдельно') : (selectedDelivery?.kind === 'POST' && selectedDelivery.payer === 'CUSTOMER' ? tr('Pochta tarifida', 'По тарифу почты') : money(0)));
       if (payableEl) payableEl.textContent = money(totals.payableTotal);
+      if (window.lucide) lucide.createIcons();
     }
 
     async function onCheckoutReceiptPicked(event) {
@@ -3975,73 +3992,120 @@
       return Number.isNaN(d.getTime()) ? null : d;
     }
 
-    function setOrdersDatePreset(preset) {
-      ordersDatePreset = preset || 'ALL';
-      if (ordersDatePreset !== 'CUSTOM') {
-        ordersDateFrom = '';
+    function orderDateKey(date) {
+      if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function parseOrderDateKey(key, endOfDay = false) {
+      const m = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return null;
+      const d = endOfDay
+        ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999)
+        : new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    function selectOrdersCalendarDate(key) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key || ''))) return;
+      if (!ordersDateFrom || ordersDateTo) {
+        ordersDateFrom = key;
         ordersDateTo = '';
+      } else {
+        if (key < ordersDateFrom) {
+          ordersDateTo = ordersDateFrom;
+          ordersDateFrom = key;
+        } else {
+          ordersDateTo = key;
+        }
       }
       ordersPage = 1;
       render();
     }
 
-    function setOrdersCustomDate(field, value) {
-      ordersDatePreset = 'CUSTOM';
-      if (field === 'from') ordersDateFrom = String(value || '');
-      if (field === 'to') ordersDateTo = String(value || '');
+    function clearOrdersDateRange() {
+      ordersDateFrom = '';
+      ordersDateTo = '';
       ordersPage = 1;
       render();
+    }
+
+    function changeOrdersCalendarMonth(delta) {
+      const m = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
+      const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, 1) : new Date();
+      d.setMonth(d.getMonth() + Number(delta || 0));
+      ordersCalendarMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      render();
+    }
+
+    function formatOrderRangeDate(key) {
+      const d = parseOrderDateKey(key);
+      if (!d) return '';
+      return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
     }
 
     function filterOrdersBySelectedDate(source) {
-      const now = new Date();
-      let from = null, to = null;
-      const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      const endOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-      if (ordersDatePreset === 'TODAY') {
-        from = startOfDay(now); to = endOfDay(now);
-      } else if (ordersDatePreset === 'YESTERDAY') {
-        const y = new Date(now); y.setDate(y.getDate() - 1); from = startOfDay(y); to = endOfDay(y);
-      } else if (ordersDatePreset === '7D') {
-        from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)); to = endOfDay(now);
-      } else if (ordersDatePreset === '30D') {
-        from = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29)); to = endOfDay(now);
-      } else if (ordersDatePreset === 'MONTH') {
-        from = new Date(now.getFullYear(), now.getMonth(), 1); to = endOfDay(now);
-      } else if (ordersDatePreset === 'CUSTOM') {
-        if (ordersDateFrom) { const d = new Date(`${ordersDateFrom}T00:00:00`); if (!Number.isNaN(d.getTime())) from = d; }
-        if (ordersDateTo) { const d = new Date(`${ordersDateTo}T23:59:59.999`); if (!Number.isNaN(d.getTime())) to = d; }
-      }
-      if (!from && !to) return [...source];
+      // Interval faqat ikkinchi sana tanlangach yakunlanadi. Birinchi bosish paytida
+      // ro'yxatni keskin o'zgartirmaymiz — foydalanuvchi hali tugash sanasini tanlayapti.
+      if (!ordersDateFrom || !ordersDateTo) return [...source];
+      const from = parseOrderDateKey(ordersDateFrom, false);
+      const to = parseOrderDateKey(ordersDateTo, true);
+      if (!from || !to) return [...source];
       return source.filter(o => {
-        const d = orderCreatedDate(o); if (!d) return false;
-        if (from && d < from) return false;
-        if (to && d > to) return false;
-        return true;
+        const d = orderCreatedDate(o);
+        return !!d && d >= from && d <= to;
       });
     }
 
     function renderOrdersDateFilterHtml() {
-      const presets = [
-        ['ALL', tr('Barchasi','Все')], ['TODAY', tr('Bugun','Сегодня')], ['YESTERDAY', tr('Kecha','Вчера')],
-        ['7D', tr('7 kun','7 дней')], ['30D', tr('30 kun','30 дней')], ['MONTH', tr('Oy','Месяц')], ['CUSTOM', tr('Sana oralig‘i','Период')],
-      ];
-      return `<div class="fc-orders-date-filter">
-        <div class="fc-orders-date-chips">${presets.map(([id,label]) => `<button type="button" onclick="setOrdersDatePreset('${id}')" class="fc-orders-date-chip ${ordersDatePreset === id ? 'is-active' : ''}">${label}</button>`).join('')}</div>
-        ${ordersDatePreset === 'CUSTOM' ? `<div class="fc-orders-custom-range"><label><span>${tr('Dan','С')}</span><input type="date" value="${escapeHtml(ordersDateFrom)}" onchange="setOrdersCustomDate('from',this.value)"></label><label><span>${tr('Gacha','По')}</span><input type="date" value="${escapeHtml(ordersDateTo)}" onchange="setOrdersCustomDate('to',this.value)"></label></div>` : ''}
-      </div>`;
-    }
-
-    function renderOrdersSummaryHtml(periodOrders) {
-      const nonCancelled = periodOrders.filter(o => o.status !== 'CANCELLED');
-      const total = nonCancelled.reduce((sum, o) => sum + (Number(o.payableTotal ?? o.totalPrice) || 0), 0);
-      const counts = Object.fromEntries(['NEW','PROCESSING','DELIVERED','CANCELLED'].map(st => [st, periodOrders.filter(o => o.status === st).length]));
-      return `<div class="fc-orders-summary">
-        <div class="fc-orders-summary-main"><div><span>${tr('Jami buyurtma','Всего заказов')}</span><strong>${periodOrders.length}</strong></div><div><span>${tr('Jami summa','Общая сумма')}</span><strong>${money(total)}</strong></div></div>
-        <div class="fc-orders-summary-statuses">
-          <span><b>${counts.NEW}</b>${tr('Yangi','Новые')}</span><span><b>${counts.PROCESSING}</b>${tr('Jarayonda','В работе')}</span><span><b>${counts.DELIVERED}</b>${tr('Yetkazilgan','Доставлены')}</span><span><b>${counts.CANCELLED}</b>${tr('Bekor','Отменены')}</span>
+      const monthMatch = String(ordersCalendarMonth || '').match(/^(\d{4})-(\d{2})$/);
+      const base = monthMatch ? new Date(Number(monthMatch[1]), Number(monthMatch[2]) - 1, 1) : new Date();
+      const year = base.getFullYear();
+      const month = base.getMonth();
+      const monthNamesUz = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+      const monthNamesRu = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+      const weekDays = uiLang === 'ru' ? ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'] : ['Du','Se','Cho','Pa','Ju','Sha','Ya'];
+      const firstOffset = (new Date(year, month, 1).getDay() + 6) % 7;
+      const dayCount = new Date(year, month + 1, 0).getDate();
+      const todayKey = orderDateKey(new Date());
+      const cells = [];
+      for (let i = 0; i < firstOffset; i += 1) cells.push('<span class="fc-orders-calendar-empty"></span>');
+      for (let day = 1; day <= dayCount; day += 1) {
+        const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isStart = key === ordersDateFrom;
+        const isEnd = key === ordersDateTo;
+        const inRange = !!(ordersDateFrom && ordersDateTo && key > ordersDateFrom && key < ordersDateTo);
+        const pending = !!(ordersDateFrom && !ordersDateTo && isStart);
+        const isToday = key === todayKey;
+        const cls = [
+          'fc-orders-calendar-day',
+          isStart ? 'is-start' : '',
+          isEnd ? 'is-end' : '',
+          inRange ? 'is-in-range' : '',
+          pending ? 'is-pending' : '',
+          isToday ? 'is-today' : '',
+          isStart && isEnd ? 'is-single' : ''
+        ].filter(Boolean).join(' ');
+        cells.push(`<button type="button" onclick="selectOrdersCalendarDate('${key}')" class="${cls}" aria-label="${formatOrderRangeDate(key)}"><span>${day}</span></button>`);
+      }
+      const rangeText = ordersDateFrom && ordersDateTo
+        ? `${formatOrderRangeDate(ordersDateFrom)} — ${formatOrderRangeDate(ordersDateTo)}`
+        : ordersDateFrom
+          ? tr(`${formatOrderRangeDate(ordersDateFrom)} — tugash sanasini tanlang`, `${formatOrderRangeDate(ordersDateFrom)} — выберите дату окончания`)
+          : tr('Sana oralig‘ini tanlang', 'Выберите период');
+      return `<div class="fc-orders-calendar-card">
+        <div class="fc-orders-calendar-top">
+          <div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>
+          ${(ordersDateFrom || ordersDateTo) ? `<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear" aria-label="${tr('Tozalash','Очистить')}" title="${tr('Tozalash','Очистить')}"><i data-lucide="x" class="w-4 h-4"></i></button>` : ''}
         </div>
-        <p>${tr("Bekor qilingan buyurtmalar jami summaga kiritilmaydi.", "Отменённые заказы не входят в общую сумму.")}</p>
+        <div class="fc-orders-calendar-monthbar">
+          <button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav" aria-label="${tr('Oldingi oy','Предыдущий месяц')}"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+          <strong>${uiLang === 'ru' ? monthNamesRu[month] : monthNamesUz[month]} ${year}</strong>
+          <button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav" aria-label="${tr('Keyingi oy','Следующий месяц')}"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+        </div>
+        <div class="fc-orders-calendar-weekdays">${weekDays.map(d => `<span>${d}</span>`).join('')}</div>
+        <div class="fc-orders-calendar-grid">${cells.join('')}</div>
+        <p class="fc-orders-calendar-hint">${tr('Bitta kun uchun shu sanani ikki marta bosing. Oraliq uchun boshlanish va tugash sanasini tanlang.','Для одного дня нажмите эту дату дважды. Для периода выберите дату начала и окончания.')}</p>
       </div>`;
     }
 
@@ -4069,7 +4133,6 @@
           <div class="space-y-4">
             <h2 class="text-lg font-bold text-slate-800">${t('all_orders')}</h2>
             ${renderOrdersDateFilterHtml()}
-            ${renderOrdersSummaryHtml(periodOrders)}
 
             <div class="bg-white p-3 rounded-2xl border space-y-2 text-xs shadow-sm">
               <input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Mijoz ismi yoki tel raqami...','Имя клиента или номер телефона...')}" value="${escapeHtml(adminOrderFilters.search)}" class="w-full p-2 border rounded-xl">
@@ -4136,7 +4199,6 @@
         <div class="space-y-3">
           <h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>
           ${renderOrdersDateFilterHtml()}
-          ${renderOrdersSummaryHtml(periodOrders)}
 
           <div class="flex space-x-1 overflow-x-auto pb-1 text-xs">
             <button onclick="userOrderFilter='ALL'; render();" class="px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white border text-gray-600'}">${tr("Barchasi", "Все")}</button>
@@ -5902,6 +5964,7 @@
         try { URL.revokeObjectURL(shopLogoDraft.previewUrl); } catch (_) {}
       }
       shopLogoDraft = null;
+      shopLogoPreparing = false;
     }
 
     function shopInfoLogoPreviewUrl() {
@@ -5938,6 +6001,20 @@
       render();
     }
 
+    function setShopInfoLogoPreparing(isPreparing) {
+      shopLogoPreparing = !!isPreparing;
+      const preview = document.getElementById('shop-info-logo-preview');
+      if (preview && shopLogoPreparing) {
+        preview.innerHTML = `<div class="fc-shop-logo-loading"><span class="fc-spinner"></span><small>${tr('Tayyorlanmoqda...', 'Подготовка...')}</small></div>`;
+      }
+      const status = document.getElementById('shop-info-logo-status');
+      if (status && shopLogoPreparing) status.textContent = tr('Rasm tayyorlanmoqda...', 'Изображение подготавливается...');
+      document.querySelectorAll('.fc-shop-logo-action').forEach(btn => { btn.disabled = shopLogoPreparing; });
+      const saveBtn = document.getElementById('shop-info-save-btn');
+      if (saveBtn) saveBtn.disabled = shopLogoPreparing;
+      if (window.lucide) lucide.createIcons();
+    }
+
     function updateShopInfoLogoPreview(url) {
       const preview = document.getElementById('shop-info-logo-preview');
       if (preview) {
@@ -5951,6 +6028,9 @@
         : (url ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен'));
       const buttonLabel = document.getElementById('shop-info-logo-button-label');
       if (buttonLabel) buttonLabel.textContent = url ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото');
+      document.querySelectorAll('.fc-shop-logo-action').forEach(btn => { btn.disabled = false; });
+      const saveBtn = document.getElementById('shop-info-save-btn');
+      if (saveBtn) saveBtn.disabled = false;
       if (window.lucide) lucide.createIcons();
     }
 
@@ -6006,6 +6086,7 @@
     async function saveShopLogoFromPicker(event) {
       const file = event.target.files?.[0];
       if (!file) return;
+      const editingInsideShopInfo = activePopupModal === 'SHOP_INFO';
       imageIO.logStage('FILE_SELECTED', { mime: file.type, size: file.size });
       try { validatePickedImageFile(file); }
       catch (e) {
@@ -6013,21 +6094,26 @@
         return alert(pickedImageErrorMessage(e, file));
       }
 
+      if (editingInsideShopInfo) setShopInfoLogoPreparing(true);
       let prepared;
       try {
         prepared = await captureAndPrepareImageV2(file, TARGET_PRODUCT_IMAGE_BYTES, 1000, 0.8);
       } catch (e) {
         console.error('[logo:READ_ORIGINAL_FAILED]', e);
+        if (editingInsideShopInfo) {
+          shopLogoPreparing = false;
+          updateShopInfoLogoPreview(shopInfoLogoPreviewUrl());
+        }
         event.target.value = '';
         return alert(tr("Logotip faylini o'qib bo'lmadi. Qaytadan tanlab ko'ring.", "Не удалось прочитать файл логотипа. Попробуйте выбрать заново."));
       }
 
-      const editingInsideShopInfo = activePopupModal === 'SHOP_INFO';
       if (editingInsideShopInfo) {
         // MUHIM: bu yerda serverga HECH NARSA yuborilmaydi. Faqat draft+preview.
         clearShopLogoDraft();
         const previewUrl = URL.createObjectURL(prepared);
         shopLogoDraft = { kind: 'file', file: prepared, previewUrl };
+        shopLogoPreparing = false;
         updateShopInfoLogoPreview(previewUrl);
         showActionToast(tr('Logo tanlandi — Saqlashni bosing', 'Логотип выбран — нажмите Сохранить'), 'success', 1500);
         event.target.value = '';
@@ -6803,7 +6889,7 @@
 
               <div class="fc-sheet-footer fc-shop-info-footer">
                 <button type="button" onclick="closeShopInfoModal()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
-                <button type="button" onclick="saveShopContact()" class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash', 'Сохранить')}</button>
+                <button id="shop-info-save-btn" type="button" onclick="saveShopContact()" class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash', 'Сохранить')}</button>
               </div>
             </div>
           </div>
@@ -7425,74 +7511,62 @@
         }).filter(Boolean);
 
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="closeCheckoutForm();">
-            <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("📍 Buyurtmani rasmiylashtirish", "📍 Оформление заказа")}</h3>
-
-              <div>
-                <label class="text-xs font-bold text-gray-600">${tr("Ism va familiyangiz *", "Имя и фамилия *")}</label>
-                <input type="text" id="chk-fullname" oninput="saveCheckoutDraft()" placeholder="Ali Valiyev" class="w-full mt-1 p-2.5 border rounded-xl text-xs">
+          <div class="fc-checkout-overlay" onclick="closeCheckoutForm();">
+            <div class="fc-checkout-sheet" onclick="event.stopPropagation()">
+              <div class="fc-sheet-handle"></div>
+              <div class="fc-checkout-header">
+                <div class="fc-checkout-heading">
+                  <span class="fc-checkout-heading-icon"><i data-lucide="shopping-bag" class="w-5 h-5"></i></span>
+                  <div><h3>${tr('Buyurtmani rasmiylashtirish','Оформление заказа')}</h3><p>${tr("Ma'lumotlarni tekshirib, yetkazib berish va to'lov usulini tanlang", 'Проверьте данные и выберите доставку и оплату')}</p></div>
+                </div>
+                <button type="button" onclick="closeCheckoutForm()" class="fc-checkout-close" aria-label="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-4 h-4"></i></button>
               </div>
 
-              <div>
-                <label class="text-xs font-bold text-gray-600">${tr("Telefon raqamingiz *", "Номер телефона *")}</label>
-                <input type="text" id="chk-phone" oninput="saveCheckoutDraft()" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2.5 border rounded-xl text-xs font-mono">
+              <div class="fc-checkout-body">
+                <section class="fc-checkout-section">
+                  <div class="fc-checkout-section-head"><span><i data-lucide="user-round" class="w-4 h-4"></i></span><div><b>${tr("Mijoz ma'lumotlari",'Данные клиента')}</b><small>${tr("Bog'lanish uchun kerakli ma'lumotlar", 'Данные для связи')}</small></div></div>
+                  <div class="fc-checkout-fields">
+                    <label class="fc-checkout-field"><span>${tr("Ism va familiyangiz *", "Имя и фамилия *")}</span><div class="fc-checkout-input"><i data-lucide="user" class="w-4 h-4"></i><input type="text" id="chk-fullname" oninput="saveCheckoutDraft()" placeholder="Ali Valiyev"></div></label>
+                    <label class="fc-checkout-field"><span>${tr("Telefon raqamingiz *", "Номер телефона *")}</span><div class="fc-checkout-input"><i data-lucide="phone" class="w-4 h-4"></i><input type="text" id="chk-phone" oninput="saveCheckoutDraft()" placeholder="+998 90 123 45 67" class="font-mono"></div></label>
+                  </div>
+                </section>
+
+                <section class="fc-checkout-section">
+                  <div class="fc-checkout-section-head"><span><i data-lucide="map-pin" class="w-4 h-4"></i></span><div><b>${tr('Yetkazib berish','Доставка')}</b><small>${tr('Hudud va yetkazib berish usulini tanlang','Выберите регион и способ доставки')}</small></div></div>
+                  <div class="fc-checkout-fields">
+                    <label class="fc-checkout-field"><span>${tr("Hududni tanlang *", "Выберите регион *")}</span><div class="fc-checkout-select"><i data-lucide="map" class="w-4 h-4"></i><select id="chk-region-key" onchange="handleRegionChange()">${TOP_LEVEL_REGIONS.map(region => `<option value="${escapeHtml(region.id)}">${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</option>`).join('')}</select><i data-lucide="chevron-down" class="w-4 h-4"></i></div></label>
+
+                    <label id="chk-district-field" class="fc-checkout-field"><span>${tr("Tumanni tanlang *", "Выберите район *")}</span><div class="fc-checkout-select"><i data-lucide="navigation" class="w-4 h-4"></i><select id="chk-district" onchange="handleDistrictChange()"><option value="">${tr("— Tanlang —", "— Выберите —")}</option></select><i data-lucide="chevron-down" class="w-4 h-4"></i></div></label>
+
+                    <div class="fc-checkout-field"><span>${tr("Yetkazib berish usuli *", "Способ доставки *")}</span><div id="delivery-method-wrap" class="fc-checkout-choice-grid"></div></div>
+                    <div id="delivery-notice" class="hidden fc-checkout-notice"></div>
+
+                    <label id="chk-address-field" class="fc-checkout-field"><span id="chk-address-label">${tr("Manzil *", "Адрес *")}</span><div class="fc-checkout-input"><i data-lucide="map-pinned" class="w-4 h-4"></i><input type="text" id="chk-address" oninput="saveCheckoutDraft()" placeholder="${tr("Ko'cha, mahalla va uy raqami",'Улица, махалля и номер дома')}"></div></label>
+
+                    <div id="chk-branch-wrap" class="hidden fc-checkout-branch-wrap">
+                      <label class="fc-checkout-field"><span>${tr("Filialni tanlang *", "Выберите филиал *")}</span><div class="fc-checkout-input"><i data-lucide="search" class="w-4 h-4"></i><input type="text" id="chk-branch-search" oninput="filterBranchList(this.value)" placeholder="${tr('Filial yoki tuman nomi bilan qidirish', 'Поиск по названию филиала или района')}"></div></label>
+                      <div id="chk-branch-list" class="fc-checkout-branch-list"></div>
+                      <div id="chk-branch-selected" class="hidden fc-checkout-branch-selected"></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="fc-checkout-section">
+                  <div class="fc-checkout-section-head"><span><i data-lucide="wallet-cards" class="w-4 h-4"></i></span><div><b>${tr("To'lov",'Оплата')}</b><small>${tr("Qulay to'lov usulini tanlang", 'Выберите удобный способ оплаты')}</small></div></div>
+                  <div class="fc-checkout-field"><span>${tr("To'lov turi *", "Способ оплаты *")}</span><div id="pay-method-wrap" class="fc-checkout-choice-grid"></div></div>
+                  <div id="card-payment-details" class="hidden fc-checkout-payment-details"></div>
+                </section>
+
+                <section class="fc-checkout-summary">
+                  <div><span>${tr('Tovarlar summasi', 'Сумма товаров')}</span><b id="checkout-subtotal"></b></div>
+                  <div><span>${tr('Yetkazib berish', 'Доставка')}</span><b id="checkout-delivery-fee"></b></div>
+                  <div class="fc-checkout-summary-total"><span>${tr("Hozir to'lanadigan jami", 'Итого к оплате сейчас')}</span><strong id="checkout-payable-total"></strong></div>
+                </section>
               </div>
 
-              <div>
-                <label class="text-xs font-bold text-gray-600">${tr("Hududni tanlang *", "Выберите регион *")}</label>
-                <select id="chk-region-key" onchange="handleRegionChange()" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-gray-50 font-bold">
-                  ${TOP_LEVEL_REGIONS.map(region => `<option value="${escapeHtml(region.id)}">${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</option>`).join('')}
-                </select>
+              <div class="fc-checkout-footer">
+                <button type="button" onclick="submitOrder()" class="fc-checkout-submit"><i data-lucide="check-circle-2" class="w-5 h-5"></i><span>${tr('Buyurtma berish', 'Оформить заказ')}</span></button>
               </div>
-
-              <div id="chk-district-field">
-                <label class="text-xs font-bold text-gray-600">${tr("Tumanni tanlang *", "Выберите район *")}</label>
-                <select id="chk-district" onchange="handleDistrictChange()" class="w-full mt-1 p-2.5 border rounded-xl text-xs bg-gray-50 font-bold">
-                  <option value="">${tr("— Tanlang —", "— Выберите —")}</option>
-                </select>
-              </div>
-
-              <!-- 19-band: Yetkazib berish usuli endi Viloyat/Tuman'dan KEYIN,
-                   Manzil/Filial'dan OLDIN chiqadi (to'g'ri tartib: Viloyat →
-                   Tuman/Shahar → Usul → Filial). 2-band: #chk-district endi
-                   BARCHA usullar uchun bitta umumiy maydon — renderCheckoutOptions
-                   uni yashirmaydi, faqat manzil/filial maydonlari almashadi. -->
-              <div>
-                <label class="text-xs font-bold text-gray-600">${tr("Yetkazib berish usuli *", "Способ доставки *")}</label>
-                <div id="delivery-method-wrap" class="grid grid-cols-2 gap-2 mt-1"></div>
-              </div>
-
-              <div id="delivery-notice" class="hidden bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-[11px] text-amber-900"></div>
-
-              <div id="chk-address-field">
-                <label id="chk-address-label" class="text-xs font-bold text-gray-600">${tr("Manzil *", "Адрес *")}</label>
-                <input type="text" id="chk-address" oninput="saveCheckoutDraft()" placeholder="${tr("Ko'cha, mahalla va uy raqami",'Улица, махалля и номер дома')}" class="w-full mt-1 p-2.5 border rounded-xl text-xs">
-              </div>
-
-              <div id="chk-branch-wrap" class="hidden space-y-2">
-                <label class="text-xs font-bold text-gray-600">${tr("Filialni tanlang *", "Выберите филиал *")}</label>
-                <input type="text" id="chk-branch-search" oninput="filterBranchList(this.value)" placeholder="${tr('Filial yoki tuman nomi bilan qidirish', 'Поиск по названию филиала или района')}" class="w-full p-2.5 border rounded-xl text-xs">
-                <div id="chk-branch-list" class="max-h-56 overflow-y-auto border rounded-xl divide-y text-xs"></div>
-                <div id="chk-branch-selected" class="hidden bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-xs"></div>
-              </div>
-
-              <div>
-                <label class="text-xs font-bold text-gray-600">${tr("To'lov turi *", "Способ оплаты *")}</label>
-                <div id="pay-method-wrap" class="grid grid-cols-2 gap-2 mt-1"></div>
-              </div>
-
-              <div id="card-payment-details" class="hidden space-y-2"></div>
-
-              <div class="border-t pt-3 space-y-1.5">
-                <div class="flex justify-between"><span>${tr('Tovarlar summasi', 'Сумма товаров')}:</span><b id="checkout-subtotal"></b></div>
-                <div class="flex justify-between"><span>${tr('Yetkazib berish', 'Доставка')}:</span><b id="checkout-delivery-fee"></b></div>
-                <div class="flex justify-between items-center text-base font-black"><span>${tr("Hozir to'lanadigan jami", 'Итого к оплате сейчас')}:</span><span id="checkout-payable-total" class="text-green-600"></span></div>
-              </div>
-
-              <button onclick="submitOrder()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-sm shadow-md">
-                ✅ ${tr('Rasmiylashtirish', 'Оформить')}
-              </button>
             </div>
           </div>
         `;
