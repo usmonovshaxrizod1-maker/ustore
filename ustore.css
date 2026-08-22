@@ -2022,3 +2022,171 @@ html.ustore-dark-theme .fc-product-price-wrap .text-gray-400{color:#8fa0b7!impor
 @media(max-width:360px){.fc-report-tab span{font-size:.47rem}.fc-warehouse-product-row{grid-template-columns:2.25rem minmax(0,1fr) auto .8rem}.fc-warehouse-product-row img{width:2.25rem;height:2.25rem}}
 
 .fc-theme-card.is-selected{border-color:var(--theme-primary)!important}
+
+/* ============================================================
+   ROUND 11 — Qoldiq tree + premium dark + advanced design editor
+   ============================================================ */
+:root{
+  --ustore-secondary-button:#eef2f7;
+  --ustore-panel-bg:#f1f5f9;
+  --ustore-input-bg:#fbfdff;
+  --ustore-header-text:#172033;
+  --ustore-bottomnav-text:#526174;
+  --ustore-border:#e2e8f0;
+  --ustore-secondary-text:#526174;
+  --ustore-muted-text:#7c8a9e;
+  --ustore-success:#16a34a;
+  --ustore-warning:#d97706;
+  --ustore-danger:#dc2626;
+  --fc-success:var(--ustore-success);
+  --fc-warning:var(--ustore-warning);
+  --fc-danger:var(--ustore-danger);
+  --fc-muted:var(--ustore-muted-text);
+  --fc-muted-bg:var(--ustore-panel-bg);
+  --fc-border:var(--ustore-border);
+  --fc-surface:var(--ustore-card-bg);
+}
+
+/* Every design role is now independently themeable. */
+body,#page-container{background:var(--ustore-page-bg)!important;color:var(--ustore-text)!important}
+.bg-white,.fc-card{background-color:var(--ustore-card-bg)!important}
+.bg-gray-50,.bg-gray-100{background-color:var(--ustore-panel-bg)!important}
+.bg-slate-800{background-color:var(--ustore-secondary-button)!important}
+.text-gray-900,.text-gray-800,.text-gray-700{color:var(--ustore-text)!important}
+.text-gray-600,.text-gray-500,.text-slate-600{color:var(--ustore-secondary-text)!important}
+.text-gray-400{color:var(--ustore-muted-text)!important}
+.text-green-600,.text-green-700,.fc-text-success{color:var(--ustore-success)!important}
+.text-amber-600,.text-amber-700,.fc-text-warning{color:var(--ustore-warning)!important}
+.text-red-500,.text-red-600,.text-red-700,.fc-text-danger{color:var(--ustore-danger)!important}
+.border,.border-gray-100,.border-gray-200,.fc-card{border-color:var(--ustore-border)!important}
+input:not([type=color]),textarea,select,.fc-warehouse-search-input,.fc-warehouse-textarea{background:var(--ustore-input-bg)!important;border-color:var(--ustore-border)!important;color:var(--ustore-text)!important}
+input::placeholder,textarea::placeholder{color:var(--ustore-muted-text)!important}
+.ustore-topbar{background:var(--ustore-header-bg)!important;color:var(--ustore-header-text)!important;border-color:var(--ustore-border)!important}
+.ustore-topbar .text-gray-900,.ustore-topbar .text-gray-800,.ustore-topbar .text-gray-700,.ustore-topbar .text-gray-600,.ustore-topbar .text-gray-500{color:var(--ustore-header-text)!important}
+.ustore-bottom-nav{background:var(--ustore-bottomnav-bg)!important;color:var(--ustore-bottomnav-text)!important;border-color:var(--ustore-border)!important}
+.ustore-bottom-nav .text-gray-400,.ustore-bottom-nav .text-gray-500,.ustore-bottom-nav .text-gray-600,.ustore-bottom-nav .text-gray-700{color:var(--ustore-bottomnav-text)!important}
+.fc-btn-secondary,.fc-btn-icon{background:var(--ustore-secondary-button)!important;color:var(--ustore-text)!important;border-color:var(--ustore-border)!important}
+.fc-card-action-menu{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important}
+.fc-card-action-menu button{color:var(--ustore-text)!important}
+.fc-card-action-menu button:active{background:var(--ustore-panel-bg)!important}
+
+/* Catalog page gets the same breadcrumb language as Ombor. */
+.fc-catalog-breadcrumb-wrap{display:flex;align-items:center;gap:.45rem;min-width:0}
+.fc-catalog-breadcrumb-wrap>.fc-cat-nav-btn{flex:0 0 auto}
+.fc-catalog-breadcrumb{flex:1;min-width:0;margin-bottom:0!important;background:var(--ustore-panel-bg)!important;border:1px solid var(--ustore-border)}
+.fc-catalog-breadcrumb button{color:var(--ustore-secondary-text)}
+.fc-catalog-breadcrumb button:last-of-type{color:var(--ustore-primary)}
+
+/* Qoldiq: all categories remain visible as a real hierarchy; clicked category
+   reveals its own products in-place instead of navigating away. */
+.fc-warehouse-tree-browser{padding:.72rem}
+.fc-warehouse-tree-list{display:flex;flex-direction:column;padding:.18rem 0 .1rem;overflow:hidden}
+.fc-warehouse-tree-list>.fc-stock-tree-node+ .fc-stock-tree-node{border-top:1px solid var(--ustore-border)}
+.fc-stock-tree-node{position:relative}
+.fc-stock-tree-node .fc-stock-tree-node{margin-left:.86rem;padding-left:.52rem;border-left:1px dashed color-mix(in srgb,var(--ustore-border) 90%,transparent)}
+.fc-stock-tree-category{width:100%;min-height:2.55rem;display:grid;grid-template-columns:1rem 1.25rem minmax(0,1fr);gap:.36rem;align-items:center;padding:.42rem .46rem;border-radius:.7rem;text-align:left;color:var(--ustore-text);background:transparent}
+.fc-stock-tree-category:active{background:var(--ustore-panel-bg)}
+.fc-stock-tree-category.is-selected{background:color-mix(in srgb,var(--ustore-primary) 14%,var(--ustore-panel-bg));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ustore-primary) 44%,transparent)}
+.fc-stock-tree-caret{display:flex;align-items:center;justify-content:center;color:var(--ustore-muted-text)}
+.fc-stock-tree-folder{display:flex;align-items:center;justify-content:center;color:var(--ustore-primary)}
+.fc-stock-tree-category-copy{display:flex;min-width:0;flex-direction:column}
+.fc-stock-tree-category-copy b{font-size:.69rem;font-weight:850;line-height:1.25;overflow-wrap:anywhere;color:var(--ustore-text)}
+.fc-stock-tree-category-copy small{min-height:.72rem;margin-top:.04rem;font-size:.5rem;line-height:1.2;color:var(--ustore-muted-text)}
+.fc-stock-tree-products{margin:.08rem 0 .18rem 1.6rem;padding-left:.48rem;border-left:2px solid color-mix(in srgb,var(--ustore-primary) 36%,var(--ustore-border));border-radius:.2rem}
+.fc-stock-tree-products .fc-warehouse-product-row{padding:.52rem .3rem;background:color-mix(in srgb,var(--ustore-card-bg) 88%,var(--ustore-panel-bg));border-color:var(--ustore-border)}
+.fc-stock-tree-products .fc-warehouse-product-row:first-child{border-top:1px solid var(--ustore-border)}
+.fc-stock-tree-products .fc-warehouse-product-row:active{background:var(--ustore-panel-bg)}
+.fc-warehouse-breadcrumb{background:var(--ustore-panel-bg)!important;border:1px solid var(--ustore-border)}
+.fc-warehouse-breadcrumb button{color:var(--ustore-secondary-text)}
+.fc-warehouse-breadcrumb button:last-of-type{color:var(--ustore-primary)}
+.fc-warehouse-browser,.fc-warehouse-tabs,.fc-warehouse-threshold,.fc-warehouse-stat,.fc-warehouse-bulk-card,.fc-warehouse-search-card,.fc-warehouse-form-card,.fc-warehouse-tree{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important}
+.fc-warehouse-browser-head h3,.fc-warehouse-heading h2,.fc-warehouse-product-row-copy b{color:var(--ustore-text)!important}
+.fc-warehouse-browser-head p,.fc-warehouse-folder-row-copy small,.fc-warehouse-product-row-copy small{color:var(--ustore-muted-text)!important}
+.fc-warehouse-product-row img,.fc-stock-tree-product-icon{background:var(--ustore-panel-bg)!important}
+.fc-warehouse-product-row strong.is-in{color:var(--ustore-success)!important}
+.fc-warehouse-product-row strong.is-out{color:var(--ustore-danger)!important}
+
+/* Sixth design mode + direct HEX editing. */
+.fc-theme-generator{border-style:dashed}
+.fc-theme-generator-preview{position:relative;display:flex;align-items:center;justify-content:center;color:var(--theme-button);background:linear-gradient(135deg,var(--theme-page),color-mix(in srgb,var(--theme-accent) 20%,var(--theme-card)))}
+.fc-theme-generator-preview>svg{position:relative;z-index:2;filter:drop-shadow(0 2px 5px color-mix(in srgb,var(--theme-text) 18%,transparent))}
+.fc-theme-generator-preview>span{position:absolute;border-radius:50%}
+.fc-theme-generator-preview>span:nth-of-type(1){width:2rem;height:2rem;left:.55rem;top:.62rem;background:var(--theme-primary);opacity:.3}
+.fc-theme-generator-preview>span:nth-of-type(2){width:1.5rem;height:1.5rem;right:.65rem;top:.52rem;background:var(--theme-accent);opacity:.42}
+.fc-theme-generator-preview>span:nth-of-type(3){width:2.5rem;height:.72rem;right:.7rem;bottom:.62rem;background:var(--theme-button);opacity:.32}
+.fc-design-regenerate{min-height:2.55rem;border:1px dashed color-mix(in srgb,var(--ustore-primary) 55%,var(--ustore-border));border-radius:.8rem;background:color-mix(in srgb,var(--ustore-primary) 8%,var(--ustore-card-bg));color:var(--ustore-primary);display:flex;align-items:center;justify-content:center;gap:.4rem;font-size:.63rem;font-weight:850}
+.fc-design-color-list{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important}
+.fc-design-color-row{border-color:var(--ustore-border)!important}
+.fc-design-color-icon{background:var(--ustore-panel-bg)!important;color:var(--ustore-secondary-text)!important}
+.fc-design-color-name{color:var(--ustore-text)!important}
+.fc-design-color-value{display:grid;grid-template-columns:2rem 5.2rem;gap:.36rem;align-items:center}
+.fc-design-hex-input{width:5.2rem!important;height:2rem!important;padding:0 .38rem!important;border:1px solid var(--ustore-border)!important;border-radius:.55rem!important;background:var(--ustore-input-bg)!important;color:var(--ustore-secondary-text)!important;font-family:ui-monospace,SFMono-Regular,Menlo,monospace!important;font-size:.53rem!important;text-transform:uppercase;text-align:center;outline:none}
+.fc-design-hex-input:focus{border-color:var(--ustore-primary)!important;box-shadow:0 0 0 2px color-mix(in srgb,var(--ustore-primary) 14%,transparent)}
+.fc-design-ok{display:flex;align-items:center;gap:.45rem;padding:.65rem .7rem;border:1px solid color-mix(in srgb,var(--ustore-success) 38%,var(--ustore-border));border-radius:.85rem;background:color-mix(in srgb,var(--ustore-success) 8%,var(--ustore-card-bg));color:var(--ustore-success);font-size:.58rem;font-weight:750}
+.fc-design-footer{background:color-mix(in srgb,var(--ustore-page-bg) 92%,transparent)!important;border-color:var(--ustore-border)!important}
+.fc-theme-card{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important}
+.fc-theme-meta b{color:var(--ustore-text)!important}.fc-theme-meta small{color:var(--ustore-muted-text)!important}
+
+/* Approved premium dark: no crushed-black surfaces; cards, panels and inputs are
+   deliberately separated using the selected design roles. */
+html.ustore-dark-theme body,html.ustore-dark-theme #page-container{background:var(--ustore-page-bg)!important;color:var(--ustore-text)!important}
+html.ustore-dark-theme .bg-white,html.ustore-dark-theme .fc-card,html.ustore-dark-theme .fc-warehouse-tabs,html.ustore-dark-theme .fc-warehouse-threshold,html.ustore-dark-theme .fc-warehouse-stat,html.ustore-dark-theme .fc-warehouse-browser,html.ustore-dark-theme .fc-warehouse-bulk-card,html.ustore-dark-theme .fc-warehouse-search-card,html.ustore-dark-theme .fc-warehouse-form-card,html.ustore-dark-theme .fc-warehouse-tree,html.ustore-dark-theme .fc-design-color-list,html.ustore-dark-theme .fc-theme-card{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important}
+html.ustore-dark-theme .text-gray-900,html.ustore-dark-theme .text-gray-800,html.ustore-dark-theme .text-gray-700,html.ustore-dark-theme h1,html.ustore-dark-theme h2,html.ustore-dark-theme h3,html.ustore-dark-theme h4{color:var(--ustore-text)!important}
+html.ustore-dark-theme .text-gray-600,html.ustore-dark-theme .text-gray-500,html.ustore-dark-theme .text-slate-600{color:var(--ustore-secondary-text)!important}
+html.ustore-dark-theme .text-gray-400{color:var(--ustore-muted-text)!important}
+html.ustore-dark-theme .border,html.ustore-dark-theme .border-gray-100,html.ustore-dark-theme .divide-y>*+*{border-color:var(--ustore-border)!important}
+html.ustore-dark-theme .bg-gray-50,html.ustore-dark-theme .bg-gray-100,html.ustore-dark-theme .fc-stock-adjust-current,html.ustore-dark-theme .fc-stock-adjust-head img,html.ustore-dark-theme .fc-warehouse-product-row img{background:var(--ustore-panel-bg)!important}
+html.ustore-dark-theme input:not([type=color]),html.ustore-dark-theme textarea,html.ustore-dark-theme select{background:var(--ustore-input-bg)!important;border-color:var(--ustore-border)!important;color:var(--ustore-text)!important}
+html.ustore-dark-theme input::placeholder,html.ustore-dark-theme textarea::placeholder{color:var(--ustore-muted-text)!important}
+html.ustore-dark-theme .ustore-topbar{background:var(--ustore-header-bg)!important;color:var(--ustore-header-text)!important;border-color:var(--ustore-border)!important}
+html.ustore-dark-theme .ustore-bottom-nav{background:var(--ustore-bottomnav-bg)!important;color:var(--ustore-bottomnav-text)!important;border-color:var(--ustore-border)!important}
+html.ustore-dark-theme .fc-btn-secondary,html.ustore-dark-theme .fc-btn-icon{background:var(--ustore-secondary-button)!important;color:var(--ustore-text)!important;border-color:var(--ustore-border)!important}
+html.ustore-dark-theme .fc-card-action-menu{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important}
+
+@media(max-width:360px){
+  .fc-design-color-value{grid-template-columns:1.9rem 4.6rem}.fc-design-hex-input{width:4.6rem!important;font-size:.49rem!important}
+  .fc-stock-tree-node .fc-stock-tree-node{margin-left:.62rem;padding-left:.38rem}
+  .fc-stock-tree-products{margin-left:1.35rem}
+}
+.fc-catalog-nav-pills{display:flex;align-items:center;gap:.3rem;flex:0 0 auto}
+
+/* ROUND 11 semantic polish: make theme roles actually drive active/soft states. */
+:root{
+  --fc-success-bg:color-mix(in srgb,var(--ustore-success) 10%,var(--ustore-card-bg));
+  --fc-success-border:color-mix(in srgb,var(--ustore-success) 34%,var(--ustore-border));
+  --fc-warning-bg:color-mix(in srgb,var(--ustore-warning) 11%,var(--ustore-card-bg));
+  --fc-warning-border:color-mix(in srgb,var(--ustore-warning) 35%,var(--ustore-border));
+  --fc-danger-bg:color-mix(in srgb,var(--ustore-danger) 10%,var(--ustore-card-bg));
+  --fc-danger-border:color-mix(in srgb,var(--ustore-danger) 34%,var(--ustore-border));
+  --fc-selected:var(--ustore-primary);
+  --fc-selected-bg:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg));
+}
+.bg-blue-50{background:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg))!important}
+.border-blue-200,.border-blue-500,.border-blue-600{border-color:color-mix(in srgb,var(--ustore-primary) 52%,var(--ustore-border))!important}
+.bg-amber-50{background:color-mix(in srgb,var(--ustore-warning) 11%,var(--ustore-card-bg))!important}
+.text-amber-800,.text-amber-900{color:var(--ustore-warning)!important}
+.border-amber-200,.border-amber-300{border-color:color-mix(in srgb,var(--ustore-warning) 38%,var(--ustore-border))!important}
+.bg-red-50,.bg-red-100{background:color-mix(in srgb,var(--ustore-danger) 10%,var(--ustore-card-bg))!important}
+.text-red-800,.text-red-900{color:var(--ustore-danger)!important}
+.border-red-200,.border-red-300{border-color:color-mix(in srgb,var(--ustore-danger) 36%,var(--ustore-border))!important}
+.bg-green-50,.bg-green-100,.bg-emerald-50{background:color-mix(in srgb,var(--ustore-success) 10%,var(--ustore-card-bg))!important}
+.text-green-800,.text-green-900,.text-emerald-600{color:var(--ustore-success)!important}
+.border-green-200,.border-emerald-200{border-color:color-mix(in srgb,var(--ustore-success) 36%,var(--ustore-border))!important}
+
+.fc-warehouse-tab{color:var(--ustore-secondary-text)}
+.fc-warehouse-tab.is-active{background:var(--ustore-button)!important;color:var(--ustore-button-text)!important;box-shadow:0 7px 16px color-mix(in srgb,var(--ustore-button) 25%,transparent)}
+.fc-warehouse-tool-btn,.fc-warehouse-tool-icon{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important;color:var(--ustore-secondary-text)!important}
+.fc-warehouse-tool-btn.is-active,.fc-warehouse-tool-icon.is-active{background:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg))!important;border-color:color-mix(in srgb,var(--ustore-primary) 45%,var(--ustore-border))!important;color:var(--ustore-primary)!important}
+.fc-warehouse-tool-icon.is-warning.is-active{background:color-mix(in srgb,var(--ustore-warning) 10%,var(--ustore-card-bg))!important;border-color:color-mix(in srgb,var(--ustore-warning) 42%,var(--ustore-border))!important;color:var(--ustore-warning)!important}
+.fc-warehouse-tool-icon small{background:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg))!important;color:var(--ustore-primary)!important}
+.fc-warehouse-browser-icon,.fc-warehouse-threshold-icon,.fc-warehouse-stat-icon,.fc-warehouse-section-head>span,.fc-warehouse-folder-row-icon{background:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg))!important;color:var(--ustore-primary)!important}
+.fc-warehouse-threshold-copy b,.fc-warehouse-section-head h3,.fc-warehouse-search-title,.fc-stock-adjust-head h3,.fc-stock-adjust-current b{color:var(--ustore-text)!important}
+.fc-warehouse-threshold-copy small,.fc-warehouse-section-head p,.fc-warehouse-hint,.fc-stock-adjust-field span,.fc-stock-adjust-preview{color:var(--ustore-muted-text)!important}
+.fc-warehouse-threshold-action,.fc-warehouse-catalog-toggle,.fc-stock-adjust-head small,.fc-stock-adjust-preview strong{color:var(--ustore-primary)!important}
+.fc-stock-adjust-stepper button{background:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg))!important;border-color:color-mix(in srgb,var(--ustore-primary) 36%,var(--ustore-border))!important;color:var(--ustore-primary)!important}
+.fc-stock-adjust-stepper input,.fc-stock-adjust-field select{background:var(--ustore-input-bg)!important;border-color:var(--ustore-border)!important;color:var(--ustore-text)!important}
+
+.fc-report-tab,.fc-report-period{color:var(--ustore-secondary-text)!important}
+.fc-report-tab.is-active,.fc-report-period.is-active{background:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg))!important;border-color:color-mix(in srgb,var(--ustore-primary) 38%,var(--ustore-border))!important;color:var(--ustore-primary)!important}
+.fc-report-date-range input{background:var(--ustore-input-bg)!important;border-color:var(--ustore-border)!important;color:var(--ustore-text)!important}
+.fc-report-section-title{color:var(--ustore-text)!important}.fc-report-section-title svg{color:var(--ustore-primary)!important}

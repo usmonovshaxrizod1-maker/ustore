@@ -2635,21 +2635,26 @@
 
     function renderDesignSettingsPage(container) {
       const draft = designDraft || { themeId: 'minimal', colors: {} };
-      const activeColors = designColorsWithDefaults(draft.colors);
-      const issues = findContrastIssues(draft.colors);
+      const activeColors = designColorsWithDefaults(draft.colors, draft.themeId);
+      const issues = findContrastIssues(draft.colors, draft.themeId);
       const themeDescriptions = {
         minimal: tr('Toza va sodda', 'Чистая и простая'),
-        dark: tr("Qorong‘i va zamonaviy", 'Тёмная и современная'),
+        dark: tr('Premium navy — aniq ajraladigan', 'Премиальная navy — чёткие границы'),
         sport: tr('Energiya va dinamika', 'Энергия и динамика'),
         elegant: tr('Nafis va uslubli', 'Элегантная и стильная'),
         bright: tr('Yorqin va iliq', 'Яркая и тёплая'),
       };
-      const colorIcons = { primary: 'circle-dot', accent: 'sparkles', button: 'mouse-pointer-2', pageBg: 'panel-top', cardBg: 'square', headerBg: 'panel-top-open', bottomNavBg: 'panel-bottom', text: 'type' };
+      const colorIcons = {
+        primary:'circle-dot', accent:'sparkles', button:'mouse-pointer-2', buttonText:'type', secondaryButton:'square',
+        pageBg:'panel-top', panelBg:'layers-3', cardBg:'square', inputBg:'search',
+        headerBg:'panel-top-open', headerText:'type', bottomNavBg:'panel-bottom', bottomNavText:'type', border:'box',
+        text:'type', secondaryText:'text', mutedText:'type', success:'circle-check', warning:'triangle-alert', danger:'circle-x'
+      };
       const body = `
         <div class="fc-design-page text-xs">
           <section class="fc-design-section">
             <div class="fc-design-section-title">
-              <div><b>${tr("Tayyor mavzular", "Готовые темы")}</b><small>${tr("Do‘kon ko‘rinishini bir bosishda almashtiring", "Меняйте вид магазина одним нажатием")}</small></div>
+              <div><b>${tr("Tayyor mavzular", "Готовые темы")}</b><small>${tr("5 ta tayyor dizayn yoki avtomatik Dizayn yaratish", "5 готовых тем или автоматическое создание дизайна")}</small></div>
             </div>
             <div class="fc-theme-grid">
               ${Object.entries(DESIGN_THEMES).map(([id, theme]) => `
@@ -2663,11 +2668,17 @@
                   ${draft.themeId === id ? `<span class="fc-theme-check"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>` : ''}
                 </button>
               `).join('')}
+              <button type="button" onclick="generateDesignTheme()" class="fc-theme-card fc-theme-generator ${draft.themeId === 'generated' ? 'is-selected' : ''}" style="--theme-primary:${activeColors.primary};--theme-accent:${activeColors.accent};--theme-button:${activeColors.button};--theme-page:${activeColors.pageBg};--theme-card:${activeColors.cardBg};--theme-text:${activeColors.text};">
+                <div class="fc-theme-preview fc-theme-generator-preview"><i data-lucide="sparkles" class="w-8 h-8"></i><span></span><span></span><span></span></div>
+                <div class="fc-theme-meta"><span class="fc-theme-dot"></span><div><b>${tr('Dizayn yaratish','Создать дизайн')}</b><small>${tr('Ranglarni o‘zi uyg‘un tanlaydi','Автоматически подбирает гармоничные цвета')}</small></div></div>
+                ${draft.themeId === 'generated' ? `<span class="fc-theme-check"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>` : ''}
+              </button>
             </div>
+            ${draft.themeId === 'generated' ? `<button type="button" onclick="generateDesignTheme()" class="fc-design-regenerate"><i data-lucide="refresh-cw" class="w-4 h-4"></i>${tr('Qayta yaratish','Создать другой вариант')}</button>` : ''}
           </section>
 
           <section class="fc-design-section fc-design-colors">
-            <div class="fc-design-section-title"><div><b>${tr("Qo'lda rang tanlash", "Ручной выбор цвета")}</b><small>${tr('Kerak bo‘lsa mavzuni o‘zingiz moslang', 'При необходимости настройте тему вручную')}</small></div></div>
+            <div class="fc-design-section-title"><div><b>${tr("Har bir qism rangini alohida tanlash", "Отдельный цвет для каждой части")}</b><small>${tr('Rang tanlagichdan foydalaning yoki HEX kodni kiriting', 'Используйте палитру или введите HEX-код')}</small></div></div>
             <div class="fc-design-color-list">
               ${DESIGN_COLOR_KEYS.map(key => `
                 <label class="fc-design-color-row">
@@ -2675,8 +2686,7 @@
                   <span class="fc-design-color-name">${DESIGN_COLOR_LABELS[key]}</span>
                   <span class="fc-design-color-value">
                     <input type="color" value="${activeColors[key]}" onchange="setDesignColor('${key}', this.value)" aria-label="${DESIGN_COLOR_LABELS[key]}">
-                    <code>${activeColors[key]}</code>
-                    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    <input class="fc-design-hex-input" type="text" value="${activeColors[key].toUpperCase()}" maxlength="7" spellcheck="false" onchange="setDesignColor('${key}', this.value)" onkeydown="if(event.key==='Enter'){this.blur()}" aria-label="${DESIGN_COLOR_LABELS[key]} HEX">
                   </span>
                 </label>
               `).join('')}
@@ -2688,7 +2698,7 @@
               <i data-lucide="triangle-alert" class="w-4 h-4"></i>
               <div><b>${tr("O'qilishi qiyin bo'lishi mumkin", 'Может быть трудно читать')}</b>${issues.map(i => `<small>${i.pair}: ${i.ratio.toFixed(1)}:1 · ${tr('kerak','нужно')} ${WCAG_AA_RATIO}:1</small>`).join('')}</div>
             </div>
-          ` : ''}
+          ` : `<div class="fc-design-ok"><i data-lucide="shield-check" class="w-4 h-4"></i><span>${tr('Asosiy kontrastlar o‘qishga mos','Основные контрасты подходят для чтения')}</span></div>`}
 
           <div class="fc-design-footer">
             <button onclick="closeDesignSettings()" class="fc-btn fc-btn-secondary">${tr("Bekor qilish", "Отмена")}</button>
@@ -3019,22 +3029,17 @@
       currentVisibleProductIds = paginatedProds.map(p => p.id);
 
       const catAncestors = categoryAncestorChain(adminCatParentId);
-      const breadcrumbHtml = [
-        `<span onclick="adminCatParentId = null; categoryPage=1; render();" class="cursor-pointer hover:underline ${catAncestors.length ? 'text-gray-500' : 'text-blue-600'}">${escapeHtml(uiLang === 'ru' ? 'Главные каталоги' : 'Bosh Kataloglar')}</span>`,
-        ...catAncestors.map((a, i) => `<span class="text-gray-300">/</span><span onclick="adminCatParentId = '${a.id}'; categoryPage=1; render();" class="cursor-pointer hover:underline ${i === catAncestors.length - 1 ? 'text-blue-600' : 'text-gray-500'}">${escapeHtml(a.name)}</span>`)
-      ].join(' ');
+      const breadcrumbHtml = `<div class="fc-warehouse-breadcrumb fc-catalog-breadcrumb">
+        <button type="button" onclick="adminCatParentId=null;categoryPage=1;render();"><i data-lucide="home" class="w-3.5 h-3.5"></i>${tr('Bosh katalog','Главный каталог')}</button>
+        ${catAncestors.map(a => `<i data-lucide="chevron-right" class="w-3 h-3"></i><button type="button" onclick="adminCatParentId='${a.id}';categoryPage=1;render();">${escapeHtml(categoryName(a))}</button>`).join('')}
+      </div>`;
 
       container.innerHTML = `
         <div class="space-y-4">
           <div class="bg-white p-3 rounded-2xl border space-y-2 shadow-sm">
-            <div class="flex items-center justify-between text-xs gap-2">
-              <span class="font-bold flex flex-wrap items-center gap-x-1 gap-y-0.5"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-gray-400 shrink-0"></i> ${breadcrumbHtml}</span>
-              ${adminCatParentId ? `
-                <div class="flex space-x-1 shrink-0">
-                  <button onclick="goBackCatLevel()" class="fc-cat-nav-btn" aria-label="${escapeHtml(tr('Orqaga','Назад'))}" title="${escapeHtml(tr('Orqaga','Назад'))}"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-                  <button onclick="adminCatParentId = null; categoryPage=1; render();" class="fc-cat-nav-btn" aria-label="${escapeHtml(tr('Boshiga','В начало'))}" title="${escapeHtml(tr('Boshiga','В начало'))}"><i data-lucide="home" class="w-4 h-4"></i></button>
-                </div>
-              ` : ''}
+            <div class="fc-catalog-breadcrumb-wrap">
+              ${adminCatParentId ? `<div class="fc-catalog-nav-pills"><button onclick="goBackCatLevel()" class="fc-cat-nav-btn" aria-label="${escapeHtml(tr('Orqaga','Назад'))}" title="${escapeHtml(tr('Orqaga','Назад'))}"><i data-lucide="arrow-left" class="w-4 h-4"></i></button><button onclick="adminCatParentId = null; categoryPage=1; render();" class="fc-cat-nav-btn" aria-label="${escapeHtml(tr('Boshiga','В начало'))}" title="${escapeHtml(tr('Boshiga','В начало'))}"><i data-lucide="home" class="w-4 h-4"></i></button></div>` : ''}
+              ${breadcrumbHtml}
             </div>
 
             ${(isAdminMode && isUserAnAdmin) ? `
@@ -4491,8 +4496,9 @@
       `;
     }
 
-    // ROUND 10: Qoldiq — katalog brauzeri. Birinchi ochilganda faqat bosh kataloglar;
-    // katalog ichiga kirilganda ichki kataloglar va tovarlar. Kirim shu oqimga birlashtirildi.
+    // ROUND 11: Ombor -> Qoldiq endi bitta sahifadagi to'liq daraxt.
+    // Kataloglar doim o'z ierarxiyasida ko'rinadi; katalog bosilganda uning
+    // TO'G'RIDAN-TO'G'RI tovarlari aynan o'sha tugun ostida inline ochiladi.
     function warehouseCategoryChildren(parentId) {
       return categories.filter(c => String(c.parentId || '') === String(parentId || ''))
         .sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0)||categoryName(a).localeCompare(categoryName(b)));
@@ -4509,15 +4515,34 @@
       return out;
     }
     function openWarehouseBrowseCategory(id){ warehouseBrowseCategoryId=id||null; render(); }
+    function toggleWarehouseTreeCategory(id){ warehouseBrowseCategoryId=String(warehouseBrowseCategoryId||'')===String(id||'')?null:(id||null); render(); }
     function warehouseBrowseBack(){ const cur=categories.find(c=>String(c.id)===String(warehouseBrowseCategoryId||'')); warehouseBrowseCategoryId=cur?.parentId||null; render(); }
     function warehouseBrowseRoot(){ warehouseBrowseCategoryId=null; render(); }
     function renderWarehouseBrowseBreadcrumbHtml(){
       const path=warehouseCategoryPath(warehouseBrowseCategoryId);
       return `<div class="fc-warehouse-breadcrumb"><button type="button" onclick="warehouseBrowseRoot()"><i data-lucide="home" class="w-3.5 h-3.5"></i>${tr('Bosh katalog','Главный каталог')}</button>${path.map(c=>`<i data-lucide="chevron-right" class="w-3 h-3"></i><button type="button" onclick="openWarehouseBrowseCategory('${c.id}')">${escapeHtml(categoryName(c))}</button>`).join('')}</div>`;
     }
+    function renderWarehouseTreeCategoryHtml(category, depth=0, seen=new Set()) {
+      if (!category || seen.has(String(category.id))) return '';
+      const nextSeen = new Set(seen); nextSeen.add(String(category.id));
+      const children = warehouseCategoryChildren(category.id);
+      const selected = String(warehouseBrowseCategoryId||'') === String(category.id);
+      const directProducts = selected ? warehouseCategoryProducts(category.id) : [];
+      const directCount = products.filter(p => String(p.categoryId||'')===String(category.id) && p.status!=='DELETED').length;
+      return `<div class="fc-stock-tree-node ${selected?'is-selected':''}" style="--tree-depth:${depth}">
+        <button type="button" onclick="toggleWarehouseTreeCategory('${category.id}')" class="fc-stock-tree-category ${selected?'is-selected':''}">
+          <span class="fc-stock-tree-caret"><i data-lucide="${children.length?'chevron-down':(selected?'chevron-down':'chevron-right')}" class="w-3.5 h-3.5"></i></span>
+          <span class="fc-stock-tree-folder"><i data-lucide="${selected?'folder-open':'folder'}" class="w-4 h-4"></i></span>
+          <span class="fc-stock-tree-category-copy"><b>${escapeHtml(categoryName(category))}</b><small>${children.length ? `${children.length} ${tr('ichki katalog','подкат.')}` : ''}${children.length&&directCount?' · ':''}${directCount ? `${directCount} ${tr('tovar','тов.')}` : ''}</small></span>
+        </button>
+        <div class="fc-stock-tree-children">
+          ${selected && directProducts.length ? `<div class="fc-stock-tree-products">${directProducts.map(p=>renderWarehouseBrowseProductHtml(p)).join('')}</div>` : ''}
+          ${children.map(child=>renderWarehouseTreeCategoryHtml(child,depth+1,nextSeen)).join('')}
+        </div>
+      </div>`;
+    }
     function renderWarehouseUpdateHtml() {
-      const childCats=warehouseCategoryChildren(warehouseBrowseCategoryId);
-      const catProducts=warehouseBrowseCategoryId ? warehouseCategoryProducts(warehouseBrowseCategoryId) : [];
+      const roots=warehouseCategoryChildren(null);
       const currentCat=categories.find(c=>String(c.id)===String(warehouseBrowseCategoryId||''));
       return `
         <div class="fc-warehouse-stack">
@@ -4533,18 +4558,15 @@
             <button onclick="saveBulkStock()" class="fc-btn fc-btn-primary w-full"><i data-lucide="save" class="w-4 h-4"></i>${tr("Barchasini saqlash","Сохранить все")}</button>
           </section>` : ''}
 
-          <section class="fc-warehouse-browser">
+          <section class="fc-warehouse-browser fc-warehouse-tree-browser">
             <div class="fc-warehouse-browser-head">
-              ${warehouseBrowseCategoryId ? `<button type="button" onclick="warehouseBrowseBack()" class="fc-btn fc-btn-icon fc-warehouse-browser-back"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>` : `<span class="fc-warehouse-browser-icon"><i data-lucide="folders" class="w-5 h-5"></i></span>`}
-              <div><h3>${currentCat ? escapeHtml(categoryName(currentCat)) : tr('Kataloglar','Каталоги')}</h3><p>${currentCat ? tr('Ichki katalog yoki tovarni tanlang','Выберите вложенный каталог или товар') : tr('Qoldiqni boshqarish uchun katalogga kiring','Откройте каталог для управления остатками')}</p></div>
+              <span class="fc-warehouse-browser-icon"><i data-lucide="network" class="w-5 h-5"></i></span>
+              <div><h3>${tr('Katalog daraxti','Дерево каталогов')}</h3><p>${currentCat ? `${escapeHtml(categoryName(currentCat))} · ${tr('tovarlar shu yerda ochildi','товары открыты здесь')}` : tr('Katalogni bosing — tovarlari shu daraxtning o‘zida ochiladi','Нажмите каталог — товары откроются прямо в дереве')}</p></div>
             </div>
             ${renderWarehouseBrowseBreadcrumbHtml()}
-            <div class="fc-warehouse-folder-list">
-              ${childCats.map(c=>`<button type="button" onclick="openWarehouseBrowseCategory('${c.id}')" class="fc-warehouse-folder-row"><span class="fc-warehouse-folder-row-icon"><i data-lucide="folder" class="w-5 h-5"></i></span><span class="fc-warehouse-folder-row-copy"><b>${escapeHtml(categoryName(c))}</b><small>${warehouseCategoryChildren(c.id).length} ${tr('ichki katalog','подкат.')}, ${warehouseCategoryProducts(c.id).length} ${tr('tovar','тов.')}</small></span><i data-lucide="chevron-right" class="w-4 h-4"></i></button>`).join('')}
+            <div class="fc-warehouse-tree-list">
+              ${roots.length ? roots.map(c=>renderWarehouseTreeCategoryHtml(c,0,new Set())).join('') : `<div class="fc-empty-state compact"><i data-lucide="folders" class="w-7 h-7"></i><p>${tr('Kataloglar topilmadi','Каталоги не найдены')}</p></div>`}
             </div>
-            ${warehouseBrowseCategoryId ? `<div class="fc-warehouse-product-list">
-              ${catProducts.length ? catProducts.map(p=>renderWarehouseBrowseProductHtml(p)).join('') : (!childCats.length ? `<div class="fc-empty-state compact"><i data-lucide="package-open" class="w-7 h-7"></i><p>${tr('Bu katalogda tovar yo‘q','В этом каталоге нет товаров')}</p></div>` : '')}
-            </div>` : ''}
           </section>
         </div>`;
     }
@@ -5324,23 +5346,27 @@
     }
 
     // ==================== 4-BLOK: DO'KON DIZAYNI ====================
-    const DESIGN_COLOR_KEYS = ['primary', 'accent', 'button', 'pageBg', 'cardBg', 'headerBg', 'bottomNavBg', 'text'];
+    const DESIGN_COLOR_KEYS = ['primary','accent','button','buttonText','secondaryButton','pageBg','panelBg','cardBg','inputBg','headerBg','headerText','bottomNavBg','bottomNavText','border','text','secondaryText','mutedText','success','warning','danger'];
     const DESIGN_COLOR_LABELS = {
-      primary: tr('Asosiy rang', 'Основной цвет'), accent: tr('Urg\'u rangi', 'Акцентный цвет'),
-      button: tr('Tugma rangi', 'Цвет кнопок'), pageBg: tr('Sahifa foni', 'Фон страницы'),
-      cardBg: tr('Karta foni', 'Фон карточек'), headerBg: tr('Header foni', 'Фон шапки'),
-      bottomNavBg: tr("Pastki panel foni", 'Фон нижней панели'), text: tr('Matn rangi', 'Цвет текста'),
+      primary: tr('Asosiy rang','Основной цвет'), accent: tr("Urg'u rangi",'Акцентный цвет'),
+      button: tr('Asosiy tugma','Основная кнопка'), buttonText: tr('Tugma matni','Текст кнопки'), secondaryButton: tr('Ikkinchi tugma','Вторичная кнопка'),
+      pageBg: tr('Sahifa foni','Фон страницы'), panelBg: tr('Ichki panel foni','Фон внутренних панелей'), cardBg: tr('Kartalar foni','Фон карточек'), inputBg: tr('Input / qidiruv foni','Фон полей / поиска'),
+      headerBg: tr('Header foni','Фон шапки'), headerText: tr('Header matni','Текст шапки'), bottomNavBg: tr('Pastki panel foni','Фон нижней панели'), bottomNavText: tr('Pastki panel matni','Текст нижней панели'),
+      border: tr('Chegara / border','Границы'), text: tr('Asosiy matn','Основной текст'), secondaryText: tr('Ikkinchi matn','Вторичный текст'), mutedText: tr('Xira matn','Приглушённый текст'),
+      success: tr('Muvaffaqiyat / qoldiq','Успех / остаток'), warning: tr('Ogohlantirish','Предупреждение'), danger: tr('Xato / bekor','Ошибка / отмена'),
     };
-    // 4.1: kamida 5 ta tayyor mavzu. Har biri barcha 8 rolni belgilaydi.
+    // ROUND 11: Dark foydalanuvchi ma'qullagan premium navy/slate ko'rinishga
+    // yangilandi. Har bir preset barcha yangi semantik rang rollarini beradi.
     const DESIGN_THEMES = {
-      minimal: { label: tr('Minimal', 'Минимал'), colors: { primary: '#2563eb', accent: '#2563eb', button: '#2563eb', pageBg: '#f6f8fb', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#1f2937' } },
-      dark: { label: tr('Dark', 'Тёмная'), colors: { primary: '#60a5fa', accent: '#22d3ee', button: '#2563eb', pageBg: '#0b1220', cardBg: '#111c2e', headerBg: '#0d1728', bottomNavBg: '#0d1728', text: '#f8fafc' } },
-      sport: { label: tr('Sport', 'Спорт'), colors: { primary: '#1d4ed8', accent: '#f97316', button: '#2563eb', pageBg: '#f5f8fc', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#172033' } },
-      elegant: { label: tr('Elegant', 'Элегант'), colors: { primary: '#6d28d9', accent: '#c084fc', button: '#7c3aed', pageBg: '#faf7ff', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#2e1065' } },
-      bright: { label: tr('Bright', 'Яркая'), colors: { primary: '#0f766e', accent: '#f59e0b', button: '#0d9488', pageBg: '#f3faf9', cardBg: '#ffffff', headerBg: '#ffffff', bottomNavBg: '#ffffff', text: '#17324d' } },
+      minimal: { label: tr('Minimal', 'Минимал'), colors: { primary:'#2563eb', accent:'#0ea5e9', button:'#2563eb', buttonText:'#ffffff', secondaryButton:'#eef2f7', pageBg:'#f6f8fb', panelBg:'#f1f5f9', cardBg:'#ffffff', inputBg:'#fbfdff', headerBg:'#ffffff', headerText:'#172033', bottomNavBg:'#ffffff', bottomNavText:'#526174', border:'#e2e8f0', text:'#1f2937', secondaryText:'#526174', mutedText:'#7c8a9e', success:'#16a34a', warning:'#d97706', danger:'#dc2626' } },
+      dark: { label: tr('Dark', 'Тёмная'), colors: { primary:'#60a5fa', accent:'#38bdf8', button:'#2f6fed', buttonText:'#ffffff', secondaryButton:'#29415f', pageBg:'#15253c', panelBg:'#192d48', cardBg:'#203652', inputBg:'#182b45', headerBg:'#10243b', headerText:'#f8fafc', bottomNavBg:'#10243b', bottomNavText:'#c7d5e6', border:'#3a5574', text:'#f8fafc', secondaryText:'#c8d5e5', mutedText:'#98abc1', success:'#35c96f', warning:'#f2ad42', danger:'#f05b61' } },
+      sport: { label: tr('Sport', 'Спорт'), colors: { primary:'#1d4ed8', accent:'#f97316', button:'#2563eb', buttonText:'#ffffff', secondaryButton:'#eaf0f8', pageBg:'#f5f8fc', panelBg:'#eef4fb', cardBg:'#ffffff', inputBg:'#f8fbff', headerBg:'#ffffff', headerText:'#172033', bottomNavBg:'#ffffff', bottomNavText:'#526174', border:'#dbe5f0', text:'#172033', secondaryText:'#526174', mutedText:'#7b8ca1', success:'#16a34a', warning:'#d97706', danger:'#dc2626' } },
+      elegant: { label: tr('Elegant', 'Элегант'), colors: { primary:'#6d28d9', accent:'#c084fc', button:'#7c3aed', buttonText:'#ffffff', secondaryButton:'#f0e8fb', pageBg:'#faf7ff', panelBg:'#f5effc', cardBg:'#ffffff', inputBg:'#fcfaff', headerBg:'#ffffff', headerText:'#2e1065', bottomNavBg:'#ffffff', bottomNavText:'#65547b', border:'#e8ddf3', text:'#2e1065', secondaryText:'#65547b', mutedText:'#8f7ca5', success:'#15803d', warning:'#b45309', danger:'#b91c1c' } },
+      bright: { label: tr('Bright', 'Яркая'), colors: { primary:'#0f766e', accent:'#f59e0b', button:'#0d9488', buttonText:'#ffffff', secondaryButton:'#e6f4f2', pageBg:'#f3faf9', panelBg:'#eaf6f4', cardBg:'#ffffff', inputBg:'#f8fdfc', headerBg:'#ffffff', headerText:'#17324d', bottomNavBg:'#ffffff', bottomNavText:'#4b6678', border:'#d8e9e6', text:'#17324d', secondaryText:'#4b6678', mutedText:'#71889a', success:'#15803d', warning:'#c26a05', danger:'#c24145' } },
     };
 
     // ---- 4.3: WCAG kontrast hisoblash ----
+    // ROUND 11 rang generatori ham aynan shu tekshiruvlardan foydalanadi.
     function hexToRgb(hex) {
       const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
       if (!m) return null;
@@ -5362,7 +5388,6 @@
       const lighter = Math.max(l1, l2), darker = Math.min(l1, l2);
       return (lighter + 0.05) / (darker + 0.05);
     }
-    // 4.3: tugma/header/pastki panel uchun avtomatik o'qiladigan matn rangi.
     function readableTextColor(bgHex) {
       const white = contrastRatio(bgHex, '#ffffff');
       const black = contrastRatio(bgHex, '#000000');
@@ -5370,37 +5395,74 @@
     }
     const WCAG_AA_RATIO = 4.5;
 
-    function designColorsWithDefaults(colors) {
-      const base = DESIGN_THEMES.minimal.colors;
+    function normalizeDesignHex(value) {
+      let v=String(value||'').trim();
+      if (/^[0-9a-f]{6}$/i.test(v)) v='#'+v;
+      if (/^#[0-9a-f]{3}$/i.test(v)) v='#'+v.slice(1).split('').map(ch=>ch+ch).join('');
+      return /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null;
+    }
+    function hslToHex(h,s,l) {
+      h=((Number(h)%360)+360)%360; s=Math.max(0,Math.min(100,Number(s)))/100; l=Math.max(0,Math.min(100,Number(l)))/100;
+      const c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2; let r=0,g=0,b=0;
+      if(h<60){r=c;g=x}else if(h<120){r=x;g=c}else if(h<180){g=c;b=x}else if(h<240){g=x;b=c}else if(h<300){r=x;b=c}else{r=c;b=x}
+      const hx=n=>Math.round((n+m)*255).toString(16).padStart(2,'0'); return `#${hx(r)}${hx(g)}${hx(b)}`;
+    }
+    function randomBetween(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+
+    function designColorsWithDefaults(colors, themeId = null) {
+      const base = DESIGN_THEMES[themeId]?.colors || DESIGN_THEMES.minimal.colors;
       const merged = {};
-      for (const key of DESIGN_COLOR_KEYS) merged[key] = (colors && colors[key]) || base[key];
+      for (const key of DESIGN_COLOR_KEYS) merged[key] = normalizeDesignHex(colors && colors[key]) || base[key];
       return merged;
     }
 
-    // 4.3: saqlashdan oldin o'qilmaydigan kombinatsiyalarni topadi (masalan
-    // oq tugma + oq matn). Matn/fon juftlari WCAG AA (4.5:1) bo'yicha tekshiriladi.
-    function findContrastIssues(colors) {
-      const c = designColorsWithDefaults(colors);
-      const issues = [];
-      if (contrastRatio(c.text, c.pageBg) < WCAG_AA_RATIO) issues.push({ pair: tr("Matn / Sahifa foni", 'Текст / Фон страницы'), ratio: contrastRatio(c.text, c.pageBg) });
-      if (contrastRatio(c.text, c.cardBg) < WCAG_AA_RATIO) issues.push({ pair: tr('Matn / Karta foni', 'Текст / Фон карточек'), ratio: contrastRatio(c.text, c.cardBg) });
+    function findContrastIssues(colors, themeId = null) {
+      const c = designColorsWithDefaults(colors, themeId);
+      const issues=[];
+      if (contrastRatio(c.text, c.pageBg) < WCAG_AA_RATIO) issues.push({ pair:tr('Matn / Sahifa foni','Текст / Фон страницы'), ratio:contrastRatio(c.text,c.pageBg) });
+      if (contrastRatio(c.text, c.cardBg) < WCAG_AA_RATIO) issues.push({ pair:tr('Matn / Karta foni','Текст / Фон карточек'), ratio:contrastRatio(c.text,c.cardBg) });
+      if (contrastRatio(c.secondaryText, c.cardBg) < WCAG_AA_RATIO) issues.push({ pair:tr('Ikkinchi matn / Karta','Вторичный текст / Карточка'), ratio:contrastRatio(c.secondaryText,c.cardBg) });
+      if (contrastRatio(c.buttonText, c.button) < WCAG_AA_RATIO) issues.push({ pair:tr('Tugma matni / Tugma','Текст кнопки / Кнопка'), ratio:contrastRatio(c.buttonText,c.button) });
+      if (contrastRatio(c.headerText, c.headerBg) < WCAG_AA_RATIO) issues.push({ pair:tr('Header matni / Header','Текст шапки / Шапка'), ratio:contrastRatio(c.headerText,c.headerBg) });
+      if (contrastRatio(c.bottomNavText, c.bottomNavBg) < WCAG_AA_RATIO) issues.push({ pair:tr('Pastki panel matni / Fon','Текст нижней панели / Фон'), ratio:contrastRatio(c.bottomNavText,c.bottomNavBg) });
       return issues;
     }
 
-    // 4.6: bitta joyda qo'llanadi — Telegram Mini App va oddiy web'da bir xil
-    // ishlaydi, chunki bu faqat CSS custom property'larni yangilaydi.
-    function applyDesignColors(colors) {
-      const c = designColorsWithDefaults(colors);
+    function buildGeneratedDesignColors() {
+      const hue=randomBetween(0,359), accentHue=(hue+randomBetween(35,85))%360;
+      const isDark=Math.random()<0.55;
+      if(isDark){
+        const pageBg=hslToHex(hue,30,16), panelBg=hslToHex(hue,32,20), cardBg=hslToHex(hue,31,24), inputBg=hslToHex(hue,32,19), headerBg=hslToHex(hue,36,13), bottomNavBg=hslToHex(hue,36,14);
+        const button=hslToHex(hue,76,57);
+        return { primary:hslToHex(hue,86,70), accent:hslToHex(accentHue,82,64), button, buttonText:readableTextColor(button), secondaryButton:hslToHex(hue,28,29), pageBg, panelBg, cardBg, inputBg, headerBg, headerText:'#f8fafc', bottomNavBg, bottomNavText:'#d5dfeb', border:hslToHex(hue,25,38), text:'#f8fafc', secondaryText:'#d1dbe7', mutedText:'#a4b4c7', success:hslToHex(145,62,55), warning:hslToHex(39,84,62), danger:hslToHex(358,76,66) };
+      }
+      const button=hslToHex(hue,70,45);
+      return { primary:hslToHex(hue,72,42), accent:hslToHex(accentHue,78,48), button, buttonText:readableTextColor(button), secondaryButton:hslToHex(hue,30,93), pageBg:hslToHex(hue,28,97), panelBg:hslToHex(hue,28,94), cardBg:'#ffffff', inputBg:hslToHex(hue,25,98), headerBg:'#ffffff', headerText:hslToHex(hue,38,20), bottomNavBg:'#ffffff', bottomNavText:hslToHex(hue,25,34), border:hslToHex(hue,22,86), text:hslToHex(hue,38,19), secondaryText:hslToHex(hue,24,34), mutedText:hslToHex(hue,17,45), success:hslToHex(145,62,36), warning:hslToHex(38,82,39), danger:hslToHex(358,66,45) };
+    }
+
+    function applyDesignColors(colors, themeId = null) {
+      const c = designColorsWithDefaults(colors, themeId);
       const root = document.documentElement.style;
       root.setProperty('--ustore-primary', c.primary);
       root.setProperty('--ustore-accent', c.accent);
       root.setProperty('--ustore-button', c.button);
-      root.setProperty('--ustore-button-text', readableTextColor(c.button));
+      root.setProperty('--ustore-button-text', c.buttonText || readableTextColor(c.button));
+      root.setProperty('--ustore-secondary-button', c.secondaryButton);
       root.setProperty('--ustore-page-bg', c.pageBg);
+      root.setProperty('--ustore-panel-bg', c.panelBg);
       root.setProperty('--ustore-card-bg', c.cardBg);
+      root.setProperty('--ustore-input-bg', c.inputBg);
       root.setProperty('--ustore-header-bg', c.headerBg);
+      root.setProperty('--ustore-header-text', c.headerText);
       root.setProperty('--ustore-bottomnav-bg', c.bottomNavBg);
+      root.setProperty('--ustore-bottomnav-text', c.bottomNavText);
+      root.setProperty('--ustore-border', c.border);
       root.setProperty('--ustore-text', c.text);
+      root.setProperty('--ustore-secondary-text', c.secondaryText);
+      root.setProperty('--ustore-muted-text', c.mutedText);
+      root.setProperty('--ustore-success', c.success);
+      root.setProperty('--ustore-warning', c.warning);
+      root.setProperty('--ustore-danger', c.danger);
       const dark = (relLuminance(c.pageBg) ?? 1) < 0.18;
       document.documentElement.classList.toggle('ustore-dark-theme', dark);
     }
@@ -5411,7 +5473,7 @@
       openPage('DESIGN_SETTINGS');
     }
     function closeDesignSettings() {
-      applyDesignColors(designSettings.colors); // bekor qilinsa — saqlangan holatga qaytariladi
+      applyDesignColors(designSettings.colors, designSettings.themeId);
       designDraft = null;
       closePage();
     }
@@ -5420,33 +5482,49 @@
       if (!theme) return;
       designDraft.themeId = themeId;
       designDraft.colors = { ...theme.colors };
-      applyDesignColors(designDraft.colors); // 4.1: tugmani bosganda darhol preview
+      applyDesignColors(designDraft.colors);
       render();
+    }
+    function generateDesignTheme() {
+      if (!designDraft) designDraft={themeId:'generated',colors:{}};
+      let colors=buildGeneratedDesignColors();
+      // Generator yomon kontrast bersa 12 martagacha qayta urinadi.
+      for(let i=0;i<12 && findContrastIssues(colors).length;i++) colors=buildGeneratedDesignColors();
+      designDraft.themeId='generated';
+      designDraft.colors=colors;
+      applyDesignColors(colors);
+      render();
+      showActionToast(tr('✨ Yangi dizayn yaratildi — yoqsa Saqlashni bosing','✨ Новый дизайн создан — если нравится, нажмите Сохранить'),'success',1800);
     }
     function setDesignColor(key, value) {
       if (!DESIGN_COLOR_KEYS.includes(key)) return;
+      const normalized=normalizeDesignHex(value);
+      if(!normalized){ showActionToast(tr("HEX rang noto'g'ri",'Неверный HEX-цвет'),'error',1500); render(); return; }
+      if(!designDraft) designDraft={themeId:'custom',colors:{}};
+      const baseThemeId = designDraft.themeId;
+      designDraft.colors = { ...designColorsWithDefaults(designDraft.colors, baseThemeId), [key]: normalized };
       designDraft.themeId = 'custom';
-      designDraft.colors = { ...designDraft.colors, [key]: value };
       applyDesignColors(designDraft.colors);
       render();
     }
     async function saveDesignSettings() {
-      const issues = findContrastIssues(designDraft.colors);
+      if(!designDraft) return;
+      const issues = findContrastIssues(designDraft.colors, designDraft.themeId);
       if (issues.length) {
         const msg = issues.map(i => `${i.pair}: ${i.ratio.toFixed(1)}:1 (kerak ${WCAG_AA_RATIO}:1)`).join('\n');
         if (!confirm(tr(`⚠️ Ba'zi rang juftlari o'qilishi qiyin bo'lishi mumkin:\n${msg}\n\nBaribir saqlaysizmi?`, `⚠️ Некоторые сочетания цветов трудно читать:\n${msg}\n\nВсё равно сохранить?`))) return;
       }
       showActionToast(tr('⏳ Dizayn saqlanmoqda...', '⏳ Дизайн сохраняется...'), 'saving');
       try {
-        const result = await callApi('set_design_settings', { themeId: designDraft.themeId, colors: designDraft.colors });
+        const result = await callApi('set_design_settings', { themeId: designDraft.themeId, colors: designColorsWithDefaults(designDraft.colors, designDraft.themeId) });
         designSettings = result.designSettings;
-        applyDesignColors(designSettings.colors);
+        applyDesignColors(designSettings.colors, designSettings.themeId);
         designDraft = null;
         closePage();
         showActionToast(tr('✅ Dizayn saqlandi', '✅ Дизайн сохранён'), 'success', 1500);
       } catch (e) {
         console.error(e);
-        applyDesignColors(designSettings.colors);
+        applyDesignColors(designSettings.colors, designSettings.themeId);
         showActionToast(tr('❌ Dizayn saqlanmadi', '❌ Дизайн не сохранён'), 'error', 1800);
         alert(tr('❌ Xatolik: ', '❌ Ошибка: ') + (e.message || e));
       }
@@ -9718,7 +9796,7 @@
         clickAccessGranted = bootData.clickAccessGranted === true;
         fulfillmentConfig = commerce.normalizeConfig(bootData.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
         designSettings = bootData.designSettings || { themeId: 'minimal', colors: {} };
-        applyDesignColors(designSettings.colors);
+        applyDesignColors(designSettings.colors, designSettings.themeId);
         if (bootData.profile?.phone) {
           registeredUser = { firstName: bootData.profile.firstName || '', lastName: bootData.profile.lastName || '', phone: bootData.profile.phone };
           currentUser.firstName = registeredUser.firstName; currentUser.lastName = registeredUser.lastName; currentUser.phone = registeredUser.phone;
