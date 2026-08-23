@@ -276,7 +276,7 @@
       return;
     }
     if (loading) {
-      app.innerHTML = `<div class="plat-boot"><div class="plat-boot-mark">U</div><div class="plat-boot-title">UStorE</div><div class="plat-boot-spinner"></div><p>Yuklanmoqda...</p></div>`;
+      app.innerHTML = `<div class="wrap"><header class="top"><h1>UStorE</h1></header><p class="muted">Yuklanmoqda...</p></div>`;
       return;
     }
     if (bootError) {
@@ -301,14 +301,8 @@
   function renderChrome(bodyHtml) {
     return `
       <div class="plat-header">
-        <div class="plat-brand">
-          <span class="plat-brand-mark">U</span>
-          <span class="plat-brand-copy">
-            <span class="plat-header-title">${isAdminMode ? 'UStorE Admin' : 'UStorE'}</span>
-            <span class="plat-header-subtitle">${isAdminMode ? 'Platform boshqaruvi' : "E-do'kon platformasi"}</span>
-          </span>
-        </div>
-        <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">${pIcon('user', 18)}</button>
+        <div class="plat-header-title">${isAdminMode ? 'UStorE Admin' : 'UStorE'}</div>
+        <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">${pIcon('user', 17)}</button>
       </div>
       <div id="plat-role-popover" class="hidden plat-role-popover"></div>
       <div class="plat-content">${bodyHtml}</div>
@@ -555,14 +549,11 @@
   function renderLandingHero() {
     return `
       <div class="plat-hero">
-        <div class="plat-hero-kicker">${pIcon('bolt', 14)} Telegram ichida tayyor e-do'kon</div>
         <h1 class="plat-hero-title">UStorE</h1>
         <p class="plat-hero-sub">Telegram'da o'z e-do'koningizni oching</p>
         <p class="plat-hero-desc">Mahsulotlaringizni soting, buyurtmalarni qabul qiling, omborni boshqaring — barchasi bitta tizimda.</p>
-        <div class="plat-hero-actions">
-          <button class="primary" onclick="openPage('TARIFFS')">${pIcon('rocket', 16)} Obuna sotib olish</button>
-          <button class="secondary" onclick="document.getElementById('plat-why-ustore').scrollIntoView({behavior:'smooth'})">${pIcon('play', 14)} Imkoniyatlarni ko'rish</button>
-        </div>
+        <button class="primary" onclick="openPage('TARIFFS')">${pIcon('rocket', 16)} Obuna sotib olish</button>
+        <button class="secondary" onclick="document.getElementById('plat-why-ustore').scrollIntoView({behavior:'smooth'})">${pIcon('play', 14)} Imkoniyatlarni ko'rish</button>
       </div>
 
       <div id="plat-why-ustore">
@@ -643,13 +634,15 @@
   // xil kartani (renderOneTariffCard) qayta ishlatadi.
   function renderOneTariffCard(t) {
     return `
-      <div class="plat-tariff-card ${flowTariffId === t.id ? 'selected' : ''} ${t.isPopular ? 'popular' : ''}">
+      <div class="plat-tariff-card ${flowTariffId === t.id ? 'selected' : ''}">
         ${t.isPopular ? '<span class="plat-tariff-badge">⭐ Ommabop</span>' : ''}
         <div class="plat-tariff-name">${escapeHtml(t.name)}</div>
+        <div class="plat-tariff-limit">${limitLabel(t.productLimit)}</div>
         <div class="plat-tariff-price">${money(t.price)}<span>/oy</span></div>
-        <div class="plat-tariff-meta"><div><span>Mahsulot limiti</span><b>${limitLabel(t.productLimit)}</b></div><div><span>Obuna muddati</span><b>30 kun</b></div></div>
-        <button class="primary plat-small-btn" onclick="selectTariffAndContinue('${t.id}')">Tarifni tanlash</button>
-      </div>`;
+        <div class="plat-tariff-limit">30 kun</div>
+        <button class="primary plat-small-btn" style="width:100%; margin-top:10px" onclick="selectTariffAndContinue('${t.id}')">Tarifni tanlash</button>
+      </div>
+    `;
   }
   function renderTariffCards(compact) {
     if (!tariffs.length) return '<p class="empty">Hozircha tarif mavjud emas.</p>';
@@ -684,8 +677,8 @@
     const tariff = tariffs.find((t) => t.id === flowTariffId);
     return `
       ${tariff ? `<div class="card plat-summary-card"><b>${escapeHtml(tariff.name)}</b> — ${money(tariff.price)}/oy · ${limitLabel(tariff.productLimit)}</div>` : ''}
-      <button class="plat-choice-btn" onclick="chooseNewShop()"><span class="plat-choice-icon">🆕</span><span><b>Yangi do'kon ochaman</b><small>Yangi Telegram do'kon uchun obuna</small></span></button>
-      ${myShops.length ? `<button class="plat-choice-btn" onclick="chooseUpgrade()"><span class="plat-choice-icon">⬆️</span><span><b>Mavjud do'konim tarifini o'zgartiraman</b><small>Ulangan do'kon uchun tarifni yangilash</small></span></button>` : `<p class="muted" style="margin-top:10px">Sizda hozircha ulangan do'kon yo'q — faqat yangi do'kon ochish mumkin.</p>`}
+      <button class="plat-choice-btn" onclick="chooseNewShop()">🆕 Yangi do'kon ochaman</button>
+      ${myShops.length ? `<button class="plat-choice-btn" onclick="chooseUpgrade()">⬆️ Mavjud do'konim tarifini o'zgartiraman</button>` : `<p class="muted" style="margin-top:10px">Sizda hozircha ulangan do'kon yo'q — faqat yangi do'kon ochish mumkin.</p>`}
     `;
   }
   function chooseNewShop() {
@@ -732,24 +725,24 @@
       return '<p class="muted">Yuklanmoqda...</p>';
     }
     return `
-      ${tariff ? `<div class="card plat-summary-card plat-payment-summary"><span class="plat-payment-summary-label">Tanlangan tarif</span><b>${escapeHtml(tariff.name)}</b><span>To'lov summasi: <strong>${money(tariff.price)}</strong></span></div>` : ''}
-      <div class="card plat-payment-card">
-        <div class="plat-card-title-row"><div><h2>To'lov kartasi</h2><p class="muted">Summani shu kartaga o'tkazing</p></div><span class="plat-secure-chip">${pIcon('lock', 13)} To'lov</span></div>
+      ${tariff ? `<div class="card plat-summary-card"><b>${escapeHtml(tariff.name)}</b><br>To'lov summasi: <b>${money(tariff.price)}</b></div>` : ''}
+      <div class="card">
+        <h2>To'lov kartasi</h2>
         <div class="plat-card-number-row">
           <span id="plat-card-number" class="plat-card-number">${escapeHtml(paymentInfo.cardNumber || 'Karta raqami hali kiritilmagan')}</span>
           ${paymentInfo.cardNumber ? `<button class="plat-copy-btn" onclick="copyPlatformCardNumber()">📋 Nusxalash</button>` : ''}
         </div>
-        ${paymentInfo.cardHolder ? `<p class="muted plat-card-holder">${escapeHtml(paymentInfo.cardHolder)}</p>` : ''}
+        ${paymentInfo.cardHolder ? `<p class="muted">${escapeHtml(paymentInfo.cardHolder)}</p>` : ''}
       </div>
-      <div class="card plat-upload-card">
-        <div class="plat-card-title-row"><div><h2>To'lov chekini yuboring</h2><p class="muted">JPG, PNG yoki WebP · 6 MB gacha</p></div></div>
+      <div class="card">
+        <h2>To'lov chekini yuboring</h2>
         <input type="file" id="plat-receipt-input" accept="image/*" class="hidden" onchange="onReceiptPicked(event)">
         <input type="file" id="plat-receipt-input-files" class="hidden" onchange="onReceiptPicked(event)">
-        <div class="plat-upload-actions">
-          <button class="secondary" onclick="document.getElementById('plat-receipt-input').click()">🖼 Galereyadan tanlash</button>
-          <button class="secondary" onclick="document.getElementById('plat-receipt-input-files').click()">📁 Fayllardan tanlash</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-receipt-input').click()">🖼 Galereyadan tanlash</button>
+          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-receipt-input-files').click()">📁 Fayllardan tanlash</button>
         </div>
-        ${receiptPreviewUrl ? `<div class="plat-receipt-wrap"><img src="${receiptPreviewUrl}" class="plat-receipt-preview"><span class="plat-receipt-ready">✓ Chek tanlandi</span></div>` : `<div class="plat-upload-hint">Chekni tanlaganingizdan keyin shu yerda ko'rinadi.</div>`}
+        ${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" class="plat-receipt-preview">` : ''}
         ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
       </div>
       <div class="card">
