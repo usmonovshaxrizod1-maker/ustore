@@ -2178,10 +2178,7 @@
       const flagBtn = document.getElementById('lang-flag-btn');
       if (flagBtn) flagBtn.innerText = uiLang === 'uz' ? '🇷🇺' : '🇺🇿';
       const cartBtn = document.getElementById('header-cart-btn');
-      if (cartBtn) {
-        cartBtn.classList.toggle('hidden', isAdminMode && isUserAnAdmin);
-        cartBtn.classList.toggle('is-current', !activePage && currentTab === 'cart');
-      }
+      if (cartBtn) cartBtn.classList.toggle('hidden', isAdminMode && isUserAnAdmin);
       const personBtn = document.getElementById('header-person-btn');
       if (personBtn) {
         // Oddiy user Profilga pastki menyudan kiradi; tepada foydasiz odamcha ko'rinmaydi.
@@ -2191,10 +2188,7 @@
       // Sozlama (⚙️) tugmasi faqat admin uchun — oddiy userga bosilganda hech
       // narsa qilmaydigan "o'lik" icon ko'rsatmaslik uchun.
       const settingsBtn = document.getElementById('header-settings-btn');
-      if (settingsBtn) {
-        settingsBtn.classList.toggle('hidden', !(isAdminMode && isUserAnAdmin));
-        settingsBtn.classList.toggle('is-current', ['SETTINGS','DESIGN_SETTINGS','DELIVERY_SETTINGS','PAYMENT_SETTINGS','LEGAL_SETTINGS'].includes(activePage));
-      }
+      if (settingsBtn) settingsBtn.classList.toggle('hidden', !(isAdminMode && isUserAnAdmin));
     }
 
     // 20-band: Profildagi katta "rejim almashtirish" tugmasi o'rniga headerdagi
@@ -2846,14 +2840,11 @@
       const homeFilterActive = isCategoryFilterActive();
       container.innerHTML = `
         <div class="space-y-4">
-          <div class="fc-home-tools">
-            <div class="fc-home-search">
-              <i data-lucide="search" class="fc-home-search-icon w-5 h-5"></i>
-              <input type="text" id="search-input" value="${escapeHtml(homeSearchQuery)}" oninput="handleSearchDebounced(); syncHomeSearchClear();" placeholder="${escapeHtml(searchPlaceholderText())}"
-                class="fc-home-search-input w-full bg-white pl-10 pr-10 py-3 rounded-2xl border border-gray-200 text-sm shadow-sm outline-none" autocomplete="off" enterkeyhint="search">
-              <button type="button" id="home-search-clear" onclick="clearHomeSearch()" class="fc-home-search-clear ${homeSearchQuery ? '' : 'hidden'}" aria-label="${escapeHtml(tr('Qidiruvni tozalash','Очистить поиск'))}" title="${escapeHtml(tr('Qidiruvni tozalash','Очистить поиск'))}">
-                <i data-lucide="x" class="w-4 h-4"></i>
-              </button>
+          <div class="flex items-center gap-2">
+            <div class="relative flex-1">
+              <input type="text" id="search-input" value="${escapeHtml(homeSearchQuery)}" oninput="handleSearchDebounced()" placeholder="${escapeHtml(searchPlaceholderText())}"
+                class="w-full bg-white pl-10 pr-4 py-3 rounded-2xl border border-gray-200 text-sm shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              <i data-lucide="search" class="w-5 h-5 text-gray-400 absolute left-3 top-3.5"></i>
             </div>
             <button onclick="openCategoryFilterModal()" title="${tr('Filtr','Фильтр')}" aria-pressed="${homeFilterActive ? 'true' : 'false'}" class="fc-filter-launch ${homeFilterActive ? 'is-active' : ''}">
               <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>${homeFilterActive ? '<span class="fc-filter-active-dot"></span>' : ''}
@@ -2862,9 +2853,8 @@
           ${renderActiveFilterChipsHtml()}
 
           ${(isAdminMode && isUserAnAdmin) ? `
-            <div class="fc-admin-context" role="status">
-              <span class="fc-admin-context-icon"><i data-lucide="shield-check" class="w-4 h-4"></i></span>
-              <div><b>${tr('Admin rejimi','Режим администратора')}</b><small>${tr('Bosh sahifani boshqaryapsiz','Вы управляете главной страницей')}</small></div>
+            <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-xs font-bold text-amber-900 shadow-sm flex items-center justify-between">
+              <span>${tr("🛡️ Admin rejimi: Bosh sahifa", "🛡️ Режим администратора: Главная")}</span>
             </div>
           ` : ''}
 
@@ -2879,23 +2869,6 @@
     function handleSearchDebounced() {
       clearTimeout(searchDebounceTimer);
       searchDebounceTimer = setTimeout(handleSearch, 300);
-    }
-    // ROUND17P: qidiruv UX'i — matn bo'lsa ixcham X tugmasi ko'rinadi;
-    // tozalash server/APIga tegmaydi, faqat mavjud client qidiruvini reset qiladi.
-    function syncHomeSearchClear() {
-      const input = document.getElementById('search-input');
-      const clearBtn = document.getElementById('home-search-clear');
-      if (clearBtn) clearBtn.classList.toggle('hidden', !String(input?.value || '').trim());
-    }
-    function clearHomeSearch() {
-      clearTimeout(searchDebounceTimer);
-      const input = document.getElementById('search-input');
-      if (!input) return;
-      input.value = '';
-      homeSearchQuery = '';
-      syncHomeSearchClear();
-      handleSearch();
-      input.focus();
     }
 
     function handleSearch() {
@@ -2920,10 +2893,8 @@
         // 21-band: qidiruv so'zi kiritilgan bo'lsa aniq "topilmadi" xabari,
         // aks holda (bosh sahifada hech narsa pin qilinmagan) eski xabar.
         const notFoundMsg = q.trim()
-          ? `<div class="fc-empty-state fc-home-empty col-span-2"><span class="fc-empty-icon"><i data-lucide="search-x" class="w-7 h-7"></i></span><p>${tr('Mahsulot topilmadi. Boshqa so‘z bilan qidirib ko‘ring.', 'Товар не найден. Попробуйте другой запрос.')}</p></div>`
-          : (isAdminMode && isUserAnAdmin
-              ? `<div class="fc-empty-state fc-home-empty col-span-2"><span class="fc-empty-icon"><i data-lucide="pin" class="w-7 h-7"></i></span><p>${tr("Bosh sahifa uchun tovar biriktirilmagan", "Для главной страницы нет закреплённых товаров")}</p></div>`
-              : `<div class="fc-empty-state fc-home-empty col-span-2"><span class="fc-empty-icon"><i data-lucide="sparkles" class="w-7 h-7"></i></span><p>${tr("Hozircha tavsiya etilgan mahsulotlar yo‘q", "Пока нет рекомендованных товаров")}</p></div>`);
+          ? `<div class="fc-empty-state col-span-2"><i data-lucide="search-x" class="w-8 h-8"></i><p>${tr('Mahsulot topilmadi. Boshqa so‘z bilan qidirib ko‘ring.', 'Товар не найден. Попробуйте другой запрос.')}</p></div>`
+          : `<div class="fc-empty-state col-span-2"><i data-lucide="package-search" class="w-8 h-8"></i><p>${tr("Bosh sahifa uchun tovar biriktirilmagan", "Для главной страницы нет закреплённых товаров")}</p></div>`;
         grid.innerHTML = notFoundMsg;
         lucide.createIcons();
         return;
