@@ -357,7 +357,7 @@
         oldPrice: r.old_price !== null ? Number(r.old_price) : null,
         stock: Number(r.stock) || 0, categoryId: r.category_id, status: r.status,
         img: r.img, desc: r.description, descRu: r.description_ru || null,
-        isFeatured: r.is_featured, sortOrder: r.sort_order,
+        isFeatured: r.is_featured, isVisible: r.is_visible !== false, sortOrder: r.sort_order,
         sizes: legacySizes, variants,
         soldCount: r.sold_count || 0, createdAt: r.created_at || null,
         importBatchId: r.import_batch_id || null
@@ -1014,7 +1014,7 @@
       }
 
       for (const product of products) {
-        if (product.status === 'DELETED' || product.categoryId === null || product.categoryId === undefined) continue;
+        if (!productVisibleInCurrentMode(product) || product.categoryId === null || product.categoryId === undefined) continue;
         const categoryKey = String(product.categoryId);
         directProductCount.set(categoryKey, (directProductCount.get(categoryKey) || 0) + 1);
       }
@@ -1175,8 +1175,12 @@
 
     // Mahsulotlarni nomi (lotin/kirill) YOKI ID (SKU) bo'yicha qidirish.
     // ID bo'yicha to'g'ridan-to'g'ri mos kelganlar ro'yxat boshida chiqadi.
+    function productVisibleInCurrentMode(p) {
+      return p && p.status !== 'DELETED' && ((isAdminMode && isUserAnAdmin) || p.isVisible !== false);
+    }
+
     function searchProducts(query) {
-      const activeProducts = products.filter(p => p.status !== 'DELETED').sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      const activeProducts = products.filter(productVisibleInCurrentMode).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
       if (!query || !query.trim()) return activeProducts;
 
       const { latin, cyrillic } = normalizeText(query);
@@ -2933,7 +2937,7 @@
     }
     function setFavoritesPage(p) { favoritesPage = p; render(); }
     function renderFavoritesPage(container) {
-      const list = products.filter(p => p.status !== 'DELETED' && favoriteProductIds.has(p.id));
+      const list = products.filter(p => productVisibleInCurrentMode(p) && favoriteProductIds.has(p.id));
       const pageData = paginate(list, favoritesPage, 10);
       const body = !list.length ? `
         <div class="fc-empty-state">
@@ -2968,7 +2972,7 @@
     function setRecentPage(p) { recentPage = p; render(); }
     function renderRecentPage(container) {
       const byId = new Map(products.map(p => [p.id, p]));
-      const list = recentViewProductIds.map(id => byId.get(id)).filter(p => p && p.status !== 'DELETED');
+      const list = recentViewProductIds.map(id => byId.get(id)).filter(productVisibleInCurrentMode);
       const pageData = paginate(list, recentPage, 10);
       const body = !list.length ? `
         <div class="fc-empty-state">
@@ -3045,7 +3049,7 @@
               <div class="w-full h-32 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
                 <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-full object-contain" loading="lazy">
               </div>
-              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
+              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-product-visibility-overlay ${p.isVisible === false ? 'is-hidden' : 'is-visible'}" aria-label="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" title="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductVisibility('${p.id}')"><i data-lucide="${p.isVisible === false ? 'eye-off' : 'eye'}" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
@@ -3092,7 +3096,7 @@
       const currentCat = categories.find(c => c.id === adminCatParentId);
       const subCats = categories.filter(c => c.parentId === adminCatParentId).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
       const recursiveProductCounts = buildRecursiveProductCountMap();
-      const catProdsRaw = products.filter(p => p.categoryId === adminCatParentId && p.status !== 'DELETED');
+      const catProdsRaw = products.filter(p => p.categoryId === adminCatParentId && productVisibleInCurrentMode(p));
       const catProds = applyCategoryFilter(catProdsRaw);
       const globalMissingImageCount = getMissingImageProducts().length;
       const filterActive = isCategoryFilterActive();
@@ -3349,7 +3353,7 @@
       const items = Object.entries(cart).map(([key, itemData]) => {
         const productId = cartEntryProductId(key, itemData);
         const p = products.find(prod => prod.id === productId);
-        return p ? { ...p, key, qty: itemData.qty, size: itemData.size || null, color: itemData.color || null } : null;
+        return productVisibleInCurrentMode(p) ? { ...p, key, qty: itemData.qty, size: itemData.size || null, color: itemData.color || null } : null;
       }).filter(Boolean);
 
       let total = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -3426,7 +3430,7 @@
       return Object.entries(cart).reduce((sum, [key, itemData]) => {
         const productId = cartEntryProductId(key, itemData);
         const product = products.find(item => item.id === productId);
-        return sum + (product ? product.price * (Number(itemData.qty) || 0) : 0);
+        return sum + (productVisibleInCurrentMode(product) ? product.price * (Number(itemData.qty) || 0) : 0);
       }, 0);
     }
 
@@ -4045,7 +4049,7 @@
       for (const [key, itemData] of Object.entries(cart)) {
         const productId = cartEntryProductId(key, itemData);
         const p = products.find(prod => prod.id === productId);
-        if (!p) return alert(tr('❌ Savatchadagi mahsulot topilmadi. Savatchani yangilang.', '❌ Товар из корзины не найден. Обновите корзину.'));
+        if (!productVisibleInCurrentMode(p)) return alert(tr('❌ Savatchadagi mahsulot hozir sotuvda ko‘rinmaydi. Savatchani yangilang.', '❌ Товар из корзины сейчас скрыт из продажи. Обновите корзину.'));
         const available = productVariants(p).length
           ? variantQty(p, itemData.size || null, itemData.color || null)
           : Number(p.stock) || 0;
@@ -8109,7 +8113,7 @@
           if (!(homeSearchQuery || '').trim()) base = base.filter(p => p.isFeatured === true);
           filterResultCount = applyCategoryFilter(base).length;
         } else {
-          const catBase = products.filter(p => p.categoryId === adminCatParentId && p.status !== 'DELETED');
+          const catBase = products.filter(p => p.categoryId === adminCatParentId && productVisibleInCurrentMode(p));
           filterResultCount = applyCategoryFilter(catBase).length;
         }
         container.innerHTML = `
@@ -9225,6 +9229,29 @@
         render();
         console.error(e);
         alert(tr("❌ Pin holatini saqlab bo'lmadi: ", "❌ Не удалось сохранить закрепление: ") + (e.message || e));
+      }
+    }
+
+    async function toggleProductVisibility(id) {
+      if (!isUserAnAdmin || !isAdminMode) return;
+      const p = products.find(prod => prod.id === id);
+      if (!p || p.status === 'DELETED') return;
+      const oldVal = p.isVisible !== false;
+      const newVal = !oldVal;
+
+      // Optimistic UI: ko'z holati darhol almashadi; server xatosida qaytariladi.
+      p.isVisible = newVal;
+      render();
+      showActionToast(newVal ? tr("⏳ Userga ko‘rsatilmoqda...", "⏳ Показываем пользователю...") : tr("⏳ Userdan yashirilmoqda...", "⏳ Скрываем от пользователя..."), 'saving');
+      try {
+        await callApi('toggle_product_visibility', { productId: id, value: newVal });
+        saveCatalogCache();
+        showActionToast(newVal ? tr("✅ Userga ko‘rinadi", "✅ Видно пользователю") : tr("✅ Userdan yashirildi", "✅ Скрыто от пользователя"), 'success', 1100);
+      } catch (e) {
+        p.isVisible = oldVal;
+        render();
+        console.error(e);
+        alert(tr("❌ Ko‘rinish holatini saqlab bo‘lmadi: ", "❌ Не удалось сохранить видимость: ") + (e.message || e));
       }
     }
 
