@@ -2305,3 +2305,53 @@ html.ustore-dark-theme .fc-card-action-menu{background:var(--ustore-card-bg)!imp
 /* ROUND13 follow-up: QR confirmation layout is stacked, action buttons are 2-up. */
 .fc-qr-provider-head>span:first-child{min-width:0;display:flex;flex-direction:column;gap:.05rem}.fc-qr-provider-head small{font-size:.5rem;color:var(--ustore-muted-text);font-weight:650}
 .fc-qr-test-confirm{display:flex!important;flex-direction:column;gap:.38rem}.fc-qr-test-confirm>p{font-size:.52rem;color:var(--ustore-secondary-text);line-height:1.35}.fc-qr-test-confirm>div{display:grid;grid-template-columns:1fr 1fr;gap:.38rem}.fc-qr-test-confirm>div button{display:flex;align-items:center;justify-content:center;gap:.28rem}
+
+/* ================= ROUND 14 — focused fixes + legal documents ================= */
+/* Product pricing: current price + discount in one row, old price below. */
+.fc-product-price-main-row{width:100%;min-width:0;display:flex;align-items:center;gap:.35rem;flex-wrap:nowrap}
+.fc-product-price-main-row .fc-product-current-price{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.fc-product-old-price-row{width:100%;min-height:.78rem;display:flex;align-items:center}
+.fc-product-old-price-row .fc-product-old-price{font-size:.58rem}
+
+/* Trash popup must paint above sibling cards. */
+.fc-trash-card{position:relative;z-index:1;overflow:visible}
+.fc-trash-card.is-menu-open{z-index:90}
+.fc-trash-more-wrap{position:relative;z-index:91}
+.fc-trash-card-menu{z-index:120!important}
+
+/* Region -> district chooser stays compact until explicitly opened. */
+.fc-district-scope{padding:.45rem!important;gap:.42rem!important}
+.fc-district-toggle-btn{width:100%;min-height:2.7rem;border:1px solid color-mix(in srgb,var(--ustore-primary) 18%,var(--ustore-border));border-radius:.75rem;background:var(--ustore-card-bg);color:var(--ustore-text);display:flex;align-items:center;justify-content:space-between;gap:.55rem;padding:.48rem .62rem;text-align:left}
+.fc-district-toggle-btn>span{min-width:0;display:flex;align-items:center;gap:.5rem}.fc-district-toggle-btn>span>span{min-width:0;display:flex;flex-direction:column}.fc-district-toggle-btn b{font-size:.62rem}.fc-district-toggle-btn small{font-size:.49rem;color:var(--ustore-muted-text);margin-top:.04rem}.fc-district-toggle-btn>svg{transition:transform .15s ease}.fc-district-scope.is-open .fc-district-toggle-btn>svg{transform:rotate(180deg)}
+.fc-district-toggle-btn.has-selection{border-color:color-mix(in srgb,var(--ustore-primary) 46%,var(--ustore-border));background:color-mix(in srgb,var(--ustore-primary) 7%,var(--ustore-card-bg))}
+.fc-district-scope-panel{display:flex;flex-direction:column;gap:.5rem;padding:.15rem .1rem .1rem}
+
+/* QR URL remains editable, but no redundant "To'lov URL" label. */
+.fc-qr-manual-url{margin-top:.1rem}.fc-qr-manual-url input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.62rem}
+
+/* Legal settings — modern, readable, theme-aware. */
+.fc-legal-settings{display:flex;flex-direction:column;gap:.8rem}
+.fc-legal-template-warning{display:grid;grid-template-columns:2.4rem minmax(0,1fr);gap:.65rem;padding:.8rem;border-radius:1rem;border:1px solid color-mix(in srgb,var(--ustore-warning) 30%,var(--ustore-border));background:color-mix(in srgb,var(--ustore-warning) 9%,var(--ustore-card-bg));color:var(--ustore-text)}
+.fc-legal-template-warning>span{width:2.4rem;height:2.4rem;border-radius:.78rem;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--ustore-warning) 17%,var(--ustore-card-bg));color:var(--ustore-warning)}
+.fc-legal-template-warning b{display:block;font-size:.72rem;margin-bottom:.18rem}.fc-legal-template-warning p{font-size:.56rem;line-height:1.55;color:var(--ustore-secondary-text)}
+.fc-legal-doc-list{display:flex;flex-direction:column;gap:.7rem}
+.fc-legal-doc-card{border:1px solid var(--ustore-border);border-radius:1rem;background:var(--ustore-card-bg);padding:.72rem;display:flex;flex-direction:column;gap:.55rem;box-shadow:0 4px 14px rgba(15,23,42,.045)}
+.fc-legal-doc-card.is-enabled{border-color:color-mix(in srgb,var(--ustore-success) 33%,var(--ustore-border))}
+.fc-legal-doc-head{display:grid;grid-template-columns:2.25rem minmax(0,1fr) auto;align-items:center;gap:.58rem}.fc-legal-doc-icon{width:2.25rem;height:2.25rem;border-radius:.72rem;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--ustore-primary) 9%,var(--ustore-panel-bg));color:var(--ustore-primary)}
+.fc-legal-doc-head b{display:block;font-size:.7rem;color:var(--ustore-text)}.fc-legal-doc-head small{font-size:.5rem;color:var(--ustore-muted-text)}
+.fc-legal-doc-state{display:flex;align-items:center;gap:.35rem;padding:.42rem .5rem;border-radius:.65rem;background:var(--ustore-panel-bg);color:var(--ustore-muted-text);font-size:.53rem;font-weight:700}.fc-legal-doc-state.is-on{background:color-mix(in srgb,var(--ustore-success) 9%,var(--ustore-card-bg));color:var(--ustore-success)}
+.fc-legal-editor{border:1px solid var(--ustore-border);border-radius:.72rem;overflow:hidden;background:var(--ustore-panel-bg)}.fc-legal-editor summary{list-style:none;cursor:pointer;min-height:2.35rem;padding:.5rem .62rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;font-size:.59rem;font-weight:800;color:var(--ustore-secondary-text)}.fc-legal-editor summary::-webkit-details-marker{display:none}.fc-legal-editor[open] summary svg{transform:rotate(180deg)}
+.fc-legal-editor textarea{display:block;width:100%;min-height:18rem;max-height:32rem;resize:vertical;border:0!important;border-top:1px solid var(--ustore-border)!important;border-radius:0!important;outline:0!important;background:var(--ustore-input-bg)!important;color:var(--ustore-text)!important;padding:.72rem;font-size:.58rem;line-height:1.55;white-space:pre-wrap}
+.fc-legal-savebar{position:sticky;bottom:calc(4.6rem + env(safe-area-inset-bottom));z-index:9;display:flex;justify-content:flex-end;padding:.5rem;border:1px solid var(--ustore-border);border-radius:.9rem;background:color-mix(in srgb,var(--ustore-card-bg) 96%,transparent);backdrop-filter:blur(10px);box-shadow:0 12px 30px rgba(15,23,42,.12)}
+
+/* Registration legal consent. */
+.fc-registration-card{max-height:90vh;overflow-y:auto}
+.fc-reg-legal-wrap{border:1px solid color-mix(in srgb,var(--ustore-primary) 22%,var(--ustore-border));border-radius:.85rem;background:color-mix(in srgb,var(--ustore-primary) 4%,var(--ustore-card-bg));padding:.6rem;display:flex;flex-direction:column;gap:.48rem}
+.fc-reg-legal-title{display:flex;align-items:center;gap:.4rem;font-size:.58rem;font-weight:800;color:var(--ustore-secondary-text)}
+.fc-reg-legal-item{border:1px solid var(--ustore-border);border-radius:.72rem;background:var(--ustore-card-bg);padding:.48rem}.fc-reg-legal-item>label{display:flex;align-items:flex-start;gap:.4rem;font-size:.58rem;color:var(--ustore-text);line-height:1.35}.fc-reg-legal-item>label input{margin-top:.08rem;flex:0 0 auto}
+.fc-reg-legal-item details{margin-top:.35rem}.fc-reg-legal-item summary{cursor:pointer;color:var(--ustore-primary);font-size:.54rem;font-weight:800}.fc-reg-legal-text{margin-top:.4rem;max-height:12rem;overflow:auto;white-space:pre-wrap;border-radius:.55rem;background:var(--ustore-panel-bg);padding:.55rem;font-size:.52rem;line-height:1.5;color:var(--ustore-secondary-text)}
+
+/* ROUND14: narx + chegirma bir qatorda, summa ellipsis bilan kesilmaydi. */
+.fc-product-price-main-row{gap:.22rem}
+.fc-product-price-main-row .fc-product-current-price{flex:0 1 auto;max-width:none;overflow:visible;text-overflow:clip;font-size:clamp(.58rem,2.9vw,.78rem)}
+.fc-product-price-main-row .fc-product-discount-badge{flex:0 0 auto}

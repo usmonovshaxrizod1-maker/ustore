@@ -498,7 +498,11 @@
     // Buyurtma va savat tarixi endi to'g'ridan-to'g'ri bazadan emas, balki
     // serverda tasdiqlangan Edge Function javobidan keladi (pastdagi callApi).
     function formatOrderForUi(o) {
-      return { ...o, date: new Date(o.createdAt).toLocaleString() };
+      const deliveryFee = Math.max(0, Number(o?.deliveryFee ?? o?.delivery?.fee ?? 0) || 0);
+      const rawPayable = Number(o?.payableTotal ?? o?.totalPrice ?? 0) || 0;
+      const subtotal = Math.max(0, Number(o?.subtotal ?? (rawPayable - deliveryFee)) || 0);
+      const payableTotal = subtotal + deliveryFee;
+      return { ...o, subtotal, deliveryFee, payableTotal, totalPrice: payableTotal, date: new Date(o.createdAt).toLocaleString() };
     }
 
     // STATE VARIABLES (bo'sh boshlanadi, Supabase/Edge Function'dan yuklanadi)
@@ -662,6 +666,10 @@
     // ---- Block 4: store design/theme ----
     let designSettings = { themeId: 'minimal', colors: {} };
     let designDraft = null;
+    // ROUND14: huquqiy hujjatlar shop-scoped, serverdan keladi.
+    let legalDocuments = [];
+    let legalDraft = null;
+    let legalConsentRequired = false;
     // 'MENU' (A/B tanlash) | 'DELIVERY' | 'PAYMENTS' — 1.1 talabiga ko'ra
     // "Yetkazib berish va to'lov" endi ikkita alohida bo'limga bo'lingan.
     let fulfillmentSettingsSection = 'MENU';
@@ -669,6 +677,8 @@
     let fulfillmentExpandedPayment = null; // CASH | CARD | null (faqat PAYMENTS bo'limida, 1.2: yonma-yon + inline ochilish)
     // Yetkazib berish parametrlarida bir vaqtda faqat kerakli hudud kartasi ochiq turadi.
     let fulfillmentExpandedRegionKey = null;
+    // ROUND14: tumanlar region kartasi ochilishi bilan birdan ko'rinmaydi — alohida tugma bilan ochiladi.
+    let fulfillmentExpandedDistrictKey = null;
     const qrProviderTestState = {}; // providerId -> {status:'opened'|'verified'|'failed', note?}
     const qrProviderDecodedRaw = {};
     const qrProviderNeedsTest = new Set();
@@ -2221,7 +2231,7 @@
       updateNavLabels();
       updateHeaderChrome();
 
-      if (authReady && !registeredUser && !isAdminMode && activePopupModal !== 'REGISTRATION') {
+      if (authReady && (!registeredUser || legalConsentRequired) && !isAdminMode && activePopupModal !== 'REGISTRATION') {
         activePopupModal = 'REGISTRATION';
       }
 
@@ -2352,6 +2362,7 @@
         case 'DESIGN_SETTINGS': renderDesignSettingsPage(container); break;
         case 'DELIVERY_SETTINGS': renderDeliverySettingsPage(container); break;
         case 'PAYMENT_SETTINGS': renderPaymentSettingsPage(container); break;
+        case 'LEGAL_SETTINGS': renderLegalSettingsPage(container); break;
         default:
           container.innerHTML = '';
       }
@@ -2581,6 +2592,94 @@
       `;
     }
 
+    // ---- ROUND14: Huquqiy hujjatlar ---------------------------------------
+    function legalDocTitle(doc) {
+      if (!doc) return '';
+      return uiLang === 'ru' ? (doc.titleRu || doc.titleUz || doc.type) : (doc.titleUz || doc.titleRu || doc.type);
+    }
+    function legalDocContent(doc) {
+      if (!doc) return '';
+      return uiLang === 'ru' ? (doc.contentRu || doc.contentUz || '') : (doc.contentUz || doc.contentRu || '');
+    }
+    function enabledLegalDocuments() {
+      return (legalDocuments || []).filter(doc => doc?.enabled === true);
+    }
+    function openLegalSettingsPage() {
+      legalDraft = JSON.parse(JSON.stringify(legalDocuments || []));
+      openPage('LEGAL_SETTINGS');
+    }
+    function setLegalDocumentEnabled(type, enabled) {
+      const doc = (legalDraft || []).find(d => d.type === type);
+      if (doc) doc.enabled = !!enabled;
+      render();
+    }
+    function setLegalDocumentContent(type, lang, value) {
+      const doc = (legalDraft || []).find(d => d.type === type);
+      if (!doc) return;
+      if (lang === 'ru') doc.contentRu = String(value ?? ''); else doc.contentUz = String(value ?? '');
+    }
+    function legalDocumentCardHtml(doc) {
+      const enabled = doc?.enabled === true;
+      return `<section class="fc-legal-doc-card ${enabled ? 'is-enabled' : ''}">
+        <div class="fc-legal-doc-head">
+          <span class="fc-legal-doc-icon"><i data-lucide="${doc.type === 'PRIVACY' ? 'shield-check' : 'file-signature'}" class="w-5 h-5"></i></span>
+          <div class="min-w-0"><b>${escapeHtml(legalDocTitle(doc))}</b><small>${tr(`Versiya ${Number(doc.version)||1}`, `Версия ${Number(doc.version)||1}`)}</small></div>
+          <label class="fc-toggle"><input type="checkbox" ${enabled ? 'checked' : ''} onchange="setLegalDocumentEnabled('${doc.type}',this.checked)"><span class="fc-toggle-track"></span></label>
+        </div>
+        <div class="fc-legal-doc-state ${enabled ? 'is-on' : ''}"><i data-lucide="${enabled ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>${enabled ? tr('Ro‘yxatdan o‘tishda foydalanuvchiga ko‘rinadi va rozilik majburiy.','Показывается при регистрации, согласие обязательно.') : tr('O‘chirilgan — foydalanuvchiga ko‘rinmaydi.','Выключено — пользователю не показывается.')}</div>
+        <details class="fc-legal-editor" open>
+          <summary>${tr('O‘zbekcha matnni tahrirlash','Редактировать узбекский текст')}<i data-lucide="chevron-down" class="w-4 h-4"></i></summary>
+          <textarea oninput="setLegalDocumentContent('${doc.type}','uz',this.value)" spellcheck="false">${escapeHtml(doc.contentUz || '')}</textarea>
+        </details>
+        <details class="fc-legal-editor">
+          <summary>${tr('Ruscha matnni tahrirlash','Редактировать русский текст')}<i data-lucide="chevron-down" class="w-4 h-4"></i></summary>
+          <textarea oninput="setLegalDocumentContent('${doc.type}','ru',this.value)" spellcheck="false">${escapeHtml(doc.contentRu || '')}</textarea>
+        </details>
+      </section>`;
+    }
+    function renderLegalSettingsPage(container) {
+      if (!legalDraft) legalDraft = JSON.parse(JSON.stringify(legalDocuments || []));
+      const docs = legalDraft || [];
+      const body = `<div class="fc-legal-settings">
+        <div class="fc-legal-template-warning">
+          <span><i data-lucide="scale" class="w-5 h-5"></i></span>
+          <div><b>${tr('Umumiy huquqiy shablon','Общий юридический шаблон')}</b><p>${tr("UStorE amaldagi O‘zbekiston qonunchiligiga tayangan umumiy shablonni beradi. Xohlasangiz shu holicha yoqing, xohlasangiz do‘koningizga moslab tahrirlang. Bu individual yuridik xulosa emas; maxsus faoliyat yoki tovarlar bo‘lsa moslashtirish tavsiya etiladi.", "UStorE предоставляет общий шаблон на основе действующего законодательства Узбекистана. Можно включить его как есть или адаптировать под магазин. Это не индивидуальное юридическое заключение; для специальных видов деятельности рекомендуется адаптация.")}</p></div>
+        </div>
+        <div class="fc-legal-doc-list">${docs.map(legalDocumentCardHtml).join('')}</div>
+        <div class="fc-legal-savebar"><button type="button" onclick="saveLegalSettings()" class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash','Сохранить')}</button></div>
+      </div>`;
+      renderPageShell(container, tr('Huquqiy hujjatlar','Правовые документы'), body, { onBack: "legalDraft=null;openPage('SETTINGS')" });
+    }
+    async function saveLegalSettings() {
+      const docs = (legalDraft || []).map(d => ({ type: d.type, enabled: !!d.enabled, contentUz: String(d.contentUz || '').trim(), contentRu: String(d.contentRu || '').trim() }));
+      for (const d of docs) {
+        if (d.contentUz.length < 200) return alert(tr('Har bir hujjatning o‘zbekcha matni yetarlicha to‘liq bo‘lishi kerak.','Узбекский текст каждого документа должен быть заполнен.'));
+      }
+      showActionToast(tr('Huquqiy hujjatlar saqlanmoqda...','Сохранение правовых документов...'),'saving');
+      try {
+        const result = await callApi('set_legal_documents', { documents: docs });
+        legalDocuments = Array.isArray(result.legalDocuments) ? result.legalDocuments : legalDocuments;
+        legalDraft = JSON.parse(JSON.stringify(legalDocuments));
+        showActionToast(tr('Huquqiy hujjatlar saqlandi','Правовые документы сохранены'),'success',1600);
+        render();
+      } catch (e) {
+        console.error(e);
+        showActionToast(tr('Hujjatlar saqlanmadi','Документы не сохранены'),'error',1800);
+        alert(tr('Saqlashda xatolik: ','Ошибка сохранения: ') + (e.message || e));
+      }
+    }
+    function renderRegistrationLegalConsentsHtml() {
+      // Oddiy profil tahririda avval qabul qilingan hujjatlarni qayta-qayta
+      // tasdiqlatmaymiz. Yangi user yoki yangi versiya chiqqandagina ko'rsatamiz.
+      if (registeredUser && !legalConsentRequired) return '';
+      const docs = enabledLegalDocuments();
+      if (!docs.length) return '';
+      return `<div class="fc-reg-legal-wrap">
+        <div class="fc-reg-legal-title"><i data-lucide="shield-check" class="w-4 h-4"></i><span>${tr('Davom etish uchun hujjatlarni o‘qing va tasdiqlang','Прочитайте и примите документы для продолжения')}</span></div>
+        ${docs.map(doc => `<div class="fc-reg-legal-item"><label><input id="reg-legal-${doc.type}" type="checkbox"><span>${tr('Roziman:','Согласен:')} <b>${escapeHtml(legalDocTitle(doc))}</b></span></label><details><summary>${tr('O‘qish','Прочитать')} · v${Number(doc.version)||1}</summary><div class="fc-reg-legal-text">${escapeHtml(legalDocContent(doc))}</div></details></div>`).join('')}
+      </div>`;
+    }
+
     // ---- Do'kon sozlamalari sahifasi (POLISH ROUND 1-bosqich, 5/6-band) ----
     // Ichidagi 3 bo'lim (Buyurtma ma'lumotlari/Yetkazib berish/Dizayn) hozirgidek
     // modal bo'lib ochiladi (murakkab mavjud mantiqqa tegilmadi) — yopilganda
@@ -2591,6 +2690,7 @@
         <div class="space-y-2">
           <button type="button" onclick="openDeliverySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="truck" class="w-4 h-4"></i>${tr("Yetkazib berish parametrlari", "Параметры доставки")}</span><span>›</span></button>
           <button type="button" onclick="openPaymentSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr("To'lov parametrlari", "Параметры оплаты")}</span><span>›</span></button>
+          <button type="button" onclick="openLegalSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="file-lock-2" class="w-4 h-4"></i>${tr("Huquqiy hujjatlar", "Правовые документы")}</span><span>›</span></button>
           <button type="button" onclick="openDesignSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4"></i>${tr("Dizayn", "Дизайн")}</span><span>›</span></button>
           ${(isSuperAdmin && isAdminMode) ? `
             <button type="button" onclick="activePopupModal='START_MESSAGE'; render();" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4"></i>${tr("Bot /start xabari", "Сообщение бота /start")}</span><span>›</span></button>
@@ -2952,8 +3052,7 @@
             <h4 class="font-bold text-sm text-gray-800 mt-1 leading-tight line-clamp-2">${escapeHtml(productName(p))}</h4>
 
             <div class="fc-product-price-block mt-1">
-              <div class="fc-product-current-price ${hasDiscount ? 'fc-text-danger' : 'text-blue-600'}">${money(p.price)}</div>
-              ${hasDiscount ? `<div class="fc-product-discount-line"><span class="fc-product-discount-badge">-${discountPercent(p)}%</span><span class="fc-product-old-price">${money(p.oldPrice)}</span></div>` : ''}
+              ${hasDiscount ? `<div class="fc-product-price-main-row"><div class="fc-product-current-price fc-text-danger">${money(p.price)}</div><span class="fc-product-discount-badge">-${discountPercent(p)}%</span></div><div class="fc-product-old-price-row"><span class="fc-product-old-price line-through">${money(p.oldPrice)}</span></div>` : `<div class="fc-product-price-main-row"><div class="fc-product-current-price text-blue-600">${money(p.price)}</div></div>`}
             </div>
             ${variantSizes.length ? `<p class="text-[9px] text-gray-400 mt-0.5">${tr("O'lcham", "Размер")}: ${variantSizes.map(escapeHtml).join(', ')}</p>` : ''}
             ${variantColors.length ? `<p class="text-[9px] text-gray-400 mt-0.5">${tr("Rang", "Цвет")}: ${variantColors.map(escapeHtml).join(', ')}</p>` : ''}
@@ -4097,9 +4196,12 @@
       render();
     }
     function clearOrdersDateRange() {
-      // Popup ichidagi reset committed filtrni darrov o'zgartirmaydi.
+      // ROUND14: popupdagi reset draft BILAN BIRGA amaldagi filtrni ham tozalaydi.
       ordersCalendarDraftFrom = '';
       ordersCalendarDraftTo = '';
+      ordersDateFrom = '';
+      ordersDateTo = '';
+      ordersPage = 1;
       render();
     }
     function clearCommittedOrdersDateRange() {
@@ -4150,14 +4252,11 @@
     }
 
     function filterOrdersBySelectedDate(source) {
-      let from, to;
-      if (ordersDateFrom && ordersDateTo) {
-        from = parseOrderDateKey(ordersDateFrom, false);
-        to = parseOrderDateKey(ordersDateTo, true);
-      } else {
-        to = new Date(); to.setHours(23,59,59,999);
-        from = new Date(to); from.setMonth(from.getMonth()-1); from.setHours(0,0,0,0);
-      }
+      // ROUND14: kalendarda aniq sana oralig'i bo'lmasa HECH QANDAY yashirin
+      // default davr qo'llanmaydi. Reset = barcha buyurtmalar.
+      if (!ordersDateFrom || !ordersDateTo) return [...source];
+      const from = parseOrderDateKey(ordersDateFrom, false);
+      const to = parseOrderDateKey(ordersDateTo, true);
       if (!from || !to) return [...source];
       return source.filter(o => { const d = orderCreatedDate(o); return !!d && d >= from && d <= to; });
     }
@@ -5586,7 +5685,9 @@
     }
 
     function toggleFulfillmentRegionPanel(key) {
-      fulfillmentExpandedRegionKey = fulfillmentExpandedRegionKey === key ? null : key;
+      const nextKey = fulfillmentExpandedRegionKey === key ? null : key;
+      if (nextKey !== fulfillmentExpandedRegionKey) fulfillmentExpandedDistrictKey = null;
+      fulfillmentExpandedRegionKey = nextKey;
       rerenderFulfillmentBody();
     }
 
@@ -5798,19 +5899,21 @@
       if (entry) delete entry.districts;
       rerenderFulfillmentBody();
     }
-    function renderDistrictScopeHtml(entry, regionId, setterCall, clearCall) {
+    function toggleDistrictScope(scopeKey) {
+      fulfillmentExpandedDistrictKey = fulfillmentExpandedDistrictKey === String(scopeKey) ? null : String(scopeKey);
+      rerenderFulfillmentBody();
+    }
+    function renderDistrictScopeHtml(entry, regionId, setterCall, clearCall, scopeKey) {
       const districts = fulfillmentDistrictOptions(regionId);
       if (!districts.length) return '';
       const selected = new Set(Array.isArray(entry?.districts) ? entry.districts.map(String) : []);
-      return `<div class="fc-district-scope">
-        <div class="fc-district-scope-head">
-          <div><b>${tr('Tuman / shahar bo‘yicha','По району / городу')}</b><small>${selected.size ? tr(`${selected.size} ta hududga amal qiladi`, `Действует для ${selected.size} районов`) : tr('Tanlanmasa — butun viloyatga amal qiladi','Если не выбрано — действует на всю область')}</small></div>
-          ${selected.size ? `<button type="button" onclick="${clearCall}" class="fc-district-all-btn">${tr('Butun viloyat','Вся область')}</button>` : `<span class="fc-district-all-badge">${tr('Butun viloyat','Вся область')}</span>`}
-        </div>
-        <div class="fc-district-grid">${districts.map(d => {
-          const encoded = encodedDistrictValue(d), checked = selected.has(String(d));
-          return `<label class="fc-district-chip ${checked ? 'is-selected' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="${setterCall(encoded)}"><span>${escapeHtml(districtLabelForUi(d))}</span></label>`;
-        }).join('')}</div>
+      const open = fulfillmentExpandedDistrictKey === String(scopeKey);
+      return `<div class="fc-district-scope ${open ? 'is-open' : ''}">
+        <button type="button" class="fc-district-toggle-btn ${selected.size ? 'has-selection' : ''}" onclick="toggleDistrictScope('${scopeKey}')">
+          <span><i data-lucide="map-pinned" class="w-4 h-4"></i><span><b>${tr('Tumanlarni tanlash','Выбрать районы')}</b><small>${selected.size ? tr(`${selected.size} ta tanlangan`, `Выбрано: ${selected.size}`) : tr('Ixtiyoriy — tanlanmasa butun viloyat','Необязательно — иначе вся область')}</small></span></span>
+          <i data-lucide="chevron-down" class="w-4 h-4"></i>
+        </button>
+        ${open ? `<div class="fc-district-scope-panel"><div class="fc-district-scope-head"><div><b>${tr('Tuman / shahar bo‘yicha','По району / городу')}</b><small>${selected.size ? tr(`${selected.size} ta hududga amal qiladi`, `Действует для ${selected.size} районов`) : tr('Tanlanmasa — butun viloyatga amal qiladi','Если не выбрано — действует на всю область')}</small></div>${selected.size ? `<button type="button" onclick="${clearCall}" class="fc-district-all-btn">${tr('Butun viloyat','Вся область')}</button>` : `<span class="fc-district-all-badge">${tr('Butun viloyat','Вся область')}</span>`}</div><div class="fc-district-grid">${districts.map(d => { const encoded = encodedDistrictValue(d), checked = selected.has(String(d)); return `<label class="fc-district-chip ${checked ? 'is-selected' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="${setterCall(encoded)}"><span>${escapeHtml(districtLabelForUi(d))}</span></label>`; }).join('')}</div></div>` : ''}
       </div>`;
     }
 
@@ -5826,7 +5929,7 @@
             <button type="button" class="fc-delivery-region-main" onclick="toggleFulfillmentRegionPanel('${rowKey}')" ${entry?.enabled ? '' : 'disabled'}><span><b>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</b><small>${escapeHtml(subtitle)}</small></span>${entry?.enabled ? `<i data-lucide="chevron-down" class="w-4 h-4 fc-delivery-region-chevron"></i>` : ''}</button>
             <label class="fc-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setPaymentRegionEnabled('${method.id}','${encoded}',this.checked)"><span class="fc-toggle-track"></span></label>
           </div>
-          ${open ? `<div class="fc-delivery-region-body">${renderDistrictScopeHtml(entry, region.id, (districtEncoded) => `setPaymentRegionDistrict('${method.id}','${encoded}','${districtEncoded}',this.checked)`, `clearRegionDistrictScope('PAYMENT','${method.id}','${encoded}')`)}</div>` : ''}
+          ${open ? `<div class="fc-delivery-region-body">${renderDistrictScopeHtml(entry, region.id, (districtEncoded) => `setPaymentRegionDistrict('${method.id}','${encoded}','${districtEncoded}',this.checked)`, `clearRegionDistrictScope('PAYMENT','${method.id}','${encoded}')`, rowKey)}</div>` : ''}
         </div>`;
       }).join('')}</div>`;
     }
@@ -5850,7 +5953,7 @@
             <label class="fc-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setDeliveryRegionEnabled('${kind}','${encoded}',this.checked)"><span class="fc-toggle-track"></span></label>
           </div>
           ${open ? `<div class="fc-delivery-region-body">
-            ${renderDistrictScopeHtml(entry, region.id, (districtEncoded) => `setDeliveryRegionDistrict('${kind}','${encoded}','${districtEncoded}',this.checked)`, `clearRegionDistrictScope('DELIVERY','${kind}','${encoded}')`)}
+            ${renderDistrictScopeHtml(entry, region.id, (districtEncoded) => `setDeliveryRegionDistrict('${kind}','${encoded}','${districtEncoded}',this.checked)`, `clearRegionDistrictScope('DELIVERY','${kind}','${encoded}')`, rowKey)}
             ${kind === 'FIXED' ? `<label class="fc-mini-field"><span>${tr('Yetkazish narxi','Стоимость доставки')}</span><div class="fc-money-input"><input type="number" min="0" value="${entry.fee ?? ''}" oninput="setDeliveryRegionNumber('FIXED','${encoded}','fee',this.value)"><em>${tr("so'm",'сум')}</em></div></label>` : ''}
             ${kind === 'TAXI' ? `<label class="fc-mini-field"><span>${tr('Aniq narx (ixtiyoriy)','Точная цена (необязательно)')}</span><input type="number" min="0" value="${entry.exactFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','exactFee',this.value)"></label><div class="grid grid-cols-2 gap-2"><label class="fc-mini-field"><span>Min</span><input type="number" min="0" value="${entry.minFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','minFee',this.value)"></label><label class="fc-mini-field"><span>Max</span><input type="number" min="0" value="${entry.maxFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','maxFee',this.value)"></label></div>` : ''}
             <label class="fc-mini-field"><span>${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}</span><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setDeliveryRegionComment('${kind}','${encoded}',this.value)" maxlength="200"></label>
@@ -5873,7 +5976,7 @@
           const open = !!entry?.enabled && fulfillmentExpandedRegionKey === rowKey;
           return `<div class="fc-delivery-region-card ${open ? 'is-open' : ''}">
             <div class="fc-delivery-region-head"><button type="button" class="fc-delivery-region-main" onclick="toggleFulfillmentRegionPanel('${rowKey}')" ${entry?.enabled ? '' : 'disabled'}><span><b>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</b><small>${entry?.enabled ? (entry.payer === 'SELLER' ? tr('Sotuvchi hisobidan','За счёт продавца') : tr('Mijoz hisobidan','За счёт клиента')) : tr("O'chirilgan",'Выключено')}</small></span>${entry?.enabled ? `<i data-lucide="chevron-down" class="w-4 h-4 fc-delivery-region-chevron"></i>` : ''}</button><label class="fc-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setPostRegionEnabled('${provider.id}','${encoded}',this.checked)"><span class="fc-toggle-track"></span></label></div>
-            ${open ? `<div class="fc-delivery-region-body">${renderDistrictScopeHtml(entry, region.id, (districtEncoded) => `setPostRegionDistrict('${provider.id}','${encoded}','${districtEncoded}',this.checked)`, `clearRegionDistrictScope('POST','', '${encoded}','${provider.id}')`)}<label class="fc-mini-field"><span>${tr('Pochta xarajati','Почтовые расходы')}</span><select onchange="setPostRegionPayer('${provider.id}','${encoded}',this.value)"><option value="CUSTOMER" ${entry.payer !== 'SELLER' ? 'selected' : ''}>${tr('Mijoz hisobidan','За счёт клиента')}</option><option value="SELLER" ${entry.payer === 'SELLER' ? 'selected' : ''}>${tr('Sotuvchi hisobidan','За счёт продавца')}</option></select></label><label class="fc-mini-field"><span>${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}</span><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setPostRegionComment('${provider.id}','${encoded}',this.value)" maxlength="200"></label><label class="fc-mini-field"><span>${tr('Yetkazib berish vaqti (ixtiyoriy)','Время доставки (необязательно)')}</span><input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setPostRegionEstimatedTime('${provider.id}','${encoded}',this.value)" maxlength="60"></label></div>` : ''}
+            ${open ? `<div class="fc-delivery-region-body">${renderDistrictScopeHtml(entry, region.id, (districtEncoded) => `setPostRegionDistrict('${provider.id}','${encoded}','${districtEncoded}',this.checked)`, `clearRegionDistrictScope('POST','', '${encoded}','${provider.id}')`, rowKey)}<label class="fc-mini-field"><span>${tr('Pochta xarajati','Почтовые расходы')}</span><select onchange="setPostRegionPayer('${provider.id}','${encoded}',this.value)"><option value="CUSTOMER" ${entry.payer !== 'SELLER' ? 'selected' : ''}>${tr('Mijoz hisobidan','За счёт клиента')}</option><option value="SELLER" ${entry.payer === 'SELLER' ? 'selected' : ''}>${tr('Sotuvchi hisobidan','За счёт продавца')}</option></select></label><label class="fc-mini-field"><span>${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}</span><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setPostRegionComment('${provider.id}','${encoded}',this.value)" maxlength="200"></label><label class="fc-mini-field"><span>${tr('Yetkazib berish vaqti (ixtiyoriy)','Время доставки (необязательно)')}</span><input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setPostRegionEstimatedTime('${provider.id}','${encoded}',this.value)" maxlength="60"></label></div>` : ''}
           </div>`;
         }).join('')}</div>` : ''}
       </div>`;
@@ -6005,7 +6108,7 @@
               ${provider.qrImageUrl ? `<img src="${escapeHtml(provider.qrImageUrl)}" class="fc-qr-preview">` : `<div class="fc-qr-placeholder"><i data-lucide="qr-code" class="w-6 h-6"></i></div>`}
               <div class="min-w-0 flex-1"><input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary fc-qr-upload-btn"><i data-lucide="folder-open" class="w-3.5 h-3.5"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button><p>${tr('QR rasm ichidagi URL avtomatik o‘qishga uriniladi.', 'Ссылка из QR будет распознана автоматически, если устройство поддерживает это.')}</p></div>
             </div>
-            <label class="fc-mini-field"><span>${tr("To'lov URL", 'URL оплаты')}</span><input type="url" inputmode="url" value="${escapeHtml(provider.paymentUrl || '')}" oninput="setQrProviderPaymentUrl('${provider.id}',this.value)" onchange="rerenderFulfillmentBody()" placeholder="https://..."></label>
+            <label class="fc-mini-field fc-qr-manual-url"><input type="url" inputmode="url" value="${escapeHtml(provider.paymentUrl || '')}" oninput="setQrProviderPaymentUrl('${provider.id}',this.value)" onchange="rerenderFulfillmentBody()" placeholder="${tr('Havolani qo‘lda kiriting: https://...','Введите ссылку вручную: https://...')}"></label>
             ${provider.paymentUrl ? `<div class="fc-qr-link-row"><button type="button" class="fc-qr-link-btn" onclick="openSafeExternalUrl('${escapeHtml(provider.paymentUrl)}')"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>${escapeHtml(provider.paymentUrl)}</span></button><button type="button" onclick="testQrProviderPaymentUrl('${provider.id}')" class="fc-btn fc-btn-primary fc-qr-test-btn"><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>${tr('Sinash','Тест')}</button></div>` : ''}
             ${test?.status === 'opened' ? `<div class="fc-qr-test-confirm"><p>${escapeHtml(test.note || tr('To‘lov sahifasi to‘g‘ri ochildimi?', 'Страница оплаты открылась правильно?'))}</p><div><button type="button" onclick="confirmQrProviderTest('${provider.id}',true)" class="is-ok"><i data-lucide="check" class="w-3.5 h-3.5"></i>${tr('To‘g‘ri ishladi','Работает правильно')}</button><button type="button" onclick="confirmQrProviderTest('${provider.id}',false)" class="is-bad"><i data-lucide="x" class="w-3.5 h-3.5"></i>${tr('Noto‘g‘ri','Неверно')}</button></div></div>` : ''}
             ${verified ? `<div class="fc-qr-verified"><i data-lucide="badge-check" class="w-4 h-4"></i>${tr('Tekshirildi','Проверено')}</div>` : (qrProviderNeedsTest.has(provider.id) && provider.paymentUrl ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${tr('Saqlashdan oldin Sinash tugmasi orqali tekshiring.','Перед сохранением проверьте через кнопку «Тест».')}</div>` : '')}
@@ -6113,14 +6216,18 @@
     }
 
     async function saveFulfillmentSettings() {
-      const untestedQr = (qrProvidersOf() || []).filter(p => p.enabled && p.paymentUrl && qrProviderNeedsTest.has(p.id));
+      const qrMethodEnabled = paymentMethodConfig('QR')?.enabled === true;
+      const activeQrProviders = qrMethodEnabled ? (qrProvidersOf() || []).filter(p => p.enabled) : [];
+      const missingQrUrl = activeQrProviders.filter(p => !String(p.paymentUrl || '').trim());
+      if (missingQrUrl.length) return alert(tr(`QR to'lovni saqlash uchun havolani QR rasmdan o'qing yoki qo'lda kiriting: ${missingQrUrl.map(p => p.name).join(', ')}`, `Для сохранения QR-оплаты распознайте ссылку из QR или введите вручную: ${missingQrUrl.map(p => p.name).join(', ')}`));
+      const untestedQr = activeQrProviders.filter(p => p.paymentUrl && qrProviderNeedsTest.has(p.id));
       if (untestedQr.length) return alert(tr(`QR linkni saqlashdan oldin "Sinash" orqali tekshiring: ${untestedQr.map(p => p.name).join(', ')}`, `Перед сохранением проверьте QR-ссылку кнопкой «Тест»: ${untestedQr.map(p => p.name).join(', ')}`));
       const checked = commerce.validateConfig(fulfillmentDraft, TOP_LEVEL_REGION_IDS);
       if (checked.issues.length) {
         const first = checked.issues[0];
         if (first.code === 'CARD_DETAILS_REQUIRED') return alert(tr('Karta raqami va karta egasi nomini to‘g‘ri kiriting.', 'Правильно укажите номер карты и имя владельца.'));
         if (first.code === 'FIXED_FEE_REQUIRED') return alert(`${topLevelRegionLabel(first.regionId)}: ${tr('aniq yetkazish narxini kiriting.', 'укажите стоимость доставки.')}`);
-        if (first.code === 'QR_PROVIDER_REQUIRED') return alert(tr("Kamida bitta QR provayderni yoqing va to'lov URL manzilini kiriting.", "Включите хотя бы один QR-провайдер и укажите URL страницы оплаты."));
+        if (first.code === 'QR_PROVIDER_REQUIRED') return alert(tr("Kamida bitta QR provayderni yoqing va to'lov havolasini kiriting.", "Включите хотя бы один QR-провайдер и укажите URL страницы оплаты."));
         return alert(`${first.regionId === null ? tr('Umumiy qiymat', 'Общее значение') : topLevelRegionLabel(first.regionId)}: ${tr('taksi min/max diapazonini tekshiring.', 'проверьте диапазон такси min/max.')}`);
       }
       const old = fulfillmentConfig;
@@ -7140,7 +7247,7 @@
       if (activePopupModal === 'REGISTRATION') {
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; render();">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs fc-registration-card" onclick="event.stopPropagation()">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2 text-center">${tr(`📝 ${escapeHtml(shopDisplayName())} ro'yxatdan o'tish`, `📝 Регистрация ${escapeHtml(shopDisplayName())}`)}</h3>
               <p class="text-[11px] text-gray-500 text-center">${tr("Buyurtmani tez rasmiylashtirish uchun ma'lumotlaringizni kiriting:", "Введите данные для быстрого оформления заказов:")}</p>
               <div>
@@ -7155,8 +7262,9 @@
                 <label class="font-bold text-gray-600">${tr("Telefon raqamingiz *", "Номер телефона *")}</label>
                 <input type="text" id="reg-phone" value="${escapeHtml(currentUser.phone)}" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2 border rounded-xl font-mono">
               </div>
+              ${renderRegistrationLegalConsentsHtml()}
               <div class="pt-2">
-                <button onclick="saveRegistrationFromModal()" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("✅ Saqlash", "✅ Сохранить")}</button>
+                <button id="reg-save-btn" onclick="saveRegistrationFromModal()" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("✅ Saqlash", "✅ Сохранить")}</button>
               </div>
             </div>
           </div>
@@ -7960,7 +8068,7 @@
 
                 <section class="fc-checkout-summary">
                   <div><span>${tr('Tovarlar summasi', 'Сумма товаров')}</span><b id="checkout-subtotal"></b></div>
-                  <div><span>${tr('Yetkazib berish', 'Доставка')}</span><b id="checkout-delivery-fee"></b></div>
+                  <div><span>${tr('Yetkazib berish narxi', 'Стоимость доставки')}</span><b id="checkout-delivery-fee"></b></div>
                   <div class="fc-checkout-summary-total"><span>${tr("Hozir to'lanadigan jami", 'Итого к оплате сейчас')}</span><strong id="checkout-payable-total"></strong></div>
                 </section>
               </div>
@@ -8262,7 +8370,7 @@
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${tr('Hudud','Регион')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div>${Number(o.deliveryFee) > 0 ? `<div class="fc-order-delivery-fee fc-order-delivery-fee-detail">${tr('Yetkazib berish narxi','Стоимость доставки')}: <b>${money(o.deliveryFee)}</b></div>` : ''}<div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku&&isAdminMode&&isUserAnAdmin)?`ID: ${escapeHtml(i.sku)} · `:''}${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
-              <section class="fc-order-summary-card"><div><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div><span>${tr('Yetkazib berish narxi','Стоимость доставки')}</span><b>${Number(o.deliveryFee)>0?money(o.deliveryFee):money(0)}</b></div><div class="is-total"><span>${tr('Jami','Итого')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
+              <section class="fc-order-summary-card"><div><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div><span>${tr('Yetkazib berish narxi','Стоимость доставки')}</span><b>${Number(o.deliveryFee)>0?money(o.deliveryFee):money(0)}</b></div><div class="is-total"><span>${tr("Hozir to'lanadigan jami",'Итого к оплате сейчас')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
 
               ${!isAdminMode ? `<button onclick="reorderFromOrder(${o.id})" class="fc-btn fc-btn-secondary w-full"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr('Qayta buyurtma', 'Повторить заказ')}</button>` : ''}
 
@@ -8713,6 +8821,12 @@
 
       if (!fn || !ph || ph === '+998') return alert(uiLang === 'ru' ? 'Введите имя и номер телефона.' : "Iltimos, ismingiz va telefon raqamingizni kiriting!");
       if (!isValidPhone(ph)) return alert(uiLang === 'ru' ? 'Введите телефон в формате +998901234567' : "Iltimos, telefon raqamini to'g'ri formatda kiriting: +998901234567");
+      const requiredLegalDocs = (!registeredUser || legalConsentRequired) ? enabledLegalDocuments() : [];
+      for (const doc of requiredLegalDocs) {
+        const checkbox = document.getElementById(`reg-legal-${doc.type}`);
+        if (!checkbox?.checked) return alert(tr(`${legalDocTitle(doc)}ni o‘qib, roziligingizni tasdiqlang.`, `Прочитайте документ «${legalDocTitle(doc)}» и подтвердите согласие.`));
+      }
+      const legalAcceptances = requiredLegalDocs.map(doc => ({ type: doc.type, version: Number(doc.version) || 1 }));
 
       // UI darhol yangilanadi; profil serverda ham saqlanadi va boshqa qurilmada tiklanadi.
       const old = registeredUser ? { ...registeredUser } : null;
@@ -8721,11 +8835,24 @@
       currentUser.firstName = fn; currentUser.lastName = ln; currentUser.phone = ph;
       activePopupModal = null; render();
       try {
-        await callApi('update_profile', { firstName: fn, lastName: ln, phone: ph });
+        await callApi('update_profile', { firstName: fn, lastName: ln, phone: ph, legalAcceptances });
+        legalConsentRequired = false;
         alert(uiLang === 'ru' ? '✅ Данные сохранены.' : "✅ Ma'lumotlar saqlandi!");
       } catch (e) {
         console.error(e);
-        if (old) { registeredUser = old; localStorage.setItem(scopedKey('registeredUser'), JSON.stringify(old)); }
+        if (old) {
+          registeredUser = old;
+          localStorage.setItem(scopedKey('registeredUser'), JSON.stringify(old));
+        } else {
+          registeredUser = null;
+          localStorage.removeItem(scopedKey('registeredUser'));
+        }
+        if (e?.details?.error === 'legal_consent_required') {
+          legalConsentRequired = true;
+          render();
+          return alert(tr('Huquqiy hujjat yangilangan. Joriy versiyani qayta o‘qib tasdiqlang.', 'Юридический документ обновлён. Прочитайте и подтвердите текущую версию.'));
+        }
+        render();
         alert(uiLang === 'ru' ? '⚠️ На сервере сохранить не удалось. Проверьте интернет.' : "⚠️ Serverda saqlab bo'lmadi. Internetni tekshiring.");
       }
     }
@@ -9518,7 +9645,7 @@
       showActionToast(tr('⏳ Butunlay o‘chirilmoqda...','⏳ Удаление навсегда...'), 'saving');
       try {
         await callApi('purge_trash_batch_now', { batchId });
-        if (trashBatches) trashBatches = trashBatches.filter(b => Number(b.id) !== Number(batchId));
+        if (trashBatches) trashBatches = trashBatches.filter(b => String(b.id) !== String(batchId));
         await loadCatalog(); render();
         showActionToast(tr('✅ Butunlay o‘chirildi','✅ Удалено навсегда'), 'success', 1500);
       } catch (e) { console.error(e); alert(tr('❌ O‘chirishda xatolik: ','❌ Ошибка удаления: ') + (e.message || e)); }
@@ -9601,19 +9728,19 @@
     async function restoreTrashBatchFromMenu(batchId, event) {
       event?.stopPropagation?.();
       trashActionMenuBatchId = null;
-      await restoreTrashBatch(Number(batchId) || batchId);
+      await restoreTrashBatch(String(batchId));
     }
     async function purgeTrashBatchFromMenu(batchId, event) {
       event?.stopPropagation?.();
       trashActionMenuBatchId = null;
-      await purgeTrashBatchNow(Number(batchId) || batchId);
+      await purgeTrashBatchNow(String(batchId));
     }
     async function restoreSelectedTrashBatches() {
       const ids = [...trashSelectedBatchIds];
       if (!ids.length) return;
       showActionToast(tr('Tiklanmoqda...', 'Восстановление...'), 'saving');
       try {
-        for (const id of ids) await callApi('restore_trash_batch', { batchId: Number(id) || id });
+        for (const id of ids) await callApi('restore_trash_batch', { batchId: String(id) });
         await loadCatalog();
         trashBatches = (trashBatches || []).filter(b => !trashSelectedBatchIds.has(String(b.id)));
         clearTrashBulkSelection();
@@ -9635,7 +9762,7 @@
       if (!ok) return;
       showActionToast(tr('Butunlay o‘chirilmoqda...', 'Удаление навсегда...'), 'saving');
       try {
-        for (const id of ids) await callApi('purge_trash_batch_now', { batchId: Number(id) || id });
+        for (const id of ids) await callApi('purge_trash_batch_now', { batchId: String(id) });
         trashBatches = (trashBatches || []).filter(b => !trashSelectedBatchIds.has(String(b.id)));
         await loadCatalog();
         clearTrashBulkSelection();
@@ -9661,7 +9788,7 @@
           onpointerdown="startTrashLongPress('${escapeHtml(String(b.id))}', event)"
           onpointerup="cancelTrashLongPress()" onpointercancel="cancelTrashLongPress()" onpointerleave="cancelTrashLongPress()"
           onclick="handleTrashBatchClick('${escapeHtml(String(b.id))}', event)"
-          data-search="${escapeHtml(trashBatchSearchText(b))}" class="fc-trash-card ${selected ? 'is-selected' : ''} ${trashBulkSelectMode ? 'is-selecting' : ''}">
+          data-search="${escapeHtml(trashBatchSearchText(b))}" class="fc-trash-card ${selected ? 'is-selected' : ''} ${trashBulkSelectMode ? 'is-selecting' : ''} ${trashActionMenuBatchId === String(b.id) ? 'is-menu-open' : ''}">
           <div class="fc-trash-card-icon"><i data-lucide="${isCategory ? 'folder' : 'package'}" class="w-4 h-4"></i></div>
           <div class="fc-trash-card-main">
             <b>${escapeHtml(title)}${extra}</b>
@@ -9691,7 +9818,7 @@
       try {
         await callApi('restore_trash_batch', { batchId });
         await loadCatalog();
-        if (trashBatches) trashBatches = trashBatches.filter(b => b.id !== batchId);
+        if (trashBatches) trashBatches = trashBatches.filter(b => String(b.id) !== String(batchId));
         render();
         showActionToast(tr('✅ Tiklandi', '✅ Восстановлено'), 'success', 1500);
       } catch (e) {
@@ -9944,6 +10071,8 @@
         clickAccessGranted = bootData.clickAccessGranted === true;
         fulfillmentConfig = commerce.normalizeConfig(bootData.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
         designSettings = bootData.designSettings || { themeId: 'minimal', colors: {} };
+        legalDocuments = Array.isArray(bootData.legalDocuments) ? bootData.legalDocuments : [];
+        legalConsentRequired = bootData.legalConsentRequired === true;
         applyDesignColors(designSettings.colors, designSettings.themeId);
         if (bootData.profile?.phone) {
           registeredUser = { firstName: bootData.profile.firstName || '', lastName: bootData.profile.lastName || '', phone: bootData.profile.phone };
