@@ -3839,10 +3839,13 @@
         // ko'rinadi (bo'sh bo'lsa na label, na bo'sh joy qoladi). Alohida
         // "Taxminiy vaqt:" labelisiz — admin kiritgan qiymat tabiiy gap
         // ichiga qo'yiladi.
+        const deliveryFeeLine = Number(totals.deliveryFee) > 0
+          ? `${(noticeText || comment) ? '<br>' : ''}<span class="fc-checkout-notice-fee"><i data-lucide="badge-dollar-sign" class="w-3.5 h-3.5"></i><span>${tr('Yetkazib berish narxi', 'Стоимость доставки')}: <b>${money(totals.deliveryFee)}</b></span></span>`
+          : '';
         const estimatedTimeVal = selectedDelivery?.estimatedTime ? escapeHtml(selectedDelivery.estimatedTime) : '';
         const estimatedTime = estimatedTimeVal
-          ? `${(noticeText || comment) ? '<br>' : ''}<span class="fc-checkout-notice-time"><i data-lucide="clock-3" class="w-3.5 h-3.5"></i><span>${tr(`${estimatedTimeVal} ichida yetkazib beriladi.`, `Доставка в течение ${estimatedTimeVal}.`)}</span></span>` : '';
-        notice.innerHTML = noticeText + comment + estimatedTime;
+          ? `${(noticeText || comment || deliveryFeeLine) ? '<br>' : ''}<span class="fc-checkout-notice-time"><i data-lucide="clock-3" class="w-3.5 h-3.5"></i><span>${tr(`${estimatedTimeVal} ichida yetkazib beriladi.`, `Доставка в течение ${estimatedTimeVal}.`)}</span></span>` : '';
+        notice.innerHTML = noticeText + comment + deliveryFeeLine + estimatedTime;
         notice.classList.toggle('hidden', !selectedDelivery);
       }
       // 2-band: POST (BTS/EMU) uchun faqat manzil maydoni yashiriladi (uning
@@ -8067,8 +8070,8 @@
                 </section>
 
                 <section class="fc-checkout-summary">
-                  <div><span>${tr('Tovarlar summasi', 'Сумма товаров')}</span><b id="checkout-subtotal"></b></div>
-                  <div><span>${tr('Yetkazib berish narxi', 'Стоимость доставки')}</span><b id="checkout-delivery-fee"></b></div>
+                  <div class="fc-checkout-summary-subtotal"><span>${tr('Tovarlar summasi', 'Сумма товаров')}</span><b id="checkout-subtotal"></b></div>
+                  <div class="fc-checkout-summary-delivery"><span>${tr('Yetkazib berish narxi', 'Стоимость доставки')}</span><b id="checkout-delivery-fee"></b></div>
                   <div class="fc-checkout-summary-total"><span>${tr("Hozir to'lanadigan jami", 'Итого к оплате сейчас')}</span><strong id="checkout-payable-total"></strong></div>
                 </section>
               </div>
@@ -8370,7 +8373,7 @@
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${tr('Hudud','Регион')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div>${Number(o.deliveryFee) > 0 ? `<div class="fc-order-delivery-fee fc-order-delivery-fee-detail">${tr('Yetkazib berish narxi','Стоимость доставки')}: <b>${money(o.deliveryFee)}</b></div>` : ''}<div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku&&isAdminMode&&isUserAnAdmin)?`ID: ${escapeHtml(i.sku)} · `:''}${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
-              <section class="fc-order-summary-card"><div><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div><span>${tr('Yetkazib berish narxi','Стоимость доставки')}</span><b>${Number(o.deliveryFee)>0?money(o.deliveryFee):money(0)}</b></div><div class="is-total"><span>${tr("Hozir to'lanadigan jami",'Итого к оплате сейчас')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
+              <section class="fc-order-summary-card"><div class="is-subtotal"><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div class="is-delivery"><span>${tr('Yetkazib berish narxi','Стоимость доставки')}</span><b>${Number(o.deliveryFee)>0?money(o.deliveryFee):money(0)}</b></div><div class="is-total"><span>${tr("Hozir to'lanadigan jami",'Итого к оплате сейчас')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
 
               ${!isAdminMode ? `<button onclick="reorderFromOrder(${o.id})" class="fc-btn fc-btn-secondary w-full"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr('Qayta buyurtma', 'Повторить заказ')}</button>` : ''}
 
