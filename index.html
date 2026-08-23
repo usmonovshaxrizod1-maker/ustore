@@ -12,19 +12,19 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>UStorE - Telegram Mini App & ERP</title>
+  <title>UStorE — Online do‘kon</title>
   <!-- Tashqi manbalarga oldindan ulanish — sahifa ochilishini biroz tezlashtiradi -->
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=33">
+  <link rel="stylesheet" href="./ustore.css?v=34">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=6"></script>
   <script defer src="./config.public.js?v=1"></script>
-  <script defer src="./ustore-shop-app.js?v=42"></script>
+  <script defer src="./ustore-shop-app.js?v=43"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
 
@@ -35,16 +35,16 @@
       <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400"></span>
     </div>
     <div class="flex items-center space-x-2">
-      <button onclick="switchTab('cart')" class="relative p-2 bg-gray-100 rounded-full" id="header-cart-btn" aria-label="Savatcha" title="Savatcha">
+      <button onclick="switchTab('cart')" class="fc-topbar-action relative p-2 bg-gray-100 rounded-full" id="header-cart-btn" aria-label="Savatcha" title="Savatcha">
         <i data-lucide="shopping-cart" class="w-5 h-5 text-gray-700"></i>
         <span id="cart-badge" class="hidden absolute -top-1 -right-1 fc-bg-danger text-white text-[10px] font-bold w-4 h-4 rounded-full items-center justify-center">0</span>
       </button>
       <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi (savatchadan keyin). -->
-      <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
-      <button onclick="switchTab('profile')" class="p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
+      <button onclick="toggleUiLang()" class="fc-topbar-action fc-lang-action p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
+      <button onclick="switchTab('profile')" class="fc-topbar-action p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
         <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
       </button>
-      <button onclick="openShopParams()" class="p-2 bg-gray-100 rounded-full" id="header-settings-btn" aria-label="Do'kon sozlamalari" title="Do'kon sozlamalari">
+      <button onclick="openShopParams()" class="fc-topbar-action p-2 bg-gray-100 rounded-full" id="header-settings-btn" aria-label="Do'kon sozlamalari" title="Do'kon sozlamalari">
         <i data-lucide="settings" class="w-5 h-5 text-gray-700"></i>
       </button>
     </div>
@@ -56,16 +56,20 @@
 
   <!-- MAIN CONTAINER -->
   <main id="app-content" class="p-4 max-w-md mx-auto min-h-screen">
-    <div class="flex flex-col items-center justify-center py-20 text-gray-400">
-      <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-      <p class="text-xs font-bold">Yuklanmoqda...</p>
+    <div class="fc-boot-loader" role="status" aria-live="polite">
+      <div class="fc-boot-mark"><i data-lucide="shopping-bag" class="w-5 h-5"></i></div>
+      <div class="fc-boot-copy">
+        <b>UStorE</b>
+        <span>Do‘kon yuklanmoqda...</span>
+      </div>
+      <div class="fc-boot-progress" aria-hidden="true"><span></span></div>
     </div>
   </main>
 
   <!-- GLOBAL LOADING OVERLAY -->
-  <div id="global-loader" class="hidden fixed inset-0 bg-black/40 z-[999] flex items-center justify-center">
-    <div class="bg-white rounded-2xl px-6 py-5 flex flex-col items-center gap-3 shadow-xl">
-      <div class="w-9 h-9 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  <div id="global-loader" class="fc-global-loader hidden fixed inset-0 bg-black/40 z-[999] flex items-center justify-center">
+    <div class="fc-global-loader-card bg-white rounded-2xl px-6 py-5 flex flex-col items-center gap-3 shadow-xl">
+      <div class="fc-global-loader-spinner w-9 h-9 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
       <p id="global-loader-text" class="text-xs font-bold text-gray-700">Yuklanmoqda...</p>
     </div>
   </div>
