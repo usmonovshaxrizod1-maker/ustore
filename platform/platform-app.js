@@ -749,7 +749,7 @@
           <button class="secondary" onclick="document.getElementById('plat-receipt-input').click()">🖼 Galereyadan tanlash</button>
           <button class="secondary" onclick="document.getElementById('plat-receipt-input-files').click()">📁 Fayllardan tanlash</button>
         </div>
-        ${receiptPreviewUrl ? `<div class="plat-receipt-wrap"><img src="${receiptPreviewUrl}" class="plat-receipt-preview"><span class="plat-receipt-ready">✓ Chek tanlandi</span></div>` : '<div class="plat-upload-hint">Chekni tanlaganingizdan keyin shu yerda ko'rinadi.</div>'}
+        ${receiptPreviewUrl ? `<div class="plat-receipt-wrap"><img src="${receiptPreviewUrl}" class="plat-receipt-preview"><span class="plat-receipt-ready">✓ Chek tanlandi</span></div>` : `<div class="plat-upload-hint">Chekni tanlaganingizdan keyin shu yerda ko'rinadi.</div>`}
         ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
       </div>
       <div class="card">
