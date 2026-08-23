@@ -669,6 +669,9 @@
     let fulfillmentExpandedPayment = null; // CASH | CARD | null (faqat PAYMENTS bo'limida, 1.2: yonma-yon + inline ochilish)
     // Yetkazib berish parametrlarida bir vaqtda faqat kerakli hudud kartasi ochiq turadi.
     let fulfillmentExpandedRegionKey = null;
+    const qrProviderTestState = {}; // providerId -> {status:'opened'|'verified'|'failed', note?}
+    const qrProviderDecodedRaw = {};
+    const qrProviderNeedsTest = new Set();
     let selectedDeliveryMethodId = checkoutDraft.deliveryMethodId || null;
     let selectedPayMethod = checkoutDraft.paymentMethodId || null;
     let selectedQrProviderId = null;
@@ -749,6 +752,7 @@
     let trashSearchQuery = '';
     let trashLongPressTimer = null;
     let suppressTrashClickOnce = false;
+    let trashActionMenuBatchId = null;
     // 17-band: Sevimlilar — boot'dan keyin bir marta yuklanadi (har card uchun
     // alohida so'rov yo'q, 48-band talabi).
     let favoriteProductIds = new Set();
@@ -1877,7 +1881,7 @@
       tempImageUrl = raw || null;
       const preview = document.getElementById(previewId);
       const pickerButton = buttonId ? document.getElementById(buttonId) : null;
-      if (pickerButton) pickerButton.textContent = `🖼 ${tr('Rasm tanlash', 'Выбрать фото')}`;
+      if (pickerButton) pickerButton.textContent = `🖼 ${tr('Xotiradan yuklash', 'Загрузить с устройства')}`;
 
       if (!raw) {
         setImageUrlError(errorId, '');
@@ -2320,32 +2324,12 @@
     // modalni (masalan tovar tahrirlash formasi) yo'q qilib qo'ymaslik
     // uchun, chunki innerHTML almashtirish uning holatini yo'qotardi).
     function openImagePickerSheet(galleryInputId, filesInputId) {
-      const root = document.createElement('div');
-      root.id = 'fc-picker-sheet-root';
-      root.innerHTML = `
-        <div class="fc-sheet-overlay" onclick="if(event.target===this) closeImagePickerSheet();">
-          <div class="fc-sheet">
-            <div class="fc-sheet-handle"></div>
-            <div class="fc-sheet-header">
-              <div class="fc-sheet-title">${tr('Rasm tanlash', 'Выбор фото')}</div>
-              <button type="button" onclick="closeImagePickerSheet()" aria-label="${tr('Yopish', 'Закрыть')}" class="fc-btn fc-btn-icon" style="min-width:2.25rem;min-height:2.25rem"><i data-lucide="x" class="w-4 h-4"></i></button>
-            </div>
-            <div class="fc-sheet-body space-y-2">
-              <button type="button" onclick="closeImagePickerSheet(); document.getElementById('${galleryInputId}').click();" class="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50 text-left active:bg-gray-100">
-                <span class="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 shrink-0"><i data-lucide="image" class="w-5 h-5"></i></span>
-                <span class="min-w-0"><span class="block font-bold text-sm">${tr('Galereyadan tanlash', 'Выбрать из галереи')}</span><span class="block text-xs text-gray-400">${tr('Telefon rasmlaridan tanlash', 'Выбрать из фото телефона')}</span></span>
-              </button>
-              ${filesInputId ? `
-              <button type="button" onclick="closeImagePickerSheet(); document.getElementById('${filesInputId}').click();" class="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50 text-left active:bg-gray-100">
-                <span class="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-blue-600 shrink-0"><i data-lucide="folder" class="w-5 h-5"></i></span>
-                <span class="min-w-0"><span class="block font-bold text-sm">${tr('Fayllardan tanlash', 'Выбрать из файлов')}</span><span class="block text-xs text-gray-400">${tr('Qurilmadagi fayllardan tanlash', 'Выбрать файл на устройстве')}</span></span>
-              </button>` : ''}
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(root);
-      lucide.createIcons();
+      // ROUND13: custom Galereya/Fayl action-sheet olib tashlandi. Har bir
+      // upload joyi to'g'ridan-to'g'ri native file picker'ni ochadi. Biz
+      // qurilmaning qaysi papkasini birinchi ko'rsatishini majburlamaymiz —
+      // bu Android/iOS/Telegram WebView'ning o'zi boshqaradigan native UI.
+      const target = document.getElementById(filesInputId || galleryInputId);
+      if (target) target.click();
     }
     function closeImagePickerSheet() {
       const root = document.getElementById('fc-picker-sheet-root');
@@ -2605,7 +2589,6 @@
     function renderSettingsPage(container) {
       const body = `
         <div class="space-y-2">
-          <button type="button" onclick="openOrderInfoSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="receipt" class="w-4 h-4"></i>${tr("Buyurtma ma'lumotlari", "Информация о заказе")}</span><span>›</span></button>
           <button type="button" onclick="openDeliverySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="truck" class="w-4 h-4"></i>${tr("Yetkazib berish parametrlari", "Параметры доставки")}</span><span>›</span></button>
           <button type="button" onclick="openPaymentSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr("To'lov parametrlari", "Параметры оплаты")}</span><span>›</span></button>
           <button type="button" onclick="openDesignSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4"></i>${tr("Dizayn", "Дизайн")}</span><span>›</span></button>
@@ -2751,8 +2734,8 @@
                 class="w-full bg-white pl-10 pr-4 py-3 rounded-2xl border border-gray-200 text-sm shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
               <i data-lucide="search" class="w-5 h-5 text-gray-400 absolute left-3 top-3.5"></i>
             </div>
-            <button onclick="openCategoryFilterModal()" title="${tr('Filtr','Фильтр')}" class="shrink-0 w-11 h-11 flex items-center justify-center rounded-2xl border shadow-sm ${homeFilterActive ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}">
-              🔍${homeFilterActive ? '•' : ''}
+            <button onclick="openCategoryFilterModal()" title="${tr('Filtr','Фильтр')}" aria-pressed="${homeFilterActive ? 'true' : 'false'}" class="fc-filter-launch ${homeFilterActive ? 'is-active' : ''}">
+              <i data-lucide="search" class="w-4 h-4"></i>${homeFilterActive ? '<span class="fc-filter-active-dot"></span>' : ''}
             </button>
           </div>
           ${renderActiveFilterChipsHtml()}
@@ -2962,23 +2945,15 @@
               <div class="w-full h-32 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
                 <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-full object-contain" loading="lazy">
               </div>
-              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>${cardActionMenuHtml('product', p.id)}` : ''}
+              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
             </div>
             ${(isAdminMode && isUserAnAdmin) ? `<span class="text-[10px] bg-gray-100 font-mono text-gray-500 px-1.5 py-0.5 rounded">${escapeHtml(p.sku)}</span>` : ''}
             <h4 class="font-bold text-sm text-gray-800 mt-1 leading-tight line-clamp-2">${escapeHtml(productName(p))}</h4>
 
-            <div class="fc-product-price-drag-row mt-1">
-              <div class="fc-product-price-wrap">
-                ${hasDiscount ? `
-                  <span class="text-xs fc-text-danger font-black">${money(p.price)}</span>
-                  <span class="text-[10px] bg-amber-100 text-amber-700 font-black px-1.5 py-0.5 rounded-md">-${discountPercent(p)}%</span>
-                  <span class="text-[10px] text-gray-400 line-through font-bold">${money(p.oldPrice)}</span>
-                ` : `
-                  <span class="text-xs text-blue-600 font-black">${money(p.price)}</span>
-                `}
-              </div>
-              ${(isAdminMode && isUserAnAdmin && !bulkSelecting) ? `<button type="button" class="fc-drag-handle fc-product-drag-inline" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>` : ''}
+            <div class="fc-product-price-block mt-1">
+              <div class="fc-product-current-price ${hasDiscount ? 'fc-text-danger' : 'text-blue-600'}">${money(p.price)}</div>
+              ${hasDiscount ? `<div class="fc-product-discount-line"><span class="fc-product-discount-badge">-${discountPercent(p)}%</span><span class="fc-product-old-price">${money(p.oldPrice)}</span></div>` : ''}
             </div>
             ${variantSizes.length ? `<p class="text-[9px] text-gray-400 mt-0.5">${tr("O'lcham", "Размер")}: ${variantSizes.map(escapeHtml).join(', ')}</p>` : ''}
             ${variantColors.length ? `<p class="text-[9px] text-gray-400 mt-0.5">${tr("Rang", "Цвет")}: ${variantColors.map(escapeHtml).join(', ')}</p>` : ''}
@@ -3047,8 +3022,8 @@
                    (Lucide) iconlar bilan — eski emoji emas. -->
               <div class="flex space-x-2 pt-1 border-t">
                 <button onclick="openAddCatModal()" class="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="folder-plus" class="w-3.5 h-3.5"></i>${tr("Katalog", "Каталог")}</button>
-                <button onclick="openAddProductModal()" class="flex-1 flex items-center justify-center gap-1 bg-emerald-600 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="package-plus" class="w-3.5 h-3.5"></i>${tr("Tovar", "Товар")}</button>
-                <button onclick="openExcelImportModal()" class="fc-excel-btn flex-1 flex items-center justify-center gap-1 font-bold py-1.5 rounded-xl text-xs"><i data-lucide="table" class="w-3.5 h-3.5"></i>Excel</button>
+                <button onclick="openAddProductModal()" class="fc-product-add-btn flex-1 flex items-center justify-center gap-1 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="package-plus" class="w-3.5 h-3.5"></i>${tr("Tovar", "Товар")}</button>
+                <button onclick="openExcelImportModal()" ${excelOpening ? 'disabled' : ''} class="fc-excel-btn flex-1 flex items-center justify-center gap-1 font-bold py-1.5 rounded-xl text-xs">${excelOpening ? '<span class="fc-spinner fc-spinner-xs"></span>' : '<i data-lucide="table" class="w-3.5 h-3.5"></i>'}${excelOpening ? tr('Ochilmoqda...','Открывается...') : 'Excel'}</button>
               </div>
               <div class="flex flex-wrap gap-1.5 pt-1">
                 <button onclick="openMissingImageQueue()" title="${tr('Rasmsiz tovarlar','Товары без фото')} · ${globalMissingImageCount}" aria-label="${tr('Rasmsiz tovarlar','Товары без фото')}" class="flex items-center justify-center gap-1 min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-200">${ICON_IMAGE}${globalMissingImageCount > 0 ? `<span>${globalMissingImageCount}</span>` : ''}</button>
@@ -3086,6 +3061,7 @@
 
           ${bulkCategorySelectMode ? `<div class="fc-selection-toolbar"><span>${bulkSelectedCategoryIds.size}</span><button onclick="openBulkMoveCategoriesModal()" ${bulkSelectedCategoryIds.size?'':'disabled'} aria-label="${tr('Ko‘chirish','Переместить')}"><i data-lucide="folder-input" class="w-4 h-4"></i></button><button onclick="bulkTrashSelectedCategories()" ${bulkSelectedCategoryIds.size?'':'disabled'} class="is-danger" aria-label="${tr('O‘chirish','Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="clearBulkCategorySelection()"><i data-lucide="x" class="w-4 h-4"></i></button></div>` : ''}
 
+          ${catProdsRaw.length === 0 && subCats.length > 0 ? '' : `
           <!-- PRODUCTS LIST -->
           <div class="space-y-2 pt-2">
             <div class="flex items-center justify-between px-1">
@@ -3093,8 +3069,8 @@
               <div class="flex gap-1">
                 ${catProdsRaw.length > 0 ? `
                   ${bulkProductSelectMode ? `<button onclick="selectAllVisibleProducts()" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700">${tr('Barchasini tanlash','Выбрать все')}</button>` : ''}
-                  <button onclick="openCategoryFilterModal()" class="text-[11px] font-bold px-2.5 py-1 rounded-lg ${filterActive ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">
-                    <i data-lucide="search" class="w-3.5 h-3.5 inline-block mr-1"></i>${tr('Filtr','Фильтр')}${filterActive ? ' •' : ''}
+                  <button onclick="openCategoryFilterModal()" aria-label="${tr('Filtr','Фильтр')}" aria-pressed="${filterActive ? 'true' : 'false'}" class="fc-filter-launch fc-filter-launch-inline ${filterActive ? 'is-active' : ''}">
+                    <i data-lucide="search" class="w-3.5 h-3.5"></i>${filterActive ? '<span class="fc-filter-active-dot"></span>' : ''}
                   </button>
                 ` : ''}
               </div>
@@ -3123,6 +3099,7 @@
               </div>
             ` : ''}
           </div>
+          `}
         </div>
       `;
     }
@@ -3307,9 +3284,6 @@
                   </div>
                 </div>
                 <div class="flex flex-col items-end gap-1.5 shrink-0">
-                  <button onclick="removeCartItem('${item.key}')" class="w-7 h-7 flex items-center justify-center rounded-lg fc-text-danger fc-bg-danger-soft" aria-label="${tr("O'chirish", 'Удалить')}" title="${tr("O'chirish", 'Удалить')}">
-                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                  </button>
                   <div class="flex items-center gap-2">
                     <button onclick="changeCartQty('${item.key}', -1)" class="w-9 h-9 bg-gray-100 rounded-lg font-bold text-sm">-</button>
                     <span class="font-bold text-sm w-5 text-center">${item.qty}</span>
@@ -3359,7 +3333,7 @@
 
     function deliveryOptionLabel(option) {
       if (option.kind === 'FREE') return tr('Bepul yetkazib berish', 'Бесплатная доставка');
-      if (option.kind === 'FIXED') return `${tr('Uyigacha', 'До дома')} · ${money(option.fee)}`;
+      if (option.kind === 'FIXED') return tr('Yetkazib berish', 'Доставка');
       if (option.kind === 'TAXI') {
         if (option.exactFee !== null && option.exactFee !== undefined) return `${tr('Taksi orqali', 'На такси')} · ${formatNumber(option.exactFee)} ${tr("so'm", 'сум')}`;
         if (option.minFee !== null && option.minFee !== undefined && option.maxFee !== null && option.maxFee !== undefined) return `${tr('Taksi orqali', 'На такси')} · ${formatNumber(option.minFee)}–${formatNumber(option.maxFee)} ${tr("so'm", 'сум')}`;
@@ -3435,7 +3409,7 @@
       return `
         <label class="block font-bold">${label}</label>
         <div class="flex items-center gap-2 mt-1 flex-wrap">
-          <button type="button" onclick="openImagePickerSheet('chk-receipt','chk-receipt-files')" class="fc-btn fc-btn-primary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Chekni tanlash', 'Выбрать чек')}</button>
+          <button type="button" onclick="openImagePickerSheet('chk-receipt','chk-receipt-files')" class="fc-btn fc-receipt-picker-btn"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Chekni tanlash', 'Выбрать чек')}</button>
           ${galleryInput}${filesInput}
         </div>`;
     }
@@ -3444,7 +3418,8 @@
       const wrap = document.getElementById('chk-receipt-wrap');
       if (!wrap) return;
       const regionKey = document.getElementById('chk-region-key')?.value || checkoutDraft.regionKey || 'tashkent_city';
-      const selectedPayment = commerce.paymentOptions(fulfillmentConfig, regionKey).find(m => m.id === selectedPayMethod);
+      const districtValue = document.getElementById('chk-district')?.value || '';
+      const selectedPayment = commerce.paymentOptions(fulfillmentConfig, regionKey, districtValue).find(m => m.id === selectedPayMethod);
       wrap.innerHTML = renderReceiptPicker(!!selectedPayment?.receiptRequired || selectedPayment?.id === 'QR');
     }
 
@@ -3584,6 +3559,7 @@
     function handleDistrictChange() {
       saveCheckoutDraft();
       checkoutSelectedBranch = null;
+      renderCheckoutOptions();
       checkoutBranches = [];
       checkoutBranchesLoadedFor = null;
       const districtValue = document.getElementById('chk-district')?.value || '';
@@ -3726,8 +3702,9 @@
 
     function renderCheckoutOptions() {
       const regionKey = document.getElementById('chk-region-key')?.value || checkoutDraft.regionKey || 'tashkent_city';
-      const deliveryOptions = commerce.deliveryOptions(fulfillmentConfig, regionKey);
-      const paymentOptions = commerce.paymentOptions(fulfillmentConfig, regionKey);
+      const districtValue = document.getElementById('chk-district')?.value || '';
+      const deliveryOptions = commerce.deliveryOptions(fulfillmentConfig, regionKey, districtValue);
+      const paymentOptions = commerce.paymentOptions(fulfillmentConfig, regionKey, districtValue);
       if (!deliveryOptions.some(option => option.id === selectedDeliveryMethodId)) {
         // 5.6: yetkazib berish provideri (POST:BTS/POST:EMU) hech qachon
         // avtomatik tanlanmaydi — mijoz buni o'zi bosishi shart. Boshqa
@@ -3741,7 +3718,6 @@
       const selectedPayment = paymentOptions.find(option => option.id === selectedPayMethod) || null;
       const totals = commerce.calculateTotals(checkoutSubtotal(), selectedDelivery);
 
-      const districtValue = document.getElementById('chk-district')?.value || '';
       const deliveryWrap = document.getElementById('delivery-method-wrap');
       if (deliveryWrap) deliveryWrap.innerHTML = deliveryOptions.length ? deliveryOptions.map(option => {
         // 5.6: provider tugmalari tuman tanlanmaguncha bosilmaydigan
@@ -3916,15 +3892,16 @@
       const fullname = document.getElementById('chk-fullname').value.trim();
       const phone = document.getElementById('chk-phone').value.trim();
       const regionKey = document.getElementById('chk-region-key').value;
-      const deliveryOptions = commerce.deliveryOptions(fulfillmentConfig, regionKey);
-      const paymentOptions = commerce.paymentOptions(fulfillmentConfig, regionKey);
+      const selectedDistrictValue = document.getElementById('chk-district').value.trim();
+      const deliveryOptions = commerce.deliveryOptions(fulfillmentConfig, regionKey, selectedDistrictValue);
+      const paymentOptions = commerce.paymentOptions(fulfillmentConfig, regionKey, selectedDistrictValue);
       const selectedDelivery = deliveryOptions.find(option => option.id === selectedDeliveryMethodId);
       const selectedPayment = paymentOptions.find(method => method.id === selectedPayMethod);
       const isPostDelivery = selectedDelivery?.kind === 'POST';
 
       // 1.13/1.14: BTS/EMU uchun mijoz qo'lda tuman/manzil yozmaydi — ro'yxatdan
       // tanlangan filial manzili ishlatiladi.
-      const tuman = isPostDelivery ? (checkoutSelectedBranch?.district_or_city || '') : document.getElementById('chk-district').value.trim();
+      const tuman = isPostDelivery ? (checkoutSelectedBranch?.district_or_city || '') : selectedDistrictValue;
       const district = isPostDelivery ? tuman : (regionKey === 'tashkent_city' ? tuman : `${topLevelRegionLabel(regionKey)}, ${tuman}`);
       const address = isPostDelivery ? (checkoutSelectedBranch?.full_address || '') : document.getElementById('chk-address').value.trim();
 
@@ -4246,25 +4223,25 @@
             <h2 class="text-lg font-bold text-slate-800">${t('all_orders')}</h2>
 
             <div class="bg-white p-3 rounded-2xl border space-y-2 text-xs shadow-sm">
-              <div class="fc-orders-search-calendar-row"><input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Mijoz ismi yoki tel raqami...','Имя клиента или номер телефона...')}" value="${escapeHtml(adminOrderFilters.search)}" class="p-2 border rounded-xl">${renderOrdersDateFilterHtml()}</div>
+              <div class="fc-orders-search-calendar-row"><input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Mijoz ismi yoki tel raqami...','Имя клиента или номер телефона...')}" value="${escapeHtml(adminOrderFilters.search)}" class="fc-order-search-input ${adminOrderFilters.search ? 'is-active' : ''} p-2 border rounded-xl">${renderOrdersDateFilterHtml()}</div>
 
               <div class="flex gap-1 flex-wrap">
-                <button onclick="setAdminStatusFilter('ALL')" class="fc-orders-all-filter px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === 'ALL' ? 'is-active' : ''}">${tr("Barchasi", "Все")}</button>
+                <button onclick="setAdminStatusFilter('ALL')" class="fc-orders-all-filter fc-order-filter-chip px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === 'ALL' ? 'is-active' : ''}">${adminOrderFilters.status === 'ALL' ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${tr("Barchasi", "Все")}</button>
                 ${['NEW', 'PROCESSING', 'DELIVERED', 'CANCELLED'].map(st => `
-                  <button onclick="setAdminStatusFilter('${st}')" class="px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === st ? statusColorClass(st) + ' ring-2 ring-offset-1 ring-current' : 'bg-gray-100 text-gray-500'}">
-                    ${statusLabel(st)}
+                  <button onclick="setAdminStatusFilter('${st}')" class="fc-order-filter-chip px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === st ? statusColorClass(st) + ' is-active' : 'bg-gray-100 text-gray-500'}">
+                    ${adminOrderFilters.status === st ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${statusLabel(st)}
                   </button>
                 `).join('')}
               </div>
 
               <div class="grid grid-cols-2 gap-2">
-                <select onchange="adminOrderFilters.region = this.value; render();" class="p-2 border rounded-xl bg-gray-50 font-bold">
+                <select onchange="adminOrderFilters.region = this.value; render();" class="fc-order-filter-select ${adminOrderFilters.region !== 'ALL' ? 'is-active' : ''} p-2 border rounded-xl bg-gray-50 font-bold">
                   <option value="ALL" ${adminOrderFilters.region === 'ALL' ? 'selected' : ''}>${tr("Barcha hududlar", "Все регионы")}</option>
                   <option value="TASHKENT" ${adminOrderFilters.region === 'TASHKENT' ? 'selected' : ''}>${tr("Toshkent shahri", "Город Ташкент")}</option>
                   <option value="PROVINCE" ${adminOrderFilters.region === 'PROVINCE' ? 'selected' : ''}>${tr("Viloyatlar", "Области")}</option>
                 </select>
 
-                <select onchange="adminOrderFilters.payment = this.value; render();" class="p-2 border rounded-xl bg-gray-50 font-bold">
+                <select onchange="adminOrderFilters.payment = this.value; render();" class="fc-order-filter-select ${adminOrderFilters.payment !== 'ALL' ? 'is-active' : ''} p-2 border rounded-xl bg-gray-50 font-bold">
                   <option value="ALL" ${adminOrderFilters.payment === 'ALL' ? 'selected' : ''}>${tr("Barcha to'lovlar", "Все способы оплаты")}</option>
                   <option value="CASH" ${adminOrderFilters.payment === 'CASH' ? 'selected' : ''}>${tr("Naqd pul", "Наличные")}</option>
                   <option value="CARD" ${adminOrderFilters.payment === 'CARD' ? 'selected' : ''}>${tr("Karta", "Карта")}</option>
@@ -4283,7 +4260,7 @@
                     </div>
                     <p class="font-bold text-xs text-gray-800 mt-1">${escapeHtml(o.user)} (${escapeHtml(o.phone)})</p>
                     <p class="text-[10px] text-gray-400">${escapeHtml(regionLabel(o.region))} | ${escapeHtml(payMethodLabel(o.payMethod))}</p>
-                    <p class="text-[10px] text-gray-500">${escapeHtml(deliverySnapshotLabel(o))} · ${escapeHtml(effectiveShipmentStatusLabel(o))}</p>
+                    <p class="text-[10px] text-gray-500">${escapeHtml(deliverySnapshotLabel(o))} · ${escapeHtml(effectiveShipmentStatusLabel(o))}</p>${Number(o.deliveryFee) > 0 ? `<p class="fc-order-delivery-fee">${tr('Yetkazib berish narxi','Стоимость доставки')}: <b>${money(o.deliveryFee)}</b></p>` : ''}
                   </div>
                   <span class="font-bold text-xs text-green-600">${money(o.totalPrice)}</span>
                 </div>
@@ -4311,9 +4288,9 @@
           <div class="flex items-center justify-between gap-2"><h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>${renderOrdersDateFilterHtml()}</div>
 
           <div class="flex space-x-1 overflow-x-auto pb-1 text-xs">
-            <button onclick="userOrderFilter='ALL'; render();" class="fc-orders-all-filter px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === 'ALL' ? 'is-active' : ''}">${tr("Barchasi", "Все")}</button>
+            <button onclick="userOrderFilter='ALL'; render();" class="fc-orders-all-filter fc-order-filter-chip px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === 'ALL' ? 'is-active' : ''}">${userOrderFilter === 'ALL' ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${tr("Barchasi", "Все")}</button>
             ${['NEW', 'PROCESSING', 'DELIVERED', 'CANCELLED'].map(st => `
-              <button onclick="userOrderFilter='${st}'; render();" class="px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === st ? statusColorClass(st) + ' ring-2 ring-offset-1 ring-current' : 'bg-white border text-gray-500'}">${statusLabel(st)}</button>
+              <button onclick="userOrderFilter='${st}'; render();" class="fc-order-filter-chip px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === st ? statusColorClass(st) + ' is-active' : 'bg-white border text-gray-500'}">${userOrderFilter === st ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${statusLabel(st)}</button>
             `).join('')}
           </div>
 
@@ -4325,7 +4302,7 @@
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColorClass(orderDisplayStatus(o))}">${statusLabel(orderDisplayStatus(o))}</span>
               </div>
               <p class="text-xs text-gray-500">📅 ${escapeHtml(o.date)}</p>
-              <p class="text-xs text-gray-600">🚚 ${escapeHtml(deliverySnapshotLabel(o))} · <b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></p>
+              <p class="text-xs text-gray-600">🚚 ${escapeHtml(deliverySnapshotLabel(o))} · <b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></p>${Number(o.deliveryFee) > 0 ? `<p class="fc-order-delivery-fee">${tr('Yetkazib berish narxi','Стоимость доставки')}: <b>${money(o.deliveryFee)}</b></p>` : ''}
               ${o.shipment?.kind === 'TAXI' && o.shipment?.carNumber ? `<div class="bg-blue-50 border border-blue-200 p-2 rounded-xl text-[11px]">🚕 ${tr('Mashina','Машина')}: <b>${escapeHtml(o.shipment.carNumber)}</b><br>${tr('Haydovchi','Водитель')}: ${escapeHtml(o.shipment.driverPhone || '')}${o.shipment.driverName ? ` · ${escapeHtml(o.shipment.driverName)}` : ''}</div>` : ''}
               ${o.shipment?.kind === 'POST' && o.shipment?.trackingNumber ? `<div class="bg-blue-50 border border-blue-200 p-2 rounded-xl text-[11px]">📦 ${escapeHtml(o.shipment.providerName || o.delivery?.providerName || '')}<br>${tr("Jo'natma raqami",'Трек-номер')}: <b>${escapeHtml(o.shipment.trackingNumber)}</b>${o.shipment.originBranch ? `<br>${tr('Filial','Филиал')}: ${escapeHtml(o.shipment.originBranch)}` : ''}</div>` : ''}
               <div class="text-xs space-y-1.5">
@@ -5550,6 +5527,9 @@
     function openPaymentSettingsPage() {
       if (!isUserAnAdmin || !isAdminMode) return;
       if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
+      Object.keys(qrProviderTestState).forEach(k => delete qrProviderTestState[k]);
+      Object.keys(qrProviderDecodedRaw).forEach(k => delete qrProviderDecodedRaw[k]);
+      qrProviderNeedsTest.clear();
       fulfillmentSettingsSection = 'PAYMENTS';
       fulfillmentExpandedPayment = fulfillmentExpandedPayment || 'CASH';
       openPage('PAYMENT_SETTINGS');
@@ -5557,7 +5537,7 @@
 
     function closeFulfillmentSettingsPage() {
       fulfillmentDraft = null;
-      closePage();
+      openPage('SETTINGS', 'nav-profile');
     }
 
     // Faqat #fulfillment-panel (sarlavha/Saqlash tugmalaridan tashqari ichki
@@ -5755,8 +5735,8 @@
     function setPaymentRegionEnabled(methodId, encodedId, enabled) {
       const method = paymentMethodConfig(methodId), regionId = decodedRegionId(encodedId);
       if (!method || !TOP_LEVEL_REGION_IDS.includes(regionId)) return;
-      if (enabled) method.regions[regionId] = { enabled: true };
-      else delete method.regions[regionId];
+      if (enabled) { method.regions[regionId] = { ...(method.regions[regionId] || {}), enabled: true }; fulfillmentExpandedRegionKey = `PAYMENT:${methodId}:${regionId}`; }
+      else { delete method.regions[regionId]; if (fulfillmentExpandedRegionKey === `PAYMENT:${methodId}:${regionId}`) fulfillmentExpandedRegionKey = null; }
       rerenderFulfillmentBody();
     }
 
@@ -5773,6 +5753,82 @@
 
     function settingsBulkButtons(onClickAll, onClickClear) {
       return `<div class="flex gap-2"><button type="button" onclick="${onClickAll}" class="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1.5 rounded-lg font-bold text-[10px]">${tr('Barchasini tanlash','Выбрать все')}</button><button type="button" onclick="${onClickClear}" class="bg-gray-100 text-gray-600 px-2.5 py-1.5 rounded-lg font-bold text-[10px]">${tr('Tozalash','Очистить')}</button></div>`;
+    }
+
+    // ROUND13: viloyat qoidasini xohlasa tuman/shahargacha toraytirish.
+    // districts bo'sh = butun viloyat; kamida bittasi = faqat tanlanganlar.
+    function fulfillmentDistrictOptions(regionId) {
+      return regionId === 'tashkent_city' ? TASHKENT_CITY_DISTRICTS : (UZ_REGIONS_BY_CODE[regionId] || []);
+    }
+    function encodedDistrictValue(value) { return encodeURIComponent(String(value || '')).replace(/'/g, '%27'); }
+    function decodedDistrictValue(value) { try { return decodeURIComponent(String(value || '')); } catch (_) { return String(value || ''); } }
+    function toggleDistrictSelection(entry, encodedDistrict, enabled) {
+      if (!entry) return;
+      const district = decodedDistrictValue(encodedDistrict);
+      const set = new Set(Array.isArray(entry.districts) ? entry.districts.map(String) : []);
+      if (enabled) set.add(district); else set.delete(district);
+      entry.districts = [...set];
+      if (!entry.districts.length) delete entry.districts;
+    }
+    function setDeliveryRegionDistrict(kind, encodedRegion, encodedDistrict, enabled) {
+      const key = DELIVERY_CONFIG_KEYS[kind], regionId = decodedRegionId(encodedRegion);
+      const entry = key && fulfillmentDraft?.delivery?.[key]?.regions?.[regionId];
+      if (!entry) return;
+      toggleDistrictSelection(entry, encodedDistrict, enabled);
+      rerenderFulfillmentBody();
+    }
+    function setPostRegionDistrict(providerId, encodedRegion, encodedDistrict, enabled) {
+      const regionId = decodedRegionId(encodedRegion), entry = postProvider(providerId)?.regions?.[regionId];
+      if (!entry) return;
+      toggleDistrictSelection(entry, encodedDistrict, enabled);
+      rerenderFulfillmentBody();
+    }
+    function setPaymentRegionDistrict(methodId, encodedRegion, encodedDistrict, enabled) {
+      const regionId = decodedRegionId(encodedRegion), entry = paymentMethodConfig(methodId)?.regions?.[regionId];
+      if (!entry) return;
+      toggleDistrictSelection(entry, encodedDistrict, enabled);
+      rerenderFulfillmentBody();
+    }
+    function clearRegionDistrictScope(scope, methodOrKind, encodedRegion, providerId = '') {
+      const regionId = decodedRegionId(encodedRegion);
+      let entry = null;
+      if (scope === 'DELIVERY') entry = fulfillmentDraft?.delivery?.[DELIVERY_CONFIG_KEYS[methodOrKind]]?.regions?.[regionId];
+      else if (scope === 'POST') entry = postProvider(providerId)?.regions?.[regionId];
+      else if (scope === 'PAYMENT') entry = paymentMethodConfig(methodOrKind)?.regions?.[regionId];
+      if (entry) delete entry.districts;
+      rerenderFulfillmentBody();
+    }
+    function renderDistrictScopeHtml(entry, regionId, setterCall, clearCall) {
+      const districts = fulfillmentDistrictOptions(regionId);
+      if (!districts.length) return '';
+      const selected = new Set(Array.isArray(entry?.districts) ? entry.districts.map(String) : []);
+      return `<div class="fc-district-scope">
+        <div class="fc-district-scope-head">
+          <div><b>${tr('Tuman / shahar bo‘yicha','По району / городу')}</b><small>${selected.size ? tr(`${selected.size} ta hududga amal qiladi`, `Действует для ${selected.size} районов`) : tr('Tanlanmasa — butun viloyatga amal qiladi','Если не выбрано — действует на всю область')}</small></div>
+          ${selected.size ? `<button type="button" onclick="${clearCall}" class="fc-district-all-btn">${tr('Butun viloyat','Вся область')}</button>` : `<span class="fc-district-all-badge">${tr('Butun viloyat','Вся область')}</span>`}
+        </div>
+        <div class="fc-district-grid">${districts.map(d => {
+          const encoded = encodedDistrictValue(d), checked = selected.has(String(d));
+          return `<label class="fc-district-chip ${checked ? 'is-selected' : ''}"><input type="checkbox" ${checked ? 'checked' : ''} onchange="${setterCall(encoded)}"><span>${escapeHtml(districtLabelForUi(d))}</span></label>`;
+        }).join('')}</div>
+      </div>`;
+    }
+
+    function renderPaymentRegionRows(method) {
+      return `<div class="fc-delivery-region-list">${TOP_LEVEL_REGIONS.map(region => {
+        const entry = method.regions?.[region.id], encoded = encodedRegionId(region.id);
+        const rowKey = `PAYMENT:${method.id}:${region.id}`;
+        const open = !!entry?.enabled && fulfillmentExpandedRegionKey === rowKey;
+        const districtCount = Array.isArray(entry?.districts) ? entry.districts.length : 0;
+        const subtitle = !entry?.enabled ? tr("O'chirilgan", 'Выключено') : districtCount ? tr(`${districtCount} ta tuman/shahar`, `${districtCount} районов/городов`) : tr('Butun viloyat', 'Вся область');
+        return `<div class="fc-delivery-region-card ${open ? 'is-open' : ''}">
+          <div class="fc-delivery-region-head">
+            <button type="button" class="fc-delivery-region-main" onclick="toggleFulfillmentRegionPanel('${rowKey}')" ${entry?.enabled ? '' : 'disabled'}><span><b>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</b><small>${escapeHtml(subtitle)}</small></span>${entry?.enabled ? `<i data-lucide="chevron-down" class="w-4 h-4 fc-delivery-region-chevron"></i>` : ''}</button>
+            <label class="fc-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setPaymentRegionEnabled('${method.id}','${encoded}',this.checked)"><span class="fc-toggle-track"></span></label>
+          </div>
+          ${open ? `<div class="fc-delivery-region-body">${renderDistrictScopeHtml(entry, region.id, (districtEncoded) => `setPaymentRegionDistrict('${method.id}','${encoded}','${districtEncoded}',this.checked)`, `clearRegionDistrictScope('PAYMENT','${method.id}','${encoded}')`)}</div>` : ''}
+        </div>`;
+      }).join('')}</div>`;
     }
 
     function renderDeliveryRegionRows(kind) {
@@ -5794,6 +5850,7 @@
             <label class="fc-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setDeliveryRegionEnabled('${kind}','${encoded}',this.checked)"><span class="fc-toggle-track"></span></label>
           </div>
           ${open ? `<div class="fc-delivery-region-body">
+            ${renderDistrictScopeHtml(entry, region.id, (districtEncoded) => `setDeliveryRegionDistrict('${kind}','${encoded}','${districtEncoded}',this.checked)`, `clearRegionDistrictScope('DELIVERY','${kind}','${encoded}')`)}
             ${kind === 'FIXED' ? `<label class="fc-mini-field"><span>${tr('Yetkazish narxi','Стоимость доставки')}</span><div class="fc-money-input"><input type="number" min="0" value="${entry.fee ?? ''}" oninput="setDeliveryRegionNumber('FIXED','${encoded}','fee',this.value)"><em>${tr("so'm",'сум')}</em></div></label>` : ''}
             ${kind === 'TAXI' ? `<label class="fc-mini-field"><span>${tr('Aniq narx (ixtiyoriy)','Точная цена (необязательно)')}</span><input type="number" min="0" value="${entry.exactFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','exactFee',this.value)"></label><div class="grid grid-cols-2 gap-2"><label class="fc-mini-field"><span>Min</span><input type="number" min="0" value="${entry.minFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','minFee',this.value)"></label><label class="fc-mini-field"><span>Max</span><input type="number" min="0" value="${entry.maxFee ?? ''}" oninput="setDeliveryRegionNumber('TAXI','${encoded}','maxFee',this.value)"></label></div>` : ''}
             <label class="fc-mini-field"><span>${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}</span><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setDeliveryRegionComment('${kind}','${encoded}',this.value)" maxlength="200"></label>
@@ -5816,7 +5873,7 @@
           const open = !!entry?.enabled && fulfillmentExpandedRegionKey === rowKey;
           return `<div class="fc-delivery-region-card ${open ? 'is-open' : ''}">
             <div class="fc-delivery-region-head"><button type="button" class="fc-delivery-region-main" onclick="toggleFulfillmentRegionPanel('${rowKey}')" ${entry?.enabled ? '' : 'disabled'}><span><b>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</b><small>${entry?.enabled ? (entry.payer === 'SELLER' ? tr('Sotuvchi hisobidan','За счёт продавца') : tr('Mijoz hisobidan','За счёт клиента')) : tr("O'chirilgan",'Выключено')}</small></span>${entry?.enabled ? `<i data-lucide="chevron-down" class="w-4 h-4 fc-delivery-region-chevron"></i>` : ''}</button><label class="fc-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${entry?.enabled ? 'checked' : ''} onchange="setPostRegionEnabled('${provider.id}','${encoded}',this.checked)"><span class="fc-toggle-track"></span></label></div>
-            ${open ? `<div class="fc-delivery-region-body"><label class="fc-mini-field"><span>${tr('Pochta xarajati','Почтовые расходы')}</span><select onchange="setPostRegionPayer('${provider.id}','${encoded}',this.value)"><option value="CUSTOMER" ${entry.payer !== 'SELLER' ? 'selected' : ''}>${tr('Mijoz hisobidan','За счёт клиента')}</option><option value="SELLER" ${entry.payer === 'SELLER' ? 'selected' : ''}>${tr('Sotuvchi hisobidan','За счёт продавца')}</option></select></label><label class="fc-mini-field"><span>${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}</span><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setPostRegionComment('${provider.id}','${encoded}',this.value)" maxlength="200"></label><label class="fc-mini-field"><span>${tr('Yetkazib berish vaqti (ixtiyoriy)','Время доставки (необязательно)')}</span><input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setPostRegionEstimatedTime('${provider.id}','${encoded}',this.value)" maxlength="60"></label></div>` : ''}
+            ${open ? `<div class="fc-delivery-region-body">${renderDistrictScopeHtml(entry, region.id, (districtEncoded) => `setPostRegionDistrict('${provider.id}','${encoded}','${districtEncoded}',this.checked)`, `clearRegionDistrictScope('POST','', '${encoded}','${provider.id}')`)}<label class="fc-mini-field"><span>${tr('Pochta xarajati','Почтовые расходы')}</span><select onchange="setPostRegionPayer('${provider.id}','${encoded}',this.value)"><option value="CUSTOMER" ${entry.payer !== 'SELLER' ? 'selected' : ''}>${tr('Mijoz hisobidan','За счёт клиента')}</option><option value="SELLER" ${entry.payer === 'SELLER' ? 'selected' : ''}>${tr('Sotuvchi hisobidan','За счёт продавца')}</option></select></label><label class="fc-mini-field"><span>${tr('Izoh (ixtiyoriy)','Комментарий (необязательно)')}</span><input type="text" value="${escapeHtml(entry.comment || '')}" oninput="setPostRegionComment('${provider.id}','${encoded}',this.value)" maxlength="200"></label><label class="fc-mini-field"><span>${tr('Yetkazib berish vaqti (ixtiyoriy)','Время доставки (необязательно)')}</span><input type="text" value="${escapeHtml(entry.estimatedTime || '')}" oninput="setPostRegionEstimatedTime('${provider.id}','${encoded}',this.value)" maxlength="60"></label></div>` : ''}
           </div>`;
         }).join('')}</div>` : ''}
       </div>`;
@@ -5827,32 +5884,88 @@
     }
     function setQrProviderEnabled(providerId, enabled) {
       const p = qrProvidersOf().find(x => x.id === providerId);
-      if (p) p.enabled = !!enabled;
+      if (p) {
+        const wasEnabled = !!p.enabled;
+        p.enabled = !!enabled;
+        if (!wasEnabled && p.enabled && p.paymentUrl) qrProviderNeedsTest.add(providerId);
+        if (!p.enabled) { qrProviderNeedsTest.delete(providerId); delete qrProviderTestState[providerId]; }
+      }
       rerenderFulfillmentBody();
     }
     function setQrProviderPaymentUrl(providerId, value) {
       const p = qrProvidersOf().find(x => x.id === providerId);
-      if (p) p.paymentUrl = String(value || '').trim().slice(0, 2048) || null;
+      if (!p) return;
+      const next = String(value || '').trim().slice(0, 2048) || null;
+      if (String(p.paymentUrl || '') !== String(next || '')) {
+        p.paymentUrl = next;
+        qrProviderNeedsTest.add(providerId);
+        qrProviderTestState[providerId] = { status: 'changed' };
+      }
     }
-    // 17-band: brauzer-native BarcodeDetector mavjud bo'lsa, yuklangan QR
-    // rasmdagi linkni avtomatik o'qishga urinadi — mavjud bo'lmasa yoki
-    // decode qila olmasa, jim o'tkazib yuboriladi (admin qo'lda kiritadi,
-    // hech narsa bloklanmaydi).
+    function qrProviderExpectedHost(providerId, hostname) {
+      const host = String(hostname || '').toLowerCase();
+      const rules = {
+        CLICK: ['click.uz'], PAYME: ['payme.uz', 'paycom.uz'],
+        PAYNET: ['paynet.uz'], UZUM: ['uzum.uz'],
+      };
+      return (rules[providerId] || []).some(domain => host === domain || host.endsWith('.' + domain));
+    }
+    function testQrProviderPaymentUrl(providerId) {
+      const p = qrProvidersOf().find(x => x.id === providerId);
+      if (!p?.paymentUrl) return alert(tr("Avval QR linkni kiriting yoki QR rasmdan avtomatik o'qiting.", 'Сначала укажите ссылку или распознайте её из QR.'));
+      let url;
+      try { url = new URL(p.paymentUrl); } catch (_) { return alert(tr("URL noto'g'ri.", 'Некорректный URL.')); }
+      if (!['http:', 'https:'].includes(url.protocol)) return alert(tr("Faqat http/https link qabul qilinadi.", 'Допустимы только ссылки http/https.'));
+      const providerMatch = qrProviderExpectedHost(providerId, url.hostname);
+      qrProviderTestState[providerId] = { status: 'opened', note: providerMatch ? '' : tr('Domen provayder nomiga o‘xshamaydi — ochilgan sahifani diqqat bilan tekshiring.', 'Домен не похож на домен провайдера — внимательно проверьте открытую страницу.') };
+      qrProviderNeedsTest.add(providerId);
+      rerenderFulfillmentBody();
+      openSafeExternalUrl(url.href);
+    }
+    function confirmQrProviderTest(providerId, ok) {
+      if (ok) {
+        qrProviderTestState[providerId] = { status: 'verified' };
+        qrProviderNeedsTest.delete(providerId);
+        showActionToast(tr('✅ QR link tekshirildi', '✅ QR-ссылка проверена'), 'success', 1400);
+      } else {
+        qrProviderTestState[providerId] = { status: 'failed' };
+        qrProviderNeedsTest.add(providerId);
+      }
+      rerenderFulfillmentBody();
+    }
+    // Native BarcodeDetector mavjud bo'lsa QR ichidagi qiymat avtomatik
+    // olinadi. URL bo'lsa paymentUrl to'ldiriladi; URL bo'lmasa raw qiymat
+    // ko'rsatiladi va admin URL'ni qo'lda kiritishi mumkin.
     async function tryAutoFillQrPaymentUrlFromFile(providerId, file) {
       try {
-        if (typeof BarcodeDetector === 'undefined') return;
+        if (typeof BarcodeDetector === 'undefined') {
+          qrProviderDecodedRaw[providerId] = tr("Bu qurilmada QR'ni avtomatik o'qish qo'llab-quvvatlanmadi — URLni qo'lda kiriting.", 'На этом устройстве авто-распознавание QR недоступно — введите URL вручную.');
+          return false;
+        }
         const detector = new BarcodeDetector({ formats: ['qr_code'] });
         const bitmap = await createImageBitmap(file);
         let results;
         try { results = await detector.detect(bitmap); } finally { bitmap.close?.(); }
-        const raw = results && results[0] && results[0].rawValue;
-        if (!raw) return;
+        const raw = String(results?.[0]?.rawValue || '').trim();
+        if (!raw) {
+          qrProviderDecodedRaw[providerId] = tr("QR kod o'qilmadi — boshqa rasm tanlang yoki URLni qo'lda kiriting.", 'QR-код не распознан — выберите другое изображение или введите URL вручную.');
+          return false;
+        }
+        qrProviderDecodedRaw[providerId] = raw;
         let url;
-        try { url = new URL(raw); } catch (_) { return; }
-        if (url.protocol !== 'https:' && url.protocol !== 'http:') return;
+        try { url = new URL(raw); } catch (_) { return false; }
+        if (!['https:', 'http:'].includes(url.protocol)) return false;
         const p = qrProvidersOf().find(x => x.id === providerId);
-        if (p && !p.paymentUrl) { p.paymentUrl = url.href; rerenderFulfillmentBody(); }
-      } catch (_) { /* decode ishlamasa ham upload rad etilmaydi */ }
+        if (p) {
+          p.paymentUrl = url.href;
+          qrProviderNeedsTest.add(providerId);
+          qrProviderTestState[providerId] = { status: 'changed' };
+        }
+        return true;
+      } catch (_) {
+        qrProviderDecodedRaw[providerId] = tr("QR kod o'qilmadi — URLni qo'lda kiriting.", 'QR-код не распознан — введите URL вручную.');
+        return false;
+      }
     }
     async function pickQrProviderImage(event, providerId) {
       const file = event.target.files?.[0];
@@ -5867,6 +5980,8 @@
         const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, null, true);
         const p = qrProvidersOf().find(x => x.id === providerId);
         if (p) p.qrImageUrl = url;
+        qrProviderNeedsTest.add(providerId);
+        qrProviderTestState[providerId] = { status: 'changed' };
         await tryAutoFillQrPaymentUrlFromFile(providerId, file);
         showActionToast(tr("✅ Yuklandi", "✅ Загружено"), 'success', 1200);
         rerenderFulfillmentBody();
@@ -5879,17 +5994,23 @@
       }
     }
     function renderQrProviderSettings(provider) {
-      return `<div class="border rounded-xl p-2.5 space-y-2 bg-white">
-        <label class="flex items-center justify-between font-bold"><span>${escapeHtml(provider.name)}</span><input type="checkbox" ${provider.enabled ? 'checked' : ''} onchange="setQrProviderEnabled('${provider.id}',this.checked)"></label>
+      const test = qrProviderTestState[provider.id] || null;
+      const raw = qrProviderDecodedRaw[provider.id] || '';
+      const verified = test?.status === 'verified' && !qrProviderNeedsTest.has(provider.id);
+      return `<div class="fc-qr-provider-card ${provider.enabled ? 'is-enabled' : ''}">
+        <label class="fc-qr-provider-head"><span><b>${escapeHtml(provider.name)}</b><small>${provider.enabled ? tr('QR to‘lov faol','QR-оплата включена') : tr("O'chirilgan", 'Выключено')}</small></span><span class="fc-toggle"><input type="checkbox" ${provider.enabled ? 'checked' : ''} onchange="setQrProviderEnabled('${provider.id}',this.checked)"><span class="fc-toggle-track"></span></span></label>
         ${provider.enabled ? `
-          <div class="flex items-center gap-3">
-            ${provider.qrImageUrl ? `<img src="${escapeHtml(provider.qrImageUrl)}" class="w-16 h-16 object-contain rounded-lg border bg-white">` : ''}
-            <input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')">
-            <input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')">
-            <button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary" style="padding:.5rem .75rem;min-height:auto;font-size:.6875rem"><i data-lucide="image-plus" class="w-3.5 h-3.5"></i>${provider.qrImageUrl ? tr('QR almashtirish', 'Заменить QR') : tr('QR rasm yuklash', 'Загрузить QR')}</button>
+          <div class="fc-qr-provider-body">
+            <div class="fc-qr-image-row">
+              ${provider.qrImageUrl ? `<img src="${escapeHtml(provider.qrImageUrl)}" class="fc-qr-preview">` : `<div class="fc-qr-placeholder"><i data-lucide="qr-code" class="w-6 h-6"></i></div>`}
+              <div class="min-w-0 flex-1"><input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary fc-qr-upload-btn"><i data-lucide="folder-open" class="w-3.5 h-3.5"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button><p>${tr('QR rasm ichidagi URL avtomatik o‘qishga uriniladi.', 'Ссылка из QR будет распознана автоматически, если устройство поддерживает это.')}</p></div>
+            </div>
+            <label class="fc-mini-field"><span>${tr("To'lov URL", 'URL оплаты')}</span><input type="url" inputmode="url" value="${escapeHtml(provider.paymentUrl || '')}" oninput="setQrProviderPaymentUrl('${provider.id}',this.value)" onchange="rerenderFulfillmentBody()" placeholder="https://..."></label>
+            ${provider.paymentUrl ? `<div class="fc-qr-link-row"><button type="button" class="fc-qr-link-btn" onclick="openSafeExternalUrl('${escapeHtml(provider.paymentUrl)}')"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>${escapeHtml(provider.paymentUrl)}</span></button><button type="button" onclick="testQrProviderPaymentUrl('${provider.id}')" class="fc-btn fc-btn-primary fc-qr-test-btn"><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>${tr('Sinash','Тест')}</button></div>` : ''}
+            ${test?.status === 'opened' ? `<div class="fc-qr-test-confirm"><p>${escapeHtml(test.note || tr('To‘lov sahifasi to‘g‘ri ochildimi?', 'Страница оплаты открылась правильно?'))}</p><div><button type="button" onclick="confirmQrProviderTest('${provider.id}',true)" class="is-ok"><i data-lucide="check" class="w-3.5 h-3.5"></i>${tr('To‘g‘ri ishladi','Работает правильно')}</button><button type="button" onclick="confirmQrProviderTest('${provider.id}',false)" class="is-bad"><i data-lucide="x" class="w-3.5 h-3.5"></i>${tr('Noto‘g‘ri','Неверно')}</button></div></div>` : ''}
+            ${verified ? `<div class="fc-qr-verified"><i data-lucide="badge-check" class="w-4 h-4"></i>${tr('Tekshirildi','Проверено')}</div>` : (qrProviderNeedsTest.has(provider.id) && provider.paymentUrl ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${tr('Saqlashdan oldin Sinash tugmasi orqali tekshiring.','Перед сохранением проверьте через кнопку «Тест».')}</div>` : '')}
+            ${raw ? `<div class="fc-qr-decoded"><b>${tr('QR dan o‘qildi','Распознано из QR')}:</b><span>${escapeHtml(raw)}</span></div>` : ''}
           </div>
-          <input type="url" inputmode="url" value="${escapeHtml(provider.paymentUrl || '')}" oninput="setQrProviderPaymentUrl('${provider.id}',this.value)" placeholder="${tr("To'lov sahifasi/link URL", "URL страницы оплаты")}" class="w-full p-2 border rounded-xl text-[11px]">
-          <p class="text-[9px] text-gray-400">${tr("QR rasm yuklaganda link avtomatik topilsa to'ldiriladi — topilmasa qo'lda kiriting.", "При загрузке QR ссылка заполнится автоматически, если распознается — иначе введите вручную.")}</p>
         ` : ''}
       </div>`;
     }
@@ -5901,7 +6022,7 @@
       return `<div class="border rounded-2xl p-3 space-y-3">
         <label class="flex items-center justify-between font-black"><span class="flex items-center gap-1.5">${icon} ${escapeHtml(label)}</span><span class="fc-toggle"><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setPaymentMethodEnabled('${method.id}',this.checked)"><span class="fc-toggle-track"></span></span></label>
         ${method.id === 'CLICK' && !clickReady ? `<p class="text-[10px] text-amber-600 font-bold">${tr("Avval Do'kon sozlamalari → Click bo'limidan hisobingizni ulang.", "Сначала подключите аккаунт в Настройки магазина → Click.")}</p>` : ''}
-        ${method.enabled ? `${method.id === 'CARD' ? `<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2"><input type="text" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000" class="w-full p-2 border rounded-xl font-mono"><input type="text" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Karta egasi','Владелец карты')}" class="w-full p-2 border rounded-xl"><label class="flex items-center gap-2 font-bold"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label><p class="text-[10px] text-blue-700">${tr('Faqat xaridorga ko‘rsatiladigan karta raqami va egasi. CVV/PIN/SMS saqlanmaydi.','Только номер и владелец карты для показа покупателю. CVV/PIN/SMS не сохраняются.')}</p></div>` : ''}${method.id === 'QR' ? `<div class="space-y-2">${(method.providers || []).map(renderQrProviderSettings).join('')}</div>` : ''}${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}<div class="divide-y border rounded-xl overflow-hidden">${TOP_LEVEL_REGIONS.map(region => `<label class="flex items-center justify-between px-3 py-2 text-xs font-bold bg-white"><span>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</span><span class="fc-toggle"><input type="checkbox" ${method.regions[region.id]?.enabled ? 'checked' : ''} onchange="setPaymentRegionEnabled('${method.id}','${encodedRegionId(region.id)}',this.checked)"><span class="fc-toggle-track"></span></span></label>`).join('')}</div>` : ''}
+        ${method.enabled ? `${method.id === 'CARD' ? `<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2"><input type="text" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000" class="w-full p-2 border rounded-xl font-mono"><input type="text" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Karta egasi','Владелец карты')}" class="w-full p-2 border rounded-xl"><label class="flex items-center gap-2 font-bold"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label><p class="text-[10px] text-blue-700">${tr('Faqat xaridorga ko‘rsatiladigan karta raqami va egasi. CVV/PIN/SMS saqlanmaydi.','Только номер и владелец карты для показа покупателю. CVV/PIN/SMS не сохраняются.')}</p></div>` : ''}${method.id === 'QR' ? `<div class="space-y-2">${(method.providers || []).map(renderQrProviderSettings).join('')}</div>` : ''}${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}${renderPaymentRegionRows(method)}` : ''}
       </div>`;
     }
 
@@ -5975,8 +6096,8 @@
       // tugmani ko'rsatib chalkashtirmaslik uchun ro'yxatdan olib tashlanadi.
       const methods = fulfillmentDraft.payments.methods.filter(m => m.id !== 'CLICK' || clickAccessGranted);
       return `<div class="space-y-3">
-        <div class="grid grid-cols-3 gap-2">${methods.map(m => `
-          <button type="button" onclick="setFulfillmentExpandedPayment('${m.id}')" class="p-3 rounded-2xl border font-black flex flex-col items-center gap-1 ${fulfillmentExpandedPayment === m.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-50 text-gray-700 border-gray-200'}">
+        <div class="fc-payment-method-grid">${methods.map(m => `
+          <button type="button" onclick="setFulfillmentExpandedPayment('${m.id}')" class="fc-payment-method-card ${fulfillmentExpandedPayment === m.id ? 'is-active' : ''}">
             ${m.id === 'CASH' ? ICON_CASH : m.id === 'CARD' ? ICON_CARD : m.id === 'CLICK' ? ICON_BOLT : ICON_QR}
             <span>${escapeHtml(m.name)}</span>
             <span class="text-[9px] font-bold ${m.enabled ? (fulfillmentExpandedPayment === m.id ? 'text-emerald-200' : 'text-emerald-600') : 'text-gray-400'}">${m.enabled ? tr('Yoqilgan','Включено') : tr("O'chirilgan",'Выключено')}</span>
@@ -5992,6 +6113,8 @@
     }
 
     async function saveFulfillmentSettings() {
+      const untestedQr = (qrProvidersOf() || []).filter(p => p.enabled && p.paymentUrl && qrProviderNeedsTest.has(p.id));
+      if (untestedQr.length) return alert(tr(`QR linkni saqlashdan oldin "Sinash" orqali tekshiring: ${untestedQr.map(p => p.name).join(', ')}`, `Перед сохранением проверьте QR-ссылку кнопкой «Тест»: ${untestedQr.map(p => p.name).join(', ')}`));
       const checked = commerce.validateConfig(fulfillmentDraft, TOP_LEVEL_REGION_IDS);
       if (checked.issues.length) {
         const first = checked.issues[0];
@@ -6000,7 +6123,6 @@
         if (first.code === 'QR_PROVIDER_REQUIRED') return alert(tr("Kamida bitta QR provayderni yoqing va to'lov URL manzilini kiriting.", "Включите хотя бы один QR-провайдер и укажите URL страницы оплаты."));
         return alert(`${first.regionId === null ? tr('Umumiy qiymat', 'Общее значение') : topLevelRegionLabel(first.regionId)}: ${tr('taksi min/max diapazonini tekshiring.', 'проверьте диапазон такси min/max.')}`);
       }
-      const qrEnabledForWarning = checked.config.payments.methods.find(m => m.id === 'QR')?.enabled;
       const old = fulfillmentConfig;
       fulfillmentConfig = checked.config;
       fulfillmentDraft = null;
@@ -6010,12 +6132,6 @@
         const result = await callApi('set_fulfillment_config', { config: fulfillmentConfig });
         fulfillmentConfig = commerce.normalizeConfig(result.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
         showActionToast(tr('✅ Yetkazib berish va to‘lov sozlamalari saqlandi', '✅ Настройки доставки и оплаты сохранены'), 'success', 1600);
-        // 17-band, "QR SAVE WARNING": faqat admin ko'radi, faqat QR yoqilgan
-        // holatda, saqlangandan KEYIN — mablag' haqiqatan tushishini o'zi
-        // sinab ko'rishi kerakligini eslatadi.
-        if (qrEnabledForWarning) {
-          alert(tr("⚠️ Avval o'zingiz to'lovni sinab ko'ring va mablag' to'g'ri hisobga tushayotganini tekshiring.", "⚠️ Сначала протестируйте оплату сами и убедитесь, что средства поступают правильно."));
-        }
       } catch (e) {
         fulfillmentConfig = old;
         render();
@@ -6287,7 +6403,7 @@
         ? tr('Yangi logo tanlandi — Saqlashni bosing', 'Новый логотип выбран — нажмите Сохранить')
         : (url ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен'));
       const buttonLabel = document.getElementById('shop-info-logo-button-label');
-      if (buttonLabel) buttonLabel.textContent = url ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото');
+      if (buttonLabel) buttonLabel.textContent = tr('Xotiradan yuklash', 'Загрузить с устройства');
       document.querySelectorAll('.fc-shop-logo-action').forEach(btn => { btn.disabled = false; });
       const saveBtn = document.getElementById('shop-info-save-btn');
       if (saveBtn) saveBtn.disabled = false;
@@ -7080,8 +7196,7 @@
                       <div class="fc-shop-logo-actions">
                         <input id="shop-logo-input" type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
                         <input id="shop-logo-input-files" type="file" class="hidden" onchange="saveShopLogoFromPicker(event)">
-                        <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary fc-shop-logo-action"><i data-lucide="image-plus" class="w-4 h-4"></i><span id="shop-info-logo-button-label">${logoPreview ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото')}</span></button>
-                        <button type="button" onclick="openShopLogoUrlFromShopInfo()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="link" class="w-4 h-4"></i>${tr('URL orqali', 'По URL')}</button>
+                        <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary fc-shop-logo-action"><i data-lucide="image-plus" class="w-4 h-4"></i><span id="shop-info-logo-button-label">${tr('Xotiradan yuklash', 'Загрузить с устройства')}</span></button>
                       </div>
                     </div>
                   </div>
@@ -7273,7 +7388,7 @@
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
                 <input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
                 <input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
-                <button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr("Rasm tanlash", "Выбрать фото")}</button>
+                <button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr("Xotiradan yuklash", "Загрузить с устройства")}</button>
                 <input id="m-prod-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-prod-prev', 'm-prod-image-url-error', 'm-prod-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="m-prod-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
                 <img id="m-prod-prev" src="" class="w-24 h-24 object-cover rounded-xl mt-2 hidden border">
@@ -7304,7 +7419,7 @@
                 <input id="m-cat-image-input-files" type="file" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
                 <div class="flex items-center gap-3 mt-1 flex-wrap">
                   <img id="m-cat-prev" src="" class="w-16 h-16 object-cover rounded-xl hidden border">
-                  <button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-btn fc-btn-secondary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Rasm tanlash', 'Выбрать фото')}</button>
+                  <button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-btn fc-btn-secondary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
                 </div>
                 <input id="m-cat-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-cat-prev', 'm-cat-image-url-error', 'm-cat-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="m-cat-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
@@ -7335,7 +7450,7 @@
                 <input id="ec-image-input-files" type="file" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
                 <div class="flex items-center gap-3 mt-1 flex-wrap">
                   <img id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-cover rounded-xl ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border">
-                  <button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-btn fc-btn-secondary"><i data-lucide="image-plus" class="w-4 h-4"></i>${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? tr('Almashtirish', 'Заменить') : tr('Rasm tanlash', 'Выбрать фото')}</button>
+                  <button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-btn fc-btn-secondary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
                 </div>
                 <input id="ec-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'ec-img-prev', 'ec-image-url-error', 'ec-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="ec-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
@@ -7376,7 +7491,7 @@
                 </div>
                 <input id="miq-image-input" type="file" accept="image/*" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
                 <input id="miq-image-input-files" type="file" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
-                <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-btn fc-btn-secondary w-full"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Rasm tanlash','Выбрать фото')}</button>
+                <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-btn fc-btn-secondary w-full"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash','Загрузить с устройства')}</button>
                 <input id="miq-image-url" type="url" inputmode="url" oninput="document.getElementById('miq-empty-preview')?.classList.toggle('hidden', !!this.value.trim()); onImageUrlInput(this.value, 'miq-img-prev', 'miq-image-url-error', 'miq-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full p-2.5 border rounded-xl">
                 <p id="miq-image-url-error" class="hidden text-[10px] fc-text-danger"></p>
                 <button onclick="saveMissingImageQueueItem('${p.id}')" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('Saqlanmoqda…','Сохранение…') : tr('Saqlash','Сохранить')}</button>
@@ -7452,7 +7567,7 @@
         const batches = q ? allBatches.filter(b => trashBatchSearchText(b).includes(q)) : allBatches;
         container.innerHTML = `
           <div class="fc-sheet-overlay" onclick="activePopupModal=null; clearTrashBulkSelection();">
-            <div class="fc-sheet fc-trash-sheet" onclick="event.stopPropagation()">
+            <div class="fc-sheet fc-trash-sheet" onclick="event.stopPropagation(); if(trashActionMenuBatchId!==null) closeTrashActionMenu();">
               <div class="fc-sheet-handle"></div>
               <div class="fc-sheet-header">
                 <div class="flex items-center gap-2"><span class="fc-section-icon"><i data-lucide="trash-2" class="w-4 h-4"></i></span><div><div class="fc-sheet-title">${tr('Chiqindi','Корзина')}</div><div class="fc-trash-subtitle">${tr('24 soat ichida tiklash mumkin','Можно восстановить в течение 24 часов')}</div></div></div>
@@ -7554,7 +7669,7 @@
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
                 <input id="ef-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
                 <input id="ef-image-input-files" type="file" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
-                <button id="ef-image-button" type="button" onclick="openImagePickerSheet('ef-image-input','ef-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${hasProductImage(p) ? tr("Almashtirish", "Заменить") : tr("Rasm tanlash", "Выбрать фото")}</button>
+                <button id="ef-image-button" type="button" onclick="openImagePickerSheet('ef-image-input','ef-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
                 <input id="ef-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'ef-img-prev', 'ef-image-url-error', 'ef-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="ef-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
                 <img id="ef-img-prev" src="${escapeHtml(hasProductImage(p) ? p.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-24 h-24 object-cover rounded-xl mt-2 border ${hasProductImage(p) ? '' : 'hidden'}">
@@ -7722,8 +7837,7 @@
               <input id="shop-logo-input" type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
               <input id="shop-logo-input-files" type="file" class="hidden" onchange="saveShopLogoFromPicker(event)">
               <div class="flex items-center gap-2 flex-wrap justify-center">
-                <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Rasm tanlash', 'Выбрать фото')}</button>
-                <button onclick="activePopupModal='SHOP_LOGO_URL'; render();" class="fc-btn fc-btn-secondary"><i data-lucide="link" class="w-4 h-4"></i>${tr('URL orqali', 'По URL')}</button>
+                <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
               </div>
               <button onclick="activePopupModal=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
             </div>
@@ -8121,7 +8235,7 @@
                     <button type="button" onclick="openImagePickerSheet('resubmit-receipt-input','resubmit-receipt-input-files')" class="fc-btn fc-btn-secondary" style="min-height:2.5rem;padding:0 .875rem"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Almashtirish', 'Заменить')}</button>
                   </div>
                 ` : `
-                  <button type="button" onclick="openImagePickerSheet('resubmit-receipt-input','resubmit-receipt-input-files')" class="fc-btn fc-btn-primary mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Chekni tanlash', 'Выбрать чек')}</button>
+                  <button type="button" onclick="openImagePickerSheet('resubmit-receipt-input','resubmit-receipt-input-files')" class="fc-btn fc-receipt-picker-btn mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Chekni tanlash', 'Выбрать чек')}</button>
                 `}
               </div>
               <div class="flex gap-2 pt-1">
@@ -8145,10 +8259,10 @@
             <div class="bg-white rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
               <div class="fc-order-modal-head"><div><h3>${tr('Buyurtma','Заказ')} #${o.id}</h3><p>${escapeHtml(o.date)}</p></div><span class="fc-order-status ${statusColorClass(orderDisplayStatus(o))}">${statusLabel(orderDisplayStatus(o))}</span></div>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="user-round" class="w-4 h-4"></i>${tr('Mijoz','Клиент')}</div><div class="fc-order-kv"><span>${tr('Ism','Имя')}</span><b>${escapeHtml(o.user)}</b></div><div class="fc-order-kv"><span>${tr('Telefon','Телефон')}</span><b>${escapeHtml(o.phone)}</b></div></section>
-              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${tr('Hudud','Регион')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div><div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
+              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${tr('Hudud','Регион')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div>${Number(o.deliveryFee) > 0 ? `<div class="fc-order-delivery-fee fc-order-delivery-fee-detail">${tr('Yetkazib berish narxi','Стоимость доставки')}: <b>${money(o.deliveryFee)}</b></div>` : ''}<div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku&&isAdminMode&&isUserAnAdmin)?`ID: ${escapeHtml(i.sku)} · `:''}${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
-              <section class="fc-order-summary-card"><div><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div><span>${tr('Yetkazib berish','Доставка')}</span><b>${Number(o.deliveryFee)>0?money(o.deliveryFee):money(0)}</b></div><div class="is-total"><span>${tr('Jami','Итого')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
+              <section class="fc-order-summary-card"><div><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div><span>${tr('Yetkazib berish narxi','Стоимость доставки')}</span><b>${Number(o.deliveryFee)>0?money(o.deliveryFee):money(0)}</b></div><div class="is-total"><span>${tr('Jami','Итого')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
 
               ${!isAdminMode ? `<button onclick="reorderFromOrder(${o.id})" class="fc-btn fc-btn-secondary w-full"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr('Qayta buyurtma', 'Повторить заказ')}</button>` : ''}
 
@@ -8341,7 +8455,7 @@
     function deliverySnapshotLabel(order) {
       const delivery = order?.delivery || {};
       if (delivery.kind === 'FREE') return tr('Bepul yetkazib berish', 'Бесплатная доставка');
-      if (delivery.kind === 'FIXED') return tr('Pullik uyigacha', 'Платная доставка до дома');
+      if (delivery.kind === 'FIXED') return tr('Yetkazib berish', 'Доставка');
       if (delivery.kind === 'TAXI') return tr('Taksi orqali', 'На такси');
       if (delivery.kind === 'POST') return `${tr('Pochta orqali', 'Почтой')} · ${delivery.providerName || ''}`;
       return delivery.label || tr('Eski buyurtma yetkazishi', 'Доставка старого заказа');
@@ -8848,6 +8962,7 @@
 
     // ============ EXCEL IMPORT (faqat admin ochganda lazy-load) ============
     let excelModulePromise = null;
+    let excelOpening = false;
     function ensureScript(src) {
       return new Promise((resolve, reject) => {
         const old = document.querySelector(`script[data-src="${src}"]`);
@@ -8857,17 +8972,21 @@
       });
     }
     async function openExcelImportModal() {
-      if (!isUserAnAdmin) return;
+      if (!isUserAnAdmin || excelOpening) return;
+      excelOpening = true;
+      render();
       try {
-        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=7');
+        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=8');
         await excelModulePromise;
         if (!window.UstoreExcel) throw new Error('Excel moduli topilmadi');
-        activePopupModal = 'EXCEL_IMPORT';
         await window.UstoreExcel.prepare?.();
-        render();
+        activePopupModal = 'EXCEL_IMPORT';
       } catch (e) {
         console.error(e);
         alert(tr("❌ Excel modulini yuklab bo'lmadi: ", "❌ Не удалось загрузить модуль Excel: ") + (e.message || e));
+      } finally {
+        excelOpening = false;
+        render();
       }
     }
 
@@ -9267,6 +9386,9 @@
     async function endCatalogDrag(event){
       if(!catalogDragState||catalogDragState.pointerId!==event.pointerId)return;
       event.preventDefault();event.stopPropagation();const st=catalogDragState;catalogDragState=null;suppressCatalogClickOnce=true;
+      // Shu pointer-up'dan keyin brauzer sintetizatsiya qilishi mumkin bo'lgan
+      // bitta clickni yutamiz, ammo keyingi real tap hech qachon bloklanmasin.
+      setTimeout(() => { suppressCatalogClickOnce = false; }, 0);
       const to=st.dropIndex, from=st.originalIndex;
       cleanupCatalogDragVisual(st);
       if(from<0||to<0||from===to)return;
@@ -9459,7 +9581,32 @@
     function clearTrashBulkSelection() {
       trashSelectedBatchIds.clear();
       trashBulkSelectMode = false;
+      trashActionMenuBatchId = null;
       render();
+    }
+    function toggleTrashActionMenu(batchId, event) {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      cancelTrashLongPress();
+      trashActionMenuBatchId = trashActionMenuBatchId === String(batchId) ? null : String(batchId);
+      renderModalContainer();
+      if (window.lucide) lucide.createIcons();
+    }
+    function closeTrashActionMenu() {
+      if (trashActionMenuBatchId === null) return;
+      trashActionMenuBatchId = null;
+      renderModalContainer();
+      if (window.lucide) lucide.createIcons();
+    }
+    async function restoreTrashBatchFromMenu(batchId, event) {
+      event?.stopPropagation?.();
+      trashActionMenuBatchId = null;
+      await restoreTrashBatch(Number(batchId) || batchId);
+    }
+    async function purgeTrashBatchFromMenu(batchId, event) {
+      event?.stopPropagation?.();
+      trashActionMenuBatchId = null;
+      await purgeTrashBatchNow(Number(batchId) || batchId);
     }
     async function restoreSelectedTrashBatches() {
       const ids = [...trashSelectedBatchIds];
@@ -9520,12 +9667,13 @@
             <b>${escapeHtml(title)}${extra}</b>
             <small>${escapeHtml(countLine)} · ${tr('Muddati','Истекает')}: ${escapeHtml(new Date(b.expiresAt).toLocaleString())}</small>
           </div>
-          ${trashBulkSelectMode ? `<span class="fc-select-dot ${selected ? 'is-selected' : ''}"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>` : `<i data-lucide="grip" class="w-4 h-4 fc-trash-hold-hint"></i>`}
+          ${trashBulkSelectMode ? `<span class="fc-select-dot ${selected ? 'is-selected' : ''}"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>` : `<div class="fc-trash-more-wrap" onclick="event.stopPropagation()"><button type="button" class="fc-trash-more-btn" aria-label="${tr('Amallar','Действия')}" onpointerdown="event.stopPropagation()" onclick="toggleTrashActionMenu('${escapeHtml(String(b.id))}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>${trashActionMenuBatchId === String(b.id) ? `<div class="fc-trash-card-menu" onclick="event.stopPropagation()"><button type="button" onclick="restoreTrashBatchFromMenu('${escapeHtml(String(b.id))}',event)"><i data-lucide="rotate-ccw" class="w-4 h-4"></i><span>${tr('Tiklash','Восстановить')}</span></button><button type="button" class="is-danger" onclick="purgeTrashBatchFromMenu('${escapeHtml(String(b.id))}',event)"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('Butunlay o‘chirish','Удалить навсегда')}</span></button></div>` : ''}</div>`}
         </article>`;
     }
 
     // 2.5: Chiqindi (trash) ko'rinishi.
     async function openTrashModal() {
+      trashActionMenuBatchId = null;
       trashBatches = null;
       activePopupModal = 'TRASH';
       render();

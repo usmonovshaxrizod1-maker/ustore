@@ -77,12 +77,41 @@
     return Number.isFinite(number) && number >= 0 ? Math.round(number) : null;
   }
 
+  function cleanDistricts(raw) {
+    if (!Array.isArray(raw)) return [];
+    return Array.from(new Set(raw.map(v => String(v || '').trim()).filter(Boolean))).slice(0, 100);
+  }
+
+  function districtKey(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return '';
+    const tail = raw.includes(',') ? raw.split(',').pop().trim() : raw;
+    return tail
+      .replace(/[ʻʼ’`‘]/g, "'")
+      .replace(/\s+(tumani|tuman|shahri|shahar|район|город)$/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function districtAllowed(entry, district) {
+    const selected = cleanDistricts(entry?.districts);
+    if (!selected.length) return true; // no district selection = whole region
+    const target = districtKey(district);
+    if (!target) return false;
+    return selected.some(item => {
+      const key = districtKey(item);
+      return key && (key === target || target.endsWith(key) || key.endsWith(target));
+    });
+  }
+
   function normalizeRegions(rawRegions, regionIds, kind) {
     const allowed = new Set(cleanRegionIds(regionIds));
     const result = {};
     for (const [regionId, raw] of Object.entries(rawRegions || {})) {
       if (!allowed.has(regionId) || !raw || !bool(raw.enabled)) continue;
       const entry = { enabled: true };
+      const districts = cleanDistricts(raw.districts);
+      if (districts.length) entry.districts = districts;
       if (kind === 'FIXED') entry.fee = nonNegativeInt(raw.fee);
       if (kind === 'TAXI') {
         entry.exactFee = nonNegativeIntOrNull(raw.exactFee);
@@ -191,20 +220,20 @@
     });
   }
 
-  function deliveryOptions(config, regionId) {
+  function deliveryOptions(config, regionId, district = null) {
     const result = [];
     const delivery = config?.delivery || {};
     const free = delivery.free?.regions?.[regionId];
-    if (delivery.free?.enabled && free?.enabled) {
+    if (delivery.free?.enabled && free?.enabled && districtAllowed(free, district)) {
       result.push({ id: 'FREE', kind: 'FREE', fee: 0, payableFee: 0, comment: free.comment || null, estimatedTime: free.estimatedTime || null });
     }
     const fixed = delivery.fixed?.regions?.[regionId];
-    if (delivery.fixed?.enabled && fixed?.enabled) {
+    if (delivery.fixed?.enabled && fixed?.enabled && districtAllowed(fixed, district)) {
       const fee = nonNegativeInt(fixed.fee);
       result.push({ id: 'FIXED', kind: 'FIXED', fee, payableFee: fee, comment: fixed.comment || null, estimatedTime: fixed.estimatedTime || null });
     }
     const taxi = delivery.taxi?.regions?.[regionId];
-    if (delivery.taxi?.enabled && taxi?.enabled) {
+    if (delivery.taxi?.enabled && taxi?.enabled && districtAllowed(taxi, district)) {
       // 7-band: barcha uch maydon ham ixtiyoriy — region'da yo'q bo'lsa
       // umumiy (general) qiymatga tushiladi, u ham bo'lmasa null qoladi
       // (chaqiruvchi taraf buni "narx yo'q" deb aniq talqin qiladi, 0 emas).
@@ -219,7 +248,7 @@
     if (delivery.post?.enabled) {
       for (const provider of delivery.post.providers || []) {
         const region = provider?.regions?.[regionId];
-        if (!provider?.enabled || !region?.enabled) continue;
+        if (!provider?.enabled || !region?.enabled || !districtAllowed(region, district)) continue;
         result.push({
           id: `POST:${provider.id}`,
           kind: 'POST',
@@ -236,8 +265,11 @@
     return result;
   }
 
-  function paymentOptions(config, regionId) {
-    return (config?.payments?.methods || []).filter(method => method?.enabled && method.regions?.[regionId]?.enabled).map(clone);
+  function paymentOptions(config, regionId, district = null) {
+    return (config?.payments?.methods || []).filter(method => {
+      const region = method?.regions?.[regionId];
+      return method?.enabled && region?.enabled && districtAllowed(region, district);
+    }).map(clone);
   }
 
   function calculateTotals(subtotal, deliveryOption) {
@@ -283,6 +315,7 @@
     POST_PROVIDER_IDS,
     defaultConfig,
     normalizeConfig,
+    districtAllowed,
     deliveryOptions,
     paymentOptions,
     calculateTotals,
