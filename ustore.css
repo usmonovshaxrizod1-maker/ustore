@@ -2356,3 +2356,18 @@ html.ustore-dark-theme .fc-card-action-menu{background:var(--ustore-card-bg)!imp
 .fc-product-price-main-row .fc-product-current-price{flex:0 1 auto;max-width:none;overflow:visible;text-overflow:clip;font-size:clamp(.58rem,2.9vw,.78rem)}
 .fc-product-price-main-row .fc-product-discount-badge{flex:0 0 auto}
 \n\n/* ================= ROUND 16 — product visibility + aligned cards ================= */\n/* Admin image controls form a 4-corner set: pin, menu, visibility, drag. */\n.fc-product-visibility-overlay{\n  position:absolute!important;left:.48rem!important;bottom:.48rem!important;top:auto!important;right:auto!important;\n  z-index:25!important;width:1.82rem!important;height:1.82rem!important;border-radius:.62rem!important;\n  border:1px solid color-mix(in srgb,var(--ustore-border) 88%,transparent)!important;\n  background:color-mix(in srgb,var(--ustore-card-bg) 94%,transparent)!important;\n  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(7px);\n  box-shadow:0 4px 12px rgba(15,23,42,.10)!important;transition:transform .12s ease,border-color .12s ease,background .12s ease,color .12s ease\n}\n.fc-product-visibility-overlay.is-visible{color:var(--ustore-success)!important;border-color:color-mix(in srgb,var(--ustore-success) 36%,var(--ustore-border))!important;background:color-mix(in srgb,var(--ustore-success) 9%,var(--ustore-card-bg))!important}\n.fc-product-visibility-overlay.is-hidden{color:var(--ustore-muted-text)!important;background:color-mix(in srgb,var(--ustore-muted-text) 8%,var(--ustore-card-bg))!important}\n.fc-product-visibility-overlay:active{transform:scale(.94)}\n.fc-product-visibility-overlay svg{width:.95rem!important;height:.95rem!important}\n/* Always reserve exactly two title lines so prices align across adjacent cards. */\n[data-product-card-id] h4.line-clamp-2{min-height:2.5em;max-height:2.5em;overflow:hidden}\n
+
+/* ROUND17 — QR scan UX + distinct filter control */
+.fc-qr-loading{flex-direction:column;gap:.35rem;color:var(--ustore-primary)!important}
+.fc-qr-loading small{font-size:.45rem;font-weight:800;color:var(--ustore-secondary-text)}
+.fc-qr-spinner{width:1.35rem;height:1.35rem;border-radius:999px;border:2px solid color-mix(in srgb,var(--ustore-primary) 22%,transparent);border-top-color:var(--ustore-primary);animation:fcQrSpin .72s linear infinite}
+@keyframes fcQrSpin{to{transform:rotate(360deg)}}
+.fc-qr-read-ok{display:flex;align-items:center;gap:.35rem}
+.fc-qr-actions{display:grid;grid-template-columns:1fr 1fr;gap:.45rem}
+.fc-qr-actions .fc-btn{min-height:2.45rem!important;font-size:.58rem!important;font-weight:900;display:flex;align-items:center;justify-content:center;gap:.32rem}
+.fc-qr-test-btn{background:color-mix(in srgb,var(--ustore-primary) 11%,var(--ustore-card-bg))!important;color:var(--ustore-primary)!important;border:1px solid color-mix(in srgb,var(--ustore-primary) 35%,var(--ustore-border))!important}
+.fc-qr-save-btn{background:var(--ustore-primary)!important;color:var(--ustore-button-text)!important;border:1px solid var(--ustore-primary)!important}
+.fc-qr-actions button:disabled{opacity:.42;filter:saturate(.5);cursor:not-allowed;box-shadow:none!important}
+.fc-filter-launch svg{transition:transform .16s ease}
+.fc-filter-launch.is-active svg{transform:rotate(-8deg)}
+@media (prefers-reduced-motion:reduce){.fc-qr-spinner{animation:none}.fc-filter-launch svg{transition:none}}

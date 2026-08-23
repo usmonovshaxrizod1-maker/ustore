@@ -681,6 +681,8 @@
     let fulfillmentExpandedDistrictKey = null;
     const qrProviderTestState = {}; // providerId -> {status:'opened'|'verified'|'failed', note?}
     const qrProviderDecodedRaw = {};
+    const qrProviderDecodeState = {}; // providerId -> {status:'loading'|'success'|'error', message?}
+    const qrProviderLoading = new Set();
     const qrProviderNeedsTest = new Set();
     let selectedDeliveryMethodId = checkoutDraft.deliveryMethodId || null;
     let selectedPayMethod = checkoutDraft.paymentMethodId || null;
@@ -1086,6 +1088,12 @@
       renderModalContainer();
     }
     function regionLabel(v) { return v === 'TASHKENT' ? tr('Toshkent shahri','Город Ташкент') : (v === 'PROVINCE' ? tr('Viloyatlar','Области') : (v || '')); }
+    function orderRegionFilterKey(order) {
+      const snapshotKey = canonicalRegionCode(order?.delivery?.regionKey) || canonicalRegionCode(order?.delivery?.regionLabel);
+      if (snapshotKey) return snapshotKey;
+      if (order?.region === 'TASHKENT') return 'tashkent_city';
+      return null;
+    }
     function payMethodLabel(v) { return v === 'CASH' ? tr('Naqd pul','Наличные') : (v === 'CARD' ? tr('Karta','Карта') : (v || '')); }
 
     const STATUS_LABELS_BY_LANG = {
@@ -2839,7 +2847,7 @@
               <i data-lucide="search" class="w-5 h-5 text-gray-400 absolute left-3 top-3.5"></i>
             </div>
             <button onclick="openCategoryFilterModal()" title="${tr('Filtr','Фильтр')}" aria-pressed="${homeFilterActive ? 'true' : 'false'}" class="fc-filter-launch ${homeFilterActive ? 'is-active' : ''}">
-              <i data-lucide="search" class="w-4 h-4"></i>${homeFilterActive ? '<span class="fc-filter-active-dot"></span>' : ''}
+              <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>${homeFilterActive ? '<span class="fc-filter-active-dot"></span>' : ''}
             </button>
           </div>
           ${renderActiveFilterChipsHtml()}
@@ -3173,7 +3181,7 @@
                 ${catProdsRaw.length > 0 ? `
                   ${bulkProductSelectMode ? `<button onclick="selectAllVisibleProducts()" class="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700">${tr('Barchasini tanlash','Выбрать все')}</button>` : ''}
                   <button onclick="openCategoryFilterModal()" aria-label="${tr('Filtr','Фильтр')}" aria-pressed="${filterActive ? 'true' : 'false'}" class="fc-filter-launch fc-filter-launch-inline ${filterActive ? 'is-active' : ''}">
-                    <i data-lucide="search" class="w-3.5 h-3.5"></i>${filterActive ? '<span class="fc-filter-active-dot"></span>' : ''}
+                    <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>${filterActive ? '<span class="fc-filter-active-dot"></span>' : ''}
                   </button>
                 ` : ''}
               </div>
@@ -4314,7 +4322,7 @@
         const periodOrders = filterOrdersBySelectedDate(orders);
         let filteredOrders = periodOrders.filter(o => {
           const matchStatus = adminOrderFilters.status === 'ALL' || o.status === adminOrderFilters.status;
-          const matchRegion = adminOrderFilters.region === 'ALL' || o.region === adminOrderFilters.region;
+          const matchRegion = adminOrderFilters.region === 'ALL' || orderRegionFilterKey(o) === adminOrderFilters.region;
           const matchPayment = adminOrderFilters.payment === 'ALL' || o.payMethod === adminOrderFilters.payment;
           const matchSearch = !adminOrderFilters.search || o.user.toLowerCase().includes(adminOrderFilters.search.toLowerCase()) || o.phone.includes(adminOrderFilters.search);
           return matchStatus && matchRegion && matchPayment && matchSearch;
@@ -4343,8 +4351,7 @@
               <div class="grid grid-cols-2 gap-2">
                 <select onchange="adminOrderFilters.region = this.value; render();" class="fc-order-filter-select ${adminOrderFilters.region !== 'ALL' ? 'is-active' : ''} p-2 border rounded-xl bg-gray-50 font-bold">
                   <option value="ALL" ${adminOrderFilters.region === 'ALL' ? 'selected' : ''}>${tr("Barcha hududlar", "Все регионы")}</option>
-                  <option value="TASHKENT" ${adminOrderFilters.region === 'TASHKENT' ? 'selected' : ''}>${tr("Toshkent shahri", "Город Ташкент")}</option>
-                  <option value="PROVINCE" ${adminOrderFilters.region === 'PROVINCE' ? 'selected' : ''}>${tr("Viloyatlar", "Области")}</option>
+                  ${REGION_DEFS.map(region => `<option value="${region.code}" ${adminOrderFilters.region === region.code ? 'selected' : ''}>${escapeHtml(uiLang === 'ru' ? region.nameRu : region.nameUz)}</option>`).join('')}
                 </select>
 
                 <select onchange="adminOrderFilters.payment = this.value; render();" class="fc-order-filter-select ${adminOrderFilters.payment !== 'ALL' ? 'is-active' : ''} p-2 border rounded-xl bg-gray-50 font-bold">
@@ -4365,7 +4372,7 @@
                       <span class="text-[9px] font-bold px-1.5 py-0.5 rounded ${statusColorClass(orderDisplayStatus(o))}">${statusLabel(orderDisplayStatus(o))}</span>
                     </div>
                     <p class="font-bold text-xs text-gray-800 mt-1">${escapeHtml(o.user)} (${escapeHtml(o.phone)})</p>
-                    <p class="text-[10px] text-gray-400">${escapeHtml(regionLabel(o.region))} | ${escapeHtml(payMethodLabel(o.payMethod))}</p>
+                    <p class="text-[10px] text-gray-400">${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))} | ${escapeHtml(payMethodLabel(o.payMethod))}</p>
                     <p class="text-[10px] text-gray-500">${escapeHtml(deliverySnapshotLabel(o))} · ${escapeHtml(effectiveShipmentStatusLabel(o))}</p>${Number(o.deliveryFee) > 0 ? `<p class="fc-order-delivery-fee">${tr('Yetkazib berish narxi','Стоимость доставки')}: <b>${money(o.deliveryFee)}</b></p>` : ''}
                   </div>
                   <span class="font-bold text-xs text-green-600">${money(o.totalPrice)}</span>
@@ -5635,6 +5642,8 @@
       if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
       Object.keys(qrProviderTestState).forEach(k => delete qrProviderTestState[k]);
       Object.keys(qrProviderDecodedRaw).forEach(k => delete qrProviderDecodedRaw[k]);
+      Object.keys(qrProviderDecodeState).forEach(k => delete qrProviderDecodeState[k]);
+      qrProviderLoading.clear();
       qrProviderNeedsTest.clear();
       fulfillmentSettingsSection = 'PAYMENTS';
       fulfillmentExpandedPayment = fulfillmentExpandedPayment || 'CASH';
@@ -6043,13 +6052,49 @@
       }
       rerenderFulfillmentBody();
     }
-    // Native BarcodeDetector mavjud bo'lsa QR ichidagi qiymat avtomatik
-    // olinadi. URL bo'lsa paymentUrl to'ldiriladi; URL bo'lmasa raw qiymat
-    // ko'rsatiladi va admin URL'ni qo'lda kiritishi mumkin.
+    // QR ichidagi ma'lumotni foydalanuvchi ko'radigan to'lov sahifasiga
+    // aylantirish. Oddiy URL to'g'ridan-to'g'ri olinadi. Click'ning QR
+    // stikerlarida uchraydigan {s_id,p_acc} payload uchun esa my.click.uz
+    // payment sahifasi hosil qilinadi (p_acc -> transaction_param).
+    function paymentUrlFromQrRaw(providerId, rawValue) {
+      const raw = String(rawValue || '').trim();
+      if (!raw) return null;
+      try {
+        const direct = new URL(raw);
+        if (['https:', 'http:'].includes(direct.protocol)) return direct.href;
+      } catch (_) {}
+
+      let parsed = null;
+      try { parsed = JSON.parse(raw); } catch (_) {}
+      if (!parsed || typeof parsed !== 'object') return null;
+
+      // Ayrim QR generatorlar URLni JSON maydoniga joylaydi.
+      for (const key of ['url','link','payment_url','paymentUrl']) {
+        const candidate = String(parsed[key] || '').trim();
+        if (!candidate) continue;
+        try {
+          const u = new URL(candidate);
+          if (['https:', 'http:'].includes(u.protocol)) return u.href;
+        } catch (_) {}
+      }
+
+      if (providerId === 'CLICK') {
+        const serviceId = String(parsed.s_id ?? parsed.service_id ?? '').trim();
+        const paymentAccount = String(parsed.p_acc ?? parsed.transaction_param ?? parsed.account ?? '').trim();
+        if (serviceId) {
+          const u = new URL('https://my.click.uz/services/pay');
+          u.searchParams.set('service_id', serviceId);
+          if (paymentAccount) u.searchParams.set('transaction_param', paymentAccount);
+          return u.href;
+        }
+      }
+      return null;
+    }
+
     async function tryAutoFillQrPaymentUrlFromFile(providerId, file) {
       try {
         if (typeof BarcodeDetector === 'undefined') {
-          qrProviderDecodedRaw[providerId] = tr("Bu qurilmada QR'ni avtomatik o'qish qo'llab-quvvatlanmadi — URLni qo'lda kiriting.", 'На этом устройстве авто-распознавание QR недоступно — введите URL вручную.');
+          qrProviderDecodeState[providerId] = { status: 'error', message: tr("Bu qurilmada QR'ni avtomatik o'qish qo'llab-quvvatlanmadi.", 'На этом устройстве авто-распознавание QR не поддерживается.') };
           return false;
         }
         const detector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -6058,22 +6103,26 @@
         try { results = await detector.detect(bitmap); } finally { bitmap.close?.(); }
         const raw = String(results?.[0]?.rawValue || '').trim();
         if (!raw) {
-          qrProviderDecodedRaw[providerId] = tr("QR kod o'qilmadi — boshqa rasm tanlang yoki URLni qo'lda kiriting.", 'QR-код не распознан — выберите другое изображение или введите URL вручную.');
+          qrProviderDecodeState[providerId] = { status: 'error', message: tr("QR kod o'qilmadi. Boshqa rasm tanlang.", 'QR-код не распознан. Выберите другое изображение.') };
           return false;
         }
         qrProviderDecodedRaw[providerId] = raw;
-        let url;
-        try { url = new URL(raw); } catch (_) { return false; }
-        if (!['https:', 'http:'].includes(url.protocol)) return false;
+        const paymentUrl = paymentUrlFromQrRaw(providerId, raw);
+        if (!paymentUrl) {
+          qrProviderDecodeState[providerId] = { status: 'error', message: tr("QR o'qildi, lekin to'lov sahifasi aniqlanmadi. Boshqa QR rasm tanlang.", 'QR распознан, но платёжная страница не определена. Выберите другой QR.') };
+          return false;
+        }
         const p = qrProvidersOf().find(x => x.id === providerId);
         if (p) {
-          p.paymentUrl = url.href;
+          p.paymentUrl = paymentUrl;
           qrProviderNeedsTest.add(providerId);
           qrProviderTestState[providerId] = { status: 'changed' };
         }
+        qrProviderDecodeState[providerId] = { status: 'success', message: tr("QR muvaffaqiyatli o'qildi", 'QR успешно распознан') };
         return true;
-      } catch (_) {
-        qrProviderDecodedRaw[providerId] = tr("QR kod o'qilmadi — URLni qo'lda kiriting.", 'QR-код не распознан — введите URL вручную.');
+      } catch (e) {
+        console.error('QR decode error', e);
+        qrProviderDecodeState[providerId] = { status: 'error', message: tr("QR kodni o'qib bo'lmadi. Boshqa rasm tanlang.", 'Не удалось распознать QR. Выберите другое изображение.') };
         return false;
       }
     }
@@ -6082,44 +6131,62 @@
       if (!file) return;
       try { validatePickedImageFile(file); }
       catch (e) { event.target.value = ''; return alert(pickedImageErrorMessage(e, file)); }
+
+      qrProviderLoading.add(providerId);
+      qrProviderDecodeState[providerId] = { status: 'loading' };
+      delete qrProviderDecodedRaw[providerId];
+      const p0 = qrProvidersOf().find(x => x.id === providerId);
+      if (p0) p0.paymentUrl = null;
+      qrProviderNeedsTest.add(providerId);
+      delete qrProviderTestState[providerId];
+      rerenderFulfillmentBody();
+
       let prepared;
       try { prepared = await captureAndPrepareImageV2(file, TARGET_PRODUCT_IMAGE_BYTES, 800, 0.85); }
-      catch (e) { event.target.value = ''; return alert(tr("Rasmni o'qib bo'lmadi. Qaytadan tanlang.", "Не удалось прочитать изображение. Попробуйте снова.")); }
-      showActionToast(tr("⏳ QR rasm yuklanmoqda...", "⏳ QR-изображение загружается..."), 'saving');
+      catch (e) {
+        event.target.value = '';
+        qrProviderLoading.delete(providerId);
+        qrProviderDecodeState[providerId] = { status: 'error', message: tr("Rasmni o'qib bo'lmadi. Qaytadan tanlang.", 'Не удалось прочитать изображение. Попробуйте снова.') };
+        rerenderFulfillmentBody();
+        return;
+      }
       try {
         const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, null, true);
         const p = qrProvidersOf().find(x => x.id === providerId);
         if (p) p.qrImageUrl = url;
-        qrProviderNeedsTest.add(providerId);
-        qrProviderTestState[providerId] = { status: 'changed' };
         await tryAutoFillQrPaymentUrlFromFile(providerId, file);
-        showActionToast(tr("✅ Yuklandi", "✅ Загружено"), 'success', 1200);
-        rerenderFulfillmentBody();
       } catch (e) {
         console.error(e);
-        showActionToast(tr("❌ Yuklanmadi", "❌ Не загружено"), 'error', 1800);
+        qrProviderDecodeState[providerId] = { status: 'error', message: tr("QR rasmni yuklab bo'lmadi.", 'Не удалось загрузить QR-изображение.') };
         alert(tr("QR rasmni yuklab bo'lmadi: ", "Не удалось загрузить QR-изображение: ") + (e.message || e));
       } finally {
+        qrProviderLoading.delete(providerId);
         event.target.value = '';
+        rerenderFulfillmentBody();
       }
     }
     function renderQrProviderSettings(provider) {
       const test = qrProviderTestState[provider.id] || null;
-      const raw = qrProviderDecodedRaw[provider.id] || '';
+      const decode = qrProviderDecodeState[provider.id] || null;
+      const loading = qrProviderLoading.has(provider.id);
       const verified = test?.status === 'verified' && !qrProviderNeedsTest.has(provider.id);
+      const canSave = !!provider.paymentUrl && verified && !loading;
+      const preview = loading
+        ? `<div class="fc-qr-placeholder fc-qr-loading" aria-label="${tr('QR o‘qilmoqda','QR распознаётся')}"><span class="fc-qr-spinner"></span><small>${tr('O‘qilmoqda…','Распознаётся…')}</small></div>`
+        : (provider.qrImageUrl ? `<img src="${escapeHtml(provider.qrImageUrl)}" class="fc-qr-preview">` : `<div class="fc-qr-placeholder"><i data-lucide="qr-code" class="w-6 h-6"></i></div>`);
       return `<div class="fc-qr-provider-card ${provider.enabled ? 'is-enabled' : ''}">
         <label class="fc-qr-provider-head"><span><b>${escapeHtml(provider.name)}</b><small>${provider.enabled ? tr('QR to‘lov faol','QR-оплата включена') : tr("O'chirilgan", 'Выключено')}</small></span><span class="fc-toggle"><input type="checkbox" ${provider.enabled ? 'checked' : ''} onchange="setQrProviderEnabled('${provider.id}',this.checked)"><span class="fc-toggle-track"></span></span></label>
         ${provider.enabled ? `
           <div class="fc-qr-provider-body">
             <div class="fc-qr-image-row">
-              ${provider.qrImageUrl ? `<img src="${escapeHtml(provider.qrImageUrl)}" class="fc-qr-preview">` : `<div class="fc-qr-placeholder"><i data-lucide="qr-code" class="w-6 h-6"></i></div>`}
-              <div class="min-w-0 flex-1"><input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary fc-qr-upload-btn"><i data-lucide="folder-open" class="w-3.5 h-3.5"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button><p>${tr('QR rasm ichidagi URL avtomatik o‘qishga uriniladi.', 'Ссылка из QR будет распознана автоматически, если устройство поддерживает это.')}</p></div>
+              ${preview}
+              <div class="min-w-0 flex-1"><input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary fc-qr-upload-btn" ${loading ? 'disabled' : ''}><i data-lucide="folder-open" class="w-3.5 h-3.5"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button><p>${tr('QR rasm yuklang — to‘lov ma’lumoti avtomatik o‘qiladi.', 'Загрузите QR — платёжные данные распознаются автоматически.')}</p></div>
             </div>
-            <label class="fc-mini-field fc-qr-manual-url"><input type="url" inputmode="url" value="${escapeHtml(provider.paymentUrl || '')}" oninput="setQrProviderPaymentUrl('${provider.id}',this.value)" onchange="rerenderFulfillmentBody()" placeholder="${tr('Havolani qo‘lda kiriting: https://...','Введите ссылку вручную: https://...')}"></label>
-            ${provider.paymentUrl ? `<div class="fc-qr-link-row"><button type="button" class="fc-qr-link-btn" onclick="openSafeExternalUrl('${escapeHtml(provider.paymentUrl)}')"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>${escapeHtml(provider.paymentUrl)}</span></button><button type="button" onclick="testQrProviderPaymentUrl('${provider.id}')" class="fc-btn fc-btn-primary fc-qr-test-btn"><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>${tr('Sinash','Тест')}</button></div>` : ''}
+            ${decode?.status === 'success' ? `<div class="fc-qr-verified fc-qr-read-ok"><i data-lucide="scan-line" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR muvaffaqiyatli o'qildi", 'QR успешно распознан'))}</div>` : ''}
+            ${decode?.status === 'error' ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR kodni o'qib bo'lmadi", 'Не удалось распознать QR'))}</div>` : ''}
+            ${provider.paymentUrl ? `<div class="fc-qr-actions"><button type="button" onclick="testQrProviderPaymentUrl('${provider.id}')" class="fc-btn fc-qr-test-btn" ${loading ? 'disabled' : ''}><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>${tr('Sinab ko‘rish','Проверить')}</button><button type="button" onclick="saveFulfillmentSettings()" class="fc-btn fc-qr-save-btn" ${canSave ? '' : 'disabled'}><i data-lucide="save" class="w-3.5 h-3.5"></i>${tr('Saqlash','Сохранить')}</button></div>` : ''}
             ${test?.status === 'opened' ? `<div class="fc-qr-test-confirm"><p>${escapeHtml(test.note || tr('To‘lov sahifasi to‘g‘ri ochildimi?', 'Страница оплаты открылась правильно?'))}</p><div><button type="button" onclick="confirmQrProviderTest('${provider.id}',true)" class="is-ok"><i data-lucide="check" class="w-3.5 h-3.5"></i>${tr('To‘g‘ri ishladi','Работает правильно')}</button><button type="button" onclick="confirmQrProviderTest('${provider.id}',false)" class="is-bad"><i data-lucide="x" class="w-3.5 h-3.5"></i>${tr('Noto‘g‘ri','Неверно')}</button></div></div>` : ''}
-            ${verified ? `<div class="fc-qr-verified"><i data-lucide="badge-check" class="w-4 h-4"></i>${tr('Tekshirildi','Проверено')}</div>` : (qrProviderNeedsTest.has(provider.id) && provider.paymentUrl ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${tr('Saqlashdan oldin Sinash tugmasi orqali tekshiring.','Перед сохранением проверьте через кнопку «Тест».')}</div>` : '')}
-            ${raw ? `<div class="fc-qr-decoded"><b>${tr('QR dan o‘qildi','Распознано из QR')}:</b><span>${escapeHtml(raw)}</span></div>` : ''}
+            ${verified ? `<div class="fc-qr-verified"><i data-lucide="badge-check" class="w-4 h-4"></i>${tr('Tekshirildi — saqlash mumkin','Проверено — можно сохранить')}</div>` : (qrProviderNeedsTest.has(provider.id) && provider.paymentUrl ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${tr('Saqlashdan oldin Sinab ko‘rish tugmasi orqali tekshiring.','Перед сохранением проверьте через кнопку «Проверить».')}</div>` : '')}
           </div>
         ` : ''}
       </div>`;
@@ -6226,7 +6293,7 @@
       const qrMethodEnabled = paymentMethodConfig('QR')?.enabled === true;
       const activeQrProviders = qrMethodEnabled ? (qrProvidersOf() || []).filter(p => p.enabled) : [];
       const missingQrUrl = activeQrProviders.filter(p => !String(p.paymentUrl || '').trim());
-      if (missingQrUrl.length) return alert(tr(`QR to'lovni saqlash uchun havolani QR rasmdan o'qing yoki qo'lda kiriting: ${missingQrUrl.map(p => p.name).join(', ')}`, `Для сохранения QR-оплаты распознайте ссылку из QR или введите вручную: ${missingQrUrl.map(p => p.name).join(', ')}`));
+      if (missingQrUrl.length) return alert(tr(`QR to'lovni saqlash uchun QR rasmini yuklang va muvaffaqiyatli o'qiting: ${missingQrUrl.map(p => p.name).join(', ')}`, `Для сохранения QR-оплаты загрузите QR и успешно распознайте его: ${missingQrUrl.map(p => p.name).join(', ')}`));
       const untestedQr = activeQrProviders.filter(p => p.paymentUrl && qrProviderNeedsTest.has(p.id));
       if (untestedQr.length) return alert(tr(`QR linkni saqlashdan oldin "Sinash" orqali tekshiring: ${untestedQr.map(p => p.name).join(', ')}`, `Перед сохранением проверьте QR-ссылку кнопкой «Тест»: ${untestedQr.map(p => p.name).join(', ')}`));
       const checked = commerce.validateConfig(fulfillmentDraft, TOP_LEVEL_REGION_IDS);
@@ -6234,7 +6301,7 @@
         const first = checked.issues[0];
         if (first.code === 'CARD_DETAILS_REQUIRED') return alert(tr('Karta raqami va karta egasi nomini to‘g‘ri kiriting.', 'Правильно укажите номер карты и имя владельца.'));
         if (first.code === 'FIXED_FEE_REQUIRED') return alert(`${topLevelRegionLabel(first.regionId)}: ${tr('aniq yetkazish narxini kiriting.', 'укажите стоимость доставки.')}`);
-        if (first.code === 'QR_PROVIDER_REQUIRED') return alert(tr("Kamida bitta QR provayderni yoqing va to'lov havolasini kiriting.", "Включите хотя бы один QR-провайдер и укажите URL страницы оплаты."));
+        if (first.code === 'QR_PROVIDER_REQUIRED') return alert(tr("Kamida bitta QR provayderni yoqing va QR rasmini muvaffaqiyatli o'qiting.", "Включите хотя бы один QR-провайдер и успешно распознайте QR."));
         return alert(`${first.regionId === null ? tr('Umumiy qiymat', 'Общее значение') : topLevelRegionLabel(first.regionId)}: ${tr('taksi min/max diapazonini tekshiring.', 'проверьте диапазон такси min/max.')}`);
       }
       const old = fulfillmentConfig;
