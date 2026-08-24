@@ -982,17 +982,42 @@
     // matnlar tugma bilan tilga qarab almashadi. Admin kiritgan tovar
     // nomi/tavsifi esa alohida (nameRu/descRu maydonlari orqali) boshqariladi.
     let uiLang = localStorage.getItem('uiLang') || 'uz';
-    // Shop takomillashtirish: matn hajmi (zoom), -2..+2, qurilma bo'yicha
-    // shaxsiy afzallik (uiLang kabi shop'ga bog'liq emas — scopedKey shart emas).
+    // Matn hajmi: faqat ko'rinadigan yozuvlarni o'zgartiradi. Kartalar, rasmlar,
+    // ikonlar, padding/spacing va boshqa layout o'lchamlari o'zgarmaydi.
     let textZoomLevel = Math.max(-2, Math.min(2, Number.parseInt(localStorage.getItem('textZoomLevel'), 10) || 0));
+    const TEXT_ZOOM_SCALE = { '-2': 0.86, '-1': 0.93, '0': 1, '1': 1.08, '2': 1.16 };
     function applyTextZoom(level) {
       textZoomLevel = Math.max(-2, Math.min(2, Number.parseInt(level, 10) || 0));
       localStorage.setItem('textZoomLevel', String(textZoomLevel));
       document.documentElement.classList.remove('fc-zoom--2', 'fc-zoom--1', 'fc-zoom-1', 'fc-zoom-2');
-      if (textZoomLevel !== 0) document.documentElement.classList.add(`fc-zoom-${textZoomLevel}`);
+      document.documentElement.style.setProperty('--fc-text-scale', String(TEXT_ZOOM_SCALE[String(textZoomLevel)] || 1));
+    }
+    function elementCarriesVisibleText(el) {
+      if (!(el instanceof HTMLElement)) return false;
+      if (el.matches('script,style,svg,path,use,img,video,canvas,br,hr')) return false;
+      if (el.matches('input,textarea,select,option')) return true;
+      return Array.from(el.childNodes).some(n => n.nodeType === Node.TEXT_NODE && String(n.textContent || '').trim());
+    }
+    function applyVisibleTextScale(root = document.body) {
+      if (!root) return;
+      const scale = TEXT_ZOOM_SCALE[String(textZoomLevel)] || 1;
+      const nodes = root instanceof HTMLElement ? [root, ...root.querySelectorAll('*')] : [...document.querySelectorAll('body *')];
+      for (const el of nodes) {
+        if (!elementCarriesVisibleText(el)) continue;
+        if (!el.dataset.fcBaseFontSize) {
+          const size = Number.parseFloat(getComputedStyle(el).fontSize);
+          if (!Number.isFinite(size) || size <= 0) continue;
+          el.dataset.fcBaseFontSize = String(size);
+        }
+        const base = Number.parseFloat(el.dataset.fcBaseFontSize);
+        if (Number.isFinite(base)) el.style.fontSize = `${(base * scale).toFixed(2)}px`;
+      }
     }
     applyTextZoom(textZoomLevel);
-    function setTextZoom(level) { applyTextZoom(level); render(); }
+    function setTextZoom(level) {
+      applyTextZoom(level);
+      requestAnimationFrame(() => applyVisibleTextScale());
+    }
     const UI_TEXT = {
       nav_home: { uz: "Bosh sahifa", ru: "Главная" },
       nav_categories: { uz: "Kataloglar", ru: "Каталоги" },
@@ -2497,6 +2522,7 @@
 
       renderModalContainer();
       lucide.createIcons();
+      requestAnimationFrame(() => applyVisibleTextScale());
     }
 
     // 38-band: custom tasdiqlash dialogi (native confirm() o'rniga) —
@@ -3742,13 +3768,14 @@
       const n = activeBanners.length;
       const looped = n >= 2;
       const cardHtml = (b, cloneTag) => `
-        <button type="button" onclick="openBannerTarget('${b.id}')" class="fc-banner-card" style="background-image:url('${escapeHtml(b.imageUrl)}')" ${cloneTag ? `data-clone="${cloneTag}"` : ''}>
+        <div role="button" tabindex="0" onclick="openBannerTarget('${b.id}')" onkeydown="if(event.key==='Enter'||event.key===' ')openBannerTarget('${b.id}')" class="fc-banner-card" data-banner-id="${escapeHtml(b.id)}" style="background-image:url('${escapeHtml(b.imageUrl)}')" ${cloneTag ? `data-clone="${cloneTag}"` : ''}>
           ${b.mode === 'TEMPLATE' ? `<div class="fc-banner-overlay">
             ${b.title ? `<h3>${escapeHtml(b.title)}</h3>` : ''}
             ${b.subtitle ? `<p>${escapeHtml(b.subtitle)}</p>` : ''}
             ${b.ctaText ? `<span class="fc-banner-cta">${escapeHtml(b.ctaText)}</span>` : ''}
           </div>` : ''}
-        </button>
+          ${(isAdminMode && isUserAnAdmin && hasPermission('marketing.manage') && !cloneTag) ? `<button type="button" class="fc-banner-home-drag" aria-label="${tr('Tartiblash','Сортировать')}" onclick="event.stopPropagation()" onpointerdown="beginHomeBannerDrag('${b.id}',event)" onpointermove="moveHomeBannerDrag(event)" onpointerup="endHomeBannerDrag(event)" onpointercancel="cancelHomeBannerDrag(event)">${ICON_GRIP_6}</button>` : ''}
+        </div>
       `;
       const items = looped
         ? cardHtml(activeBanners[n - 1], 'start') + activeBanners.map(b => cardHtml(b)).join('') + cardHtml(activeBanners[0], 'end')
@@ -3759,6 +3786,63 @@
     // bilan ajratish + klon chekkasiga yetilganda animatsiyasiz haqiqiy
     // banner'ga "sakrash" (foydalanuvchi bu sakrashni sezmaydi — chunki bu
     // chekkaga yetgandan keyin, ko'rinmas holatda amalga oshiriladi).
+    let homeBannerDrag = null;
+    function beginHomeBannerDrag(id, event) {
+      if (!(isAdminMode && isUserAnAdmin && hasPermission('marketing.manage'))) return;
+      event.preventDefault(); event.stopPropagation();
+      const handle = event.currentTarget;
+      handle.setPointerCapture?.(event.pointerId);
+      const card = handle.closest('.fc-banner-card');
+      homeBannerDrag = { id: String(id), startX: event.clientX, currentX: event.clientX, card, handle };
+      card?.classList.add('is-dragging'); handle.classList.add('is-dragging');
+    }
+    function moveHomeBannerDrag(event) {
+      if (!homeBannerDrag) return;
+      event.preventDefault(); event.stopPropagation();
+      homeBannerDrag.currentX = event.clientX;
+      if (homeBannerDrag.card) homeBannerDrag.card.style.translate = `${event.clientX - homeBannerDrag.startX}px 0`;
+    }
+    function cancelHomeBannerDrag(event) {
+      if (!homeBannerDrag) return;
+      event?.stopPropagation?.();
+      if (homeBannerDrag.card) { homeBannerDrag.card.style.translate = ''; homeBannerDrag.card.classList.remove('is-dragging'); }
+      homeBannerDrag.handle?.classList.remove('is-dragging');
+      homeBannerDrag = null;
+    }
+    async function endHomeBannerDrag(event) {
+      if (!homeBannerDrag) return;
+      event.preventDefault(); event.stopPropagation();
+      const drag = homeBannerDrag;
+      const strip = document.getElementById('fc-banner-strip');
+      const realCards = strip ? [...strip.querySelectorAll('.fc-banner-card:not([data-clone])')] : [];
+      let targetIndex = realCards.findIndex(card => event.clientX < card.getBoundingClientRect().left + card.getBoundingClientRect().width / 2);
+      if (targetIndex < 0) targetIndex = Math.max(0, realCards.length - 1);
+      const fromIndex = activeBanners.findIndex(b => String(b.id) === drag.id);
+      cancelHomeBannerDrag();
+      if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) return;
+      const previous = [...activeBanners];
+      const [moved] = activeBanners.splice(fromIndex, 1);
+      activeBanners.splice(Math.min(targetIndex, activeBanners.length), 0, moved);
+      render();
+      try {
+        await loadBannerListLazy(true);
+        const full = [...bannerList].sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0));
+        const activeSet = new Set(activeBanners.map(b => String(b.id)));
+        const slots = [];
+        full.forEach((b,i) => { if (activeSet.has(String(b.id))) slots.push(i); });
+        const reordered = [...full];
+        activeBanners.forEach((b,i) => { if (slots[i] !== undefined) reordered[slots[i]] = full.find(x => String(x.id) === String(b.id)); });
+        await callApi('banner_reorder', { order: reordered.map(b => b.id) });
+        bannerList = reordered.map((b,i) => ({...b, sortOrder:i}));
+        activeBanners = activeBanners.map((b,i) => ({...b, sortOrder:i}));
+      } catch (e) {
+        activeBanners = previous;
+        render();
+        console.error('Banner tartibini saqlashda xatolik:', e);
+        alert(tr("Banner tartibini saqlab bo'lmadi.", 'Не удалось сохранить порядок баннеров.'));
+      }
+    }
+
     function initBannerCarousel() {
       const strip = document.getElementById('fc-banner-strip');
       if (!strip) return;
@@ -4003,7 +4087,6 @@
 
           ${(isAdminMode && isUserAnAdmin) ? renderAdminActionCenterHtml() : ''}
           ${renderBannerCarouselHtml()}
-          ${renderHomeBundlesSectionHtml()}
 
           <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
           ${renderFeaturedCategoryBlocksHtml()}
@@ -4011,7 +4094,6 @@
       `;
       if (isAdminMode && isUserAnAdmin) loadAdminActionCenterLazy();
       if (activeBanners.length) initBannerCarousel();
-      ensureMarketingCampaignsLoaded(() => { if (currentTab === 'home') rerenderHomeBundlesSection(); });
       handleSearch();
     }
     function rerenderHomeBundlesSection() {
@@ -7831,20 +7913,18 @@
       const rows = bannerListLoading && !bannerListLoaded
         ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
         : bannerList.length ? bannerList.map((b) => `
-          <div class="fc-card fc-marketing-card">
-            <button type="button" onclick="openBannerPreview('${b.id}')" class="fc-marketing-card-main">
-              <span class="fc-marketing-drag-handle" aria-hidden="true"><i data-lucide="grip-vertical" class="w-4 h-4"></i></span>
-              <img src="${escapeHtml(b.imageUrl)}" class="fc-marketing-thumb" loading="lazy">
-              <span class="fc-marketing-copy">
+          <div class="fc-card fc-marketing-card fc-banner-list-card">
+            <img src="${escapeHtml(b.imageUrl)}" class="fc-marketing-thumb" loading="lazy">
+            <div class="fc-banner-list-body">
+              <button type="button" onclick="openBannerPreview('${b.id}')" class="fc-banner-list-title">
                 <b>${escapeHtml(b.title || (b.mode === 'IMAGE' ? tr('Tayyor rasm', 'Готовое изображение') : tr('(sarlavhasiz)', '(без заголовка)')))}</b>
                 <small>${bannerTargetLabel(b)}</small>
-              </span>
-              <i data-lucide="chevron-right" class="w-4 h-4 fc-marketing-chevron"></i>
-            </button>
-            <div class="fc-marketing-actions">
-              <button type="button" onclick="openBannerForm('${b.id}')" class="fc-btn fc-btn-icon" aria-label="${tr('Tahrirlash','Изменить')}"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-              <button type="button" onclick="deleteBannerAt('${b.id}')" class="fc-btn fc-btn-icon fc-btn-danger" aria-label="${tr("O'chirish", "Удалить")}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-              <span class="fc-toggle shrink-0 ml-auto"><input type="checkbox" ${b.isActive ? 'checked' : ''} onchange="toggleBannerActive('${b.id}', this.checked)"><span class="fc-toggle-track"></span></span>
+              </button>
+              <div class="fc-banner-list-actions">
+                <button type="button" onclick="openBannerForm('${b.id}')" class="fc-btn fc-btn-icon" aria-label="${tr('Tahrirlash','Изменить')}"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                <span class="fc-toggle shrink-0"><input type="checkbox" ${b.isActive ? 'checked' : ''} onchange="toggleBannerActive('${b.id}', this.checked)"><span class="fc-toggle-track"></span></span>
+                <button type="button" onclick="deleteBannerAt('${b.id}')" class="fc-btn fc-btn-icon fc-btn-danger" aria-label="${tr("O'chirish", "Удалить")}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+              </div>
             </div>
           </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="image" class="w-7 h-7"></i><p>${tr("Hozircha banner yo'q.", "Пока нет баннеров.")}</p></div>`;
@@ -9388,8 +9468,12 @@
 
           ${renderPendingInviteBannerHtml()}
           <div class="fc-card fc-textzoom-card">
-            <div class="fc-textzoom-head"><div><p class="text-xs font-bold text-gray-700">${tr('Matn hajmi', 'Размер текста')}</p><small>${tr('Faqat yozuvlar o‘lchami o‘zgaradi', 'Меняется только размер текста')}</small></div><div class="fc-textzoom-symbols"><i data-lucide="zoom-out" class="w-4 h-4"></i><i data-lucide="zoom-in" class="w-4 h-4"></i></div></div>
-            <div class="fc-textzoom-row">${[-2,-1,0,1,2].map(lvl => `<button type="button" onclick="setTextZoom(${lvl})" class="fc-textzoom-opt ${textZoomLevel===lvl?'is-active':''}" aria-label="${lvl===0?tr('Odatiy','Обычный'):lvl}"><span>${lvl>0?`+${lvl}`:lvl}</span></button>`).join('')}</div>
+            <div class="fc-textzoom-head"><div><p class="text-xs font-bold text-gray-700">${tr('Matn hajmi', 'Размер текста')}</p><small>${tr('Faqat yozuvlar o‘lchami o‘zgaradi', 'Меняется только размер текста')}</small></div></div>
+            <div class="fc-textzoom-slider-row">
+              <i data-lucide="zoom-out" class="w-4 h-4"></i>
+              <input type="range" min="-2" max="2" step="1" value="${textZoomLevel}" oninput="setTextZoom(this.value)" aria-label="${tr('Matn hajmi','Размер текста')}">
+              <i data-lucide="zoom-in" class="w-5 h-5"></i>
+            </div>
           </div>
           ${adminMenu}
           ${userQuick}
