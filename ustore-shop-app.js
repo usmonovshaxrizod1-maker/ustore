@@ -3076,15 +3076,21 @@
     }
     function renderAdminActionCenterHtml() {
       const c = adminActionCenter;
+      // c is null until the first loadAdminActionCenterLazy() response lands
+      // (the fetch is only kicked off AFTER this HTML is first built, in
+      // renderHome()) — must bail out to the spinner BEFORE touching c[...],
+      // regardless of whether adminActionCenterLoading happens to be true
+      // yet, or the very first render crashes with a null-dereference and
+      // renderHome()'s whole container.innerHTML assignment never completes.
+      if (!c) {
+        return `<div id="admin-action-center" class="fc-empty-state compact"><div class="fc-spinner"></div></div>`;
+      }
       const cards = [
         { key: 'newOrders', icon: 'package-plus', label: tr('Yangi buyurtma', 'Новых заказов'), onclick: "dashboardGoToOrders('NEW')" },
         { key: 'pendingReceipts', icon: 'receipt', label: tr('Chek tekshiruvi', 'Чеков на проверке'), onclick: "dashboardGoToOrders('ALL')" },
         { key: 'lowStock', icon: 'package-x', label: tr('Qoldig\'i kam/tugagan', 'Мало/нет на складе'), onclick: "dashboardGoToWarehouseFilter('LOW')" },
         { key: 'supportPending', icon: 'messages-square', label: tr('Support javobsiz', 'Обращений без ответа'), onclick: "openAdminSupportOrUserSupport()" },
-      ].filter(card => !c || Number(c[card.key]) > 0);
-      if (!c && adminActionCenterLoading) {
-        return `<div id="admin-action-center" class="fc-empty-state compact"><div class="fc-spinner"></div></div>`;
-      }
+      ].filter(card => Number(c[card.key]) > 0);
       if (!cards.length) {
         return `<div id="admin-action-center" class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-xs font-bold text-emerald-800 shadow-sm flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i><span>${tr("Hozircha e'tibor talab qiladigan narsa yo'q", "Пока нет ничего, что требует внимания")}</span></div>`;
       }
