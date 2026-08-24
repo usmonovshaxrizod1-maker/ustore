@@ -360,8 +360,23 @@
         isFeatured: r.is_featured, isVisible: r.is_visible !== false, sortOrder: r.sort_order,
         sizes: legacySizes, variants,
         soldCount: r.sold_count || 0, createdAt: r.created_at || null,
-        importBatchId: r.import_batch_id || null
+        importBatchId: r.import_batch_id || null, badge: r.badge || null
       };
+    }
+
+    const PRODUCT_BADGE_LABELS = {
+      NEW: { uz: 'Yangi', ru: 'Новинка' },
+      TOP: { uz: 'Top', ru: 'Топ' },
+      RECOMMENDED: { uz: 'Tavsiya', ru: 'Рекомендуем' },
+      PROMO: { uz: 'Aksiya', ru: 'Акция' },
+    };
+    function productBadgeLabel(badge) {
+      const l = PRODUCT_BADGE_LABELS[badge];
+      return l ? tr(l.uz, l.ru) : '';
+    }
+    function productBadgeChipHtml(p) {
+      if (!p.badge || !PRODUCT_BADGE_LABELS[p.badge]) return '';
+      return `<span class="fc-product-badge-chip fc-product-badge-${p.badge.toLowerCase()}">${productBadgeLabel(p.badge)}</span>`;
     }
 
     // Universal variant modeli: oddiy / faqat o'lcham / faqat rang / o'lcham+rangi.
@@ -501,8 +516,9 @@
       const deliveryFee = Math.max(0, Number(o?.deliveryFee ?? o?.delivery?.fee ?? 0) || 0);
       const rawPayable = Number(o?.payableTotal ?? o?.totalPrice ?? 0) || 0;
       const subtotal = Math.max(0, Number(o?.subtotal ?? (rawPayable - deliveryFee)) || 0);
-      const payableTotal = subtotal + deliveryFee;
-      return { ...o, subtotal, deliveryFee, payableTotal, totalPrice: payableTotal, date: new Date(o.createdAt).toLocaleString() };
+      const promoDiscount = Math.max(0, Number(o?.promoDiscount) || 0);
+      const payableTotal = Math.max(0, subtotal + deliveryFee - promoDiscount);
+      return { ...o, subtotal, deliveryFee, promoDiscount, payableTotal, totalPrice: payableTotal, date: new Date(o.createdAt).toLocaleString() };
     }
 
     // STATE VARIABLES (bo'sh boshlanadi, Supabase/Edge Function'dan yuklanadi)
@@ -513,6 +529,37 @@
     let ordersLoaded = false, ordersLoading = false;
     let usersLoaded = false, usersLoading = false;
     let adminsLoaded = false, adminsLoading = false;
+    // Savatni tashlab ketganlar (Online Do'kon yaxshilashlari, 2-band).
+    let abandonedCarts = [];
+    let abandonedCartsLoaded = false, abandonedCartsLoading = false;
+    // Promo-kod (Online Do'kon yaxshilashlari, 1-band) — admin ro'yxati + forma.
+    let promoList = [];
+    let promoListLoaded = false, promoListLoading = false;
+    let promoDraft = null; // {id?, code, name, discountType, discountValue, minOrderAmount, startsAt, endsAt, usageLimit, perCustomerLimit, isActive}
+    let promoSaving = false;
+    // "Kelganda xabar bering" (back-in-stock) — boot() orqali to'ldiriladi.
+    let mySubscribedProductIds = new Set();
+    let stockSubscribeBusy = new Set();
+    // Do'kon pauza rejimi (Online Do'kon yaxshilashlari, 13-band).
+    let ordersPaused = false;
+    let ordersPausedNote = '';
+    let ordersPausedSaving = false;
+    // Banner tizimi (Online Do'kon yaxshilashlari, 17-band).
+    let activeBanners = [];
+    // Bosh sahifa — tanlangan kataloglar qatori (foydalanuvchi so'ragan qo'shimcha).
+    let featuredCategoryIds = [];
+    let featuredCategoriesSaving = false;
+    // Bekor qilish cutoff + qaytarish murojaati (Online Do'kon yaxshilashlari, 14/15-band).
+    let customerCancelCutoff = 'BEFORE_SHIPPED';
+    let returnRequestsEnabled = true;
+    let orderPoliciesSaving = false;
+    // 18-band: bosh sahifadagi "e'tibor talab qiladi" markazi.
+    let adminActionCenter = null;
+    let adminActionCenterLoading = false;
+    let bannerList = [];
+    let bannerListLoaded = false, bannerListLoading = false;
+    let bannerDraft = null;
+    let bannerSaving = false;
     // 2-10-band (2026-08-17): qo'llab-quvvatlash — cheksiz xabarlashuvli
     // thread, admin tomonda user->chatlar->chat bo'ylab guruhlangan.
     let supportTickets = [];
@@ -520,6 +567,7 @@
     let adminSupportTickets = [];
     let adminSupportTicketsLoaded = false, adminSupportTicketsLoading = false;
     let supportTicketOrderId = null; // openSupportModal(orderId) orqali kelgan kontekst
+    let supportTicketType = 'SUPPORT'; // 'SUPPORT' | 'RETURN'
     let supportMessages = []; // hozir ochiq chatning xabarlari
     let supportMessagesLoading = false;
     let openSupportTicketId = null; // mijoz tomonda hozir ochiq chat
@@ -543,6 +591,19 @@
     // shunday — xavfsizlik uchun).
     let currentTgId = null;
     let isSuperAdmin = false;
+    // Xodimlar/Huquqlar (Admin Roles & Permissions). staffRole: 'OWNER'|'STAFF'|null.
+    // myPermissions: ['*'] (OWNER/platforma bosh admin) yoki aniq ro'yxat (STAFF).
+    let staffRole = null;
+    let myPermissions = [];
+    function hasPermission(perm) { return myPermissions.includes('*') || myPermissions.includes(perm); }
+    let pendingStaffInvite = null;
+    let staffList = [];
+    let staffPendingInvites = [];
+    let staffListLoaded = false, staffListLoading = false;
+    let allPermissions = [];
+    let roleList = [];
+    let rolesLoaded = false, rolesLoading = false;
+    let roleDraft = null;
     let isUserAnAdmin = false;
 
     // Bloklash/ogohlantirish holati — faqat serverdan (boot javobidan) keladi
@@ -592,7 +653,7 @@
     let adminCatParentId = null;
     let categoryPage = 1;
     // sortPrice/sortNew/sortSold: null | 'asc' | 'desc' — har biri mustaqil yoqiladi
-    let categoryFilter = { search: '', minPrice: '', maxPrice: '', sortPrice: null, sortNew: null, sortSold: null, inStockOnly: false };
+    let categoryFilter = { search: '', minPrice: '', maxPrice: '', sortPrice: null, sortNew: null, sortSold: null, inStockOnly: false, discountOnly: false };
     // 23-band: Bosh sahifa qidiruv matni — search-input DOM elementi qayta
     // chizilganda (masalan product detaildan orqaga qaytilganda) yo'qolmasin.
     let homeSearchQuery = '';
@@ -687,6 +748,14 @@
     let selectedDeliveryMethodId = checkoutDraft.deliveryMethodId || null;
     let selectedPayMethod = checkoutDraft.paymentMethodId || null;
     let selectedQrProviderId = null;
+    // Promo-kod: checkoutPromoCode — inputdagi qiymat, appliedPromoState —
+    // faqat server (promo_preview) tasdiqlagandan keyin to'ldiriladi. Chegirma
+    // HAR DOIM promo_preview/create_order javobidan olinadi, mijoz tomonda
+    // hisoblanmaydi.
+    let checkoutPromoCode = '';
+    let appliedPromoState = null; // { code, name, discountAmount } | null
+    let promoApplying = false;
+    let promoError = '';
     let checkoutReceiptFile = null;
     let checkoutReceiptPreparing = null;
     let checkoutReceiptPreviewUrl = null; // 1.8: local preview uchun object URL
@@ -1211,7 +1280,13 @@
         // Har bir o'lchamning O'ZINING ID'sini ham qidiradi.
         const variantSkuMatch = productVariants(p).some(v => v.sku && String(v.sku).toLowerCase().includes(latin));
         const variantTextMatch = productVariants(p).some(v => [v.size,v.color].filter(Boolean).some(x => String(x).toLowerCase().includes(q)));
-        if (nameMatch || skuMatch || descMatch || descRuMatch || variantSkuMatch || variantTextMatch) {
+        // Online Do'kon yaxshilashlari, 7-band: kategoriya nomi bo'yicha ham
+        // topiladi — masalan "krossovka" deb qidirilganda o'sha katalogdagi
+        // barcha tovarlar chiqishi uchun. Reyting nomdan pastroq (izoh bilan bir xil).
+        const cat = p.categoryId ? categories.find(c => c.id === p.categoryId) : null;
+        const catNorm = cat ? normalizeText(categoryName(cat) || '') : null;
+        const categoryMatch = !!(catNorm && (catNorm.latin.includes(latin) || catNorm.cyrillic.includes(cyrillic)));
+        if (nameMatch || skuMatch || descMatch || descRuMatch || variantSkuMatch || variantTextMatch || categoryMatch) {
           decorated.push({ p, nameMatch, skuStarts: String(p.sku || '').toLowerCase().startsWith(latin) });
         }
       }
@@ -1275,7 +1350,7 @@
         console.error('Adminlarni yuklashda xatolik:', e);
       } finally {
         adminsLoading = false;
-        if ((currentTab === 'profile' || activePage === 'STAFF') && !isCatalogEditorModalOpen()) render();
+        if ((currentTab === 'profile' || activePage === 'PLATFORM_ADMINS') && !isCatalogEditorModalOpen()) render();
       }
     }
 
@@ -1350,18 +1425,22 @@
     }
 
     // ---- Mijoz tomon ----
-    function openSupportModal(orderId) {
+    // 15-band: ticketType — 'SUPPORT' (umumiy) yoki 'RETURN' (qaytarish/
+    // muammo, alohida oqim, seller sozlamada butunlay o'chirishi mumkin).
+    function openSupportModal(orderId, ticketType) {
       supportTicketOrderId = orderId || null;
+      supportTicketType = ticketType === 'RETURN' ? 'RETURN' : 'SUPPORT';
       openSupportTicketId = null;
       supportMessages = [];
       supportReplyTarget = null;
       openPage('SUPPORT', 'nav-profile');
       loadMySupportTicketsLazy().then(resolveActiveSupportTicket);
     }
-    // Shu order (yoki umumiy) uchun yopilmagan ticket bo'lsa, to'g'ridan-
-    // to'g'ri o'sha chatni ochadi — bo'lmasa yangi xabar yozish ko'rinishi qoladi.
+    // Shu order (yoki umumiy) + shu turdagi yopilmagan ticket bo'lsa,
+    // to'g'ridan-to'g'ri o'sha chatni ochadi — bo'lmasa yangi xabar
+    // yozish ko'rinishi qoladi.
     function resolveActiveSupportTicket() {
-      const active = supportTickets.find(t => t.status !== 'CLOSED' && (t.orderId || null) === supportTicketOrderId);
+      const active = supportTickets.find(t => t.status !== 'CLOSED' && (t.orderId || null) === supportTicketOrderId && (t.ticketType || 'SUPPORT') === supportTicketType);
       if (active) { openSupportTicketId = active.id; loadSupportMessages(active.id); }
       else render();
     }
@@ -1391,7 +1470,7 @@
           const idx = supportTickets.findIndex(t => t.id === openSupportTicketId);
           if (idx >= 0) supportTickets[idx] = { ...supportTickets[idx], ...data.ticket, lastMessage: { sender: data.message.sender, body: data.message.body, createdAt: data.message.createdAt } };
         } else {
-          const data = await callApi('create_support_ticket', { message: body, orderId: supportTicketOrderId });
+          const data = await callApi('create_support_ticket', { message: body, orderId: supportTicketOrderId, ticketType: supportTicketType });
           supportTickets = [{ ...data.ticket, lastMessage: { sender: data.message.sender, body: data.message.body, createdAt: data.message.createdAt }, messageCount: 1 }, ...supportTickets];
           openSupportTicketId = data.ticket.id;
           supportMessages = [data.message];
@@ -1605,6 +1684,33 @@
       }
       return null;
     }
+    async function saveOrderInternalNote(orderId) {
+      const note = document.getElementById(`order-internal-note-${orderId}`)?.value || '';
+      try {
+        const result = await callApi('set_order_internal_note', { orderId, note });
+        const idx = orders.findIndex(x => x.id === orderId);
+        if (idx >= 0) orders[idx] = formatOrderForUi(result.order);
+        if (selectedOrderModal?.id === orderId) selectedOrderModal = formatOrderForUi(result.order);
+        showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1200);
+      } catch (e) {
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+      }
+    }
+
+    async function confirmOrderReceived(orderId) {
+      if (!confirm(tr("Buyurtmani qabul qilib olganingizni tasdiqlaysizmi?", "Подтвердить, что вы получили заказ?"))) return;
+      try {
+        const result = await callApi('confirm_order_received', { orderId });
+        const idx = orders.findIndex(x => x.id === orderId);
+        if (idx >= 0) orders[idx] = formatOrderForUi(result.order);
+        if (selectedOrderModal?.id === orderId) selectedOrderModal = formatOrderForUi(result.order);
+        showActionToast(tr('✅ Rahmat!', '✅ Спасибо!'), 'success', 1500);
+        render();
+      } catch (e) {
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+      }
+    }
+
     function reorderFromOrder(orderId) {
       const o = (selectedOrderModal && selectedOrderModal.id === orderId) ? selectedOrderModal : orders.find(x => x.id === orderId);
       if (!o || !o.items?.length) return;
@@ -1700,6 +1806,21 @@
       } else {
         badge.classList.add('hidden');
       }
+      scheduleCartSnapshotSave();
+    }
+
+    // Admin uchun "savatni tashlab ketganlar" monitoringi — har bir savat
+    // o'zgarishida serverga darhol emas, 1.5s debounce bilan yuboriladi
+    // (tez-tez +/- bosilganda so'rov bombardimoni bo'lmasin uchun).
+    // Muvaffaqiyatsizlik jim o'tkaziladi — bu faqat monitoring, checkout
+    // oqimini hech qachon bloklamaydi.
+    let cartSnapshotTimer = null;
+    function scheduleCartSnapshotSave() {
+      clearTimeout(cartSnapshotTimer);
+      cartSnapshotTimer = setTimeout(() => {
+        const items = Object.entries(cart).map(([key, itemData]) => ({ productId: cartEntryProductId(key, itemData), qty: itemData.qty, size: itemData.size || null, color: itemData.color || null }));
+        callApi('save_cart_snapshot', { items }).catch(() => {});
+      }, 1500);
     }
 
     // ============ IMAGE UPLOAD (Supabase Storage, signed URL orqali) ============
@@ -2364,7 +2485,9 @@
     function renderActivePage(container) {
       switch (activePage) {
         case 'SUPPORT': renderSupportPage(container); break;
+        case 'PLATFORM_ADMINS': renderPlatformAdminsPage(container); break;
         case 'STAFF': renderStaffPage(container); break;
+        case 'ROLES': renderRolesPage(container); break;
         case 'SETTINGS': renderSettingsPage(container); break;
         case 'DASHBOARD': renderDashboardPage(container); break;
         case 'FAVORITES': renderFavoritesPage(container); break;
@@ -2375,6 +2498,10 @@
         case 'DELIVERY_SETTINGS': renderDeliverySettingsPage(container); break;
         case 'PAYMENT_SETTINGS': renderPaymentSettingsPage(container); break;
         case 'LEGAL_SETTINGS': renderLegalSettingsPage(container); break;
+        case 'PROMO_CODES': renderPromoPage(container); break;
+        case 'ABANDONED_CARTS': renderAbandonedCartsPage(container); break;
+        case 'BANNERS': renderBannersPage(container); break;
+        case 'FEATURED_CATEGORIES': renderFeaturedCategoriesPage(container); break;
         default:
           container.innerHTML = '';
       }
@@ -2700,6 +2827,25 @@
     function renderSettingsPage(container) {
       const body = `
         <div class="space-y-2">
+          <div class="fc-card space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0"><b class="text-xs">${tr("Buyurtmalarni vaqtincha qabul qilmaslik", "Временно не принимать заказы")}</b><p class="text-[10px] text-gray-400 mt-0.5">${tr("Katalog ko'rinishda qoladi, faqat yangi buyurtma berish vaqtincha to'xtatiladi.", "Каталог остаётся видимым, приостанавливается только оформление новых заказов.")}</p></div>
+              <span class="fc-toggle shrink-0"><input type="checkbox" ${ordersPaused ? 'checked' : ''} onchange="toggleOrdersPaused(this.checked)" ${ordersPausedSaving ? 'disabled' : ''}><span class="fc-toggle-track"></span></span>
+            </div>
+            ${ordersPaused ? `<textarea id="orders-paused-note" rows="2" placeholder="${tr('Ixtiyoriy izoh, masalan: Bugun inventarizatsiya sababli buyurtmalar qabul qilinmaydi.', 'Необязательный комментарий, например: Сегодня заказы не принимаются из-за инвентаризации.')}" class="w-full p-2 border rounded-xl text-xs" onchange="saveOrdersPausedNote(this.value)">${escapeHtml(ordersPausedNote)}</textarea>` : ''}
+          </div>
+          <div class="fc-card space-y-2">
+            <b class="text-xs">${tr("Mijoz qachongacha bekor qila oladi", "До какого момента клиент может отменить заказ")}</b>
+            <div class="fc-tabs">
+              <button type="button" onclick="saveOrderPolicies({customerCancelCutoff:'NEW_ONLY'})" class="fc-tab ${customerCancelCutoff === 'NEW_ONLY' ? 'fc-tab-active' : ''}">${tr('Faqat yangi', 'Только новый')}</button>
+              <button type="button" onclick="saveOrderPolicies({customerCancelCutoff:'BEFORE_SHIPPED'})" class="fc-tab ${customerCancelCutoff === 'BEFORE_SHIPPED' ? 'fc-tab-active' : ''}">${tr("Jo'natilgunga qadar", 'До отправки')}</button>
+              <button type="button" onclick="saveOrderPolicies({customerCancelCutoff:'ANY_NON_TERMINAL'})" class="fc-tab ${customerCancelCutoff === 'ANY_NON_TERMINAL' ? 'fc-tab-active' : ''}">${tr("Yetkazilgunga qadar", 'До доставки')}</button>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-xs font-bold text-gray-600">${tr("Qaytarish/muammo murojaatini yoqish", "Разрешить обращения по возврату")}</span>
+              <span class="fc-toggle shrink-0"><input type="checkbox" ${returnRequestsEnabled ? 'checked' : ''} onchange="saveOrderPolicies({returnRequestsEnabled:this.checked})" ${orderPoliciesSaving ? 'disabled' : ''}><span class="fc-toggle-track"></span></span>
+            </div>
+          </div>
           <button type="button" onclick="openDeliverySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="truck" class="w-4 h-4"></i>${tr("Yetkazib berish parametrlari", "Параметры доставки")}</span><span>›</span></button>
           <button type="button" onclick="openPaymentSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr("To'lov parametrlari", "Параметры оплаты")}</span><span>›</span></button>
           <button type="button" onclick="openLegalSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="file-lock-2" class="w-4 h-4"></i>${tr("Huquqiy hujjatlar", "Правовые документы")}</span><span>›</span></button>
@@ -2716,6 +2862,40 @@
         </div>
       `;
       renderPageShell(container, tr("Do'kon sozlamalari", 'Настройки магазина'), body);
+    }
+
+    async function saveOrderPolicies(patch) {
+      orderPoliciesSaving = true;
+      render();
+      try {
+        await callApi('set_order_policies', patch);
+        if (patch.customerCancelCutoff !== undefined) customerCancelCutoff = patch.customerCancelCutoff;
+        if (patch.returnRequestsEnabled !== undefined) returnRequestsEnabled = patch.returnRequestsEnabled;
+      } catch (e) {
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+      } finally {
+        orderPoliciesSaving = false;
+        render();
+      }
+    }
+
+    async function toggleOrdersPaused(checked) {
+      ordersPausedSaving = true;
+      render();
+      try {
+        await callApi('set_orders_paused', { paused: checked, note: ordersPausedNote });
+        ordersPaused = checked;
+      } catch (e) {
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+      } finally {
+        ordersPausedSaving = false;
+        render();
+      }
+    }
+    async function saveOrdersPausedNote(value) {
+      ordersPausedNote = value;
+      try { await callApi('set_orders_paused', { paused: true, note: value }); }
+      catch (e) { showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500); }
     }
 
     // 10-band: ilgari popup modal bo'lgan sozlamalar endi to'liq sahifa —
@@ -2836,6 +3016,91 @@
     }
 
     // 1. HOME TAB
+    // Bosh sahifa — admin tanlagan (8 tagacha) kataloglar qatori, qidiruv
+    // ostida/banner ustida. Bosilganda mavjud Kataloglar sahifasidagi
+    // logikaning o'zi ishlatiladi (yangi ro'yxat/filtr yozilmagan).
+    function renderFeaturedCategoriesRowHtml() {
+      const cats = featuredCategoryIds.map(id => categories.find(c => c.id === id)).filter(Boolean);
+      if (!cats.length) return '';
+      return `<div class="fc-featured-cats-row">
+        ${cats.map(c => `
+          <button type="button" onclick="openFeaturedCategory('${c.id}')" class="fc-featured-cat-chip">
+            <span class="fc-featured-cat-icon">${c.img ? `<img src="${escapeHtml(c.img)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" loading="lazy">` : `<i data-lucide="folder" class="w-5 h-5"></i>`}</span>
+            <span>${escapeHtml(categoryName(c))}</span>
+          </button>
+        `).join('')}
+      </div>`;
+    }
+    function openFeaturedCategory(catId) {
+      currentTab = 'categories'; adminCatParentId = catId; categoryPage = 1; render();
+    }
+
+    // 17-band: bosh sahifadagi banner strip — eng ko'pi bilan 3 ta (server
+    // allaqachon shu chegarani qo'ygan), gorizontal scroll-snap bilan.
+    function renderBannerCarouselHtml() {
+      if (!activeBanners.length) return '';
+      return `<div class="fc-banner-strip">
+        ${activeBanners.map(b => `
+          <button type="button" onclick="openBannerTarget('${b.id}')" class="fc-banner-card" style="background-image:url('${escapeHtml(b.imageUrl)}')">
+            ${b.mode === 'TEMPLATE' ? `<div class="fc-banner-overlay">
+              ${b.title ? `<h3>${escapeHtml(b.title)}</h3>` : ''}
+              ${b.subtitle ? `<p>${escapeHtml(b.subtitle)}</p>` : ''}
+              ${b.ctaText ? `<span class="fc-banner-cta">${escapeHtml(b.ctaText)}</span>` : ''}
+            </div>` : ''}
+          </button>
+        `).join('')}
+      </div>`;
+    }
+
+    // 18-band: bosh sahifadagi "e'tibor talab qiladi" markazi — admin 3-5
+    // soniyada bugun nima qilish kerakligini tushunishi uchun. Faqat bir
+    // marta yuklanadi (loadOrdersLazy va h.k. bilan bir xil naqsh) —
+    // har renderHome() chaqirilganda qayta so'ralmaydi.
+    let adminActionCenterLoaded = false;
+    async function loadAdminActionCenterLazy(force = false) {
+      if (adminActionCenterLoading || (adminActionCenterLoaded && !force)) return;
+      adminActionCenterLoading = true;
+      try {
+        adminActionCenter = await callApi('get_admin_action_center', {});
+        adminActionCenterLoaded = true;
+      } catch (e) {
+        console.error("Action-center yuklanmadi:", e);
+      } finally {
+        adminActionCenterLoading = false;
+        if (currentTab === 'home' && isAdminMode && isUserAnAdmin) rerenderAdminActionCenter();
+      }
+    }
+    function rerenderAdminActionCenter() {
+      const el = document.getElementById('admin-action-center');
+      if (el) { el.outerHTML = renderAdminActionCenterHtml(); if (window.lucide) lucide.createIcons(); }
+    }
+    function renderAdminActionCenterHtml() {
+      const c = adminActionCenter;
+      const cards = [
+        { key: 'newOrders', icon: 'package-plus', label: tr('Yangi buyurtma', 'Новых заказов'), onclick: "dashboardGoToOrders('NEW')" },
+        { key: 'pendingReceipts', icon: 'receipt', label: tr('Chek tekshiruvi', 'Чеков на проверке'), onclick: "dashboardGoToOrders('ALL')" },
+        { key: 'lowStock', icon: 'package-x', label: tr('Qoldig\'i kam/tugagan', 'Мало/нет на складе'), onclick: "dashboardGoToWarehouseFilter('LOW')" },
+        { key: 'supportPending', icon: 'messages-square', label: tr('Support javobsiz', 'Обращений без ответа'), onclick: "openAdminSupportOrUserSupport()" },
+      ].filter(card => !c || Number(c[card.key]) > 0);
+      if (!c && adminActionCenterLoading) {
+        return `<div id="admin-action-center" class="fc-empty-state compact"><div class="fc-spinner"></div></div>`;
+      }
+      if (!cards.length) {
+        return `<div id="admin-action-center" class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-xs font-bold text-emerald-800 shadow-sm flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4"></i><span>${tr("Hozircha e'tibor talab qiladigan narsa yo'q", "Пока нет ничего, что требует внимания")}</span></div>`;
+      }
+      return `<div id="admin-action-center" class="fc-action-center-grid">
+        ${cards.map(card => `<button type="button" onclick="${card.onclick}" class="fc-action-center-card"><span class="fc-action-center-count">${c[card.key]}</span><span class="fc-action-center-icon"><i data-lucide="${card.icon}" class="w-4 h-4"></i></span><span class="fc-action-center-label">${card.label}</span></button>`).join('')}
+      </div>`;
+    }
+
+    function openBannerTarget(bannerId) {
+      const b = activeBanners.find(x => String(x.id) === String(bannerId));
+      if (!b) return;
+      if (b.targetType === 'PRODUCT' && b.targetProductId) openProductDetailModal(b.targetProductId);
+      else if (b.targetType === 'CATEGORY' && b.targetCategoryId) { currentTab = 'categories'; adminCatParentId = b.targetCategoryId; categoryPage = 1; render(); }
+      else if (b.targetType === 'URL' && b.targetUrl) openSafeExternalUrl(b.targetUrl);
+    }
+
     function renderHome(container) {
       const homeFilterActive = isCategoryFilterActive();
       container.innerHTML = `
@@ -2851,16 +3116,14 @@
             </button>
           </div>
           ${renderActiveFilterChipsHtml()}
+          ${(isAdminMode && isUserAnAdmin) ? '' : renderFeaturedCategoriesRowHtml()}
 
-          ${(isAdminMode && isUserAnAdmin) ? `
-            <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-xs font-bold text-amber-900 shadow-sm flex items-center justify-between">
-              <span>${tr("🛡️ Admin rejimi: Bosh sahifa", "🛡️ Режим администратора: Главная")}</span>
-            </div>
-          ` : ''}
+          ${(isAdminMode && isUserAnAdmin) ? renderAdminActionCenterHtml() : renderBannerCarouselHtml()}
 
           <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
         </div>
       `;
+      if (isAdminMode && isUserAnAdmin) loadAdminActionCenterLazy();
       handleSearch();
     }
 
@@ -2943,6 +3206,32 @@
         </button>
       `;
     }
+    function renderStockSubscribeButtonHtml(p) {
+      const subscribed = mySubscribedProductIds.has(String(p.id));
+      const busy = stockSubscribeBusy.has(String(p.id));
+      if (subscribed) {
+        return `<button onclick="toggleStockSubscription('${p.id}', false)" class="fc-btn fc-btn-secondary w-full" ${busy ? 'disabled' : ''}><i data-lucide="bell-off" class="w-4 h-4"></i>${tr("Obunani bekor qilish", "Отменить подписку")}</button>`;
+      }
+      return `<button onclick="toggleStockSubscription('${p.id}', true)" class="fc-btn fc-btn-primary w-full" ${busy ? 'disabled' : ''}><i data-lucide="bell" class="w-4 h-4"></i>${tr("Kelganda xabar bering", "Сообщить о поступлении")}</button>`;
+    }
+
+    async function toggleStockSubscription(productId, subscribe) {
+      const id = String(productId);
+      if (stockSubscribeBusy.has(id)) return;
+      stockSubscribeBusy.add(id);
+      render();
+      try {
+        await callApi(subscribe ? 'subscribe_stock_notification' : 'unsubscribe_stock_notification', { productId: id });
+        if (subscribe) mySubscribedProductIds.add(id); else mySubscribedProductIds.delete(id);
+        showActionToast(subscribe ? tr('✅ Obuna bo\'ldingiz', '✅ Вы подписались') : tr('Obuna bekor qilindi', 'Подписка отменена'), 'success', 1500);
+      } catch (e) {
+        showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+      } finally {
+        stockSubscribeBusy.delete(id);
+        render();
+      }
+    }
+
     function setFavoritesPage(p) { favoritesPage = p; render(); }
     function renderFavoritesPage(container) {
       const list = products.filter(p => productVisibleInCurrentMode(p) && favoriteProductIds.has(p.id));
@@ -3054,6 +3343,7 @@
           ${bulkSelecting ? `<div class="absolute top-2 left-2 z-30 w-7 h-7 rounded-full flex items-center justify-center font-black ${bulkSelectedProductIds.has(String(p.id)) ? 'bg-blue-600 text-white' : 'bg-white/95 text-gray-400 border'}">${bulkSelectedProductIds.has(String(p.id)) ? '<i data-lucide="check" class="w-4 h-4"></i>' : ''}</div>` : ''}
           <div>
             <div class="relative">
+              ${productBadgeChipHtml(p)}
               <div class="w-full h-32 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
                 <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-full object-contain" loading="lazy">
               </div>
@@ -3216,7 +3506,7 @@
     }
 
     function isCategoryFilterActive() {
-      return !!(categoryFilter.search || categoryFilter.minPrice || categoryFilter.maxPrice || categoryFilter.sortPrice || categoryFilter.sortNew || categoryFilter.sortSold || categoryFilter.inStockOnly);
+      return !!(categoryFilter.search || categoryFilter.minPrice || categoryFilter.maxPrice || categoryFilter.sortPrice || categoryFilter.sortNew || categoryFilter.sortSold || categoryFilter.inStockOnly || categoryFilter.discountOnly);
     }
 
     function applyCategoryFilter(list) {
@@ -3228,6 +3518,8 @@
       // 22-band: "Omborda bor" (tugaganlarni yashirish) — bitta toggle, ikkalasi
       // ham mantiqan bir xil narsa (stock<=0 bo'lganlarni yashirish).
       if (categoryFilter.inStockOnly) result = result.filter(p => Number(p.stock) > 0);
+      // Online Do'kon yaxshilashlari, 8-band: faqat chegirmali tovarlarni ko'rsatish.
+      if (categoryFilter.discountOnly) result = result.filter(p => p.oldPrice && Number(p.oldPrice) > Number(p.price));
       const min = parseFloat(categoryFilter.minPrice);
       const max = parseFloat(categoryFilter.maxPrice);
       if (!isNaN(min)) result = result.filter(p => p.price >= min);
@@ -3263,6 +3555,7 @@
       if (categoryFilter.sortNew) chips.push({ key: 'sortNew', label: tr("Yangi", "Новое") + (categoryFilter.sortNew === 'asc' ? ' ↑' : ' ↓') });
       if (categoryFilter.sortSold) chips.push({ key: 'sortSold', label: tr("Ko'p sotilgan", "Популярное") + (categoryFilter.sortSold === 'asc' ? ' ↑' : ' ↓') });
       if (categoryFilter.inStockOnly) chips.push({ key: 'inStockOnly', label: tr("Omborda bor", "В наличии") });
+      if (categoryFilter.discountOnly) chips.push({ key: 'discountOnly', label: tr("Chegirmali", "Со скидкой") });
       if (!chips.length) return '';
       return `
         <div class="flex flex-wrap items-center gap-1.5">
@@ -3329,7 +3622,7 @@
     }
 
     function clearCategoryFilter() {
-      categoryFilter = { search: '', minPrice: '', maxPrice: '', sortPrice: null, sortNew: null, sortSold: null, inStockOnly: false };
+      categoryFilter = { search: '', minPrice: '', maxPrice: '', sortPrice: null, sortNew: null, sortSold: null, inStockOnly: false, discountOnly: false };
       categoryPage = 1;
       render();
     }
@@ -3338,11 +3631,17 @@
       categoryPage = 1;
       render();
     }
+    function toggleDiscountOnlyFilter() {
+      categoryFilter.discountOnly = !categoryFilter.discountOnly;
+      categoryPage = 1;
+      render();
+    }
     // 22-band: bitta faol filtrni olib tashlaydi (chip'dagi ✕ orqali).
     function removeCategoryFilterKey(key) {
       if (key === 'search') categoryFilter.search = '';
       else if (key === 'price') { categoryFilter.minPrice = ''; categoryFilter.maxPrice = ''; }
       else if (key === 'inStockOnly') categoryFilter.inStockOnly = false;
+      else if (key === 'discountOnly') categoryFilter.discountOnly = false;
       else categoryFilter[key] = null;
       categoryPage = 1;
       render();
@@ -3442,6 +3741,70 @@
       }, 0);
     }
 
+    function promoErrorMessage(code) {
+      if (String(code || '').startsWith('promo_min_order:')) {
+        const minAmount = code.split(':')[1];
+        return tr(`Minimal buyurtma summasi: ${formatNumber(minAmount)} so'm`, `Минимальная сумма заказа: ${formatNumber(minAmount)} сум`);
+      }
+      const map = {
+        promo_not_found: tr("Bunday promo-kod topilmadi.", "Такой промокод не найден."),
+        promo_not_started: tr("Bu promo-kod hali faollashmagan.", "Этот промокод ещё не активен."),
+        promo_expired: tr("Bu promo-kodning muddati tugagan.", "Срок действия промокода истёк."),
+        promo_not_applicable: tr("Bu promo-kod savatchangizdagi tovarlarga tegishli emas.", "Этот промокод не подходит к товарам в корзине."),
+        promo_usage_limit_reached: tr("Bu promo-kodning foydalanish limiti tugagan.", "Лимит использования промокода исчерпан."),
+        promo_customer_limit_reached: tr("Siz bu promo-koddan allaqachon foydalangansiz.", "Вы уже использовали этот промокод."),
+        promo_code_required: tr("Promo-kodni kiriting.", "Введите промокод."),
+        empty_cart: tr("Savatcha bo'sh.", "Корзина пуста."),
+      };
+      return map[code] || tr("Promo-kod yaroqsiz.", "Промокод недействителен.");
+    }
+
+    async function applyPromoCode() {
+      const code = String(document.getElementById('chk-promo-code')?.value || checkoutPromoCode || '').trim().toUpperCase();
+      if (!code) { promoError = promoErrorMessage('promo_code_required'); renderCheckoutOptions(); return; }
+      promoApplying = true; promoError = '';
+      renderCheckoutOptions();
+      try {
+        const items = Object.entries(cart).map(([key, itemData]) => ({ productId: cartEntryProductId(key, itemData), qty: itemData.qty }));
+        const result = await callApi('promo_preview', { code, items });
+        if (result.valid) {
+          appliedPromoState = { code, name: result.name, discountAmount: Number(result.discountAmount) || 0 };
+          checkoutPromoCode = code;
+          promoError = '';
+        } else {
+          appliedPromoState = null;
+          promoError = promoErrorMessage(result.error);
+        }
+      } catch (e) {
+        appliedPromoState = null;
+        promoError = tr("Promo-kodni tekshirib bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось проверить промокод. Попробуйте ещё раз.");
+      } finally {
+        promoApplying = false;
+        renderCheckoutOptions();
+      }
+    }
+
+    function removeAppliedPromo() {
+      appliedPromoState = null;
+      checkoutPromoCode = '';
+      promoError = '';
+      renderCheckoutOptions();
+    }
+
+    function renderPromoWrapHtml() {
+      if (appliedPromoState) {
+        return `<div class="fc-checkout-promo-row">
+          <div class="fc-checkout-promo-applied"><i data-lucide="badge-check" class="w-4 h-4"></i><span>${escapeHtml(appliedPromoState.code)} — ${escapeHtml(appliedPromoState.name)}</span></div>
+          <button type="button" onclick="removeAppliedPromo()" class="fc-btn fc-btn-secondary">${tr("Olib tashlash", "Убрать")}</button>
+        </div>`;
+      }
+      return `<div class="fc-checkout-promo-row">
+        <input type="text" id="chk-promo-code" value="${escapeHtml(checkoutPromoCode)}" oninput="checkoutPromoCode=this.value.toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();applyPromoCode();}" placeholder="${tr('Masalan: YOZGI20', 'Например: YOZGI20')}" class="fc-checkout-promo-input">
+        <button type="button" onclick="applyPromoCode()" class="fc-btn fc-btn-primary" ${promoApplying ? 'disabled' : ''}>${promoApplying ? tr('Tekshirilmoqda…', 'Проверка…') : tr("Qo'llash", 'Применить')}</button>
+      </div>
+      ${promoError ? `<p class="fc-checkout-promo-error"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>${escapeHtml(promoError)}</p>` : ''}`;
+    }
+
     function deliveryOptionLabel(option) {
       if (option.kind === 'FREE') return tr('Bepul yetkazib berish', 'Бесплатная доставка');
       if (option.kind === 'FIXED') return tr('Yetkazib berish', 'Доставка');
@@ -3539,6 +3902,7 @@
       clearCheckoutReceipt();
       selectedDeliveryMethodId = checkoutDraft.deliveryMethodId || selectedDeliveryMethodId;
       selectedPayMethod = checkoutDraft.paymentMethodId || selectedPayMethod;
+      checkoutPromoCode = ''; appliedPromoState = null; promoApplying = false; promoError = '';
       activePopupModal = 'CHECKOUT_FORM';
       render();
     }
@@ -3929,9 +4293,16 @@
       const subtotalEl = document.getElementById('checkout-subtotal');
       const deliveryFeeEl = document.getElementById('checkout-delivery-fee');
       const payableEl = document.getElementById('checkout-payable-total');
+      const promoWrapEl = document.getElementById('chk-promo-wrap');
+      const promoRowEl = document.getElementById('checkout-promo-row');
+      const promoDiscountEl = document.getElementById('checkout-promo-discount');
+      if (promoWrapEl) promoWrapEl.innerHTML = renderPromoWrapHtml();
+      const promoDiscount = appliedPromoState?.discountAmount || 0;
+      if (promoRowEl) promoRowEl.classList.toggle('hidden', !appliedPromoState);
+      if (promoDiscountEl) promoDiscountEl.textContent = promoDiscount ? `-${money(promoDiscount)}` : money(0);
       if (subtotalEl) subtotalEl.textContent = money(totals.subtotal);
       if (deliveryFeeEl) deliveryFeeEl.textContent = selectedDelivery?.kind === 'FIXED' ? money(totals.deliveryFee) : (selectedDelivery?.kind === 'TAXI' ? tr('Alohida', 'Отдельно') : (selectedDelivery?.kind === 'POST' && selectedDelivery.payer === 'CUSTOMER' ? tr('Pochta tarifida', 'По тарифу почты') : money(0)));
-      if (payableEl) payableEl.textContent = money(totals.payableTotal);
+      if (payableEl) payableEl.textContent = money(Math.max(0, totals.payableTotal - promoDiscount));
       if (window.lucide) lucide.createIcons();
     }
 
@@ -3999,6 +4370,9 @@
 
     let submittingOrder = false;
     async function submitOrder() {
+      if (ordersPaused) {
+        return alert(ordersPausedNote ? `${tr("Do'kon hozircha yangi buyurtmalarni qabul qilmayapti.", "Магазин временно не принимает новые заказы.")}\n\n${ordersPausedNote}` : tr("Do'kon hozircha yangi buyurtmalarni qabul qilmayapti.", "Магазин временно не принимает новые заказы."));
+      }
       if (myStatus.isBlocked) {
         return alert(`${tr("🚫 Siz botdan foydalanish huquqidan mahrum qilingansiz", "🚫 Доступ к оформлению заказов заблокирован")}.\n${tr('Sabab','Причина')}: ${myStatus.blockReason || tr("ko'rsatilmagan",'не указана')}\n\n${tr("Batafsil ma'lumot uchun Profil bo'limiga qarang.",'Подробности смотрите в разделе «Профиль».')}`);
       }
@@ -4092,12 +4466,14 @@
           deliveryMethodId: selectedDeliveryMethodId,
           paymentMethodId: selectedPayment.id === 'QR' ? `QR:${selectedQrProvider.id}` : selectedPayMethod,
           receiptImageUpload, branchId: isPostDelivery ? checkoutSelectedBranch?.id : undefined,
+          promoCode: appliedPromoState?.code || undefined,
         });
         const newOrder = formatOrderForUi(result.order);
         orders.unshift(newOrder);
         ordersLoaded = true;
         cart = {};
         localStorage.setItem(scopedKey('cart'), JSON.stringify(cart));
+        checkoutPromoCode = ''; appliedPromoState = null; promoError = '';
         activePopupModal = null;
         checkoutDraft = { fullname: '', phone: '', regionKey: 'tashkent_city', district: '', address: '', deliveryMethodId: null, paymentMethodId: null };
         localStorage.removeItem(scopedKey('checkoutDraft'));
@@ -4415,9 +4791,9 @@
                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColorClass(orderDisplayStatus(o))}">${statusLabel(orderDisplayStatus(o))}</span>
               </div>
               <p class="text-xs text-gray-500">📅 ${escapeHtml(o.date)}</p>
-              <p class="text-xs text-gray-600">🚚 ${escapeHtml(deliverySnapshotLabel(o))} · <b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></p>${Number(o.deliveryFee) > 0 ? `<p class="fc-order-delivery-fee">${tr('Yetkazib berish narxi','Стоимость доставки')}: <b>${money(o.deliveryFee)}</b></p>` : ''}
+              <p class="text-xs text-gray-600">🚚 ${escapeHtml(deliverySnapshotLabel(o))} · <b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></p>${Number(o.deliveryFee) > 0 ? `<p class="fc-order-delivery-fee">${tr('Yetkazib berish narxi','Стоимость доставки')}: <b>${money(o.deliveryFee)}</b></p>` : ''}${Number(o.promoDiscount) > 0 ? `<p class="fc-order-promo-discount"><i data-lucide="ticket-percent" class="w-3 h-3 inline align-[-1px]"></i> ${escapeHtml(o.promoCode || '')} — ${tr('chegirma','скидка')}: <b>-${money(o.promoDiscount)}</b></p>` : ''}
               ${o.shipment?.kind === 'TAXI' && o.shipment?.carNumber ? `<div class="bg-blue-50 border border-blue-200 p-2 rounded-xl text-[11px]">🚕 ${tr('Mashina','Машина')}: <b>${escapeHtml(o.shipment.carNumber)}</b><br>${tr('Haydovchi','Водитель')}: ${escapeHtml(o.shipment.driverPhone || '')}${o.shipment.driverName ? ` · ${escapeHtml(o.shipment.driverName)}` : ''}</div>` : ''}
-              ${o.shipment?.kind === 'POST' && o.shipment?.trackingNumber ? `<div class="bg-blue-50 border border-blue-200 p-2 rounded-xl text-[11px]">📦 ${escapeHtml(o.shipment.providerName || o.delivery?.providerName || '')}<br>${tr("Jo'natma raqami",'Трек-номер')}: <b>${escapeHtml(o.shipment.trackingNumber)}</b>${o.shipment.originBranch ? `<br>${tr('Filial','Филиал')}: ${escapeHtml(o.shipment.originBranch)}` : ''}</div>` : ''}
+              ${o.shipment?.kind === 'POST' && o.shipment?.trackingNumber ? `<div class="bg-blue-50 border border-blue-200 p-2 rounded-xl text-[11px]">📦 ${escapeHtml(o.shipment.providerName || o.delivery?.providerName || '')}<br>${tr("Jo'natma raqami",'Трек-номер')}: <b>${escapeHtml(o.shipment.trackingNumber)}</b>${o.shipment.shippedAt ? `<br>${tr("Jo'natilgan sana",'Дата отправки')}: <b>${new Date(o.shipment.shippedAt).toLocaleDateString()}</b>` : ''}${o.shipment.originBranch ? `<br>${tr('Filial','Филиал')}: ${escapeHtml(o.shipment.originBranch)}` : ''}</div>` : ''}
               <div class="text-xs space-y-1.5">
                 ${o.items.map(i => `
                   <div class="flex items-center gap-2">
@@ -4432,7 +4808,7 @@
               <div class="border-t pt-2 flex justify-between items-center font-bold text-sm">
                 <span class="text-green-600">${money(o.payableTotal ?? o.totalPrice)}</span>
                 ${(o.status === 'NEW' && !isReceiptPendingReview(o)) ? `
-                  <button onclick="cancelUserOrder(${o.id}, event)" class="text-xs fc-bg-danger-soft fc-text-danger border fc-border-danger px-2.5 py-1 rounded-lg font-bold">
+                  <button onclick="openCancelOrderSheet(${o.id}, event)" class="text-xs fc-bg-danger-soft fc-text-danger border fc-border-danger px-2.5 py-1 rounded-lg font-bold">
                     ❌ ${tr("Bekor qilish", "Отмена")}
                   </button>
                 ` : ''}
@@ -4443,19 +4819,71 @@
       `;
     }
 
-    async function cancelUserOrder(orderId, e) {
+    // 14-band: mijoz bekor qilish sababini o'zi tanlaydi/yozadi.
+    const CANCEL_REASON_PRESETS = [
+      { uz: "Fikrimni o'zgartirdim", ru: "Передумал(а)" },
+      { uz: "Xato buyurtma berdim", ru: "Ошибся(лась) при заказе" },
+      { uz: "Yetkazib berish juda uzoq", ru: "Слишком долгая доставка" },
+      { uz: "Boshqa joydan arzonroq topdim", ru: "Нашёл(нашла) дешевле в другом месте" },
+    ];
+    let cancelOrderTargetId = null;
+    let cancelOrderReasonIdx = -1;
+
+    function openCancelOrderSheet(orderId, e) {
       if (e) e.stopPropagation();
-      if (!confirm(tr("Rostdan ham ushbu buyurtmani bekor qilmoqchimisiz?", "Вы действительно хотите отменить этот заказ?"))) return;
+      cancelOrderTargetId = orderId;
+      cancelOrderReasonIdx = -1;
+      renderCancelOrderSheet();
+    }
+    function closeCancelOrderSheet() {
+      const root = document.getElementById('fc-cancel-order-sheet-root');
+      if (root) root.remove();
+      cancelOrderTargetId = null;
+    }
+    function setCancelOrderReasonIdx(idx) {
+      cancelOrderReasonIdx = idx;
+      const custom = document.getElementById('cancel-order-custom-reason');
+      if (custom) custom.value = '';
+      renderCancelOrderSheet();
+    }
+    function renderCancelOrderSheet() {
+      let root = document.getElementById('fc-cancel-order-sheet-root');
+      if (!root) { root = document.createElement('div'); root.id = 'fc-cancel-order-sheet-root'; document.body.appendChild(root); }
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeCancelOrderSheet();">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Bekor qilish sababi', 'Причина отмены')}</div><button type="button" onclick="closeCancelOrderSheet()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-2">
+            ${CANCEL_REASON_PRESETS.map((r, i) => `<button type="button" onclick="setCancelOrderReasonIdx(${i})" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs ${cancelOrderReasonIdx === i ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${tr(r.uz, r.ru)}</button>`).join('')}
+            <textarea id="cancel-order-custom-reason" rows="2" placeholder="${tr('Boshqa sabab (ixtiyoriy)', 'Другая причина (необязательно)')}" class="w-full p-2 border rounded-xl text-xs" oninput="cancelOrderReasonIdx=-1"></textarea>
+          </div>
+          <div class="fc-sheet-footer"><button type="button" onclick="submitCancelOrder()" class="fc-btn fc-btn-danger w-full">${tr('Buyurtmani bekor qilish', 'Отменить заказ')}</button></div>
+        </div>
+      </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+    async function submitCancelOrder() {
+      const orderId = cancelOrderTargetId;
+      const customText = document.getElementById('cancel-order-custom-reason')?.value.trim();
+      const preset = cancelOrderReasonIdx >= 0 ? CANCEL_REASON_PRESETS[cancelOrderReasonIdx] : null;
+      const reason = customText || (preset ? tr(preset.uz, preset.ru) : '');
+      closeCancelOrderSheet();
       try {
-        const result = await callApi('cancel_order', { orderId });
+        const result = await callApi('cancel_order', { orderId, reason });
         const updated = formatOrderForUi(result.order);
         const idx = orders.findIndex(o => o.id === updated.id);
         if (idx >= 0) orders[idx] = updated;
-        alert(tr("✅ Buyurtmangiz bekor qilindi!", "✅ Заказ отменён!"));
+        if (selectedOrderModal?.id === updated.id) selectedOrderModal = updated;
+        showActionToast(tr("✅ Buyurtma bekor qilindi", "✅ Заказ отменён"), 'success', 1800);
         render();
       } catch (e2) {
         console.error(e2);
-        alert(tr("❌ Xatolik yuz berdi, qayta urinib ko'ring.", "❌ Произошла ошибка. Попробуйте ещё раз."));
+        const code = e2?.details?.error || '';
+        if (code === 'cancel_not_allowed_at_this_stage') {
+          alert(tr("Bu bosqichda buyurtmani o'zingiz bekor qila olmaysiz. Iltimos, qo'llab-quvvatlash bilan bog'laning.", "На этом этапе вы не можете отменить заказ самостоятельно. Обратитесь в поддержку."));
+        } else {
+          alert(tr("❌ Xatolik yuz berdi, qayta urinib ko'ring.", "❌ Произошла ошибка. Попробуйте ещё раз."));
+        }
       }
     }
 
@@ -6348,15 +6776,521 @@
       </button>`;
     }
 
-    function openStaffPage() {
+    // ==================== BOSH SAHIFA KATALOGLARI (foydalanuvchi qo'shimcha so'rovi) ====================
+
+    function openFeaturedCategoriesPage() {
+      if (!(isUserAnAdmin && isAdminMode)) return;
+      openPage('FEATURED_CATEGORIES', 'nav-profile');
+    }
+
+    function toggleFeaturedCategory(catId) {
+      const idx = featuredCategoryIds.indexOf(catId);
+      if (idx >= 0) featuredCategoryIds.splice(idx, 1);
+      else {
+        if (featuredCategoryIds.length >= 8) return showActionToast(tr("Eng ko'pi 8 ta katalog tanlash mumkin.", "Можно выбрать не более 8 каталогов."), 'error', 1800);
+        featuredCategoryIds.push(catId);
+      }
+      render();
+    }
+
+    async function saveFeaturedCategories() {
+      featuredCategoriesSaving = true;
+      render();
+      try {
+        await callApi('set_featured_categories', { categoryIds: featuredCategoryIds });
+        showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1500);
+      } catch (e) {
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+      } finally {
+        featuredCategoriesSaving = false;
+        render();
+      }
+    }
+
+    function renderFeaturedCategoriesPage(container) {
+      const topLevelCats = categories.filter(c => !c.parentId).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      const rows = topLevelCats.map(c => `
+        <label class="flex items-center justify-between gap-2 fc-card">
+          <span class="flex items-center gap-2 min-w-0"><span class="fc-featured-cat-icon" style="width:2.2rem;height:2.2rem">${c.img ? `<img src="${escapeHtml(c.img)}">` : `<i data-lucide="folder" class="w-4 h-4"></i>`}</span><b class="text-xs truncate">${escapeHtml(categoryName(c))}</b></span>
+          <span class="fc-toggle shrink-0"><input type="checkbox" ${featuredCategoryIds.includes(c.id) ? 'checked' : ''} onchange="toggleFeaturedCategory('${c.id}')"><span class="fc-toggle-track"></span></span>
+        </label>
+      `).join('');
+      const body = `<div class="space-y-3">
+        <div class="fc-card"><p class="text-xs text-gray-600">${tr("Bosh sahifada, qidiruv ostida ko'rinadigan tezkor kataloglarni tanlang.", "Выберите каталоги для быстрого доступа на главной, под поиском.")}</p><p class="text-[10px] text-gray-400 mt-1">${featuredCategoryIds.length} / 8 ${tr('tanlandi', 'выбрано')}</p></div>
+        <div class="space-y-1.5">${rows || `<div class="fc-empty-state"><p>${tr("Kataloglar topilmadi.", "Каталоги не найдены.")}</p></div>`}</div>
+        <button type="button" onclick="saveFeaturedCategories()" class="fc-btn fc-btn-primary w-full" ${featuredCategoriesSaving ? 'disabled' : ''}>${featuredCategoriesSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button>
+      </div>`;
+      renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body);
+    }
+
+    // ==================== BANNERLAR (Online Do'kon yaxshilashlari, 17-band) ====================
+
+    function openBannersPage() {
+      if (!(isUserAnAdmin && isAdminMode)) return;
+      openPage('BANNERS', 'nav-profile');
+      loadBannerListLazy();
+    }
+
+    async function loadBannerListLazy(force = false) {
+      if (!isUserAnAdmin || bannerListLoading || (bannerListLoaded && !force)) return;
+      bannerListLoading = true;
+      if (activePage === 'BANNERS') render();
+      try {
+        const data = await callApi('banner_list', {});
+        bannerList = data.banners || [];
+        bannerListLoaded = true;
+      } catch (e) {
+        console.error("Bannerlarni yuklashda xatolik:", e);
+      } finally {
+        bannerListLoading = false;
+        if (activePage === 'BANNERS') render();
+      }
+    }
+
+    function bannerTargetLabel(b) {
+      if (b.targetType === 'PRODUCT') return `${tr('Mahsulot', 'Товар')}: ${escapeHtml((products.find(p => p.id === b.targetProductId) || {}).name || b.targetProductId || '')}`;
+      if (b.targetType === 'CATEGORY') return `${tr('Katalog', 'Каталог')}: ${escapeHtml(categoryName(categories.find(c => c.id === b.targetCategoryId)) || b.targetCategoryId || '')}`;
+      if (b.targetType === 'URL') return `${tr('Havola', 'Ссылка')}: ${escapeHtml(b.targetUrl || '')}`;
+      return tr("Hech narsa", "Ничего");
+    }
+
+    function renderBannersPage(container) {
+      const rows = bannerListLoading && !bannerListLoaded
+        ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
+        : bannerList.length ? bannerList.map(b => `
+          <div class="fc-card space-y-1.5">
+            <div class="flex items-center gap-2">
+              <img src="${escapeHtml(b.imageUrl)}" class="w-16 h-10 object-cover rounded-lg border shrink-0" loading="lazy">
+              <div class="min-w-0 flex-1">
+                <b class="text-xs">${escapeHtml(b.title || (b.mode === 'IMAGE' ? tr('Tayyor rasm', 'Готовое изображение') : tr('(sarlavhasiz)', '(без заголовка)')))}</b>
+                <p class="text-[10px] text-gray-400">${bannerTargetLabel(b)}</p>
+              </div>
+              <span class="fc-toggle shrink-0"><input type="checkbox" ${b.isActive ? 'checked' : ''} onchange="toggleBannerActive('${b.id}', this.checked)"><span class="fc-toggle-track"></span></span>
+            </div>
+            <div class="flex gap-2 pt-1">
+              <button type="button" onclick="openBannerForm('${b.id}')" class="fc-btn fc-btn-secondary flex-1"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>${tr("Tahrirlash", "Изменить")}</button>
+              <button type="button" onclick="deleteBannerAt('${b.id}')" class="fc-btn fc-btn-icon fc-btn-danger" aria-label="${tr("O'chirish", "Удалить")}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+        `).join('') : `<div class="fc-empty-state"><i data-lucide="image" class="w-7 h-7"></i><p>${tr("Hozircha banner yo'q.", "Пока нет баннеров.")}</p></div>`;
+      const body = `<div class="space-y-3">
+        <div class="fc-card fc-staff-intro">
+          <div><h3>${tr('Bannerlar', 'Баннеры')}</h3><p>${tr("Bosh sahifada bir vaqtda faol bannerlardan faqat 3 tasi ko'rsatiladi.", "На главной одновременно показываются не более 3 активных баннеров.")}</p></div>
+          <button type="button" onclick="openBannerForm()" class="fc-btn fc-btn-primary"><i data-lucide="plus" class="w-4 h-4"></i>${tr("Banner qo'shish", "Добавить")}</button>
+        </div>
+        <div class="space-y-2">${rows}</div>
+      </div>`;
+      renderPageShell(container, tr('Bannerlar', 'Баннеры'), body);
+    }
+
+    function openBannerForm(id) {
+      const existing = id ? bannerList.find(b => String(b.id) === String(id)) : null;
+      clearTempImageSelection();
+      bannerDraft = existing ? {
+        id: existing.id, mode: existing.mode, title: existing.title || '', subtitle: existing.subtitle || '',
+        ctaText: existing.ctaText || '', imageUrl: existing.imageUrl,
+        targetType: existing.targetType, targetProductId: existing.targetProductId || '', targetCategoryId: existing.targetCategoryId || '',
+        targetUrl: existing.targetUrl || '', startsAt: existing.startsAt ? existing.startsAt.slice(0, 10) : '',
+        endsAt: existing.endsAt ? existing.endsAt.slice(0, 10) : '', isActive: existing.isActive,
+      } : { mode: 'TEMPLATE', title: '', subtitle: '', ctaText: '', imageUrl: '', targetType: 'NONE', targetProductId: '', targetCategoryId: '', targetUrl: '', startsAt: '', endsAt: '', isActive: true };
+      renderBannerFormSheet();
+    }
+
+    function closeBannerForm() {
+      const root = document.getElementById('fc-banner-form-root');
+      if (root) root.remove();
+      bannerDraft = null;
+      clearTempImageSelection();
+    }
+
+    function setBannerDraftMode(mode) { bannerDraft.mode = mode; renderBannerFormSheet(); }
+    function setBannerDraftTarget(type) { bannerDraft.targetType = type; renderBannerFormSheet(); }
+
+    function renderBannerFormSheet() {
+      let root = document.getElementById('fc-banner-form-root');
+      if (!root) {
+        root = document.createElement('div');
+        root.id = 'fc-banner-form-root';
+        document.body.appendChild(root);
+      }
+      const d = bannerDraft;
+      const isEdit = !!d.id;
+      const previewSrc = tempImagePreviewUrl || d.imageUrl || '';
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeBannerForm();">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${isEdit ? tr("Bannerni tahrirlash", "Изменить баннер") : tr("Yangi banner", "Новый баннер")}</div><button type="button" onclick="closeBannerForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-3">
+            <div class="fc-tabs">
+              <button type="button" onclick="setBannerDraftMode('TEMPLATE')" class="fc-tab ${d.mode === 'TEMPLATE' ? 'fc-tab-active' : ''}">${tr('Shablon asosida', 'По шаблону')}</button>
+              <button type="button" onclick="setBannerDraftMode('IMAGE')" class="fc-tab ${d.mode === 'IMAGE' ? 'fc-tab-active' : ''}">${tr('Tayyor rasm', 'Готовое изображение')}</button>
+            </div>
+
+            <div>
+              <label class="font-bold text-gray-600 text-xs">${d.mode === 'TEMPLATE' ? tr('Fon rasmi', 'Фоновое изображение') : tr('Banner rasmi', 'Изображение баннера')}</label>
+              <input id="banner-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', '', '')" class="hidden">
+              <input id="banner-image-input-files" type="file" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', '', '')" class="hidden">
+              <button id="banner-image-button" type="button" onclick="openImagePickerSheet('banner-image-input','banner-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}</button>
+              <img id="banner-image-prev" src="${escapeHtml(previewSrc)}" class="w-full h-28 object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
+            </div>
+
+            ${d.mode === 'TEMPLATE' ? `
+              <label class="fc-mini-field"><span>${tr('Sarlavha', 'Заголовок')}</span><input type="text" id="banner-f-title" value="${escapeHtml(d.title)}" maxlength="80" placeholder="${tr('Masalan: Proteinlarga -20%', 'Например: Скидка 20% на протеин')}"></label>
+              <label class="fc-mini-field"><span>${tr('Qisqa matn', 'Короткий текст')}</span><input type="text" id="banner-f-subtitle" value="${escapeHtml(d.subtitle)}" maxlength="140" placeholder="${tr('Masalan: Faqat 31-avgustgacha', 'Например: Только до 31 августа')}"></label>
+              <label class="fc-mini-field"><span>${tr("Tugma matni", "Текст кнопки")}</span><input type="text" id="banner-f-cta" value="${escapeHtml(d.ctaText)}" maxlength="30" placeholder="${tr("Ko'rish", "Смотреть")}"></label>
+            ` : ''}
+
+            <div class="fc-mini-field"><span>${tr('Bosilganda nima ochiladi', 'Что открывается при нажатии')}</span><div class="fc-tabs">
+              ${['NONE','PRODUCT','CATEGORY','URL'].map(t => `<button type="button" onclick="setBannerDraftTarget('${t}')" class="fc-tab ${d.targetType === t ? 'fc-tab-active' : ''}">${{NONE:tr("Hech narsa","Ничего"),PRODUCT:tr('Mahsulot','Товар'),CATEGORY:tr('Katalog','Каталог'),URL:tr('Havola','Ссылка')}[t]}</button>`).join('')}
+            </div></div>
+            ${d.targetType === 'PRODUCT' ? `<select id="banner-f-target-product" class="w-full p-2 border rounded-xl text-xs">${products.map(p => `<option value="${escapeHtml(p.id)}" ${d.targetProductId === p.id ? 'selected' : ''}>${escapeHtml(productName(p))}</option>`).join('')}</select>` : ''}
+            ${d.targetType === 'CATEGORY' ? `<select id="banner-f-target-category" class="w-full p-2 border rounded-xl text-xs">${categories.map(c => `<option value="${escapeHtml(c.id)}" ${d.targetCategoryId === c.id ? 'selected' : ''}>${escapeHtml(categoryName(c))}</option>`).join('')}</select>` : ''}
+            ${d.targetType === 'URL' ? `<input type="url" id="banner-f-target-url" value="${escapeHtml(d.targetUrl)}" placeholder="https://..." class="w-full p-2 border rounded-xl text-xs">` : ''}
+
+            <div class="grid grid-cols-2 gap-2">
+              <label class="fc-mini-field"><span>${tr('Boshlanish sanasi', 'Дата начала')}</span><input type="date" id="banner-f-starts" value="${escapeHtml(d.startsAt)}"></label>
+              <label class="fc-mini-field"><span>${tr('Tugash sanasi', 'Дата окончания')}</span><input type="date" id="banner-f-ends" value="${escapeHtml(d.endsAt)}"></label>
+            </div>
+            <div class="flex items-center justify-between p-1"><span class="text-xs font-bold text-gray-600">${tr('Faol', 'Активен')}</span><span class="fc-toggle"><input type="checkbox" id="banner-f-active" ${d.isActive ? 'checked' : ''}><span class="fc-toggle-track"></span></span></div>
+          </div>
+          <div class="fc-sheet-footer">
+            <button type="button" onclick="saveBannerForm()" class="fc-btn fc-btn-primary w-full" ${bannerSaving ? 'disabled' : ''}>${bannerSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button>
+          </div>
+        </div>
+      </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    async function saveBannerForm() {
+      if (bannerSaving) return;
+      const d = bannerDraft;
+      const targetType = d.targetType;
+      const targetProductId = targetType === 'PRODUCT' ? document.getElementById('banner-f-target-product')?.value : null;
+      const targetCategoryId = targetType === 'CATEGORY' ? document.getElementById('banner-f-target-category')?.value : null;
+      const targetUrl = targetType === 'URL' ? document.getElementById('banner-f-target-url')?.value.trim() : null;
+      if (targetType === 'URL' && !targetUrl) return alert(tr("Havolani kiriting.", "Введите ссылку."));
+
+      bannerSaving = true;
+      renderBannerFormSheet();
+      try {
+        const imageSnap = takeTempImageSnapshot();
+        const localImageWasSelected = !!(imageSnap?.file || imageSnap?.preparing);
+        let imageUrl = d.imageUrl || null;
+        if (localImageWasSelected) {
+          const result = await productImagePayloadFromSnapshot(imageSnap, true);
+          imageUrl = result.img;
+        }
+        if (!imageUrl) { bannerSaving = false; renderBannerFormSheet(); return alert(tr("Rasm tanlang.", "Выберите изображение.")); }
+
+        const payload = {
+          mode: d.mode, imageUrl,
+          title: d.mode === 'TEMPLATE' ? document.getElementById('banner-f-title')?.value.trim() : null,
+          subtitle: d.mode === 'TEMPLATE' ? document.getElementById('banner-f-subtitle')?.value.trim() : null,
+          ctaText: d.mode === 'TEMPLATE' ? document.getElementById('banner-f-cta')?.value.trim() : null,
+          targetType, targetProductId, targetCategoryId, targetUrl,
+          startsAt: document.getElementById('banner-f-starts')?.value || null,
+          endsAt: document.getElementById('banner-f-ends')?.value || null,
+          isActive: !!document.getElementById('banner-f-active')?.checked,
+        };
+        if (d.id) await callApi('banner_update', { id: d.id, ...payload });
+        else await callApi('banner_create', payload);
+        closeBannerForm();
+        showActionToast(tr('Saqlandi', 'Сохранено'), 'success', 1500);
+        await loadBannerListLazy(true);
+      } catch (e) {
+        alert(tr("Saqlab bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось сохранить. Попробуйте ещё раз."));
+      } finally {
+        bannerSaving = false;
+      }
+    }
+
+    async function toggleBannerActive(id, checked) {
+      try {
+        await callApi('banner_update', { id, isActive: checked });
+        const item = bannerList.find(b => String(b.id) === String(id));
+        if (item) item.isActive = checked;
+        render();
+      } catch (e) {
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+        render();
+      }
+    }
+
+    async function deleteBannerAt(id) {
+      const ok = await fcConfirm(tr("Bannerni o'chirish", "Удалить баннер"), tr("Bu banner butunlay o'chiriladi.", "Этот баннер будет удалён навсегда."));
+      if (!ok) return;
+      try {
+        await callApi('banner_delete', { id });
+        await loadBannerListLazy(true);
+        showActionToast(tr("O'chirildi", 'Удалён'), 'success', 1500);
+      } catch (e) {
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+      }
+    }
+
+    // ==================== SAVATNI TASHLAB KETGANLAR (Online Do'kon yaxshilashlari, 2-band) ====================
+
+    function openAbandonedCartsPage() {
+      if (!(isUserAnAdmin && isAdminMode)) return;
+      openPage('ABANDONED_CARTS', 'nav-profile');
+      loadAbandonedCartsLazy();
+    }
+
+    async function loadAbandonedCartsLazy(force = false) {
+      if (!isUserAnAdmin || abandonedCartsLoading || (abandonedCartsLoaded && !force)) return;
+      abandonedCartsLoading = true;
+      if (activePage === 'ABANDONED_CARTS') render();
+      try {
+        const data = await callApi('list_abandoned_carts', {});
+        abandonedCarts = data.carts || [];
+        abandonedCartsLoaded = true;
+      } catch (e) {
+        console.error("Tashlab ketilgan savatlarni yuklashda xatolik:", e);
+      } finally {
+        abandonedCartsLoading = false;
+        if (activePage === 'ABANDONED_CARTS') render();
+      }
+    }
+
+    function cartAgeLabel(updatedAt) {
+      const mins = Math.max(0, Math.round((Date.now() - new Date(updatedAt).getTime()) / 60000));
+      if (mins < 60) return tr(`${mins} daqiqa oldin`, `${mins} мин. назад`);
+      const hours = Math.round(mins / 60);
+      if (hours < 24) return tr(`${hours} soat oldin`, `${hours} ч. назад`);
+      return tr(`${Math.round(hours / 24)} kun oldin`, `${Math.round(hours / 24)} дн. назад`);
+    }
+
+    function renderAbandonedCartsPage(container) {
+      const rows = abandonedCartsLoading && !abandonedCartsLoaded
+        ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
+        : abandonedCarts.length ? abandonedCarts.map(c => `
+          <div class="fc-card space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0"><b class="text-sm">${escapeHtml(c.customerName || c.username || c.phone || ('#' + c.tgId))}</b>${c.phone ? `<p class="text-[10px] text-gray-400">${escapeHtml(c.phone)}</p>` : ''}</div>
+              <b class="text-sm text-blue-600 shrink-0">${money(c.cartValue)}</b>
+            </div>
+            <p class="text-[10px] text-gray-400">${c.itemCount} ${tr('ta mahsulot', 'товаров')} · ${cartAgeLabel(c.updatedAt)}</p>
+            <p class="text-xs text-gray-600 truncate">${c.items.map(i => escapeHtml(i.name)).join(', ')}</p>
+          </div>
+        `).join('') : `<div class="fc-empty-state"><i data-lucide="shopping-cart" class="w-7 h-7"></i><p>${tr("Hozircha tashlab ketilgan savat yo'q.", "Пока нет брошенных корзин.")}</p></div>`;
+      const body = `<div class="space-y-3">
+        <div class="fc-card"><p class="text-xs text-gray-600">${tr("Savatga mahsulot qo'shib, kamida 30 daqiqadan beri buyurtma bermagan mijozlar.", "Клиенты, добавившие товары в корзину и не оформившие заказ уже 30+ минут.")}</p></div>
+        <div class="space-y-2">${rows}</div>
+      </div>`;
+      renderPageShell(container, tr('Tashlab ketilgan savatlar', 'Брошенные корзины'), body);
+    }
+
+    // ==================== PROMO-KOD (Online Do'kon yaxshilashlari, 1-band) ====================
+
+    function openPromoPage() {
+      if (!(isUserAnAdmin && isAdminMode)) return;
+      openPage('PROMO_CODES', 'nav-profile');
+      loadPromoListLazy();
+    }
+
+    async function loadPromoListLazy(force = false) {
+      if (!isUserAnAdmin || promoListLoading || (promoListLoaded && !force)) return;
+      promoListLoading = true;
+      if (activePage === 'PROMO_CODES') render();
+      try {
+        const data = await callApi('promo_list', {});
+        promoList = data.promotions || [];
+        promoListLoaded = true;
+      } catch (e) {
+        console.error("Promo-kodlarni yuklashda xatolik:", e);
+      } finally {
+        promoListLoading = false;
+        if (activePage === 'PROMO_CODES') render();
+      }
+    }
+
+    function promoStatusBadge(p) {
+      const now = Date.now();
+      if (!p.isActive) return `<span class="fc-badge fc-badge-muted">${tr("Nofaol", "Неактивен")}</span>`;
+      if (p.endsAt && new Date(p.endsAt).getTime() < now) return `<span class="fc-badge fc-badge-muted">${tr("Muddati tugagan", "Истёк")}</span>`;
+      if (p.startsAt && new Date(p.startsAt).getTime() > now) return `<span class="fc-badge fc-badge-warning">${tr("Hali boshlanmagan", "Ещё не начался")}</span>`;
+      if (p.usageLimit && p.usedCount >= p.usageLimit) return `<span class="fc-badge fc-badge-muted">${tr("Limit tugagan", "Лимит исчерпан")}</span>`;
+      return `<span class="fc-badge fc-badge-success">${tr("Faol", "Активен")}</span>`;
+    }
+
+    function promoDiscountLabel(p) {
+      return p.discountType === 'PERCENT' ? `${formatNumber(p.discountValue)}%` : money(p.discountValue);
+    }
+
+    function renderPromoPage(container) {
+      const rows = promoListLoading && !promoListLoaded
+        ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
+        : promoList.length ? promoList.map(p => `
+          <div class="fc-card space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5"><span class="font-mono font-black text-sm">${escapeHtml(p.code)}</span>${promoStatusBadge(p)}</div>
+                <p class="text-xs text-gray-600 mt-0.5">${escapeHtml(p.name)} · <b>${promoDiscountLabel(p)}</b> ${tr('chegirma', 'скидка')}</p>
+              </div>
+              <span class="fc-toggle shrink-0"><input type="checkbox" ${p.isActive ? 'checked' : ''} onchange="togglePromoActive('${p.id}', this.checked)"><span class="fc-toggle-track"></span></span>
+            </div>
+            <p class="text-[10px] text-gray-400">${tr('Ishlatilgan', 'Использован')}: ${p.usedCount || 0}${p.usageLimit ? ` / ${p.usageLimit}` : ''}${p.minOrderAmount ? ` · ${tr('Min buyurtma', 'Мин. заказ')}: ${money(p.minOrderAmount)}` : ''}</p>
+            <div class="flex gap-2 pt-1">
+              <button type="button" onclick="openPromoForm('${p.id}')" class="fc-btn fc-btn-secondary flex-1"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>${tr("Tahrirlash", "Изменить")}</button>
+              <button type="button" onclick="deletePromoAt('${p.id}')" class="fc-btn fc-btn-icon fc-btn-danger" aria-label="${tr("O'chirish", "Удалить")}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+          </div>
+        `).join('') : `<div class="fc-empty-state"><i data-lucide="ticket-percent" class="w-7 h-7"></i><p>${tr("Hozircha promo-kod yo'q.", "Промокодов пока нет.")}</p></div>`;
+
+      const body = `<div class="space-y-3">
+        <div class="fc-card fc-staff-intro">
+          <div><h3>${tr('Promo-kodlar', 'Промокоды')}</h3><p>${tr("Mijozlar checkout paytida kod kiritib chegirma olishlari mumkin.", "Клиенты смогут ввести код при оформлении и получить скидку.")}</p></div>
+          <button type="button" onclick="openPromoForm()" class="fc-btn fc-btn-primary"><i data-lucide="plus" class="w-4 h-4"></i>${tr("Promo qo'shish", "Добавить")}</button>
+        </div>
+        <div class="space-y-2">${rows}</div>
+      </div>`;
+      renderPageShell(container, tr('Promo-kodlar', 'Промокоды'), body);
+    }
+
+    function openPromoForm(id) {
+      const existing = id ? promoList.find(p => String(p.id) === String(id)) : null;
+      promoDraft = existing ? {
+        id: existing.id, code: existing.code, name: existing.name, discountType: existing.discountType,
+        discountValue: existing.discountValue, minOrderAmount: existing.minOrderAmount,
+        startsAt: existing.startsAt ? existing.startsAt.slice(0, 10) : '', endsAt: existing.endsAt ? existing.endsAt.slice(0, 10) : '',
+        usageLimit: existing.usageLimit, perCustomerLimit: existing.perCustomerLimit, isActive: existing.isActive,
+      } : { code: '', name: '', discountType: 'PERCENT', discountValue: '', minOrderAmount: '', startsAt: '', endsAt: '', usageLimit: '', perCustomerLimit: '', isActive: true };
+      renderPromoFormSheet();
+    }
+
+    function closePromoForm() {
+      const root = document.getElementById('fc-promo-form-root');
+      if (root) root.remove();
+      promoDraft = null;
+    }
+
+    function setPromoDraftType(type) {
+      promoDraft.discountType = type;
+      renderPromoFormSheet();
+    }
+
+    function renderPromoFormSheet() {
+      let root = document.getElementById('fc-promo-form-root');
+      if (!root) {
+        root = document.createElement('div');
+        root.id = 'fc-promo-form-root';
+        document.body.appendChild(root);
+      }
+      const d = promoDraft;
+      const isEdit = !!d.id;
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closePromoForm();">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${isEdit ? tr("Promo-kodni tahrirlash", "Изменить промокод") : tr("Yangi promo-kod", "Новый промокод")}</div><button type="button" onclick="closePromoForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-3">
+            <label class="fc-mini-field"><span>${tr('Nomi', 'Название')}</span><input type="text" id="promo-f-name" value="${escapeHtml(d.name)}" placeholder="${tr('Masalan: Yozgi aksiya', 'Например: Летняя акция')}" maxlength="120"></label>
+            <label class="fc-mini-field"><span>${tr('Kod', 'Код')}</span><input type="text" id="promo-f-code" value="${escapeHtml(d.code)}" placeholder="YOZGI20" maxlength="40" style="text-transform:uppercase" ${isEdit ? 'disabled' : ''}></label>
+            <div class="fc-mini-field"><span>${tr('Chegirma turi', 'Тип скидки')}</span><div class="fc-tabs">
+              <button type="button" onclick="setPromoDraftType('PERCENT')" class="fc-tab ${d.discountType === 'PERCENT' ? 'fc-tab-active' : ''}">${tr('Foiz (%)', 'Процент (%)')}</button>
+              <button type="button" onclick="setPromoDraftType('FIXED')" class="fc-tab ${d.discountType === 'FIXED' ? 'fc-tab-active' : ''}">${tr("Aniq summa (so'm)", "Фикс. сумма (сум)")}</button>
+            </div></div>
+            <label class="fc-mini-field"><span>${d.discountType === 'PERCENT' ? tr('Chegirma foizi', 'Процент скидки') : tr("Chegirma summasi (so'm)", "Сумма скидки (сум)")}</span><input type="number" id="promo-f-value" value="${escapeHtml(String(d.discountValue ?? ''))}" min="1" ${d.discountType === 'PERCENT' ? 'max="100"' : ''} placeholder="${d.discountType === 'PERCENT' ? '20' : '50000'}"></label>
+            <label class="fc-mini-field"><span>${tr("Minimal buyurtma summasi (ixtiyoriy)", "Мин. сумма заказа (необязательно)")}</span><input type="number" id="promo-f-min" value="${escapeHtml(String(d.minOrderAmount ?? ''))}" min="0" placeholder="${tr('Cheklovsiz', 'Без ограничений')}"></label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="fc-mini-field"><span>${tr('Boshlanish sanasi', 'Дата начала')}</span><input type="date" id="promo-f-starts" value="${escapeHtml(d.startsAt || '')}"></label>
+              <label class="fc-mini-field"><span>${tr('Tugash sanasi', 'Дата окончания')}</span><input type="date" id="promo-f-ends" value="${escapeHtml(d.endsAt || '')}"></label>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="fc-mini-field"><span>${tr('Umumiy limit', 'Общий лимит')}</span><input type="number" id="promo-f-usagelimit" value="${escapeHtml(String(d.usageLimit ?? ''))}" min="1" placeholder="${tr('Cheklovsiz', 'Без ограничений')}"></label>
+              <label class="fc-mini-field"><span>${tr('Mijoz uchun limit', 'Лимит на клиента')}</span><input type="number" id="promo-f-customerlimit" value="${escapeHtml(String(d.perCustomerLimit ?? ''))}" min="1" placeholder="${tr('Cheklovsiz', 'Без ограничений')}"></label>
+            </div>
+            <div class="flex items-center justify-between p-1"><span class="text-xs font-bold text-gray-600">${tr('Faol', 'Активен')}</span><span class="fc-toggle"><input type="checkbox" id="promo-f-active" ${d.isActive ? 'checked' : ''}><span class="fc-toggle-track"></span></span></div>
+          </div>
+          <div class="fc-sheet-footer">
+            <button type="button" onclick="savePromoForm()" class="fc-btn fc-btn-primary w-full" ${promoSaving ? 'disabled' : ''}>${promoSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button>
+          </div>
+        </div>
+      </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function promoSaveErrorMessage(code) {
+      const map = {
+        invalid_code: tr("Kod faqat lotin harflari, raqam, - va _ dan iborat bo'lsin (2-40 belgi).", "Код должен состоять только из латинских букв, цифр, - и _ (2-40 символов)."),
+        promo_code_taken: tr("Bu kod allaqachon band.", "Этот код уже занят."),
+        invalid_name: tr("Nomini to'g'ri kiriting.", "Введите корректное название."),
+        invalid_discount_value: tr("Chegirma qiymati noto'g'ri.", "Некорректное значение скидки."),
+        invalid_percent: tr("Foiz 100 dan oshmasligi kerak.", "Процент не может быть больше 100."),
+        invalid_date_range: tr("Tugash sanasi boshlanish sanasidan oldin bo'lmasin.", "Дата окончания не может быть раньше даты начала."),
+      };
+      return map[code] || tr("Saqlab bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось сохранить. Попробуйте ещё раз.");
+    }
+
+    async function savePromoForm() {
+      if (promoSaving) return;
+      const name = document.getElementById('promo-f-name')?.value.trim();
+      const code = document.getElementById('promo-f-code')?.value.trim().toUpperCase();
+      const discountValue = document.getElementById('promo-f-value')?.value;
+      if (!name) return alert(tr("Nomini kiriting.", "Введите название."));
+      if (!promoDraft.id && !code) return alert(tr("Kodni kiriting.", "Введите код."));
+      if (!discountValue || Number(discountValue) <= 0) return alert(tr("Chegirma qiymatini kiriting.", "Введите значение скидки."));
+      promoSaving = true;
+      renderPromoFormSheet();
+      const payload = {
+        name, discountType: promoDraft.discountType, discountValue: Number(discountValue),
+        minOrderAmount: document.getElementById('promo-f-min')?.value || null,
+        startsAt: document.getElementById('promo-f-starts')?.value || null,
+        endsAt: document.getElementById('promo-f-ends')?.value || null,
+        usageLimit: document.getElementById('promo-f-usagelimit')?.value || null,
+        perCustomerLimit: document.getElementById('promo-f-customerlimit')?.value || null,
+        isActive: !!document.getElementById('promo-f-active')?.checked,
+      };
+      try {
+        if (promoDraft.id) await callApi('promo_update', { id: promoDraft.id, ...payload });
+        else await callApi('promo_create', { code, ...payload });
+        closePromoForm();
+        showActionToast(tr('Saqlandi', 'Сохранено'), 'success', 1500);
+        await loadPromoListLazy(true);
+      } catch (e) {
+        alert(promoSaveErrorMessage(e?.details?.error || e?.message));
+      } finally {
+        promoSaving = false;
+      }
+    }
+
+    async function togglePromoActive(id, checked) {
+      try {
+        await callApi('promo_update', { id, isActive: checked });
+        const item = promoList.find(p => String(p.id) === String(id));
+        if (item) item.isActive = checked;
+        render();
+      } catch (e) {
+        alert(tr("O'zgartirib bo'lmadi.", "Не удалось изменить."));
+        render();
+      }
+    }
+
+    async function deletePromoAt(id) {
+      const ok = await fcConfirm(tr("Promo-kodni o'chirish", "Удалить промокод"), tr("Agar bu kod ishlatilgan bo'lsa, faqat nofaol qilinadi (tarix saqlanadi).", "Если код уже использовался, он будет просто деактивирован (история сохранится)."));
+      if (!ok) return;
+      try {
+        const result = await callApi('promo_delete', { id });
+        await loadPromoListLazy(true);
+        showActionToast(result.deactivatedInsteadOfDeleted ? tr('Nofaol qilindi', 'Деактивирован') : tr("O'chirildi", 'Удалён'), 'success', 1500);
+      } catch (e) {
+        alert(tr("O'chirib bo'lmadi.", "Не удалось удалить."));
+      }
+    }
+
+    // Bu — ESKI, platforma bosh admin uchun do'kon-provisioning oqimi
+    // (add_admin/remove_admin, shop_memberships.role='OWNER'). Admin Roles &
+    // Permissions round bunga UMUMAN TEGMAYDI — faqat "Xodimlar" nomi/route'i
+    // endi YANGI (do'kon egasi boshqaradigan) tizimga berilgani uchun bu
+    // eski sahifa "Platforma adminlari" deb qayta nomlandi.
+    function openPlatformAdminsPage() {
       if (!(isSuperAdmin && isAdminMode)) return;
-      openPage('STAFF', 'nav-profile');
+      openPage('PLATFORM_ADMINS', 'nav-profile');
       loadAdminsLazy();
     }
 
-    function renderStaffPage(container) {
+    function renderPlatformAdminsPage(container) {
       if (!(isSuperAdmin && isAdminMode)) {
-        renderPageShell(container, tr('Xodimlar', 'Сотрудники'), `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Bu bo'lim faqat Bosh Admin uchun.", 'Этот раздел доступен только главному администратору.')}</p></div>`);
+        renderPageShell(container, tr('Platforma adminlari', 'Администраторы платформы'), `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Bu bo'lim faqat Bosh Admin uchun.", 'Этот раздел доступен только главному администратору.')}</p></div>`);
         return;
       }
       const rows = adminsLoading && !adminsLoaded
@@ -6374,12 +7308,478 @@
           }).join('');
       const body = `<div class="space-y-3">
         <div class="fc-card fc-staff-intro">
-          <div><h3>${tr('Xodimlar', 'Сотрудники')}</h3><p>${tr("Hozircha mavjud adminlarni qo'shish va olib tashlash shu yerda. Granular huquqlar keyingi bosqichda qo'shiladi.", 'Пока здесь можно добавлять и удалять администраторов. Детальные права будут добавлены на следующем этапе.')}</p></div>
-          <button type="button" onclick="activePopupModal='ADD_ADMIN'; render();" class="fc-btn fc-btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr("Xodim qo'shish", 'Добавить')}</button>
+          <div><h3>${tr('Platforma adminlari', 'Администраторы платформы')}</h3><p>${tr("Do'kon darajasidagi OWNER'larni qo'shish/olib tashlash (provisioning). Xodimlar/rollar uchun 'Xodimlar' bo'limiga qarang.", 'Добавление/удаление OWNER на уровне магазина (провижининг). Для сотрудников/ролей см. раздел «Сотрудники».')}</p></div>
+          <button type="button" onclick="activePopupModal='ADD_ADMIN'; render();" class="fc-btn fc-btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr("Admin qo'shish", 'Добавить')}</button>
         </div>
+        <div class="fc-card p-0 overflow-hidden"><div class="fc-staff-list">${rows || `<div class="fc-empty-state"><p>${tr('Adminlar topilmadi.', 'Администраторы не найдены.')}</p></div>`}</div></div>
+      </div>`;
+      renderPageShell(container, tr('Platforma adminlari', 'Администраторы платформы'), body);
+    }
+
+    // ==================== XODIMLAR / ROLLAR (Admin Roles & Permissions, 2.3/2.4/2.5-bosqich) ====================
+    // Do'kon egasi (OWNER) yoki 'staff.manage' huquqi bor xodim boshqaradi.
+    // Owner qatoriga (rol/blok/o'chirish) BU SAHIFADAN tegib bo'lmaydi —
+    // himoya backendda (2.3-bosqich), frontend faqat shu qatorlarni yashiradi.
+
+    function staffMemberLabel(m) {
+      return m.name || (m.username ? '@' + m.username : ('ID: ' + m.tgId));
+    }
+
+    async function loadStaffListLazy(force = false) {
+      if (staffListLoading || (staffListLoaded && !force)) return;
+      staffListLoading = true;
+      if (activePage === 'STAFF') render();
+      try {
+        const data = await callApi('staff_list', {});
+        staffList = data.staff || [];
+        staffPendingInvites = data.pendingInvites || [];
+        staffListLoaded = true;
+      } catch (e) {
+        console.error('Xodimlar ro\'yxatini yuklashda xatolik:', e);
+      } finally {
+        staffListLoading = false;
+        if (activePage === 'STAFF') render();
+      }
+    }
+
+    async function loadRolesLazy(force = false) {
+      if (rolesLoading || (rolesLoaded && !force)) return;
+      rolesLoading = true;
+      if (activePage === 'ROLES') render();
+      try {
+        const data = await callApi('role_list', {});
+        roleList = data.roles || [];
+        allPermissions = data.permissions || [];
+        rolesLoaded = true;
+      } catch (e) {
+        console.error('Rollarni yuklashda xatolik:', e);
+      } finally {
+        rolesLoading = false;
+        if (activePage === 'ROLES') render();
+      }
+    }
+
+    function openStaffPage() {
+      if (!(staffRole === 'OWNER' || hasPermission('staff.manage'))) return;
+      openPage('STAFF', 'nav-profile');
+      loadStaffListLazy();
+      loadRolesLazy();
+    }
+
+    function openRolesPage() {
+      if (!(staffRole === 'OWNER' || hasPermission('staff.manage'))) return;
+      openPage('ROLES', 'nav-profile');
+      loadRolesLazy();
+    }
+
+    function renderStaffPage(container) {
+      if (!(staffRole === 'OWNER' || hasPermission('staff.manage'))) {
+        renderPageShell(container, tr('Xodimlar', 'Сотрудники'), `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Bu bo'limga kirish huquqingiz yo'q.", 'У вас нет доступа к этому разделу.')}</p></div>`);
+        return;
+      }
+      const rows = (staffListLoading && !staffListLoaded)
+        ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
+        : staffList.map(m => `
+          <button type="button" onclick="openStaffDetail('${escapeHtml(m.tgId)}')" class="fc-staff-row w-full text-left">
+            <div class="fc-staff-avatar"><i data-lucide="${m.role === 'OWNER' ? 'crown' : 'user-round'}" class="w-4 h-4"></i></div>
+            <div class="min-w-0 flex-1">
+              <div class="fc-staff-name">${escapeHtml(staffMemberLabel(m))}${m.status === 'DISABLED' ? ` <span class="fc-badge fc-badge-muted">${tr('bloklangan', 'заблокирован')}</span>` : ''}</div>
+              <div class="flex flex-wrap gap-1 mt-1">
+                ${m.role === 'OWNER'
+                  ? `<span class="fc-badge fc-badge-warning">Owner</span>`
+                  : (m.roles.length ? m.roles.map(r => `<span class="fc-badge fc-badge-primary">${escapeHtml(r.name)}</span>`).join('') : `<span class="fc-badge fc-badge-muted">${tr("rol yo'q", 'нет роли')}</span>`)}
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 shrink-0"></i>
+          </button>
+        `).join('');
+      const invitesHtml = staffPendingInvites.length ? `
+        <div class="fc-card space-y-2">
+          <b class="text-xs">${tr('Kutilayotgan takliflar', 'Ожидающие приглашения')}</b>
+          ${staffPendingInvites.map(i => `
+            <div class="flex items-center justify-between gap-2 text-xs">
+              <span>${escapeHtml(i.username ? '@' + i.username : 'ID: ' + i.tgId)}</span>
+              <button type="button" onclick="cancelStaffInvite('${escapeHtml(i.id)}')" class="fc-btn fc-btn-icon fc-btn-danger" aria-label="${tr('Bekor qilish', 'Отменить')}"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+            </div>`).join('')}
+        </div>` : '';
+      const transferHtml = (staffRole === 'OWNER') ? `
+        <button type="button" onclick="openTransferOwnershipSheet()" class="fc-card w-full flex items-center justify-between text-left">
+          <span class="font-bold flex items-center gap-2 text-xs"><i data-lucide="crown" class="w-4 h-4"></i>${tr('Egalikni topshirish', 'Передать право собственности')}</span>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+        </button>` : '';
+      const body = `<div class="space-y-3">
+        <div class="fc-card fc-staff-intro">
+          <div><h3>${tr('Xodimlar', 'Сотрудники')}</h3><p>${tr("Xodim qo'shing, rol tayinlang — huquqlar avtomatik qo'llanadi.", 'Добавляйте сотрудников и назначайте роли — права применяются автоматически.')}</p></div>
+          <button type="button" onclick="openStaffInviteForm()" class="fc-btn fc-btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr("Xodim qo'shish", 'Добавить')}</button>
+        </div>
+        <button type="button" onclick="openRolesPage()" class="fc-card w-full flex items-center justify-between text-left">
+          <span class="font-bold flex items-center gap-2 text-xs"><i data-lucide="shield" class="w-4 h-4"></i>${tr('Rollar', 'Роли')}</span>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+        </button>
+        ${invitesHtml}
         <div class="fc-card p-0 overflow-hidden"><div class="fc-staff-list">${rows || `<div class="fc-empty-state"><p>${tr('Xodimlar topilmadi.', 'Сотрудники не найдены.')}</p></div>`}</div></div>
+        ${transferHtml}
       </div>`;
       renderPageShell(container, tr('Xodimlar', 'Сотрудники'), body);
+    }
+
+    function openStaffDetail(tgId) {
+      loadRolesLazy().then(renderStaffDetailSheet);
+      renderStaffDetailSheet(tgId);
+      window.__fcStaffDetailTgId = tgId;
+    }
+    function closeStaffDetail() {
+      const root = document.getElementById('fc-staff-detail-root');
+      if (root) root.remove();
+      window.__fcStaffDetailTgId = null;
+    }
+    function renderStaffDetailSheet(tgId) {
+      const targetTgId = tgId || window.__fcStaffDetailTgId;
+      if (!targetTgId) return;
+      const m = staffList.find(x => x.tgId === targetTgId);
+      if (!m) return;
+      let root = document.getElementById('fc-staff-detail-root');
+      if (!root) { root = document.createElement('div'); root.id = 'fc-staff-detail-root'; document.body.appendChild(root); }
+      const isOwnerRow = m.role === 'OWNER';
+      const currentRoleIds = new Set(m.roles.map(r => String(r.id)));
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeStaffDetail();">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${escapeHtml(staffMemberLabel(m))}</div><button type="button" onclick="closeStaffDetail()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-3">
+            ${m.phone ? `<p class="text-xs text-gray-500">${tr('Telefon', 'Телефон')}: ${escapeHtml(m.phone)}</p>` : ''}
+            <p class="text-xs text-gray-400">ID: ${escapeHtml(m.tgId)}</p>
+            ${isOwnerRow ? `
+              <div class="fc-bg-danger-soft border fc-border-danger p-3 rounded-xl text-xs fc-text-danger">${tr("Bu — do'kon egasi. Rollar/bloklash/o'chirish bu yerdan ishlamaydi.", 'Это владелец магазина. Роли/блокировка/удаление отсюда недоступны.')}</div>
+            ` : `
+              <div class="space-y-1.5">
+                <b class="text-xs text-gray-600">${tr('Rollar', 'Роли')}</b>
+                ${roleList.map(r => `
+                  <label class="flex items-center justify-between px-3 py-2 border rounded-xl text-xs font-bold">
+                    <span>${escapeHtml(r.name)}</span>
+                    <input type="checkbox" data-role-id="${escapeHtml(String(r.id))}" ${currentRoleIds.has(String(r.id)) ? 'checked' : ''}>
+                  </label>`).join('') || `<p class="text-xs text-gray-400">${tr("Hali rol yaratilmagan.", 'Роли ещё не созданы.')}</p>`}
+              </div>
+              <button type="button" onclick="saveStaffRoles('${escapeHtml(m.tgId)}')" class="fc-btn fc-btn-primary w-full">${tr('Rollarni saqlash', 'Сохранить роли')}</button>
+              <div class="grid grid-cols-2 gap-2 pt-2">
+                <button type="button" onclick="toggleStaffBlocked('${escapeHtml(m.tgId)}', ${m.status !== 'DISABLED'})" class="fc-btn fc-btn-secondary">${m.status === 'DISABLED' ? tr('Blokdan chiqarish', 'Разблокировать') : tr('Bloklash', 'Заблокировать')}</button>
+                <button type="button" onclick="removeStaffMember('${escapeHtml(m.tgId)}')" class="fc-btn fc-btn-danger">${tr("O'chirish", 'Удалить')}</button>
+              </div>
+            `}
+          </div>
+        </div>
+      </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+    async function saveStaffRoles(tgId) {
+      const roleIds = [...document.querySelectorAll('#fc-staff-detail-root [data-role-id]:checked')].map(el => el.dataset.roleId);
+      if (!roleIds.length) { alert(tr('Kamida bitta rol tanlang.', 'Выберите хотя бы одну роль.')); return; }
+      try {
+        await callApi('staff_update_roles', { telegramUserId: tgId, roleIds });
+        closeStaffDetail();
+        showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1500);
+        await loadStaffListLazy(true);
+      } catch (e) {
+        showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+      }
+    }
+    async function toggleStaffBlocked(tgId, blocked) {
+      try {
+        await callApi('staff_set_blocked', { telegramUserId: tgId, blocked });
+        closeStaffDetail();
+        await loadStaffListLazy(true);
+      } catch (e) {
+        showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+      }
+    }
+    async function removeStaffMember(tgId) {
+      const ok = await fcConfirm(tr("Xodimni o'chirish", 'Удалить сотрудника'), tr("Bu xodim do'kondan olib tashlanadi. Davom etasizmi?", 'Этот сотрудник будет удалён из магазина. Продолжить?'));
+      if (!ok) return;
+      try {
+        await callApi('staff_remove', { telegramUserId: tgId });
+        closeStaffDetail();
+        await loadStaffListLazy(true);
+        showActionToast(tr("O'chirildi", 'Удалён'), 'success', 1500);
+      } catch (e) {
+        showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+      }
+    }
+
+    function openStaffInviteForm() {
+      loadRolesLazy().then(renderStaffInviteSheet);
+      renderStaffInviteSheet();
+    }
+    function closeStaffInviteForm() {
+      const root = document.getElementById('fc-staff-invite-root');
+      if (root) root.remove();
+    }
+    function renderStaffInviteSheet() {
+      let root = document.getElementById('fc-staff-invite-root');
+      if (!root) { root = document.createElement('div'); root.id = 'fc-staff-invite-root'; document.body.appendChild(root); }
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeStaffInviteForm();">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr("Xodim qo'shish", 'Добавить сотрудника')}</div><button type="button" onclick="closeStaffInviteForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-3">
+            <label class="fc-mini-field"><span>Telegram ID</span><input type="text" id="staff-invite-tgid" inputmode="numeric" placeholder="123456789"></label>
+            <label class="fc-mini-field"><span>Username (${tr('ixtiyoriy', 'необязательно')})</span><input type="text" id="staff-invite-username" placeholder="username"></label>
+            <div class="space-y-1.5">
+              <b class="text-xs text-gray-600">${tr('Rollar', 'Роли')}</b>
+              ${roleList.map(r => `
+                <label class="flex items-center justify-between px-3 py-2 border rounded-xl text-xs font-bold">
+                  <span>${escapeHtml(r.name)}</span>
+                  <input type="checkbox" data-invite-role-id="${escapeHtml(String(r.id))}">
+                </label>`).join('') || `<p class="text-xs text-gray-400">${tr("Avval kamida bitta rol yarating.", 'Сначала создайте хотя бы одну роль.')}</p>`}
+            </div>
+          </div>
+          <div class="fc-sheet-footer"><button type="button" onclick="submitStaffInvite()" class="fc-btn fc-btn-primary w-full">${tr('Taklif yuborish', 'Отправить приглашение')}</button></div>
+        </div>
+      </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+    async function submitStaffInvite() {
+      const tgIdVal = (document.getElementById('staff-invite-tgid')?.value || '').trim();
+      const username = (document.getElementById('staff-invite-username')?.value || '').trim();
+      const roleIds = [...document.querySelectorAll('#fc-staff-invite-root [data-invite-role-id]:checked')].map(el => el.dataset.inviteRoleId);
+      if (!/^\d+$/.test(tgIdVal)) { alert(tr("To'g'ri Telegram ID kiriting.", 'Введите корректный Telegram ID.')); return; }
+      if (!roleIds.length) { alert(tr('Kamida bitta rol tanlang.', 'Выберите хотя бы одну роль.')); return; }
+      try {
+        await callApi('staff_invite', { telegramUserId: tgIdVal, username, roleIds });
+        closeStaffInviteForm();
+        showActionToast(tr('✅ Taklif yuborildi', '✅ Приглашение отправлено'), 'success', 1800);
+        await loadStaffListLazy(true);
+      } catch (e) {
+        const code = e?.details?.error;
+        const msg = code === 'already_a_member' ? tr("Bu foydalanuvchi allaqachon a'zo.", 'Этот пользователь уже участник.')
+          : code === 'invite_already_pending' ? tr('Bu foydalanuvchiga allaqachon taklif yuborilgan.', 'Этому пользователю уже отправлено приглашение.')
+          : code === 'invalid_tg_id' ? tr("To'g'ri Telegram ID kiriting.", 'Введите корректный Telegram ID.')
+          : tr("Yuborib bo'lmadi.", 'Не удалось отправить.');
+        alert(msg);
+      }
+    }
+    async function cancelStaffInvite(inviteId) {
+      try {
+        await callApi('staff_cancel_invite', { inviteId });
+        await loadStaffListLazy(true);
+      } catch (e) {
+        showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+      }
+    }
+
+    function openTransferOwnershipSheet() {
+      if (staffRole !== 'OWNER') return;
+      let root = document.getElementById('fc-transfer-ownership-root');
+      if (!root) { root = document.createElement('div'); root.id = 'fc-transfer-ownership-root'; document.body.appendChild(root); }
+      const staffOnly = staffList.filter(m => m.role === 'STAFF' && m.status === 'ACTIVE');
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeTransferOwnershipSheet();">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Egalikni topshirish', 'Передать право собственности')}</div><button type="button" onclick="closeTransferOwnershipSheet()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-3">
+            <div class="fc-bg-danger-soft border fc-border-danger p-3 rounded-xl text-xs fc-text-danger">${tr("Diqqat: bu amaldan keyin siz do'konning to'liq boshqaruvini yo'qotasiz.", 'Внимание: после этого действия вы потеряете полный контроль над магазином.')}</div>
+            ${staffOnly.length ? `
+              <label class="fc-mini-field"><span>${tr('Yangi egasi', 'Новый владелец')}</span>
+                <select id="transfer-target-tgid" class="w-full p-2 border rounded-xl text-xs">${staffOnly.map(m => `<option value="${escapeHtml(m.tgId)}">${escapeHtml(staffMemberLabel(m))}</option>`).join('')}</select>
+              </label>
+              <label class="flex items-center gap-2 text-xs font-bold"><input type="checkbox" id="transfer-confirm-checkbox">${tr('Tushundim, davom etaman', 'Я понимаю, продолжить')}</label>
+            ` : `<p class="text-xs text-gray-400">${tr("Egalikni topshirish uchun avval xodim qo'shing.", 'Чтобы передать право собственности, сначала добавьте сотрудника.')}</p>`}
+          </div>
+          ${staffOnly.length ? `<div class="fc-sheet-footer"><button type="button" onclick="submitTransferOwnership()" class="fc-btn fc-btn-danger w-full">${tr('Egalikni topshirish', 'Передать')}</button></div>` : ''}
+        </div>
+      </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+    function closeTransferOwnershipSheet() {
+      const root = document.getElementById('fc-transfer-ownership-root');
+      if (root) root.remove();
+    }
+    async function submitTransferOwnership() {
+      const target = document.getElementById('transfer-target-tgid')?.value;
+      const confirmed = document.getElementById('transfer-confirm-checkbox')?.checked;
+      if (!target || !confirmed) { alert(tr('Tasdiqlash katagini belgilang.', 'Отметьте флажок подтверждения.')); return; }
+      const ok = await fcConfirm(tr('Oxirgi tasdiq', 'Последнее подтверждение'), tr("Rostdan ham egalikni topshirmoqchimisiz? Bu amalni bekor qilib bo'lmaydi.", 'Вы точно хотите передать право собственности? Это действие необратимо.'));
+      if (!ok) return;
+      try {
+        await callApi('transfer_ownership', { toTelegramUserId: target, oldOwnerNewRole: 'STAFF' });
+        closeTransferOwnershipSheet();
+        showActionToast(tr('✅ Egalik topshirildi', '✅ Право передано'), 'success', 2000);
+        setTimeout(() => location.reload(), 1200);
+      } catch (e) {
+        showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+      }
+    }
+
+    function permissionGroupLabel(prefix) {
+      const map = {
+        catalog: tr('Katalog', 'Каталог'), products: tr('Mahsulotlar', 'Товары'), stock: tr('Ombor', 'Склад'),
+        orders: tr('Buyurtmalar', 'Заказы'), customers: tr('Mijozlar', 'Клиенты'), support: tr('Support', 'Поддержка'),
+        reports: tr('Hisobotlar', 'Отчёты'), marketing: tr('Marketing', 'Маркетинг'), shop: tr("Do'kon", 'Магазин'),
+        staff: tr('Xodimlar', 'Сотрудники'),
+      };
+      return map[prefix] || prefix;
+    }
+
+    function renderRolesPage(container) {
+      if (!(staffRole === 'OWNER' || hasPermission('staff.manage'))) {
+        renderPageShell(container, tr('Rollar', 'Роли'), `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Bu bo'limga kirish huquqingiz yo'q.", 'У вас нет доступа к этому разделу.')}</p></div>`);
+        return;
+      }
+      const rows = (rolesLoading && !rolesLoaded)
+        ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
+        : roleList.map(r => `
+          <div class="fc-card space-y-1.5">
+            <div class="flex items-center justify-between">
+              <b class="text-xs">${escapeHtml(r.name)}${r.isSystem ? ` <span class="fc-badge fc-badge-muted">${tr('standart', 'стандартная')}</span>` : ''}</b>
+              <span class="text-[10px] text-gray-400">${r.usedCount} ${tr('kishi', 'чел.')}</span>
+            </div>
+            <p class="text-[10px] text-gray-400">${r.permissions.length} ${tr('huquq', 'прав')}</p>
+            <div class="flex gap-2">
+              <button type="button" onclick="openRoleForm('${escapeHtml(String(r.id))}')" class="fc-btn fc-btn-secondary flex-1"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>${tr('Tahrirlash', 'Изменить')}</button>
+              ${!r.isSystem ? `<button type="button" onclick="deleteRoleAt('${escapeHtml(String(r.id))}')" class="fc-btn fc-btn-icon fc-btn-danger" aria-label="${tr("O'chirish", 'Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+            </div>
+          </div>
+        `).join('');
+      const body = `<div class="space-y-3">
+        <div class="fc-card fc-staff-intro">
+          <div><h3>${tr('Rollar', 'Роли')}</h3><p>${tr('Standart rollarni tahrirlang yoki yangi rol yarating.', 'Редактируйте стандартные роли или создайте новую.')}</p></div>
+          <button type="button" onclick="openRoleForm()" class="fc-btn fc-btn-primary"><i data-lucide="plus" class="w-4 h-4"></i>${tr('Yaratish', 'Создать')}</button>
+        </div>
+        <div class="space-y-2">${rows || `<div class="fc-empty-state"><p>${tr('Rollar topilmadi.', 'Роли не найдены.')}</p></div>`}</div>
+      </div>`;
+      renderPageShell(container, tr('Rollar', 'Роли'), body, { onBack: "openStaffPage()" });
+    }
+
+    function openRoleForm(id) {
+      const existing = id ? roleList.find(r => String(r.id) === String(id)) : null;
+      roleDraft = existing
+        ? { id: existing.id, name: existing.name, permissions: [...existing.permissions], isSystem: existing.isSystem }
+        : { id: null, name: '', permissions: [], isSystem: false };
+      renderRoleFormSheet();
+    }
+    function closeRoleForm() {
+      const root = document.getElementById('fc-role-form-root');
+      if (root) root.remove();
+      roleDraft = null;
+    }
+    function toggleRoleDraftPermission(perm) {
+      if (!roleDraft) return;
+      const idx = roleDraft.permissions.indexOf(perm);
+      if (idx >= 0) roleDraft.permissions.splice(idx, 1); else roleDraft.permissions.push(perm);
+    }
+    function renderRoleFormSheet() {
+      let root = document.getElementById('fc-role-form-root');
+      if (!root) { root = document.createElement('div'); root.id = 'fc-role-form-root'; document.body.appendChild(root); }
+      const d = roleDraft;
+      if (!d) { root.innerHTML = ''; return; }
+      const groups = {};
+      allPermissions.forEach(p => { const g = p.split('.')[0]; (groups[g] = groups[g] || []).push(p); });
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeRoleForm();">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${d.id ? tr('Rolni tahrirlash', 'Изменить роль') : tr('Yangi rol', 'Новая роль')}</div><button type="button" onclick="closeRoleForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-3">
+            <label class="fc-mini-field"><span>${tr('Nomi', 'Название')}</span><input type="text" id="role-f-name" value="${escapeHtml(d.name)}" maxlength="60"></label>
+            ${Object.entries(groups).map(([g, perms]) => `
+              <div class="space-y-1">
+                <b class="text-[10px] uppercase text-gray-400">${permissionGroupLabel(g)}</b>
+                ${perms.map(p => `
+                  <label class="flex items-center justify-between px-3 py-2 border rounded-xl text-xs font-bold">
+                    <span>${escapeHtml(p)}</span>
+                    <span class="fc-toggle"><input type="checkbox" ${d.permissions.includes(p) ? 'checked' : ''} onchange="toggleRoleDraftPermission('${p}')"><span class="fc-toggle-track"></span></span>
+                  </label>`).join('')}
+              </div>
+            `).join('')}
+          </div>
+          <div class="fc-sheet-footer"><button type="button" onclick="saveRoleForm()" class="fc-btn fc-btn-primary w-full">${tr('Saqlash', 'Сохранить')}</button></div>
+        </div>
+      </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+    async function saveRoleForm() {
+      const name = (document.getElementById('role-f-name')?.value || '').trim();
+      if (!name) { alert(tr('Nomini kiriting.', 'Введите название.')); return; }
+      const d = roleDraft;
+      try {
+        if (d.id) await callApi('role_update', { id: d.id, name, permissions: d.permissions });
+        else await callApi('role_create', { name, permissions: d.permissions });
+        closeRoleForm();
+        showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1500);
+        await loadRolesLazy(true);
+      } catch (e) {
+        alert(tr("Saqlab bo'lmadi.", 'Не удалось сохранить.'));
+      }
+    }
+    async function deleteRoleAt(id) {
+      const ok = await fcConfirm(tr('Rolni o\'chirish', 'Удалить роль'), tr("Agar bu roldan foydalanilayotgan bo'lsa, xodimlardan olib tashlanadi.", 'Если роль используется, она будет снята с сотрудников.'));
+      if (!ok) return;
+      try {
+        await callApi('role_delete', { id });
+        await loadRolesLazy(true);
+        showActionToast(tr("O'chirildi", 'Удалена'), 'success', 1500);
+      } catch (e) {
+        const code = e?.details?.error;
+        if (code === 'role_in_use') {
+          const count = e.details.usedCount || 0;
+          const ok2 = await fcConfirm(tr('Rol ishlatilmoqda', 'Роль используется'), tr(`Bu rol ${count} ta xodimga tayinlangan. Baribir o'chirilsinmi?`, `Эта роль назначена ${count} сотрудникам. Всё равно удалить?`));
+          if (ok2) {
+            try {
+              await callApi('role_delete', { id, force: true });
+              await loadRolesLazy(true);
+              showActionToast(tr("O'chirildi", 'Удалена'), 'success', 1500);
+            } catch (e2) {
+              showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+            }
+          }
+        } else {
+          showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+        }
+      }
+    }
+
+    function renderPendingInviteBannerHtml() {
+      if (!pendingStaffInvite) return '';
+      return `<button type="button" onclick="openPendingInviteSheet()" class="w-full bg-blue-50 border border-blue-200 p-3 rounded-2xl text-xs font-bold text-blue-900 shadow-sm flex items-center justify-between">
+        <span class="flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr('Sizni jamoaga taklif qilishdi', 'Вас пригласили в команду')}</span>
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+      </button>`;
+    }
+    function openPendingInviteSheet() {
+      if (!pendingStaffInvite) return;
+      let root = document.getElementById('fc-pending-invite-root');
+      if (!root) { root = document.createElement('div'); root.id = 'fc-pending-invite-root'; document.body.appendChild(root); }
+      root.innerHTML = `<div class="fc-sheet-overlay">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Jamoaga taklif', 'Приглашение в команду')}</div></div>
+          <div class="fc-sheet-body space-y-3">
+            <p class="text-xs text-gray-600">${tr("Sizni ushbu do'kon jamoasiga taklif qilishdi. Qabul qilsangiz, tayinlangan huquqlar bilan xodim bo'lasiz.", 'Вас пригласили в команду этого магазина. Если примете, станете сотрудником с назначенными правами.')}</p>
+          </div>
+          <div class="fc-sheet-footer flex gap-2">
+            <button type="button" onclick="respondToPendingInvite(false)" class="fc-btn fc-btn-secondary flex-1">${tr('Rad etish', 'Отклонить')}</button>
+            <button type="button" onclick="respondToPendingInvite(true)" class="fc-btn fc-btn-primary flex-1">${tr('Qabul qilish', 'Принять')}</button>
+          </div>
+        </div>
+      </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+    async function respondToPendingInvite(accept) {
+      const root = document.getElementById('fc-pending-invite-root');
+      if (root) root.remove();
+      const inviteId = pendingStaffInvite?.id;
+      if (!inviteId) return;
+      try {
+        await callApi('staff_invite_respond', { inviteId, accept });
+        pendingStaffInvite = null;
+        if (accept) {
+          showActionToast(tr('✅ Qabul qilindi! Ilova qayta yuklanadi...', '✅ Принято! Приложение перезагрузится...'), 'success', 1800);
+          setTimeout(() => location.reload(), 1200);
+        } else {
+          showActionToast(tr('Rad etildi', 'Отклонено'), 'success', 1500);
+          render();
+        }
+      } catch (e) {
+        showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+      }
     }
 
     function shopLocationQuery() {
@@ -6435,6 +7835,44 @@
       if (root) root.remove();
     }
 
+    // Mahsulot belgisi (Yangi/Top/Tavsiya/Aksiya) — bitta mahsulotga faqat bittasi.
+    function openProductBadgePicker(productId) {
+      const p = products.find(x => x.id === productId);
+      if (!p) return;
+      const old = document.getElementById('fc-badge-sheet-root');
+      if (old) old.remove();
+      const root = document.createElement('div');
+      root.id = 'fc-badge-sheet-root';
+      const options = [null, 'NEW', 'TOP', 'RECOMMENDED', 'PROMO'];
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeProductBadgePicker();">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Mahsulot belgisi', 'Метка товара')}</div><button type="button" onclick="closeProductBadgePicker()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-2">
+            ${options.map(opt => `<button type="button" onclick="setProductBadge('${productId}', ${opt ? `'${opt}'` : 'null'})" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold ${p.badge === opt ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}"><span>${opt ? escapeHtml(productBadgeLabel(opt)) : tr("Yo'q", 'Нет')}</span>${p.badge === opt ? '<i data-lucide="check" class="w-4 h-4"></i>' : ''}</button>`).join('')}
+          </div>
+        </div>
+      </div>`;
+      document.body.appendChild(root);
+      if (window.lucide) lucide.createIcons();
+    }
+    function closeProductBadgePicker() {
+      const root = document.getElementById('fc-badge-sheet-root');
+      if (root) root.remove();
+    }
+    async function setProductBadge(productId, badge) {
+      closeProductBadgePicker();
+      try {
+        await callApi('edit_product_field', { productId, field: 'badge', value: badge });
+        const p = products.find(x => x.id === productId);
+        if (p) p.badge = badge;
+        if (selectedProductModal?.id === productId) selectedProductModal.badge = badge;
+        render();
+      } catch (e) {
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+      }
+    }
+
     function renderProfile(container) {
       const phones = [shopContact.phone, shopContact.phone2, shopContact.phone3].filter(Boolean);
       const instagramNick = cleanSocialNick(shopContact.instagram);
@@ -6447,7 +7885,12 @@
       const adminMenu = (isAdminMode && isUserAnAdmin) ? `
         <div class="fc-profile-menu">
           ${profileMenuRowHtml({ icon: 'chart-no-axes-combined', title: tr('Hisobot', 'Отчёт'), subtitle: tr("Savdo va do'kon ko'rsatkichlari", 'Показатели продаж и магазина'), onclick: "openDashboardLite()" })}
-          ${(isSuperAdmin) ? profileMenuRowHtml({ icon: 'users-round', title: tr('Xodimlar', 'Сотрудники'), subtitle: tr("Adminlarni qo'shish va boshqarish", 'Добавление и управление администраторами'), onclick: 'openStaffPage()' }) : ''}
+          ${profileMenuRowHtml({ icon: 'ticket-percent', title: tr('Promo-kodlar', 'Промокоды'), subtitle: tr('Chegirma kodlarini yaratish va boshqarish', 'Создание и управление промокодами'), onclick: 'openPromoPage()' })}
+          ${profileMenuRowHtml({ icon: 'shopping-cart', title: tr('Tashlab ketilgan savatlar', 'Брошенные корзины'), subtitle: tr("Buyurtma bermagan mijozlarning savatlari", 'Корзины клиентов, не оформивших заказ'), onclick: 'openAbandonedCartsPage()' })}
+          ${profileMenuRowHtml({ icon: 'image', title: tr('Bannerlar', 'Баннеры'), subtitle: tr("Bosh sahifadagi reklama bannerlari", 'Рекламные баннеры на главной'), onclick: 'openBannersPage()' })}
+          ${profileMenuRowHtml({ icon: 'layout-grid', title: tr('Bosh sahifa kataloglari', 'Каталоги на главной'), subtitle: tr("Qidiruv ostida ko'rinadigan tezkor kataloglar", 'Быстрые каталоги под поиском'), onclick: 'openFeaturedCategoriesPage()' })}
+          ${(staffRole === 'OWNER' || hasPermission('staff.manage')) ? profileMenuRowHtml({ icon: 'users-round', title: tr('Xodimlar', 'Сотрудники'), subtitle: tr("Xodim qo'shish, rol va huquqlarni boshqarish", 'Добавление сотрудников, управление ролями и правами'), onclick: 'openStaffPage()' }) : ''}
+          ${(isSuperAdmin) ? profileMenuRowHtml({ icon: 'shield-check', title: tr("Platforma adminlari", 'Администраторы платформы'), subtitle: tr("Faqat platforma bosh admin uchun (eski)", 'Только для главного администратора платформы (устар.)'), onclick: 'openPlatformAdminsPage()' }) : ''}
           ${profileMenuRowHtml({ icon: 'messages-square', title: tr("Qo'llab-quvvatlash", 'Поддержка'), subtitle: tr('Murojaatlar va yozishmalar', 'Обращения и переписка'), onclick: 'openAdminSupportOrUserSupport()', badge: supportBadge })}
         </div>` : '';
 
@@ -6471,6 +7914,7 @@
             <button type="button" onclick="activePopupModal='REGISTRATION'; render();" class="fc-btn fc-btn-icon fc-profile-edit" title="${tr("Ma'lumotlarni tahrirlash", 'Изменить данные')}"><i data-lucide="pencil" class="w-4 h-4"></i></button>
           </section>
 
+          ${renderPendingInviteBannerHtml()}
           ${adminMenu}
           ${userQuick}
 
@@ -7019,39 +8463,25 @@
       billzBrowseLoading = true;
       render();
       try {
-        if (billzBrowsePageSize === 'ALL') {
-          // "Barchasi" — bitta so'rovda emas (Billz'ning o'zi bitta so'rovda
-          // qaytaradigan eng katta hajmi 100), balki 100 tadan qilib bir necha
-          // sahifani ketma-ket so'rab, natijalarni birlashtiramiz. 200 sahifa
-          // (20 000 tovar) — cheksiz tsiklga qarshi xavfsizlik chegarasi.
-          let all = [];
-          let total = Infinity;
-          let page = 1;
-          while (all.length < total && page <= 200) {
-            const result = await callApi('billz_browse_products', {
-              billzCategoryId: billzBrowseSelectedCatId || undefined,
-              search: billzBrowseSearch || undefined,
-              page, limit: 100,
-            });
-            const items = result.items || [];
-            total = result.count || 0;
-            all = all.concat(items);
-            if (!items.length) break;
-            page++;
-          }
-          billzBrowseItems = all;
-          billzBrowseCount = total;
-          billzBrowsePage = 1;
-        } else {
-          const result = await callApi('billz_browse_products', {
-            billzCategoryId: billzBrowseSelectedCatId || undefined,
-            search: billzBrowseSearch || undefined,
-            page: targetPage,
-            limit: billzBrowsePageSize,
-          });
-          billzBrowseItems = result.items || [];
-          billzBrowseCount = result.count || 0;
-          billzBrowsePage = targetPage;
+        // Server endi so'ralgan filtr (kategoriya/qidiruv) bo'yicha hali
+        // import qilinmagan tovarlarning TO'LIQ, aniq ro'yxatini o'zi
+        // hisoblab, kerakli sahifani (yoki "Barchasi" so'ralsa hammasini)
+        // qaytaradi — shuning uchun "ALL" uchun mijoz tomonda qayta-qayta
+        // so'rov yuborib birlashtirish shart emas (bu avvalgi versiyada
+        // har safar to'liq ro'yxatni serverdan qayta-qayta so'rashga olib
+        // kelardi, chunki server ham allaqachon to'liq ro'yxatni yig'ib
+        // chiqadi).
+        const result = await callApi('billz_browse_products', {
+          billzCategoryId: billzBrowseSelectedCatId || undefined,
+          search: billzBrowseSearch || undefined,
+          page: targetPage,
+          limit: billzBrowsePageSize === 'ALL' ? 'ALL' : billzBrowsePageSize,
+        });
+        billzBrowseItems = result.items || [];
+        billzBrowseCount = result.count || 0;
+        billzBrowsePage = billzBrowsePageSize === 'ALL' ? 1 : targetPage;
+        if (result.truncated) {
+          console.warn('[billz_browse] katalog xavfsizlik chegarasidan oshdi, ro\'yxat qisman bo\'lishi mumkin');
         }
         // Ekrandan g'oyib bo'lgan (masalan qidiruv o'zgargach) tovarlarning
         // tanlovini ham tozalaymiz — aks holda "tanlangan" hisoblagich
@@ -8140,15 +9570,22 @@
                   <div id="card-payment-details" class="hidden fc-checkout-payment-details"></div>
                 </section>
 
+                <section class="fc-checkout-section">
+                  <div class="fc-checkout-section-head"><span><i data-lucide="ticket-percent" class="w-4 h-4"></i></span><div><b>${tr('Promo-kod', 'Промокод')}</b><small>${tr("Bo'lsa, kodni kiriting", "Если есть, введите код")}</small></div></div>
+                  <div id="chk-promo-wrap">${renderPromoWrapHtml()}</div>
+                </section>
+
                 <section class="fc-checkout-summary">
                   <div class="fc-checkout-summary-subtotal"><span>${tr('Tovarlar summasi', 'Сумма товаров')}</span><b id="checkout-subtotal"></b></div>
                   <div class="fc-checkout-summary-delivery"><span>${tr('Yetkazib berish narxi', 'Стоимость доставки')}</span><b id="checkout-delivery-fee"></b></div>
+                  <div id="checkout-promo-row" class="fc-checkout-summary-discount hidden"><span>${tr('Promo chegirma', 'Скидка по промокоду')}</span><b id="checkout-promo-discount"></b></div>
                   <div class="fc-checkout-summary-total"><span>${tr("Hozir to'lanadigan jami", 'Итого к оплате сейчас')}</span><strong id="checkout-payable-total"></strong></div>
                 </section>
               </div>
 
               <div class="fc-checkout-footer">
-                <button type="button" onclick="submitOrder()" class="fc-checkout-submit"><i data-lucide="check-circle-2" class="w-5 h-5"></i><span>${tr('Buyurtma berish', 'Оформить заказ')}</span></button>
+                ${ordersPaused ? `<div class="fc-checkout-notice" style="margin-bottom:.6rem"><b>${tr("Do'kon hozircha yangi buyurtmalarni qabul qilmayapti.", "Магазин временно не принимает новые заказы.")}</b>${ordersPausedNote ? `<br>${escapeHtml(ordersPausedNote)}` : ''}</div>` : ''}
+                <button type="button" onclick="submitOrder()" class="fc-checkout-submit" ${ordersPaused ? 'disabled style="opacity:.5"' : ''}><i data-lucide="check-circle-2" class="w-5 h-5"></i><span>${tr('Buyurtma berish', 'Оформить заказ')}</span></button>
               </div>
             </div>
           </div>
@@ -8195,6 +9632,9 @@
 
               <button onclick="toggleInStockOnlyFilter()" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold ${categoryFilter.inStockOnly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">
                 <span>${tr('Omborda bor (tugaganlarni yashirish)', 'В наличии (скрыть закончившиеся)')}</span><span>${categoryFilter.inStockOnly ? '✓' : ''}</span>
+              </button>
+              <button onclick="toggleDiscountOnlyFilter()" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold ${categoryFilter.discountOnly ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">
+                <span>${tr('Faqat chegirmali tovarlar', 'Только товары со скидкой')}</span><span>${categoryFilter.discountOnly ? '✓' : ''}</span>
               </button>
 
               <div>
@@ -8296,6 +9736,10 @@
                     <span class="font-bold text-gray-600">${tr("Katalog:", "Каталог:")} <b>${escapeHtml(categoryName(categories.find(c => c.id === p.categoryId)) || tr('belgilanmagan','не указан'))}</b></span>
                     <button onclick="openMoveProductModal('${p.id}')" class="text-xs p-1 bg-blue-50 text-blue-600 rounded-lg font-bold">${tr('Ko\'chirish','Переместить')}</button>
                   </div>
+                  <div class="flex justify-between items-center pt-1 text-xs">
+                    <span class="font-bold text-gray-600">${tr("Belgi:", "Метка:")} <b>${p.badge ? escapeHtml(productBadgeLabel(p.badge)) : tr("yo'q","нет")}</b></span>
+                    <button onclick="openProductBadgePicker('${p.id}')" class="text-xs p-1 bg-blue-50 text-blue-600 rounded-lg font-bold">${ICON_EDIT}</button>
+                  </div>
                 ` : ''}
               </div>
 
@@ -8358,7 +9802,7 @@
                     ` : `
                       <button onclick="addToCart('${p.id}', event); openProductDetailModal('${p.id}');" class="w-full bg-blue-600 text-white font-bold py-3 rounded-2xl text-sm">🛒 ${t('add_to_cart')}</button>
                     `
-                  )) : `<button disabled class="w-full bg-gray-100 text-gray-400 font-bold py-3 rounded-2xl text-sm">${tr("❌ Mahsulot tugagan", "❌ Товар закончился")}</button>`}
+                  )) : `<div class="space-y-2"><button disabled class="w-full bg-gray-100 text-gray-400 font-bold py-3 rounded-2xl text-sm">${tr("❌ Mahsulot tugagan", "❌ Товар закончился")}</button>${renderStockSubscribeButtonHtml(p)}</div>`}
                 </div>
 
                 ${productDesc(p) ? `
@@ -8441,12 +9885,15 @@
             <div class="bg-white rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
               <div class="fc-order-modal-head"><div><h3>${tr('Buyurtma','Заказ')} #${o.id}</h3><p>${escapeHtml(o.date)}</p></div><span class="fc-order-status ${statusColorClass(orderDisplayStatus(o))}">${statusLabel(orderDisplayStatus(o))}</span></div>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="user-round" class="w-4 h-4"></i>${tr('Mijoz','Клиент')}</div><div class="fc-order-kv"><span>${tr('Ism','Имя')}</span><b>${escapeHtml(o.user)}</b></div><div class="fc-order-kv"><span>${tr('Telefon','Телефон')}</span><b>${escapeHtml(o.phone)}</b></div></section>
+              ${(isAdminMode && isUserAnAdmin) ? `<section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="sticky-note" class="w-4 h-4"></i>${tr("Ichki izoh (faqat xodimlar ko'radi)", "Внутренняя заметка (видна только сотрудникам)")}</div><textarea id="order-internal-note-${o.id}" rows="2" placeholder="${tr('Masalan: mijoz 18:00 dan keyin yetkazishni so\'radi','Например: клиент просил доставить после 18:00')}" class="w-full p-2 border rounded-xl text-xs" onclick="event.stopPropagation()">${escapeHtml(o.internalNote || '')}</textarea><button type="button" onclick="event.stopPropagation(); saveOrderInternalNote(${o.id})" class="fc-btn fc-btn-secondary w-full"><i data-lucide="save" class="w-3.5 h-3.5"></i>${tr('Saqlash','Сохранить')}</button></section>` : ''}
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${tr('Hudud','Регион')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div>${Number(o.deliveryFee) > 0 ? `<div class="fc-order-delivery-fee fc-order-delivery-fee-detail">${tr('Yetkazib berish narxi','Стоимость доставки')}: <b>${money(o.deliveryFee)}</b></div>` : ''}<div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku&&isAdminMode&&isUserAnAdmin)?`ID: ${escapeHtml(i.sku)} · `:''}${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
-              <section class="fc-order-summary-card"><div class="is-subtotal"><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div class="is-delivery"><span>${tr('Yetkazib berish narxi','Стоимость доставки')}</span><b>${Number(o.deliveryFee)>0?money(o.deliveryFee):money(0)}</b></div><div class="is-total"><span>${tr("Hozir to'lanadigan jami",'Итого к оплате сейчас')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
+              <section class="fc-order-summary-card"><div class="is-subtotal"><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div class="is-delivery"><span>${tr('Yetkazib berish narxi','Стоимость доставки')}</span><b>${Number(o.deliveryFee)>0?money(o.deliveryFee):money(0)}</b></div>${Number(o.promoDiscount) > 0 ? `<div class="is-discount"><span>${tr('Promo chegirma','Скидка по промокоду')} (${escapeHtml(o.promoCode || '')})</span><b>-${money(o.promoDiscount)}</b></div>` : ''}<div class="is-total"><span>${tr("Hozir to'lanadigan jami",'Итого к оплате сейчас')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
 
+              ${(!isAdminMode && o.status === 'PROCESSING') ? `<button onclick="confirmOrderReceived(${o.id})" class="fc-btn fc-btn-primary w-full"><i data-lucide="package-check" class="w-4 h-4"></i>${tr("Qabul qildim", "Я получил(а)")}</button>` : ''}
               ${!isAdminMode ? `<button onclick="reorderFromOrder(${o.id})" class="fc-btn fc-btn-secondary w-full"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr('Qayta buyurtma', 'Повторить заказ')}</button>` : ''}
+              ${(!isAdminMode && returnRequestsEnabled) ? `<button onclick="openSupportModal(${o.id}, 'RETURN')" class="fc-btn fc-btn-secondary w-full"><i data-lucide="package-x" class="w-4 h-4"></i>${tr("Qaytarish / muammo bo'yicha murojaat", "Обращение по возврату / проблеме")}</button>` : ''}
 
               ${o.delivery?.warning ? `<div class="fc-order-note is-warning"><i data-lucide="info" class="w-4 h-4"></i><span>${escapeHtml(o.delivery.warning)}</span></div>` : ''}
               ${o.delivery?.comment ? `<div class="fc-order-note is-info"><i data-lucide="message-square-text" class="w-4 h-4"></i><span>${escapeHtml(o.delivery.comment)}</span></div>` : ''}
@@ -8454,7 +9901,7 @@
               <div class="bg-slate-50 border rounded-xl p-2.5 space-y-1">
                 <p class="font-bold flex items-center gap-1.5"><i data-lucide="truck" class="w-4 h-4 text-blue-600"></i>${tr('Jo‘natma holati','Статус отправления')}: ${escapeHtml(effectiveShipmentStatusLabel(o))}</p>
                 ${o.shipment?.kind === 'TAXI' && o.shipment?.carNumber ? `<p>${tr('Mashina','Машина')}: <b>${escapeHtml(o.shipment.carNumber)}</b></p><p>${tr('Haydovchi','Водитель')}: ${escapeHtml(o.shipment.driverPhone || '')}${o.shipment.driverName ? ` · ${escapeHtml(o.shipment.driverName)}` : ''}</p>` : ''}
-                ${o.shipment?.kind === 'POST' && o.shipment?.trackingNumber ? `<p>${tr("Jo'natma raqami",'Трек-номер')}: <b>${escapeHtml(o.shipment.trackingNumber)}</b></p>${o.shipment.originBranch ? `<p>${tr('Yuborilgan filial','Филиал отправки')}: ${escapeHtml(o.shipment.originBranch)}</p>` : ''}` : ''}
+                ${o.shipment?.kind === 'POST' && o.shipment?.trackingNumber ? `<p>${tr("Jo'natma raqami",'Трек-номер')}: <b>${escapeHtml(o.shipment.trackingNumber)}</b></p>${o.shipment.shippedAt ? `<p>${tr("Jo'natilgan sana",'Дата отправки')}: <b>${new Date(o.shipment.shippedAt).toLocaleDateString()}</b></p>` : ''}${o.shipment.originBranch ? `<p>${tr('Yuborilgan filial','Филиал отправки')}: ${escapeHtml(o.shipment.originBranch)}</p>` : ''}` : ''}
               </div>
 
               ${(isAdminMode && isUserAnAdmin && o.hasReceipt) ? `<button onclick="openOrderReceipt(${o.id})" class="w-full bg-blue-50 text-blue-700 border border-blue-200 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5"><i data-lucide="receipt-text" class="w-4 h-4"></i>${tr("To'lov chekini ochish", 'Открыть чек оплаты')}</button>` : ''}
@@ -10153,6 +11600,9 @@
         const bootData = await callApi('boot', {});
         currentTgId = bootData.tgId;
         isSuperAdmin = bootData.isSuperAdmin;
+        staffRole = bootData.staffRole || null;
+        myPermissions = Array.isArray(bootData.myPermissions) ? bootData.myPermissions : [];
+        pendingStaffInvite = bootData.pendingStaffInvite || null;
         isUserAnAdmin = bootData.isAdmin;
         isAdminMode = isUserAnAdmin;
         currentUser.tgId = currentTgId;
@@ -10166,6 +11616,13 @@
         shopLowStockThreshold = Number.isFinite(Number(bootData.lowStockThreshold)) ? Number(bootData.lowStockThreshold) : 5;
         billzAccessGranted = bootData.billzAccessGranted === true;
         clickAccessGranted = bootData.clickAccessGranted === true;
+        mySubscribedProductIds = new Set((bootData.mySubscribedProductIds || []).map(String));
+        ordersPaused = bootData.ordersPaused === true;
+        ordersPausedNote = bootData.ordersPausedNote || '';
+        activeBanners = Array.isArray(bootData.activeBanners) ? bootData.activeBanners : [];
+        featuredCategoryIds = Array.isArray(bootData.featuredCategoryIds) ? bootData.featuredCategoryIds.map(String) : [];
+        customerCancelCutoff = bootData.customerCancelCutoff || 'BEFORE_SHIPPED';
+        returnRequestsEnabled = bootData.returnRequestsEnabled !== false;
         fulfillmentConfig = commerce.normalizeConfig(bootData.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
         designSettings = bootData.designSettings || { themeId: 'minimal', colors: {} };
         legalDocuments = Array.isArray(bootData.legalDocuments) ? bootData.legalDocuments : [];
