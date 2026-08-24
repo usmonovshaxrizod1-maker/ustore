@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=59">
+  <link rel="stylesheet" href="./ustore.css?v=62">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -29,7 +29,7 @@
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=6"></script>
   <script defer src="./config.public.js?v=1"></script>
-  <script defer src="./ustore-shop-app.js?v=59"></script>
+  <script defer src="./ustore-shop-app.js?v=62"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
 
@@ -38,6 +38,7 @@
     <div class="flex items-center space-x-2">
       <img id="shop-logo-img" src="" class="h-8 max-w-[110px] object-contain hidden">
       <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400"></span>
+      <button id="header-logo-edit-btn" type="button" class="hidden ustore-header-action" aria-label="Logotipni tahrirlash" title="Logotipni tahrirlash"><i data-lucide="pencil" class="w-4 h-4"></i></button>
     </div>
     <div class="flex items-center space-x-2">
       <button onclick="switchTab('cart')" class="relative p-2 bg-gray-100 rounded-full" id="header-cart-btn" aria-label="Savatcha" title="Savatcha">
@@ -46,6 +47,9 @@
       </button>
       <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi (savatchadan keyin). -->
       <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
+      <button onclick="toggleTextZoomPopover(event)" class="ustore-header-action" id="header-zoom-btn" title="Matn hajmi / Размер текста" aria-label="Matn hajmi / Размер текста" aria-expanded="false">
+        <i data-lucide="zoom-in" class="w-5 h-5"></i>
+      </button>
       <button onclick="switchTab('profile')" class="p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
         <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
       </button>
@@ -57,6 +61,11 @@
          o'rnatiladi (personBtn.getBoundingClientRect() asosida) — bu yerdagi
          klasslar faqat position/z-index/ko'rinish uchun. -->
     <div id="role-mode-popover" class="hidden fixed z-50 bg-white rounded-xl shadow-lg border overflow-hidden"></div>
+    <div id="text-zoom-popover" class="hidden" role="dialog" aria-label="Matn hajmi">
+      <i data-lucide="zoom-out" class="w-4 h-4"></i>
+      <input id="header-text-zoom-range" type="range" min="-2" max="2" step="1" value="0" oninput="setTextZoom(this.value)" aria-label="Matn hajmi">
+      <i data-lucide="zoom-in" class="w-5 h-5"></i>
+    </div>
   </header>
 
   <!-- MAIN CONTAINER -->
@@ -117,6 +126,24 @@
 
   <!-- MODALS CONTAINER -->
   <div id="modal-container"></div>
+
+  <script>
+    // Boot fail-safe: CDN/runtime/API xatosi sabab asosiy app kodi ishga
+    // tushmay qolsa ham foydalanuvchi cheksiz spinnerda qolmaydi.
+    (() => {
+      let shown = false;
+      const showBootFailure = () => {
+        if (shown || document.body.dataset.appReady === 'true') return;
+        shown = true;
+        const root = document.getElementById('app-content');
+        if (!root) return;
+        root.innerHTML = '<div class="fc-boot-error"><strong>Ilovani ochib bo‘lmadi</strong><p>Internetni tekshiring va qayta urinib ko‘ring.</p><button type="button" onclick="location.reload()">Qayta urinish</button></div>';
+      };
+      window.addEventListener('error', () => setTimeout(showBootFailure, 0));
+      window.addEventListener('unhandledrejection', () => setTimeout(showBootFailure, 0));
+      setTimeout(showBootFailure, 15000);
+    })();
+  </script>
 
 </body>
 </html>
