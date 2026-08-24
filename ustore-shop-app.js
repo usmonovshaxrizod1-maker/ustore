@@ -580,7 +580,7 @@
     let vipSelectMode = false;
     let vipSelectedTgIds = new Set();
     // "Aksiyalar va chegirmalar" ommaviy sahifasi + detail.
-    let marketingCampaigns = null; // { bundles, promotions }
+    let marketingCampaigns = []; // { bundles, promotions }
     let marketingCampaignsLoading = false;
     let campaignDetail = null; // { kind, bundle|promotion }
     let campaignDetailLoading = false;
