@@ -21,11 +21,8 @@
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <!-- Hisobotlar (Reports round, 3.6-bosqich): PDF eksport butunlay qurilmada
-       generatsiya qilinadi (Supabase'ga hech narsa yuklanmaydi/saqlanmaydi) —
-       shu ikkitasi shu maqsad uchun, boshqa hech qanday chart kutubxonasi yo'q. -->
-  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <!-- PDF kutubxonalari birinchi kirishni to'smasligi uchun faqat eksport
+       bosilganda ustore-shop-app.js orqali yuklanadi. -->
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=6"></script>
   <script defer src="./config.public.js?v=1"></script>
@@ -36,9 +33,7 @@
   <!-- HEADER -->
   <header class="ustore-topbar bg-white sticky top-0 z-40 px-4 py-3 flex items-center justify-between">
     <div class="flex items-center space-x-2">
-      <img id="shop-logo-img" src="" class="h-8 max-w-[110px] object-contain hidden">
       <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400"></span>
-      <button id="header-logo-edit-btn" type="button" class="hidden ustore-header-action" aria-label="Logotipni tahrirlash" title="Logotipni tahrirlash"><i data-lucide="pencil" class="w-4 h-4"></i></button>
     </div>
     <div class="flex items-center space-x-2">
       <button onclick="switchTab('cart')" class="relative p-2 bg-gray-100 rounded-full" id="header-cart-btn" aria-label="Savatcha" title="Savatcha">
@@ -47,25 +42,14 @@
       </button>
       <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi (savatchadan keyin). -->
       <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
-      <button onclick="toggleTextZoomPopover(event)" class="ustore-header-action" id="header-zoom-btn" title="Matn hajmi / Размер текста" aria-label="Matn hajmi / Размер текста" aria-expanded="false">
-        <i data-lucide="zoom-in" class="w-5 h-5"></i>
-      </button>
       <button onclick="switchTab('profile')" class="p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
         <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
-      </button>
-      <button onclick="openShopParams()" class="p-2 bg-gray-100 rounded-full" id="header-settings-btn" aria-label="Do'kon sozlamalari" title="Do'kon sozlamalari">
-        <i data-lucide="settings" class="w-5 h-5 text-gray-700"></i>
       </button>
     </div>
     <!-- 17-band: top/left endi togglePersonMenu() orqali JS'da dinamik
          o'rnatiladi (personBtn.getBoundingClientRect() asosida) — bu yerdagi
          klasslar faqat position/z-index/ko'rinish uchun. -->
     <div id="role-mode-popover" class="hidden fixed z-50 bg-white rounded-xl shadow-lg border overflow-hidden"></div>
-    <div id="text-zoom-popover" class="hidden" role="dialog" aria-label="Matn hajmi">
-      <i data-lucide="zoom-out" class="w-4 h-4"></i>
-      <input id="header-text-zoom-range" type="range" min="-2" max="2" step="1" value="0" oninput="setTextZoom(this.value)" aria-label="Matn hajmi">
-      <i data-lucide="zoom-in" class="w-5 h-5"></i>
-    </div>
   </header>
 
   <!-- MAIN CONTAINER -->
