@@ -586,6 +586,7 @@
     // "Aksiyalar va chegirmalar" ommaviy sahifasi + detail.
     let marketingCampaigns = []; // { bundles, promotions }
     let marketingCampaignsLoading = false;
+    let myPromoCodes = []; // 15-band spec, 14-band: shu mijozga shaxsan berilgan promo-kodlar
     let campaignDetail = null; // { kind, bundle|promotion }
     let campaignDetailLoading = false;
     let campaignMediaViewerIdx = null;
@@ -2484,10 +2485,29 @@
       if (cartBtn) cartBtn.classList.toggle('hidden', isAdminMode && isUserAnAdmin);
       const personBtn = document.getElementById('header-person-btn');
       if (personBtn) {
-        // User ko'rinishida (admin vaqtincha user rejimiga o'tgan bo'lsa ham)
-        // odamcha va shop boshqaruvi chiqmaydi.
-        personBtn.classList.toggle('hidden', !(isUserAnAdmin && isAdminMode));
-        personBtn.onclick = isUserAnAdmin && isAdminMode ? togglePersonMenu : null;
+        // Shop takomillashtirish, 15-band spec (3-band): bu tugma — admin
+        // huquqiga ega userning "Adminga qaytish"/"Userga o'tish" almashtirish
+        // nuqtasi. AVVAL faqat `isAdminMode`da HAM ko'rinardi — demak admin
+        // User rejimiga o'tgan zahoti bu tugma yashirinib, adminga qaytish
+        // yo'li yo'qolib qolardi. Endi FAQAT huquqqa qarab ko'rsatiladi —
+        // ikkala rejimda ham ko'rinadi, oddiy (admin bo'lmagan) userlarda esa
+        // hech qachon.
+        personBtn.classList.toggle('hidden', !isUserAnAdmin);
+        personBtn.onclick = isUserAnAdmin ? togglePersonMenu : null;
+      }
+      // 1/2-band: header'da doim joriy do'konning haqiqiy nomi/logotipi
+      // ko'rinadi — boshqa hech qanday do'konga tegishli bo'lmagan statik
+      // matn (masalan "UStorE") emas. Manba — shopContact (server, boot()dan).
+      const nameEl = document.getElementById('header-shop-name');
+      if (nameEl) {
+        const name = shopDisplayName();
+        nameEl.textContent = name;
+        nameEl.classList.toggle('hidden', !authReady || !name);
+      }
+      const logoEl = document.getElementById('header-shop-logo');
+      if (logoEl) {
+        if (shopLogoUrl) { logoEl.src = shopLogoUrl; logoEl.classList.remove('hidden'); }
+        else { logoEl.classList.add('hidden'); logoEl.removeAttribute('src'); }
       }
     }
 
@@ -4210,18 +4230,32 @@
         return closest;
       };
       updateActiveCard();
+      // 15-band spec, 6-band: clon chekkasiga yetganda scrollLeft'ni qo'lda
+      // qayta o'rnatish, agar bu haligacha davom etayotgan tabiiy inertsiya
+      // (momentum) bilan bir vaqtga to'g'ri kelib qolsa, ko'zga tashlanadigan
+      // qaltirash beradi. Avval bu FAQAT scroll'dan keyingi qattiq 80ms
+      // taymer bilan aniqlanardi — tez svayp qilinganda taymer haligacha
+      // to'liq to'xtamagan momentum davomida ishga tushib qolishi mumkin edi.
+      // Endi, qo'llab-quvvatlansa, brauzerning o'z "scrollend" hodisasi
+      // ishlatiladi — bu HAQIQATAN scroll (momentum bilan birga) to'liq
+      // tugaganda ishga tushadi, shuning uchun poyga (race) yo'qoladi.
+      // Qo'llab-quvvatlamaydigan brauzerlarda eski taymer-usul saqlanadi.
+      const settle = () => {
+        if (!looped) return;
+        const active = updateActiveCard();
+        if (active.dataset.clone === 'start') jumpWithoutSnap(cards[cards.length - 2]);
+        else if (active.dataset.clone === 'end') jumpWithoutSnap(cards[1]);
+        updateActiveCard();
+      };
+      const supportsScrollEnd = 'onscrollend' in window;
       let scrollTimer = null;
       strip.addEventListener('scroll', () => {
         updateActiveCard();
-        if (!looped) return;
+        if (supportsScrollEnd || !looped) return;
         clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(() => {
-          const active = updateActiveCard();
-          if (active.dataset.clone === 'start') jumpWithoutSnap(cards[cards.length - 2]);
-          else if (active.dataset.clone === 'end') jumpWithoutSnap(cards[1]);
-          updateActiveCard();
-        }, 80);
+        scrollTimer = setTimeout(settle, 80);
       }, { passive: true });
+      if (supportsScrollEnd) strip.addEventListener('scrollend', settle, { passive: true });
     }
 
     // 18-band: bosh sahifadagi "e'tibor talab qiladi" markazi — admin 3-5
@@ -4307,6 +4341,10 @@
         const giftRules = (data.giftRules || []).map(r => ({ ...r, kind: 'GIFT_RULE' }));
         const personalDiscounts = (data.personalDiscounts || []).map((d, index) => ({ ...d, id: `personal-${index}`, kind: 'PERSONAL_DISCOUNT' }));
         marketingCampaigns = [...bundles, ...promotions, ...tiers, ...rewardRules, ...giftRules, ...personalDiscounts];
+        // 15-band spec, 14-band: "Promo-kodlarim" — shu mijozga shaxsan
+        // berilgan kodlar, umumiy ro'yxatdan ALOHIDA saqlanadi (boshqalarga
+        // ko'rinmasligi kerak bo'lgan shaxsiy ma'lumot).
+        myPromoCodes = data.myPromoCodes || [];
         marketingCampaignsLoaded = true;
       } catch (e) { console.error(e); }
       finally { marketingCampaignsLoading = false; if (onDone) onDone(); }
@@ -4339,6 +4377,10 @@
       const name = uiLang === 'ru' ? (rule.targetProduct?.nameRu || rule.targetProduct?.name) : rule.targetProduct?.name;
       return tr(`${name || 'Tanlangan mahsulot'}dan ${rule.thresholdQuantity} ta oling`, `Купите ${rule.thresholdQuantity} шт. «${name || 'выбранного товара'}»`);
     }
+    async function copyPromoCodeToClipboard(code) {
+      const ok = await copyTextToClipboard(code);
+      showActionToast(ok ? tr('✅ Nusxalandi', '✅ Скопировано') : tr("❌ Nusxalab bo'lmadi", '❌ Не удалось скопировать'), ok ? 'success' : 'error', 1500);
+    }
     function publicMarketingSectionHtml(icon, title, itemsHtml, count) {
       return `<section class="fc-public-marketing-section">
         <header><span><i data-lucide="${icon}" class="w-4 h-4"></i></span><div><h3>${title}</h3><small>${count} ${tr('ta faol taklif', 'активных предложений')}</small></div></header>
@@ -4366,7 +4408,30 @@
           ...tiers.map(c => `<article class="fc-public-offer-card is-discount"><span class="fc-public-offer-icon">📈</span><div><b>${escapeHtml(c.name || tr('Bosqichli chegirma', 'Ступенчатая скидка'))}</b><p>${money(c.thresholdAmount)}+ → <strong>${c.discountType === 'PERCENT' ? `${formatNumber(c.discountValue)}%` : money(c.discountValue)} ${tr('chegirma', 'скидка')}</strong></p><span><i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>${(c.categoryIds?.length || c.productIds?.length) ? tr('Tanlangan katalog yoki mahsulotlarga', 'На выбранные каталоги или товары') : tr('Butun do‘kon uchun', 'На весь магазин')}</span>${publicMarketingDateHtml(c)}</div></article>`),
           ...personal.map(c => `<article class="fc-public-offer-card is-personal"><span class="fc-public-offer-icon">💎</span><div><b>${tr('Siz uchun shaxsiy chegirma', 'Персональная скидка для вас')}</b><p><strong>${c.discountType === 'PERCENT' ? `${formatNumber(c.discountValue)}%` : money(c.discountValue)}</strong> ${tr('avtomatik qo‘llanadi', 'применится автоматически')}</p>${publicMarketingDateHtml(c)}</div></article>`),
         ].join('');
+        // 15-band spec, 14-band: mijozga SHAXSAN berilgan promo-kodlar —
+        // umumiy "Promo-kodlar va kuponlar" (barcha faol takliflar)
+        // bo'limidan ALOHIDA, chunki bu shaxsiy ma'lumot (boshqa mijozga
+        // ko'rinmasligi kerak) va ishlatilgan/muddati tugagan holatini ham
+        // ko'rsatadi.
+        const myPromoCards = myPromoCodes.map(c => {
+          const statusBadge = c.status === 'USED' ? `<span><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>${tr('Ishlatilgan', 'Использован')}</span>`
+            : c.status === 'EXPIRED' ? `<span><i data-lucide="clock-3" class="w-3.5 h-3.5"></i>${tr('Muddati tugagan', 'Истёк')}</span>`
+            : c.status === 'INACTIVE' ? `<span><i data-lucide="pause-circle" class="w-3.5 h-3.5"></i>${tr('Faol emas', 'Неактивен')}</span>`
+            : `<span><i data-lucide="badge-check" class="w-3.5 h-3.5"></i>${tr('Faol', 'Активен')}</span>`;
+          return `<article class="fc-public-offer-card is-promo">
+            <button type="button" class="fc-public-code" onclick="copyPromoCodeToClipboard('${escapeHtml(c.code)}')" title="${tr('Nusxalash', 'Копировать')}">${escapeHtml(c.code)}</button>
+            <div>
+              <b>${escapeHtml(c.name)}</b>
+              <p><strong>${campaignDiscountLabel(c.discountType, c.discountValue)}</strong>${c.minOrderAmount ? ` · ${tr('kamida', 'от')} ${money(c.minOrderAmount)}` : ''}${c.maxOrderAmount ? ` · ${tr("ko'pi bilan", 'не более')} ${money(c.maxOrderAmount)}` : ''}</p>
+              ${c.endsAt ? `<span><i data-lucide="clock-3" class="w-3.5 h-3.5"></i>${new Date(c.endsAt).toLocaleDateString()}${tr('gacha', ' — до')}</span>` : ''}
+              ${c.usageLimit === 1 ? `<p>${tr('Bir martalik kod', 'Одноразовый код')}</p>` : ''}
+              ${c.transferable ? `<p>${tr("O'zingiz ishlatishingiz yoki do'stingizga sovg'a qilishingiz mumkin.", 'Вы можете использовать сами или подарить другу.')}</p>` : ''}
+              ${statusBadge}
+            </div>
+          </article>`;
+        }).join('');
         body = `<div class="fc-public-marketing-list">
+          ${myPromoCodes.length ? publicMarketingSectionHtml('user-round-check', tr('Promo-kodlarim', 'Мои промокоды'), myPromoCards, myPromoCodes.length) : ''}
           ${publicMarketingSectionHtml('sparkles', tr('Aksiyalar', 'Акции'), actionCards, bundles.length + gifts.length)}
           ${publicMarketingSectionHtml('ticket-percent', tr('Promo-kodlar va kuponlar', 'Промокоды и купоны'), promoCards, promotions.length + rewards.length)}
           ${publicMarketingSectionHtml('badge-percent', tr('Chegirmalar', 'Скидки'), discountCards, tiers.length + personal.length)}
@@ -4464,14 +4529,12 @@
             ${renderFeaturedCategoriesRowHtml()}
           </div>
 
-          ${(isAdminMode && isUserAnAdmin && hasPermission('reports.view')) ? renderAdminActionCenterHtml() : ''}
           ${renderBannerCarouselHtml()}
 
           <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
           ${renderFeaturedCategoryBlocksHtml()}
         </div>
       `;
-      if (isAdminMode && isUserAnAdmin && hasPermission('reports.view')) loadAdminActionCenterLazy();
       if (activeBanners.length) initBannerCarousel();
       handleSearch();
     }
@@ -5028,13 +5091,22 @@
       const vipDiscount = Math.max(0, Number(cartDiscountState?.vipDiscount) || 0);
       const totalDiscount = Math.max(0, Number(cartDiscountState?.totalDiscount) || promoDiscount + tierDiscount + vipDiscount);
       const payableTotal = Math.max(0, total - totalDiscount);
+      const gift = cartDiscountState?.gift || null;
       const nextTier = cartDiscountState?.nextTier || null;
       const tierOffer = nextTier ? (nextTier.discountType === 'PERCENT'
         ? `${formatNumber(nextTier.discountValue)}%`
         : money(nextTier.discountValue)) : '';
+      // 15-band spec, 7-band: mijozga texnik "Bosqichli chegirma" atamasi
+      // emas — oddiy "Chegirma" + qisqa sabab (foiz/summa — qaysi chegaradan
+      // boshlab) ko'rsatiladi. Texnik "tier"/"bosqich" so'zlari faqat ADMIN
+      // sahifalarida (Marketing -> Bosqichli chegirma) qoladi.
+      const appliedTier = cartDiscountState?.tier || null;
+      const tierWhy = appliedTier ? (appliedTier.discountType === 'PERCENT'
+        ? tr(`${formatNumber(appliedTier.discountValue)}% chegirma — ${money(appliedTier.thresholdAmount)}dan`, `скидка ${formatNumber(appliedTier.discountValue)}% — от ${money(appliedTier.thresholdAmount)}`)
+        : tr(`${money(appliedTier.discountValue)} chegirma — ${money(appliedTier.thresholdAmount)}dan`, `скидка ${money(appliedTier.discountValue)} — от ${money(appliedTier.thresholdAmount)}`)) : '';
       const discountRows = `
         ${promoDiscount > 0 ? `<div><span>🎟️ ${tr('Promo-kod chegirmasi', 'Скидка по промокоду')}</span><b>-${money(promoDiscount)}</b></div>` : ''}
-        ${tierDiscount > 0 ? `<div><span>📈 ${tr('Bosqichli chegirma', 'Ступенчатая скидка')}</span><b>-${money(tierDiscount)}</b></div>` : ''}
+        ${tierDiscount > 0 ? `<div><span>🏷️ ${tr('Chegirma', 'Скидка')}${tierWhy ? ` <small class="fc-cart-discount-why">— ${escapeHtml(tierWhy)}</small>` : ''}</span><b>-${money(tierDiscount)}</b></div>` : ''}
         ${vipDiscount > 0 ? `<div><span>💎 ${tr('Shaxsiy chegirma', 'Персональная скидка')}</span><b>-${money(vipDiscount)}</b></div>` : ''}
         ${totalDiscount > 0 && !(promoDiscount || tierDiscount || vipDiscount) ? `<div><span>🏷️ ${tr('Chegirma', 'Скидка')}</span><b>-${money(totalDiscount)}</b></div>` : ''}`;
 
@@ -5098,6 +5170,20 @@
               </div>
             `; }).join('')}
           </div>` : ''}
+
+          ${gift ? `<div class="fc-cart-gift-card">
+            <div class="fc-cart-gift-icon"><i data-lucide="gift" class="w-5 h-5"></i></div>
+            <div class="min-w-0 flex-1">
+              <p class="fc-cart-gift-label">${tr('Sovg\'a', 'Подарок')}</p>
+              <p class="fc-cart-gift-name">${escapeHtml((uiLang === 'ru' && gift.nameRu) ? gift.nameRu : gift.name)}${gift.qty > 1 ? ` × ${gift.qty}` : ''}</p>
+            </div>
+            <span class="fc-badge fc-badge-success">${tr('Bepul', 'Бесплатно')}</span>
+          </div>` : ''}
+
+          <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+            <div class="flex items-center gap-2 text-xs font-bold text-gray-700"><i data-lucide="ticket-percent" class="w-4 h-4"></i>${tr('Promo-kod', 'Промокод')}</div>
+            <div id="cart-promo-wrap">${renderPromoWrapHtml()}</div>
+          </div>
         </div>
 
         <div class="fixed left-0 right-0 z-30 px-4" style="bottom:calc(4.25rem + env(safe-area-inset-bottom))">
@@ -5175,6 +5261,11 @@
         const minAmount = code.split(':')[1];
         return tr(`Minimal buyurtma summasi: ${formatNumber(minAmount)} so'm`, `Минимальная сумма заказа: ${formatNumber(minAmount)} сум`);
       }
+      // 15-band spec, 13-band: yuqori chegara xatosi.
+      if (String(code || '').startsWith('promo_max_order:')) {
+        const maxAmount = code.split(':')[1];
+        return tr(`Maksimal buyurtma summasi: ${formatNumber(maxAmount)} so'm`, `Максимальная сумма заказа: ${formatNumber(maxAmount)} сум`);
+      }
       const map = {
         promo_not_found: tr("Bunday promo-kod topilmadi.", "Такой промокод не найден."),
         promo_not_started: tr("Bu promo-kod hali faollashmagan.", "Этот промокод ещё не активен."),
@@ -5183,17 +5274,24 @@
         promo_usage_limit_reached: tr("Bu promo-kodning foydalanish limiti tugagan.", "Лимит использования промокода исчерпан."),
         promo_customer_limit_reached: tr("Siz bu promo-koddan allaqachon foydalangansiz.", "Вы уже использовали этот промокод."),
         promo_new_customers_only: tr("Bu promo-kod faqat yangi mijozlar uchun.", "Этот промокод только для новых клиентов."),
+        // 15-band spec, 14-band: shaxsan boshqa mijozga berilgan, ulashib bo'lmaydigan kod.
+        promo_not_yours: tr("Bu promo-kod boshqa mijozga berilgan.", "Этот промокод выдан другому клиенту."),
         promo_code_required: tr("Promo-kodni kiriting.", "Введите промокод."),
         empty_cart: tr("Savatcha bo'sh.", "Корзина пуста."),
       };
       return map[code] || tr("Promo-kod yaroqsiz.", "Промокод недействителен.");
     }
 
+    // 15-band spec, 9-band: promo-kod endi FAQAT Savatchada qo'llanadi —
+    // shu funksiya ham Savatcha (id="cart-promo-code"), ham (agar hali
+    // ochiq bo'lsa) checkout xulosasi kontekstidan chaqirilishi mumkin,
+    // shuning uchun aniq joyga (renderCheckoutOptions) emas, umumiy
+    // render()ga tayanadi.
     async function applyPromoCode() {
-      const code = String(document.getElementById('chk-promo-code')?.value || checkoutPromoCode || '').trim().toUpperCase();
-      if (!code) { promoError = promoErrorMessage('promo_code_required'); renderCheckoutOptions(); return; }
+      const code = String(document.getElementById('cart-promo-code')?.value || checkoutPromoCode || '').trim().toUpperCase();
+      if (!code) { promoError = promoErrorMessage('promo_code_required'); render(); return; }
       promoApplying = true; promoError = '';
-      renderCheckoutOptions();
+      render();
       try {
         const items = Object.entries(cart).map(([key, itemData]) => ({ productId: cartEntryProductId(key, itemData), qty: itemData.qty }));
         const result = await callApi('promo_preview', { code, items });
@@ -5201,8 +5299,8 @@
           appliedPromoState = { code, name: result.name, discountAmount: Number(result.discountAmount) || 0 };
           checkoutPromoCode = code;
           promoError = '';
-          await refreshCheckoutDiscountPreview(code, false);
-          if (checkoutDiscountState) appliedPromoState.discountAmount = Number(checkoutDiscountState.promoDiscount) || appliedPromoState.discountAmount;
+          cartDiscountPreviewKey = ''; // majburiy qayta yuklash (kod o'zgardi)
+          await loadCartDiscountPreview();
         } else {
           appliedPromoState = null;
           promoError = promoErrorMessage(result.error);
@@ -5212,7 +5310,7 @@
         promoError = tr("Promo-kodni tekshirib bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось проверить промокод. Попробуйте ещё раз.");
       } finally {
         promoApplying = false;
-        renderCheckoutOptions();
+        render();
       }
     }
 
@@ -5220,8 +5318,9 @@
       appliedPromoState = null;
       checkoutPromoCode = '';
       promoError = '';
-      refreshCheckoutDiscountPreview('', false).finally(renderCheckoutOptions);
-      renderCheckoutOptions();
+      cartDiscountPreviewKey = '';
+      loadCartDiscountPreview().finally(render);
+      render();
     }
 
     async function refreshCheckoutDiscountPreview(code = appliedPromoState?.code || '', shouldRender = true) {
@@ -5242,7 +5341,7 @@
         </div>`;
       }
       return `<div class="fc-checkout-promo-row">
-        <input type="text" id="chk-promo-code" value="${escapeHtml(checkoutPromoCode)}" oninput="checkoutPromoCode=this.value.toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();applyPromoCode();}" placeholder="${tr('Masalan: YOZGI20', 'Например: YOZGI20')}" class="fc-checkout-promo-input">
+        <input type="text" id="cart-promo-code" value="${escapeHtml(checkoutPromoCode)}" oninput="checkoutPromoCode=this.value.toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();applyPromoCode();}" placeholder="${tr('Masalan: YOZGI20', 'Например: YOZGI20')}" class="fc-checkout-promo-input">
         <button type="button" onclick="applyPromoCode()" class="fc-btn fc-btn-primary" ${promoApplying ? 'disabled' : ''}>${promoApplying ? tr('Tekshirilmoqda…', 'Проверка…') : tr("Qo'llash", 'Применить')}</button>
       </div>
       ${promoError ? `<p class="fc-checkout-promo-error"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>${escapeHtml(promoError)}</p>` : ''}`;
@@ -5345,7 +5444,13 @@
       clearCheckoutReceipt();
       selectedDeliveryMethodId = checkoutDraft.deliveryMethodId || selectedDeliveryMethodId;
       selectedPayMethod = checkoutDraft.paymentMethodId || selectedPayMethod;
-      checkoutPromoCode = ''; appliedPromoState = null; checkoutDiscountState = null; promoApplying = false; promoError = '';
+      // 15-band spec, 9-band: promo-kod endi FAQAT Savatchada kiritiladi —
+      // checkout ochilganda uni AVVAL kabi tozalamaymiz (appliedPromoState
+      // shu yerda nolga tushirilib, mijoz Savatchada qo'llagan kodi
+      // "yo'qolib qolar edi"). checkoutDiscountState esa har doim FRESH
+      // qiymatlar bilan pastda qayta hisoblanadi (narx o'zgargan bo'lishi
+      // mumkin), lekin appliedPromoState kodi saqlanib qoladi.
+      promoApplying = false; promoError = '';
       activePopupModal = 'CHECKOUT_FORM';
       render();
       refreshCheckoutDiscountPreview();
@@ -5737,14 +5842,25 @@
       const subtotalEl = document.getElementById('checkout-subtotal');
       const deliveryFeeEl = document.getElementById('checkout-delivery-fee');
       const payableEl = document.getElementById('checkout-payable-total');
-      const promoWrapEl = document.getElementById('chk-promo-wrap');
       const promoRowEl = document.getElementById('checkout-promo-row');
       const promoDiscountEl = document.getElementById('checkout-promo-discount');
       const tierRowEl = document.getElementById('checkout-tier-row');
       const tierDiscountEl = document.getElementById('checkout-tier-discount');
       const vipRowEl = document.getElementById('checkout-vip-row');
       const vipDiscountEl = document.getElementById('checkout-vip-discount');
-      if (promoWrapEl) promoWrapEl.innerHTML = renderPromoWrapHtml();
+      const giftWrapEl = document.getElementById('checkout-gift-wrap');
+      if (giftWrapEl) {
+        const g = checkoutDiscountState?.gift;
+        giftWrapEl.innerHTML = g ? `<div class="fc-cart-gift-card">
+          <div class="fc-cart-gift-icon"><i data-lucide="gift" class="w-5 h-5"></i></div>
+          <div class="min-w-0 flex-1">
+            <p class="fc-cart-gift-label">${tr('Sovg\'a', 'Подарок')}</p>
+            <p class="fc-cart-gift-name">${escapeHtml((uiLang === 'ru' && g.nameRu) ? g.nameRu : g.name)}${g.qty > 1 ? ` × ${g.qty}` : ''}</p>
+          </div>
+          <span class="fc-badge fc-badge-success">${tr('Bepul', 'Бесплатно')}</span>
+        </div>` : '';
+        if (g && window.lucide) lucide.createIcons();
+      }
       const promoDiscount = Number(checkoutDiscountState?.promoDiscount) || appliedPromoState?.discountAmount || 0;
       const tierDiscount = Number(checkoutDiscountState?.tierDiscount) || 0;
       const vipDiscount = Number(checkoutDiscountState?.vipDiscount) || 0;
@@ -8434,6 +8550,80 @@
       return tr("Hech narsa", "Ничего");
     }
 
+    // 15-band spec, 15-band: "Vitrina" — bosh sahifada ko'rinadigan 5 ta
+    // aniq slot. Mavjud isActive+sortOrder mexanizmi (activeBannersForClient
+    // server so'rovi allaqachon "is_active=true, sort_order bo'yicha, limit
+    // 5" tarzida ishlaydi) o'zgartirilmaydi — bu shunchaki o'sha mavjud
+    // holatni "slot" ko'rinishida qayta taqdim etadi, banner yaratish/
+    // tahrirlash tizimiga tegmaydi.
+    function bannerSlotList() {
+      return bannerList.filter(b => b.isActive).sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0)).slice(0, 5);
+    }
+    function renderBannerSlotsHtml() {
+      const slots = bannerSlotList();
+      const cards = [];
+      for (let i = 0; i < 5; i++) {
+        const b = slots[i];
+        cards.push(b ? `
+          <div class="fc-banner-slot is-filled">
+            <img src="${escapeHtml(b.imageUrl)}" loading="lazy">
+            <button type="button" class="fc-banner-slot-swap" onclick="openBannerSlotPicker(${i})" aria-label="${tr('Almashtirish', 'Заменить')}"><i data-lucide="repeat" class="w-3.5 h-3.5"></i></button>
+          </div>` : `
+          <button type="button" class="fc-banner-slot is-empty" onclick="openBannerSlotPicker(${i})"><i data-lucide="plus" class="w-5 h-5"></i></button>`);
+      }
+      return `<div class="fc-banner-slots-grid">${cards.join('')}</div>`;
+    }
+    let bannerSlotPickerIndex = null;
+    function openBannerSlotPicker(slotIndex) {
+      bannerSlotPickerIndex = slotIndex;
+      const inSlotIds = new Set(bannerSlotList().map(b => String(b.id)));
+      const spare = bannerList.filter(b => !inSlotIds.has(String(b.id)));
+      let root = document.getElementById('fc-banner-slot-picker-root');
+      if (!root) { root = document.createElement('div'); root.id = 'fc-banner-slot-picker-root'; document.body.appendChild(root); }
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeBannerSlotPicker();">
+        <div class="fc-sheet">
+          <div class="fc-sheet-handle"></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Slotga banner tanlash', 'Выбрать баннер для слота')}</div><button type="button" onclick="closeBannerSlotPicker()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-body space-y-2">
+            <button type="button" onclick="closeBannerSlotPicker(); openBannerForm();" class="fc-selection-launch"><span><i data-lucide="image-plus" class="w-4 h-4"></i><b>${tr('Yangi banner yaratish', 'Создать новый баннер')}</b></span><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+            ${spare.length ? spare.map(b => `
+              <button type="button" onclick="assignBannerToSlot('${b.id}', ${slotIndex})" class="fc-card w-full flex items-center gap-2 text-left">
+                <img src="${escapeHtml(b.imageUrl)}" class="w-14 h-9 object-cover rounded-lg border shrink-0" loading="lazy">
+                <span class="min-w-0 flex-1 text-xs font-bold truncate">${escapeHtml(b.title || (b.mode === 'IMAGE' ? tr('Tayyor rasm', 'Готовое изображение') : tr('(sarlavhasiz)', '(без заголовка)')))}</span>
+                ${!b.isActive ? '' : `<span class="fc-badge fc-badge-muted">${tr("boshqa slotda", 'в другом слоте')}</span>`}
+              </button>
+            `).join('') : `<p class="text-xs text-gray-400 text-center py-2">${tr("Boshqa tayyor banner yo'q — yangisini yarating.", 'Других готовых баннеров нет — создайте новый.')}</p>`}
+          </div>
+        </div>
+      </div>`;
+      if (window.lucide) lucide.createIcons();
+    }
+    function closeBannerSlotPicker() {
+      const root = document.getElementById('fc-banner-slot-picker-root');
+      if (root) root.remove();
+      bannerSlotPickerIndex = null;
+    }
+    async function assignBannerToSlot(bannerId, slotIndex) {
+      closeBannerSlotPicker();
+      const slots = bannerSlotList();
+      const outgoing = slots[slotIndex] || null;
+      showActionToast(tr('⏳ Saqlanmoqda...', '⏳ Сохранение...'), 'saving');
+      try {
+        if (outgoing && String(outgoing.id) !== String(bannerId)) {
+          await callApi('banner_update', { id: outgoing.id, isActive: false });
+        }
+        await callApi('banner_update', { id: bannerId, isActive: true });
+        const newOrder = slots.map((b, i) => i === slotIndex ? bannerId : (b ? b.id : null)).filter(Boolean);
+        if (!newOrder.includes(bannerId)) newOrder.push(bannerId);
+        await callApi('banner_reorder', { order: newOrder });
+        await loadBannerListLazy(true);
+        showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1500);
+      } catch (e) {
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1800);
+        await loadBannerListLazy(true);
+      }
+    }
+
     function renderBannersPage(container) {
       const rows = bannerListLoading && !bannerListLoaded
         ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
@@ -8455,8 +8645,12 @@
           </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="image" class="w-7 h-7"></i><p>${tr("Hozircha banner yo'q.", "Пока нет баннеров.")}</p></div>`;
       const body = `<div class="space-y-3">
+        <div class="fc-card space-y-2">
+          <div><h3 class="text-xs font-bold">${tr('Vitrina — 5 slot', 'Витрина — 5 слотов')}</h3><p class="text-[10px] text-gray-400">${tr("Bosh sahifada aynan shu 5 slotdagi bannerlar ko'rinadi. Bo'sh slotga yoki mavjud bannerni almashtirish uchun bosing.", 'На главной показываются баннеры именно из этих 5 слотов. Нажмите на пустой слот или на существующий баннер, чтобы заменить.')}</p></div>
+          ${renderBannerSlotsHtml()}
+        </div>
         <div class="fc-card fc-staff-intro">
-          <div><h3>${tr('Bannerlar', 'Баннеры')}</h3><p>${tr("Jami 10 tagacha banner saqlashingiz mumkin, bosh sahifada bir vaqtda faqat 5 tasi ko'rsatiladi (yoqilgan bo'lsa).", "Можно сохранить до 10 баннеров, на главной одновременно показывается не более 5 (если включены).")}</p><p class="text-[10px] text-gray-400 mt-1">${bannerList.length} / 10</p></div>
+          <div><h3>${tr('Barcha bannerlar', 'Все баннеры')}</h3><p>${tr("Jami 10 tagacha banner saqlashingiz mumkin, ulardan 5 tasi vitrinada ko'rinadi.", "Можно сохранить до 10 баннеров, из них 5 показываются в витрине.")}</p><p class="text-[10px] text-gray-400 mt-1">${bannerList.length} / 10</p></div>
           <button type="button" onclick="openBannerForm()" class="fc-btn fc-btn-primary" ${bannerList.length >= 10 ? 'disabled' : ''}><i data-lucide="plus" class="w-4 h-4"></i>${tr("Banner qo'shish", "Добавить")}</button>
         </div>
         <div class="space-y-2">${rows}</div>
@@ -9229,8 +9423,8 @@
       </div>`;
       renderPageShell(container, tr("Avtomatik sovg'a", 'Автоматический подарок'), body, { onBack: "openMarketingHubPage()" });
     }
-    function openCouponRewardForm(){let root=document.getElementById('fc-coupon-reward-root');if(!root){root=document.createElement('div');root.id='fc-coupon-reward-root';document.body.appendChild(root);}root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Yangi bir martalik kupon','Новый одноразовый купон')}</div><button type="button" onclick="document.getElementById('fc-coupon-reward-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3"><label class="fc-mini-field"><span>${tr('Kupon berish sharti','Условие выдачи')}</span><select id="coupon-trigger"><option value="ORDER_TOTAL">${tr('Bitta buyurtma summasi','Сумма одного заказа')}</option><option value="LIFETIME_TOTAL">${tr('Mijozning jami xaridi','Общая сумма покупок клиента')}</option></select></label><label class="fc-mini-field"><span>${tr('Kerakli xarid summasi','Необходимая сумма покупок')}</span><input id="coupon-threshold" type="number" min="1" placeholder="5000000"></label><label class="fc-mini-field"><span>${tr('Kupon turi','Тип купона')}</span><select id="coupon-type"><option value="PERCENT">${tr('Foizli','Процентный')}</option><option value="FIXED">${tr('Summali','Фиксированная сумма')}</option></select></label><label class="fc-mini-field"><span>${tr('Chegirma qiymati','Размер скидки')}</span><input id="coupon-value" type="number" min="1" placeholder="10"></label><label class="fc-mini-field"><span>${tr('Kupon necha kun amal qiladi','Срок действия купона, дней')}</span><input id="coupon-days" type="number" min="1" value="30"></label></div><div class="fc-sheet-footer"><button type="button" onclick="saveCouponRewardRule()" class="fc-btn fc-btn-primary w-full">${tr('Saqlash','Сохранить')}</button></div></div></div>`;if(window.lucide)lucide.createIcons();}
-    async function saveCouponRewardRule(){const triggerType=document.getElementById('coupon-trigger')?.value,thresholdAmount=Number(document.getElementById('coupon-threshold')?.value),rewardType=document.getElementById('coupon-type')?.value,rewardValue=Number(document.getElementById('coupon-value')?.value),codeExpiryDays=Number(document.getElementById('coupon-days')?.value);if(!thresholdAmount||!rewardValue||(rewardType==='PERCENT'&&rewardValue>100))return alert(tr("Qiymatlarni to'g'ri kiriting",'Введите корректные значения'));try{await callApi('reward_rule_create',{triggerType,thresholdAmount,rewardType,rewardValue,codeExpiryDays,isActive:true});document.getElementById('fc-coupon-reward-root')?.remove();await loadRewardRuleListLazy(true);showActionToast(tr('Kupon qoidasi saqlandi','Правило купона сохранено'),'success',1500);}catch(e){alert(tr("Saqlab bo'lmadi",'Не удалось сохранить'));}}
+    function openCouponRewardForm(){let root=document.getElementById('fc-coupon-reward-root');if(!root){root=document.createElement('div');root.id='fc-coupon-reward-root';document.body.appendChild(root);}root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Yangi bir martalik kupon','Новый одноразовый купон')}</div><button type="button" onclick="document.getElementById('fc-coupon-reward-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3"><label class="fc-mini-field"><span>${tr('Kupon berish sharti','Условие выдачи')}</span><select id="coupon-trigger"><option value="ORDER_TOTAL">${tr('Bitta buyurtma summasi','Сумма одного заказа')}</option><option value="LIFETIME_TOTAL">${tr('Mijozning jami xaridi','Общая сумма покупок клиента')}</option></select></label><label class="fc-mini-field"><span>${tr('Kerakli xarid summasi','Необходимая сумма покупок')}</span><input id="coupon-threshold" type="number" min="1" placeholder="5000000"></label><label class="fc-mini-field"><span>${tr('Kupon turi','Тип купона')}</span><select id="coupon-type"><option value="PERCENT">${tr('Foizli','Процентный')}</option><option value="FIXED">${tr('Summali','Фиксированная сумма')}</option></select></label><label class="fc-mini-field"><span>${tr('Chegirma qiymati','Размер скидки')}</span><input id="coupon-value" type="number" min="1" placeholder="10"></label><label class="fc-mini-field"><span>${tr('Kupon necha kun amal qiladi','Срок действия купона, дней')}</span><input id="coupon-days" type="number" min="1" value="30"></label><label class="fc-mini-field"><span>${tr('Promo-kodni kim ishlata oladi?','Кто может использовать промокод?')}</span><select id="coupon-transferable"><option value="0">${tr('Faqat promo berilgan mijoz','Только тот, кому выдан')}</option><option value="1">${tr('Boshqa odamga ham berish mumkin','Можно передать другому')}</option></select></label></div><div class="fc-sheet-footer"><button type="button" onclick="saveCouponRewardRule()" class="fc-btn fc-btn-primary w-full">${tr('Saqlash','Сохранить')}</button></div></div></div>`;if(window.lucide)lucide.createIcons();}
+    async function saveCouponRewardRule(){const triggerType=document.getElementById('coupon-trigger')?.value,thresholdAmount=Number(document.getElementById('coupon-threshold')?.value),rewardType=document.getElementById('coupon-type')?.value,rewardValue=Number(document.getElementById('coupon-value')?.value),codeExpiryDays=Number(document.getElementById('coupon-days')?.value),transferable=document.getElementById('coupon-transferable')?.value==='1';if(!thresholdAmount||!rewardValue||(rewardType==='PERCENT'&&rewardValue>100))return alert(tr("Qiymatlarni to'g'ri kiriting",'Введите корректные значения'));try{await callApi('reward_rule_create',{triggerType,thresholdAmount,rewardType,rewardValue,codeExpiryDays,transferable,isActive:true});document.getElementById('fc-coupon-reward-root')?.remove();await loadRewardRuleListLazy(true);showActionToast(tr('Kupon qoidasi saqlandi','Правило купона сохранено'),'success',1500);}catch(e){alert(tr("Saqlab bo'lmadi",'Не удалось сохранить'));}}
     async function deleteCouponRewardRule(id){const ok=await fcConfirm(tr('Kupon qoidasini o‘chirish','Удалить правило купона'),tr('Yangi kuponlar boshqa berilmaydi.','Новые купоны больше не будут выдаваться.'));if(!ok)return;try{await callApi('reward_rule_delete',{id});await loadRewardRuleListLazy(true);}catch(e){showActionToast(tr("O'chirilmadi",'Не удалено'),'error',1500);}}
     // Kupon mukofoti uchun ixtiyoriy real davr: masalan 30 kun ichida
     // 10 mln xarid. Eski "barcha vaqtdagi jami" varianti ham saqlanadi.
@@ -9261,9 +9455,10 @@
       const codeExpiryDays = Number(document.getElementById('coupon-days')?.value);
       const usePeriod = triggerType === 'LIFETIME_TOTAL' && document.getElementById('coupon-period-mode')?.value === 'DAYS';
       const periodDays = usePeriod ? Number(document.getElementById('coupon-period-days')?.value) : null;
+      const transferable = document.getElementById('coupon-transferable')?.value === '1';
       if (!thresholdAmount || !rewardValue || (rewardType === 'PERCENT' && rewardValue > 100) || (usePeriod && (!periodDays || periodDays < 1))) return alert(tr("Qiymatlarni to'g'ri kiriting", 'Введите корректные значения'));
       try {
-        await callApi('reward_rule_create', { triggerType, thresholdAmount, rewardType, rewardValue, codeExpiryDays, periodDays, isActive: true });
+        await callApi('reward_rule_create', { triggerType, thresholdAmount, rewardType, rewardValue, codeExpiryDays, periodDays, transferable, isActive: true });
         document.getElementById('fc-coupon-reward-root')?.remove();
         await loadRewardRuleListLazy(true);
         marketingCampaignsLoaded = false;
@@ -9514,8 +9709,8 @@
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Promo ma’lumotlari','Данные промокода')}</div><button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
         <div class="fc-campaign-code-card"><div><small>${escapeHtml(p.name)}</small><b>${escapeHtml(p.code)}</b></div><button type="button" onclick="copyTextToClipboard('${escapeHtml(p.code)}')" class="fc-btn fc-btn-icon"><i data-lucide="copy" class="w-4 h-4"></i></button></div>
         <div class="fc-card"><div class="flex justify-between gap-2"><b class="text-base">${promoDiscountLabel(p)} ${tr('chegirma','скидка')}</b>${promoStatusBadge(p)}</div></div>
-        <div class="fc-detail-grid"><div><small>${tr('Minimal buyurtma','Мин. заказ')}</small><b>${p.minOrderAmount ? money(p.minOrderAmount) : tr('Cheklovsiz','Без ограничения')}</b></div><div><small>${tr('Foydalanilgan','Использовано')}</small><b>${p.usedCount || 0}${p.usageLimit ? ` / ${p.usageLimit}` : ''}</b></div><div><small>${tr('Bir mijoz','На клиента')}</small><b>${p.perCustomerLimit || tr('Cheklovsiz','Без ограничения')}</b></div><div><small>${tr('Scope','Область')}</small><b>${promoScopeLabel(p)}</b></div><div><small>${tr('Boshlanish','Начало')}</small><b>${p.startsAt ? new Date(p.startsAt).toLocaleDateString() : '—'}</b></div><div><small>${tr('Tugash','Окончание')}</small><b>${p.endsAt ? new Date(p.endsAt).toLocaleDateString() : '—'}</b></div></div>
-        <div class="fc-card space-y-1"><p class="text-xs">${p.newCustomerOnly ? tr('Faqat yangi mijozlar uchun','Только для новых клиентов') : tr('Barcha mos mijozlar uchun','Для всех подходящих клиентов')}</p><p class="text-xs">${p.allowStacking ? tr('Mos tier bilan birlashadi','Сочетается с подходящей ступенью') : tr('Boshqa chegirma bilan birlashmaydi','Не суммируется с другими скидками')}</p></div>
+        <div class="fc-detail-grid"><div><small>${tr('Minimal buyurtma','Мин. заказ')}</small><b>${p.minOrderAmount ? money(p.minOrderAmount) : tr('Cheklovsiz','Без ограничения')}</b></div><div><small>${tr('Maksimal buyurtma','Макс. заказ')}</small><b>${p.maxOrderAmount ? money(p.maxOrderAmount) : tr('Cheklovsiz','Без ограничения')}</b></div><div><small>${tr('Foydalanilgan','Использовано')}</small><b>${p.usedCount || 0}${p.usageLimit ? ` / ${p.usageLimit}` : ''}</b></div><div><small>${tr('Bir mijoz','На клиента')}</small><b>${p.perCustomerLimit || tr('Cheklovsiz','Без ограничения')}</b></div><div><small>${tr('Qo‘llanish doirasi','Область применения')}</small><b>${promoScopeLabel(p)}</b></div><div><small>${tr('Boshlanish','Начало')}</small><b>${p.startsAt ? new Date(p.startsAt).toLocaleDateString() : '—'}</b></div><div><small>${tr('Tugash','Окончание')}</small><b>${p.endsAt ? new Date(p.endsAt).toLocaleDateString() : '—'}</b></div></div>
+        <div class="fc-card space-y-1"><p class="text-xs">${p.newCustomerOnly ? tr('Faqat yangi mijozlar uchun','Только для новых клиентов') : tr('Barcha mos mijozlar uchun','Для всех подходящих клиентов')}</p><p class="text-xs">${p.allowStacking ? tr('Mijoz chegirmasi bilan birga ishlaydi','Сочетается со скидкой клиента') : tr('Boshqa chegirma bilan birlashmaydi','Не суммируется с другими скидками')}</p></div>
         <div class="flex gap-2"><button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove();openPromoForm('${p.id}')" class="fc-btn fc-btn-primary flex-1"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button><button type="button" onclick="togglePromoActive('${p.id}',${!p.isActive});document.getElementById('fc-promo-preview-root')?.remove()" class="fc-btn fc-btn-secondary">${p.isActive ? tr("O'chirish",'Выключить') : tr('Yoqish','Включить')}</button></div>
       </div></div></div>`;
       document.body.appendChild(root); if (window.lucide) lucide.createIcons();
@@ -9525,13 +9720,13 @@
       const existing = id ? promoList.find(p => String(p.id) === String(id)) : null;
       promoDraft = existing ? {
         id: existing.id, code: existing.code, name: existing.name, discountType: existing.discountType,
-        discountValue: existing.discountValue, minOrderAmount: existing.minOrderAmount,
+        discountValue: existing.discountValue, minOrderAmount: existing.minOrderAmount, maxOrderAmount: existing.maxOrderAmount,
         startsAt: existing.startsAt ? existing.startsAt.slice(0, 10) : '', endsAt: existing.endsAt ? existing.endsAt.slice(0, 10) : '',
         usageLimit: existing.usageLimit, perCustomerLimit: existing.perCustomerLimit,
         categoryIds: existing.categoryIds || [], productIds: existing.productIds || [],
         scopeType: existing.productIds?.length ? 'PRODUCT' : existing.categoryIds?.length ? 'CATEGORY' : 'ALL',
         newCustomerOnly: !!existing.newCustomerOnly, allowStacking: !!existing.allowStacking, isActive: existing.isActive,
-      } : { code: '', name: '', discountType: 'PERCENT', discountValue: '', minOrderAmount: '', startsAt: '', endsAt: '', usageLimit: '', perCustomerLimit: '', categoryIds: [], productIds: [], scopeType: 'ALL', newCustomerOnly: false, allowStacking: false, isActive: true };
+      } : { code: '', name: '', discountType: 'PERCENT', discountValue: '', minOrderAmount: '', maxOrderAmount: '', startsAt: '', endsAt: '', usageLimit: '', perCustomerLimit: '', categoryIds: [], productIds: [], scopeType: 'ALL', newCustomerOnly: false, allowStacking: false, isActive: true };
       renderPromoFormSheet();
     }
 
@@ -9598,7 +9793,10 @@
               <button type="button" onclick="setPromoDraftType('FIXED')" class="fc-tab ${d.discountType === 'FIXED' ? 'fc-tab-active' : ''}">${tr("Aniq summa (so'm)", "Фикс. сумма (сум)")}</button>
             </div></div>
             <label class="fc-mini-field"><span>${d.discountType === 'PERCENT' ? tr('Chegirma foizi', 'Процент скидки') : tr("Chegirma summasi (so'm)", "Сумма скидки (сум)")}</span><input type="number" id="promo-f-value" value="${escapeHtml(String(d.discountValue ?? ''))}" min="1" ${d.discountType === 'PERCENT' ? 'max="100"' : ''} placeholder="${d.discountType === 'PERCENT' ? '20' : '50000'}"></label>
-            <label class="fc-mini-field"><span>${tr("Minimal buyurtma summasi (ixtiyoriy)", "Мин. сумма заказа (необязательно)")}</span><input type="number" id="promo-f-min" value="${escapeHtml(String(d.minOrderAmount ?? ''))}" min="0" placeholder="${tr('Cheklovsiz', 'Без ограничений')}"></label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="fc-mini-field"><span>${tr("Minimal summa (ixtiyoriy)", "Мин. сумма (необязательно)")}</span><input type="number" id="promo-f-min" value="${escapeHtml(String(d.minOrderAmount ?? ''))}" min="0" placeholder="${tr('Cheklovsiz', 'Без ограничений')}"></label>
+              <label class="fc-mini-field"><span>${tr("Maksimal summa (ixtiyoriy)", "Макс. сумма (необязательно)")}</span><input type="number" id="promo-f-max" value="${escapeHtml(String(d.maxOrderAmount ?? ''))}" min="0" placeholder="${tr('Cheklovsiz', 'Без ограничений')}"></label>
+            </div>
             <div class="grid grid-cols-2 gap-2">
               <label class="fc-mini-field"><span>${tr('Boshlanish sanasi', 'Дата начала')}</span><input type="date" id="promo-f-starts" value="${escapeHtml(d.startsAt || '')}"></label>
               <label class="fc-mini-field"><span>${tr('Tugash sanasi', 'Дата окончания')}</span><input type="date" id="promo-f-ends" value="${escapeHtml(d.endsAt || '')}"></label>
@@ -9610,8 +9808,8 @@
             <div class="fc-mini-field"><span>${tr('Qo‘llanish doirasi','Область применения')}</span><div class="fc-tabs"><button type="button" onclick="setPromoDraftScope('ALL')" class="fc-tab ${d.scopeType === 'ALL' ? 'fc-tab-active' : ''}">${tr("Butun do'kon",'Весь магазин')}</button><button type="button" onclick="setPromoDraftScope('CATEGORY')" class="fc-tab ${d.scopeType === 'CATEGORY' ? 'fc-tab-active' : ''}">${tr('Katalog','Каталог')}</button><button type="button" onclick="setPromoDraftScope('PRODUCT')" class="fc-tab ${d.scopeType === 'PRODUCT' ? 'fc-tab-active' : ''}">${tr('Mahsulot','Товар')}</button></div></div>
             ${d.scopeType === 'CATEGORY' ? `<button type="button" onclick="openMarketingCatalogPicker('PROMO_CATEGORY')" class="fc-selection-launch"><span><i data-lucide="folder-tree" class="w-4 h-4"></i><b>${tr('Kataloglarni tanlash','Выбрать каталоги')}</b><small>${d.categoryIds?.length?marketingPickerSelectedLabels(new Set(d.categoryIds),'CATEGORY').join(', '):tr('Bir nechtasini tanlash mumkin','Можно выбрать несколько')}</small></span><i data-lucide="chevron-right" class="w-4 h-4"></i></button>` : ''}
             ${d.scopeType === 'PRODUCT' ? `<button type="button" onclick="openMarketingCatalogPicker('PROMO_PRODUCT')" class="fc-selection-launch"><span><i data-lucide="boxes" class="w-4 h-4"></i><b>${tr('Mahsulotlarni katalogdan tanlash','Выбрать товары из каталога')}</b><small>${d.productIds?.length?`${d.productIds.length} ${tr('ta tanlandi','выбрано')}`:tr('Bir nechtasini tanlash mumkin','Можно выбрать несколько')}</small></span><i data-lucide="chevron-right" class="w-4 h-4"></i></button>` : ''}
-            <label class="fc-settings-toggle-row"><span><b>${tr('Faqat yangi mijozlar','Только новые клиенты')}</b><small>${tr('Oldin buyurtma qilmaganlar uchun','Для клиентов без прошлых заказов')}</small></span><span class="fc-toggle"><input type="checkbox" id="promo-f-new-customer" ${d.newCustomerOnly ? 'checked' : ''}><span class="fc-toggle-track"></span></span></label>
-            <label class="fc-settings-toggle-row"><span><b>${tr('Tier bilan birlashtirish','Суммировать со ступенью')}</b><small>${tr('Faqat tier ham ruxsat bersa','Только если ступень тоже разрешает')}</small></span><span class="fc-toggle"><input type="checkbox" id="promo-f-stacking" ${d.allowStacking ? 'checked' : ''}><span class="fc-toggle-track"></span></span></label>
+            <label class="fc-settings-toggle-row"><span><b>${tr('Faqat yangi mijozlar uchun','Только для новых клиентов')}</b><small>${tr("Oldin buyurtma bermagan mijozlarga",'Клиентам, которые ещё не оформляли заказ')}</small></span><span class="fc-toggle"><input type="checkbox" id="promo-f-new-customer" ${d.newCustomerOnly ? 'checked' : ''}><span class="fc-toggle-track"></span></span></label>
+            <label class="fc-settings-toggle-row"><span><b>${tr('Mijoz chegirmasi bilan birga ishlasin','Сочетать со скидкой клиента')}</b><small>${tr('Yoqilsa, mos bosqichli chegirma bilan bir vaqtda qo‘llanishi mumkin','Если включено, может применяться вместе с подходящей ступенчатой скидкой')}</small></span><span class="fc-toggle"><input type="checkbox" id="promo-f-stacking" ${d.allowStacking ? 'checked' : ''}><span class="fc-toggle-track"></span></span></label>
             <div class="flex items-center justify-between p-1"><span class="text-xs font-bold text-gray-600">${tr('Faol', 'Активен')}</span><span class="fc-toggle"><input type="checkbox" id="promo-f-active" ${d.isActive ? 'checked' : ''}><span class="fc-toggle-track"></span></span></div>
           </div>
           <div class="fc-sheet-footer">
@@ -9630,6 +9828,7 @@
         invalid_discount_value: tr("Chegirma qiymati noto'g'ri.", "Некорректное значение скидки."),
         invalid_percent: tr("Foiz 100 dan oshmasligi kerak.", "Процент не может быть больше 100."),
         invalid_date_range: tr("Tugash sanasi boshlanish sanasidan oldin bo'lmasin.", "Дата окончания не может быть раньше даты начала."),
+        invalid_amount_range: tr("Maksimal summa minimal summadan kichik bo'lmasin.", "Максимальная сумма не может быть меньше минимальной."),
       };
       return map[code] || tr("Saqlab bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось сохранить. Попробуйте ещё раз.");
     }
@@ -9645,6 +9844,7 @@
       const payload = {
         name, discountType: promoDraft.discountType, discountValue: Number(discountValue),
         minOrderAmount: document.getElementById('promo-f-min')?.value || null,
+        maxOrderAmount: document.getElementById('promo-f-max')?.value || null,
         startsAt: document.getElementById('promo-f-starts')?.value || null,
         endsAt: document.getElementById('promo-f-ends')?.value || null,
         usageLimit: document.getElementById('promo-f-usagelimit')?.value || null,
@@ -12022,16 +12222,12 @@
                   <div id="card-payment-details" class="hidden fc-checkout-payment-details"></div>
                 </section>
 
-                <section class="fc-checkout-section">
-                  <div class="fc-checkout-section-head"><span><i data-lucide="ticket-percent" class="w-4 h-4"></i></span><div><b>${tr('Promo-kod', 'Промокод')}</b><small>${tr("Bo'lsa, kodni kiriting", "Если есть, введите код")}</small></div></div>
-                  <div id="chk-promo-wrap">${renderPromoWrapHtml()}</div>
-                </section>
-
+                <div id="checkout-gift-wrap"></div>
                 <section class="fc-checkout-summary">
                   <div class="fc-checkout-summary-subtotal"><span>${tr('Tovarlar summasi', 'Сумма товаров')}</span><b id="checkout-subtotal"></b></div>
                   <div class="fc-checkout-summary-delivery"><span>${tr('Yetkazib berish narxi', 'Стоимость доставки')}</span><b id="checkout-delivery-fee"></b></div>
                   <div id="checkout-promo-row" class="fc-checkout-summary-discount hidden"><span>${tr('Promo chegirma', 'Скидка по промокоду')}</span><b id="checkout-promo-discount"></b></div>
-                  <div id="checkout-tier-row" class="fc-checkout-summary-discount hidden"><span>${tr('Bosqichli chegirma', 'Ступенчатая скидка')}</span><b id="checkout-tier-discount"></b></div>
+                  <div id="checkout-tier-row" class="fc-checkout-summary-discount hidden"><span>${tr('Chegirma', 'Скидка')}</span><b id="checkout-tier-discount"></b></div>
                   <div id="checkout-vip-row" class="fc-checkout-summary-discount hidden"><span>${tr('Shaxsiy chegirma', 'Персональная скидка')}</span><b id="checkout-vip-discount"></b></div>
                   <div class="fc-checkout-summary-total"><span>${tr("Hozir to'lanadigan jami", 'Итого к оплате сейчас')}</span><strong id="checkout-payable-total"></strong></div>
                 </section>
@@ -14120,7 +14316,11 @@
       // birinchi kirishda xavfsiz umumiy nom ishlatiladi.
       let cachedBrand = null;
       try { cachedBrand = JSON.parse(localStorage.getItem(BOOT_BRAND_CACHE_KEY) || 'null'); } catch (_) {}
-      const cachedShopName = String(cachedBrand?.name || 'UStorE').trim();
+      // 1-band: birinchi kirishda (cache hali yo'q) statik brend nomi
+      // ("UStorE") emas — neytral "Do'kon" so'zi ko'rsatiladi, shopDisplayName()
+      // fallback konvensiyasi bilan bir xil. Haqiqiy nom bootData kelgach
+      // darhol (header orqali) ko'rinadi.
+      const cachedShopName = String(cachedBrand?.name || tr("Do'kon", 'Магазин')).trim();
       document.getElementById('app-content').innerHTML = `<div class="fc-boot-welcome" role="status">
         <div class="fc-boot-welcome-mark">U</div>
         <h2>${escapeHtml(cachedShopName)} ${tr("do'koniga xush kelibsiz!", '— добро пожаловать!')}</h2>

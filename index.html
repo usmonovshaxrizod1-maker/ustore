@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=62">
+  <link rel="stylesheet" href="./ustore.css?v=63">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -26,14 +26,16 @@
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=6"></script>
   <script defer src="./config.public.js?v=1"></script>
-  <script defer src="./ustore-shop-app.js?v=62"></script>
+  <script defer src="./ustore-shop-app.js?v=63"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
 
   <!-- HEADER -->
   <header class="ustore-topbar bg-white sticky top-0 z-40 px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center space-x-2">
-      <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400"></span>
+    <div class="flex items-center space-x-2 min-w-0">
+      <img id="header-shop-logo" class="hidden w-7 h-7 rounded-lg object-cover border border-gray-200 shrink-0" alt="">
+      <span id="header-shop-name" class="hidden font-bold text-sm text-gray-800 truncate max-w-[8.5rem]"></span>
+      <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400 shrink-0"></span>
     </div>
     <div class="flex items-center space-x-2">
       <button onclick="switchTab('cart')" class="relative p-2 bg-gray-100 rounded-full" id="header-cart-btn" aria-label="Savatcha" title="Savatcha">

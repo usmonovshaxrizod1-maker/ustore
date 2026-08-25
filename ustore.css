@@ -2597,6 +2597,12 @@ html{scroll-padding-top:calc(var(--ustore-header-height) + var(--ustore-home-sti
 .fc-product-pin-overlay,.fc-product-more-overlay,.fc-product-drag-image,.fc-product-visibility-overlay,.fc-banner-home-drag{z-index:var(--ustore-layer-inline-action)!important}
 .fc-banner-strip{margin-bottom:1.15rem!important}
 #products-grid{position:relative;z-index:var(--ustore-layer-content)}
+/* 15-band spec, 5-band: gorizontal katalog qatori (.fc-cat-nav-row, sticky
+   bar ichida) va undan keyingi banner/mahsulotlar orasi juda yopishib
+   qolgan edi — sticky bar pastki margin'i 0 edi (2589-qator), faqat
+   space-y-4'ning 1rem'iga tayanardi. Kichik, lekin sezilarli qo'shimcha
+   bo'shliq (layout qayta qurilmadi, faqat spacing). */
+.fc-home-sticky-bar{margin-bottom:.6rem!important}
 
 button,a,input,select,textarea{min-width:0}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid color-mix(in srgb,var(--ustore-primary) 38%,transparent);outline-offset:2px}
@@ -2746,6 +2752,20 @@ html,body,#app,#app-content,#page-container{width:100%;max-width:100%;min-width:
 
 /* Savatdagi barcha amaldagi chegirmalar va faqat yaqin tier eslatmasi. */
 .fc-cart-price-summary{display:flex;flex-direction:column;gap:.42rem}.fc-cart-price-summary>div{display:flex;align-items:center;justify-content:space-between;gap:.7rem;color:var(--ustore-secondary-text,#64748b);font-size:.62rem;font-weight:750}.fc-cart-price-summary>div b{color:var(--ustore-success,#16a34a);font-weight:900}.fc-cart-price-summary .is-total{padding-top:.48rem;border-top:1px solid var(--ustore-border,#e2e8f0);color:var(--ustore-text,#0f172a);font-size:.85rem;font-weight:950}.fc-cart-price-summary .is-total strong{color:var(--ustore-success,#16a34a);font-size:1rem}
+.fc-cart-discount-why{font-weight:600;color:var(--ustore-muted-text,#94a3b8);font-size:.58rem}
+/* 15-band spec, 11-band: checkout/savatchada oldindan ko'rinadigan sovg'a kartasi. */
+.fc-cart-gift-card{display:flex;align-items:center;gap:.65rem;padding:.75rem .9rem;border-radius:1rem;border:1px solid color-mix(in srgb,var(--ustore-success,#16a34a) 30%,var(--ustore-border,#e2e8f0));background:color-mix(in srgb,var(--ustore-success,#16a34a) 8%,var(--ustore-card-bg,#fff))}
+.fc-cart-gift-icon{width:2.35rem;height:2.35rem;border-radius:.75rem;display:flex;align-items:center;justify-content:center;background:var(--ustore-success,#16a34a);color:#fff;flex-shrink:0}
+.fc-cart-gift-label{font-size:.58rem;font-weight:800;color:var(--ustore-success,#16a34a);text-transform:uppercase;letter-spacing:.03em}
+.fc-cart-gift-name{font-size:.74rem;font-weight:750;color:var(--ustore-text,#1f2937);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:.08rem}
+/* 15-band spec, 15-band: banner "Vitrina" — 5 ta aniq slot. */
+.fc-banner-slots-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem}
+.fc-banner-slot{position:relative;aspect-ratio:3/4;border-radius:.7rem;overflow:hidden}
+.fc-banner-slot.is-empty{border:1.5px dashed var(--ustore-border,#e2e8f0);background:var(--ustore-panel-bg,#f8fafc);display:flex;align-items:center;justify-content:center;color:var(--ustore-muted-text,#94a3b8)}
+.fc-banner-slot.is-empty:active{background:color-mix(in srgb,var(--ustore-primary,#2563eb) 8%,var(--ustore-panel-bg,#f8fafc))}
+.fc-banner-slot.is-filled img{width:100%;height:100%;object-fit:cover;display:block}
+.fc-banner-slot-swap{position:absolute;right:.15rem;bottom:.15rem;width:1.4rem;height:1.4rem;border-radius:999px;background:rgba(15,23,42,.72);color:#fff;display:flex;align-items:center;justify-content:center;border:0}
+.fc-banner-slot-swap:active{background:rgba(15,23,42,.9)}
 .fc-cart-tier-progress{padding:.68rem .72rem;border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 24%,var(--ustore-border,#e2e8f0));border-radius:.9rem;background:color-mix(in srgb,var(--ustore-primary,#2563eb) 6%,var(--ustore-card-bg,#fff))}.fc-cart-tier-progress>div{display:flex;align-items:center;justify-content:space-between;gap:.5rem;font-size:.6rem;font-weight:900;color:var(--ustore-text,#0f172a)}.fc-cart-tier-progress>div b{color:var(--ustore-primary,#2563eb)}.fc-cart-tier-progress p{margin:.3rem 0 .48rem;color:var(--ustore-secondary-text,#64748b);font-size:.56rem;line-height:1.4;font-weight:700}.fc-cart-tier-progress>span{display:block;width:100%;height:.32rem;border-radius:999px;overflow:hidden;background:color-mix(in srgb,var(--ustore-primary,#2563eb) 12%,var(--ustore-border,#e2e8f0))}.fc-cart-tier-progress>span i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--ustore-primary,#2563eb),#60a5fa);transition:width .2s ease}
 .fc-cart-discount-loading{display:flex;align-items:center;gap:.42rem;color:var(--ustore-secondary-text,#64748b);font-size:.55rem;font-weight:750}.fc-cart-discount-loading i{width:.75rem;height:.75rem;border:2px solid var(--ustore-border,#e2e8f0);border-top-color:var(--ustore-primary,#2563eb);border-radius:50%;animation:fc-spin .7s linear infinite}
 
