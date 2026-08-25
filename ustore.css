@@ -1491,6 +1491,30 @@ input.border:focus, textarea.border:focus, select.border:focus {
 }
 /* 44-band: Telegram WebView top xavfsiz zonasi (notch/status bar) hisobga olinadi. */
 .ustore-topbar { padding-top: max(.75rem, env(safe-area-inset-top)) !important; }
+
+/* Header logotipi — do'kon nomi matni olib tashlangach, do'konni FAQAT
+   logotip bildiradi, shuning uchun u QIRQILMASDAN to'liq ko'rinishi kerak.
+   Bu qoida ataylab utility klasslarga (max-w-[...] kabi) tayanmaydi:
+   ustore.css qo'lda yozilgan va unda ixtiyoriy-qiymatli Tailwind klasslari
+   YO'Q — ular jimgina ishlamay qo'yardi (shu fayldagi 1550-qator izohi ham
+   aynan shu haqda ogohlantiradi).
+     - balandlik qatorga qat'iy moslangan (logotip header'dan chiqmaydi),
+     - eni logotipning o'z nisbatiga qarab avtomatik (cho'zilmaydi/qisilmaydi),
+     - max-width esa juda keng (masalan 10:1) logotip ADMIN/STORE belgisini
+       ekrandan surib yubormasligini kafolatlaydi,
+     - object-fit: contain — chekkalari kesilmaydi. */
+.ustore-header-logo {
+  height: 28px;
+  width: auto;
+  max-width: 132px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+/* Tor telefonlarda (360px atrofida) ADMIN belgisi va o'ng tomondagi
+   tugmalarga joy qolishi uchun logotip biroz torroq. */
+@media (max-width: 380px) {
+  .ustore-header-logo { max-width: 96px; }
+}
 /* Global header (brend, admin/user, til/profil/sozlamalar) hech qachon
    yopilib qolmasin — #page-container ("Do'kon sozlamalari",
    "Qo'llab-quvvatlash" kabi to'liq ichki sahifalar) undan PASTDA boshlanadi,
@@ -1734,6 +1758,28 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 
 /* 1/3-band: bottom-nav "Qo'llab-quvvatlash" tugmasidagi o'qilmagan-xabar nuqtasi */
 .nav-btn { position: relative; }
+/* Savatchadagi mahsulot soni — pastki menyudagi tugma ustida. Header'dagi
+   takroriy savatcha tugmasi olib tashlangach shu yerga ko'chirildi.
+   ATAYLAB utility klasslarsiz, aniq qoida bilan yozilgan: bu loyihada
+   haqiqiy Tailwind yo'q, shuning uchun `-top-1`/`w-4` kabi klasslar
+   mavjud bo'lmasa jimgina ishlamay qolardi. */
+.ustore-nav-cart-badge {
+  position: absolute;
+  top: -2px;
+  right: 18%;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: var(--fc-danger, #dc2626);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+.ustore-nav-cart-badge.hidden { display: none; }
+
 .fc-nav-dot { position: absolute; top: -1px; right: 22%; width: 9px; height: 9px; border-radius: 9999px; background: var(--fc-danger); border: 1.5px solid #fff; }
 
 /* ============================================================
@@ -2750,9 +2796,56 @@ html,body,#app,#app-content,#page-container{width:100%;max-width:100%;min-width:
 /* Marketing bo'limlari telefonlarda doim tagma-tag. */
 .fc-marketing-hub-grid{display:flex!important;flex-direction:column!important;gap:.55rem!important}
 
+/* Marketing formalaridagi yoqish/o'chirish qatorlari (promo-kod, aksiya,
+   bosqichli chegirma).
+   MUAMMO EDI: `.fc-settings-toggle-row` HTML'da ishlatilardi, lekin bu
+   faylda umuman TA'RIFLANMAGAN edi — natijada qatorlar butunlay stilsiz
+   chiqib, sarlavha/izoh/tumbler bir-biriga yopishib ketardi va qaysi
+   tumbler qaysi sozlamaga tegishli ekani bilinmasdi. (Xuddi shu sinf xato
+   header logotipida ham bor edi — bu loyihada HAQIQIY Tailwind yo'q,
+   shuning uchun har bir klass shu faylda aniq yozilishi shart.)
+   Uslub `.fc-selection-launch` bilan bir xil tilda: chegarali karta,
+   chapda sarlavha + kichik izoh, o'ngda tumbler. */
+.fc-settings-toggle-row {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  padding: .6rem .72rem;
+  border: 1px solid var(--ustore-border, #e2e8f0);
+  border-radius: .9rem;
+  background: var(--ustore-card-bg, #fff);
+  text-align: left;
+  cursor: pointer;
+}
+.fc-settings-toggle-row > span:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+.fc-settings-toggle-row b { font-size: .65rem; font-weight: 800; line-height: 1.25; }
+.fc-settings-toggle-row small {
+  font-size: .52rem;
+  line-height: 1.4;
+  color: var(--ustore-secondary-text, #64748b);
+}
+/* Yoqilgan holat ko'zga tashlanib tursin — admin bir qarashda qaysi
+   sozlama faol ekanini ko'radi. */
+.fc-settings-toggle-row:has(input:checked) {
+  border-color: var(--ustore-primary, #2563eb);
+  background: color-mix(in srgb, var(--ustore-primary, #2563eb) 6%, var(--ustore-card-bg, #fff));
+}
+
 /* Savatdagi barcha amaldagi chegirmalar va faqat yaqin tier eslatmasi. */
 .fc-cart-price-summary{display:flex;flex-direction:column;gap:.42rem}.fc-cart-price-summary>div{display:flex;align-items:center;justify-content:space-between;gap:.7rem;color:var(--ustore-secondary-text,#64748b);font-size:.62rem;font-weight:750}.fc-cart-price-summary>div b{color:var(--ustore-success,#16a34a);font-weight:900}.fc-cart-price-summary .is-total{padding-top:.48rem;border-top:1px solid var(--ustore-border,#e2e8f0);color:var(--ustore-text,#0f172a);font-size:.85rem;font-weight:950}.fc-cart-price-summary .is-total strong{color:var(--ustore-success,#16a34a);font-size:1rem}
 .fc-cart-discount-why{font-weight:600;color:var(--ustore-muted-text,#94a3b8);font-size:.58rem}
+/* 042-band: shaxsiy (VIP) chegirma qatoridagi checkbox — savat va checkout
+   ikkalasida ham bir xil ko'rinish uchun. */
+.fc-cart-vip-discount-row label,.fc-checkout-vip-check{display:flex;align-items:center;gap:.4rem;cursor:pointer;min-width:0}
+.fc-cart-vip-discount-row input,.fc-checkout-vip-check input{flex-shrink:0;width:1rem;height:1rem;accent-color:var(--ustore-primary,#2563eb)}
 /* 15-band spec, 11-band: checkout/savatchada oldindan ko'rinadigan sovg'a kartasi. */
 .fc-cart-gift-card{display:flex;align-items:center;gap:.65rem;padding:.75rem .9rem;border-radius:1rem;border:1px solid color-mix(in srgb,var(--ustore-success,#16a34a) 30%,var(--ustore-border,#e2e8f0));background:color-mix(in srgb,var(--ustore-success,#16a34a) 8%,var(--ustore-card-bg,#fff))}
 .fc-cart-gift-icon{width:2.35rem;height:2.35rem;border-radius:.75rem;display:flex;align-items:center;justify-content:center;background:var(--ustore-success,#16a34a);color:#fff;flex-shrink:0}
