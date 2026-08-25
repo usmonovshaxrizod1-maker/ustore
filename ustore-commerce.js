@@ -9,7 +9,7 @@
 
   const VERSION = 1;
   const DELIVERY_KINDS = Object.freeze(['FREE', 'FIXED', 'TAXI', 'POST']);
-  const PAYMENT_IDS = Object.freeze(['CASH', 'CARD', 'QR', 'CLICK']);
+  const PAYMENT_IDS = Object.freeze(['CASH', 'CARD', 'QR', 'CLICK', 'PAYME', 'UZUM']);
   const POST_PROVIDER_IDS = Object.freeze(['BTS', 'EMU', 'OTHER']);
   // 17-band: qattiq belgilangan (yopiq) QR provayderlar ro'yxati — kelajakda
   // kengaytirishga mos, lekin hozircha faqat shu to'rttasi.
@@ -54,6 +54,9 @@
           { id: 'QR', name: 'QR orqali', enabled: false, regions: {}, providers: QR_PROVIDER_IDS.map(id => ({ id, name: QR_PROVIDER_NAMES[id], enabled: false, qrImageUrl: null, paymentUrl: null })) },
           // Click.uz avtomatik to'lov — mavjud "QR: Click" (qo'lda)dan mustaqil.
           { id: 'CLICK', name: "Click orqali (avtomatik)", enabled: false, regions: {} },
+          // Payme/Uzum avtomatik to'lov — CLICK bilan bir xil naqsh.
+          { id: 'PAYME', name: "Payme orqali (avtomatik)", enabled: false, regions: {} },
+          { id: 'UZUM', name: "Uzum orqali (avtomatik)", enabled: false, regions: {} },
         ],
       },
     };

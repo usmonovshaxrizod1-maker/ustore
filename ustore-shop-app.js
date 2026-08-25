@@ -736,6 +736,11 @@
     // ruxsat-darvoza naqshi (platforma bosh admin ruxsat berganda true).
     let clickAccessGranted = false;
     let clickConnectionStatus = null; // {status, merchantId, serviceId}
+    // Payme/Uzum avtomatik to'lov integratsiyasi — Click bilan bir xil naqsh.
+    let paymeAccessGranted = false;
+    let paymeConnectionStatus = null; // {status, merchantId, login}
+    let uzumAccessGranted = false;
+    let uzumConnectionStatus = null; // {status, terminalId}
     // Billz Phase 2 — katalog ko'rish/import holati.
     let billzBrowseCategories = null; // Billz'ning o'z kategoriya daraxti
     let billzBrowseSelectedCatId = ''; // hozir ko'rilayotgan Billz kategoriyasi
@@ -3902,6 +3907,12 @@
           ${clickAccessGranted ? `
             <button type="button" onclick="openClickSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">💳 Click</span><span>›</span></button>
           ` : ''}
+          ${paymeAccessGranted ? `
+            <button type="button" onclick="openPaymeSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">💳 Payme</span><span>›</span></button>
+          ` : ''}
+          ${uzumAccessGranted ? `
+            <button type="button" onclick="openUzumSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">💳 Uzum</span><span>›</span></button>
+          ` : ''}
         </div>
       `;
       renderPageShell(container, tr("Do'kon sozlamalari", 'Настройки магазина'), body);
@@ -5834,6 +5845,14 @@
               <p class="font-bold text-slate-800 flex items-center justify-center gap-1.5"><i data-lucide="zap" class="w-4 h-4 text-blue-600"></i>${tr("Click orqali avtomatik to'lov", "Автоматическая оплата через Click")}</p>
               <p class="text-[11px] text-blue-700">${tr("Buyurtmani yuborganingizdan so'ng, to'lov so'rovi Click ilovangizga yuboriladi. To'lov tasdiqlanishi bilan buyurtma avtomatik qabul qilinadi — chek yuklash shart emas.", "После отправки заказа запрос на оплату придёт в ваше приложение Click. После подтверждения оплаты заказ будет принят автоматически — чек загружать не нужно.")}</p>
             </div>`;
+        } else if (selectedPayment?.id === 'PAYME' || selectedPayment?.id === 'UZUM') {
+          const providerName = selectedPayment.id === 'PAYME' ? 'Payme' : 'Uzum';
+          cardDetails.classList.remove('hidden');
+          cardDetails.innerHTML = `
+            <div class="fc-checkout-info-card space-y-1 text-center">
+              <p class="font-bold text-slate-800 flex items-center justify-center gap-1.5"><i data-lucide="zap" class="w-4 h-4 text-blue-600"></i>${tr(`${providerName} orqali avtomatik to'lov`, `Автоматическая оплата через ${providerName}`)}</p>
+              <p class="text-[11px] text-blue-700">${tr("Buyurtmani yuborganingizdan so'ng, to'lov sahifasiga yo'naltirilasiz. To'lov tasdiqlanishi bilan buyurtma avtomatik qabul qilinadi — chek yuklash shart emas.", "После отправки заказа вы перейдёте на страницу оплаты. После подтверждения оплаты заказ будет принят автоматически — чек загружать не нужно.")}</p>
+            </div>`;
         } else {
           cardDetails.classList.add('hidden');
           cardDetails.innerHTML = '';
@@ -6057,7 +6076,11 @@
         checkoutBranchesLoadedFor = null;
         checkoutDistrictOptions = [];
         checkoutDistrictOptionsLoadedFor = null;
-        openOrderSuccessCelebration(newOrder.id, selectedPayment.id === 'CLICK');
+        const autoPayInfo = selectedPayment.id === 'CLICK' ? { kind: 'CLICK' }
+          : selectedPayment.id === 'PAYME' && newOrder.payment?.paymeCheckoutUrl ? { kind: 'PAYME', url: newOrder.payment.paymeCheckoutUrl }
+          : selectedPayment.id === 'UZUM' && newOrder.payment?.uzumPaymentUrl ? { kind: 'UZUM', url: newOrder.payment.uzumPaymentUrl }
+          : null;
+        openOrderSuccessCelebration(newOrder.id, autoPayInfo);
       } catch (e) {
         console.error(e);
         if (String(e.message).includes('insufficient_stock')) {
@@ -6084,8 +6107,11 @@
       }
     }
 
-    function openOrderSuccessCelebration(orderId, isClickPayment) {
+    function openOrderSuccessCelebration(orderId, autoPayInfo) {
       selectedProductModal = null;
+      const isClickPayment = autoPayInfo?.kind === 'CLICK';
+      const payUrl = (autoPayInfo?.kind === 'PAYME' || autoPayInfo?.kind === 'UZUM') ? autoPayInfo.url : null;
+      const providerName = autoPayInfo?.kind === 'PAYME' ? 'Payme' : autoPayInfo?.kind === 'UZUM' ? 'Uzum' : '';
       document.getElementById('modal-container').innerHTML = `
         <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div class="bg-white rounded-3xl p-6 text-center max-w-sm w-full space-y-4 shadow-2xl">
@@ -6093,13 +6119,17 @@
             <h3 class="text-xl font-black text-gray-900">${tr("Buyurtmangiz qabul qilindi!", "Ваш заказ принят!")}</h3>
             <p class="text-xs text-gray-500">${tr("Buyurtma ID:", "ID заказа:")} <b class="text-blue-600">#${orderId}</b>${isClickPayment
               ? tr(". To'lov so'rovi Click ilovangizga yuborildi — to'lovni shu yerda tasdiqlang.", ". Запрос на оплату отправлен в ваше приложение Click — подтвердите оплату там.")
-              : tr(`. ${escapeHtml(shopDisplayName())} mutaxassislari tez orada siz bilan bog'lanishadi.`, `. Специалисты ${escapeHtml(shopDisplayName())} скоро свяжутся с вами.`)}</p>
-            <button onclick="document.getElementById('modal-container').innerHTML=''; switchTab('orders');" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs">
+              : payUrl
+                ? tr(`. ${providerName} orqali to'lash uchun pastdagi tugmani bosing.`, `. Нажмите кнопку ниже, чтобы оплатить через ${providerName}.`)
+                : tr(`. ${escapeHtml(shopDisplayName())} mutaxassislari tez orada siz bilan bog'lanishadi.`, `. Специалисты ${escapeHtml(shopDisplayName())} скоро свяжутся с вами.`)}</p>
+            ${payUrl ? `<button onclick="openSafeExternalUrl('${escapeHtml(payUrl)}')" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl text-xs"><i data-lucide="external-link" class="w-4 h-4 inline"></i> ${tr(`${providerName} orqali to'lash`, `Оплатить через ${providerName}`)}</button>` : ''}
+            <button onclick="document.getElementById('modal-container').innerHTML=''; switchTab('orders');" class="w-full ${payUrl ? 'bg-gray-100 text-gray-700' : 'bg-blue-600 text-white'} font-bold py-3 rounded-xl text-xs">
               ${tr("📦 Buyurtmalarda ko\'rish", "📦 Посмотреть в заказах")}
             </button>
           </div>
         </div>
       `;
+      if (payUrl && window.lucide) lucide.createIcons();
     }
 
     // 4. ORDERS TAB (USER & ADMIN)
@@ -8284,7 +8314,9 @@
       // CLICK — faqat platforma ruxsat bergan do'konlarda ko'rinadi (Billz
       // bilan bir xil naqsh); ruxsatsiz do'kon uchun ishlatib bo'lmaydigan
       // tugmani ko'rsatib chalkashtirmaslik uchun ro'yxatdan olib tashlanadi.
-      const methods = fulfillmentDraft.payments.methods.filter(m => m.id !== 'CLICK' || clickAccessGranted);
+      const methods = fulfillmentDraft.payments.methods.filter(m =>
+        (m.id !== 'CLICK' || clickAccessGranted) && (m.id !== 'PAYME' || paymeAccessGranted) && (m.id !== 'UZUM' || uzumAccessGranted)
+      );
       return `<div class="space-y-3">
         <div class="fc-payment-method-grid">${methods.map(m => `
           <button type="button" onclick="setFulfillmentExpandedPayment('${m.id}')" class="fc-payment-method-card ${fulfillmentExpandedPayment === m.id ? 'is-active' : ''}">
@@ -11000,6 +11032,97 @@
       }
     }
 
+    // Payme avtomatik to'lov integratsiyasi — Click bilan bir xil naqsh.
+    async function openPaymeSettings() {
+      activePopupModal = 'PAYME_SETTINGS';
+      paymeConnectionStatus = null;
+      render();
+      try {
+        paymeConnectionStatus = await callApi('payme_get_status', {});
+      } catch (e) {
+        console.error(e);
+        paymeConnectionStatus = { status: 'DISCONNECTED', merchantId: null, login: null };
+      }
+      if (activePopupModal === 'PAYME_SETTINGS') render();
+    }
+    async function connectPayme() {
+      const merchantId = document.getElementById('payme-merchant-id-input')?.value.trim();
+      const login = document.getElementById('payme-login-input')?.value.trim();
+      const password = document.getElementById('payme-password-input')?.value.trim();
+      if (!merchantId || !login || !password) return alert(tr("Barcha maydonlarni to'ldiring.", "Заполните все поля."));
+      const btn = document.getElementById('payme-connect-btn');
+      if (btn) { btn.disabled = true; btn.textContent = tr("Ulanmoqda...", "Подключение..."); }
+      try {
+        await callApi('payme_connect', { merchantId, login, password });
+        paymeConnectionStatus = { status: 'CONNECTED', merchantId, login };
+        showActionToast(tr("✅ Ulandi", "✅ Подключено"), 'success', 1500);
+        render();
+      } catch (e) {
+        console.error(e);
+        alert(tr("Ulab bo'lmadi: ", "Не удалось подключить: ") + (e.message || e));
+        await openPaymeSettings();
+      }
+    }
+    async function disconnectPayme() {
+      if (!confirm(tr("Payme ulanishini uzmoqchimisiz?", "Отключить интеграцию с Payme?"))) return;
+      showActionToast(tr("⏳ ...", "⏳ ..."), 'saving');
+      try {
+        await callApi('payme_disconnect', {});
+        paymeConnectionStatus = { status: 'DISCONNECTED', merchantId: null, login: null };
+        showActionToast(tr("✅ Uzildi", "✅ Отключено"), 'success', 1200);
+        render();
+      } catch (e) {
+        console.error(e);
+        showActionToast(tr("❌ Xatolik", "❌ Ошибка"), 'error', 1800);
+        alert(e.message || String(e));
+      }
+    }
+
+    // Uzum Checkout avtomatik to'lov integratsiyasi — Click/Payme bilan bir xil naqsh.
+    async function openUzumSettings() {
+      activePopupModal = 'UZUM_SETTINGS';
+      uzumConnectionStatus = null;
+      render();
+      try {
+        uzumConnectionStatus = await callApi('uzum_get_status', {});
+      } catch (e) {
+        console.error(e);
+        uzumConnectionStatus = { status: 'DISCONNECTED', terminalId: null };
+      }
+      if (activePopupModal === 'UZUM_SETTINGS') render();
+    }
+    async function connectUzum() {
+      const terminalId = document.getElementById('uzum-terminal-id-input')?.value.trim();
+      const apiKey = document.getElementById('uzum-api-key-input')?.value.trim();
+      if (!terminalId || !apiKey) return alert(tr("Barcha maydonlarni to'ldiring.", "Заполните все поля."));
+      const btn = document.getElementById('uzum-connect-btn');
+      if (btn) { btn.disabled = true; btn.textContent = tr("Ulanmoqda...", "Подключение..."); }
+      try {
+        await callApi('uzum_connect', { terminalId, apiKey });
+        uzumConnectionStatus = { status: 'CONNECTED', terminalId };
+        showActionToast(tr("✅ Ulandi", "✅ Подключено"), 'success', 1500);
+        render();
+      } catch (e) {
+        console.error(e);
+        alert(tr("Ulab bo'lmadi: ", "Не удалось подключить: ") + (e.message || e));
+        await openUzumSettings();
+      }
+    }
+    async function disconnectUzum() {
+      if (!confirm(tr("Uzum ulanishini uzmoqchimisiz?", "Отключить интеграцию с Uzum?"))) return;
+      showActionToast(tr("⏳ ...", "⏳ ..."), 'saving');
+      try {
+        await callApi('uzum_disconnect', {});
+        uzumConnectionStatus = { status: 'DISCONNECTED', terminalId: null };
+        showActionToast(tr("✅ Uzildi", "✅ Отключено"), 'success', 1200);
+        render();
+      } catch (e) {
+        console.error(e);
+        showActionToast(tr("❌ Xatolik", "❌ Ошибка"), 'error', 1800);
+        alert(e.message || String(e));
+      }
+    }
+
     // Billz Phase 2: katalog ko'rish/import qilish -----------------------------
     // "Billz" umumiy menyusi va har katalogdagi "B" tugmasi bir xil sahifani
     // ochadi — farqi faqat billzImportTargetCategoryId oldindan to'ldirilishida
@@ -12055,6 +12178,61 @@
                 <button onclick="disconnectClick()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
               `}
               <button onclick="activePopupModal=null; clickConnectionStatus=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (activePopupModal === 'PAYME_SETTINGS') {
+        const pst = paymeConnectionStatus;
+        const isPaymeConnected = pst?.status === 'CONNECTED';
+        const isPaymeLoading = pst === null;
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">💳 Payme</h3>
+              ${isPaymeLoading ? `
+                <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
+              ` : !isPaymeConnected ? `
+                <p class="text-gray-500">${tr("Payme Business kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Payme Business — заказ будет подтверждаться автоматически после оплаты.")}</p>
+                <input type="text" id="payme-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="w-full p-2 border rounded-xl font-mono">
+                <input type="text" id="payme-login-input" autocomplete="off" placeholder="Login" class="w-full p-2 border rounded-xl font-mono">
+                <input type="password" id="payme-password-input" autocomplete="off" placeholder="Password" class="w-full p-2 border rounded-xl font-mono">
+                <button onclick="connectPayme()" id="payme-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
+              ` : `
+                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
+                <p class="text-gray-500">${tr("Endi \"To'lov sozlamalari\"da \"Payme orqali (avtomatik)\" metodini yoqishingiz mumkin.", "Теперь вы можете включить метод \"Payme (автоматически)\" в настройках оплаты.")}</p>
+                <button onclick="disconnectPayme()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
+              `}
+              <button onclick="activePopupModal=null; paymeConnectionStatus=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (activePopupModal === 'UZUM_SETTINGS') {
+        const ust = uzumConnectionStatus;
+        const isUzumConnected = ust?.status === 'CONNECTED';
+        const isUzumLoading = ust === null;
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">💳 Uzum</h3>
+              ${isUzumLoading ? `
+                <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
+              ` : !isUzumConnected ? `
+                <p class="text-gray-500">${tr("Uzum Bank hamkorlik kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего партнёрского кабинета Uzum Bank — заказ будет подтверждаться автоматически после оплаты.")}</p>
+                <input type="text" id="uzum-terminal-id-input" autocomplete="off" placeholder="Terminal ID" class="w-full p-2 border rounded-xl font-mono">
+                <input type="password" id="uzum-api-key-input" autocomplete="off" placeholder="API Key" class="w-full p-2 border rounded-xl font-mono">
+                <button onclick="connectUzum()" id="uzum-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
+              ` : `
+                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
+                <p class="text-gray-500">${tr("Endi \"To'lov sozlamalari\"da \"Uzum orqali (avtomatik)\" metodini yoqishingiz mumkin.", "Теперь вы можете включить метод \"Uzum (автоматически)\" в настройках оплаты.")}</p>
+                <button onclick="disconnectUzum()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
+              `}
+              <button onclick="activePopupModal=null; uzumConnectionStatus=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
             </div>
           </div>
         `;
@@ -14361,6 +14539,8 @@
         shopLowStockThreshold = Number.isFinite(Number(bootData.lowStockThreshold)) ? Number(bootData.lowStockThreshold) : 5;
         billzAccessGranted = bootData.billzAccessGranted === true;
         clickAccessGranted = bootData.clickAccessGranted === true;
+        paymeAccessGranted = bootData.paymeAccessGranted === true;
+        uzumAccessGranted = bootData.uzumAccessGranted === true;
         mySubscribedProductIds = new Set((bootData.mySubscribedProductIds || []).map(String));
         ordersPaused = bootData.ordersPaused === true;
         ordersPausedNote = bootData.ordersPausedNote || '';
