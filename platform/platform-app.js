@@ -1318,6 +1318,18 @@
             ${s.clickAccessGranted ? '✅ Ruxsat berilgan' : '— Ruxsat berilmagan'}
           </button>
         </div>
+        <div class="plat-mini-row">
+          <span>PAYME</span>
+          <button class="billz-toggle-btn status-pill ${s.paymeAccessGranted ? 'status-ACTIVE' : ''}" onclick="togglePaymeAccess('${s.id}', ${!s.paymeAccessGranted})">
+            ${s.paymeAccessGranted ? '✅ Ruxsat berilgan' : '— Ruxsat berilmagan'}
+          </button>
+        </div>
+        <div class="plat-mini-row">
+          <span>UZUM</span>
+          <button class="billz-toggle-btn status-pill ${s.uzumAccessGranted ? 'status-ACTIVE' : ''}" onclick="toggleUzumAccess('${s.id}', ${!s.uzumAccessGranted})">
+            ${s.uzumAccessGranted ? '✅ Ruxsat berilgan' : '— Ruxsat berilmagan'}
+          </button>
+        </div>
       </div>
       ${renderLifecycleControlsCard(s)}
     `;
@@ -1491,6 +1503,23 @@
   async function toggleClickAccess(shopId, enable) {
     try {
       await callPlatformApi('platform_set_click_access', { shopId, enabled: enable });
+      await reloadAdminShops();
+      selectedShopDetails = adminShops.find((s) => s.id === shopId) || selectedShopDetails;
+      render();
+    } catch (e) { alert(e.message || String(e)); }
+  }
+  // Payme/Uzum avtomatik to'lov integratsiyasi — aynan bir xil naqsh.
+  async function togglePaymeAccess(shopId, enable) {
+    try {
+      await callPlatformApi('platform_set_payme_access', { shopId, enabled: enable });
+      await reloadAdminShops();
+      selectedShopDetails = adminShops.find((s) => s.id === shopId) || selectedShopDetails;
+      render();
+    } catch (e) { alert(e.message || String(e)); }
+  }
+  async function toggleUzumAccess(shopId, enable) {
+    try {
+      await callPlatformApi('platform_set_uzum_access', { shopId, enabled: enable });
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || selectedShopDetails;
       render();
@@ -1756,6 +1785,8 @@
   window.submitTerminateShop = submitTerminateShop;
   window.toggleBillzAccess = toggleBillzAccess;
   window.toggleClickAccess = toggleClickAccess;
+  window.togglePaymeAccess = togglePaymeAccess;
+  window.toggleUzumAccess = toggleUzumAccess;
   // 4.4/4.5-band: Yordam bo'limi
   window.openSupportPage = openSupportPage;
   window.submitNewSupportMessage = submitNewSupportMessage;
