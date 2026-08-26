@@ -2992,3 +2992,307 @@ html.ustore-dark-theme .fc-bundle-list-cover{background:#17243a}
 .fc-bundle-detail-product-row em{font-style:normal;font-size:.6rem;font-weight:850;color:var(--ustore-text,#1f2937);white-space:nowrap}
 .fc-bundle-detail-product-row:not(:last-child){border-bottom:1px solid color-mix(in srgb,var(--fc-border) 70%,transparent)}
 html.ustore-dark-theme .fc-bundle-detail-product-row img{background:#17243a}
+
+/* ================================================================
+   FINAL MARKETING READABILITY PASS — 2026-08
+   Approved screenshots are dense, but production text must remain readable.
+   Sections stay visually separate with soft borders, never hard black lines.
+   ================================================================ */
+.fc-mkt-pro,.fc-mkt-pro-sheet{--mkt-readable-title:13px;--mkt-readable-body:11.5px;--mkt-readable-meta:10.5px}
+.fc-mkt-pro .fc-staff-intro h3{font-size:13px!important;line-height:1.35!important}
+.fc-mkt-pro .fc-staff-intro p{font-size:11px!important;line-height:1.45!important}
+.fc-mkt-pro .fc-btn,.fc-mkt-pro-sheet .fc-btn{font-size:12px!important;line-height:1.2!important}
+.fc-mkt-pro .fc-badge,.fc-mkt-pro-sheet .fc-badge{font-size:10px!important;line-height:1.2!important}
+.fc-mkt-pro .fc-filter-chip{font-size:11px!important}
+.fc-mkt-pro .fc-order-search-input,.fc-mkt-pro .fc-order-filter-select{font-size:12px!important}
+.fc-mkt-pro .fc-marketing-card b.text-sm,.fc-mkt-pro .fc-marketing-card .font-mono{font-size:13px!important}
+.fc-mkt-pro .fc-marketing-card p.text-xs{font-size:11.5px!important}
+.fc-mkt-pro .fc-marketing-card p.text-\[10px\],.fc-mkt-pro .fc-marketing-card p.text-\[11px\]{font-size:10.5px!important}
+.fc-mkt-pro .fc-discount-pill{font-size:11px!important}
+.fc-mkt-pro-sheet .fc-sheet-title{font-size:14px!important;line-height:1.3!important}
+.fc-mkt-pro-form .fc-form-section-title{font-size:11px!important;line-height:1.3!important;letter-spacing:.03em!important}
+.fc-mkt-pro-form .fc-mini-field>span:first-child{font-size:11px!important}
+.fc-mkt-pro-form input,.fc-mkt-pro-form select,.fc-mkt-pro-form textarea{font-size:13px!important;line-height:1.35!important}
+.fc-mkt-pro-form .fc-tab{font-size:11px!important}
+.fc-mkt-pro-form .fc-settings-toggle-row b,.fc-mkt-pro-form .fc-selection-launch b{font-size:11.5px!important}
+.fc-mkt-pro-form .fc-settings-toggle-row small,.fc-mkt-pro-form .fc-selection-launch small{font-size:10.5px!important}
+.fc-promo-stat p{font-size:10px!important;line-height:1.2!important}.fc-promo-stat b{font-size:17px!important}
+.fc-promo-list-card .font-mono{font-size:14px!important}.fc-promo-list-card p.text-xs{font-size:11px!important}.fc-promo-list-card p.text-\[10px\]{font-size:10px!important}
+.fc-mkt-pro-tiers .fc-marketing-card b.text-sm{font-size:13px!important}.fc-mkt-pro-tiers .fc-marketing-card p{font-size:10.5px!important}
+.fc-mkt-pro-tiers .fc-tier-preview-strip{font-size:10.5px!important;line-height:1.45!important}
+.fc-mkt-pro-tier-detail .fc-tier-step-row b{font-size:12px!important}.fc-mkt-pro-tier-detail .fc-tier-step-num{font-size:10px!important}
+.fc-mkt-pro-tier-form .fc-tier-step-form-row{min-height:58px!important;padding:8px!important;border-color:#d8e2ef!important;background:#fff!important}
+.fc-mkt-pro-tier-form .fc-tier-step-form-row+.fc-tier-step-form-row{margin-top:7px!important}
+.fc-mkt-pro-tier-form .fc-tier-step-unit{font-size:10px!important}
+.fc-mkt-pro-tier-form #tier-preview-diagram>b{font-size:11.5px!important}
+.fc-mkt-pro-banners .fc-banner-list-title b{font-size:12px!important}.fc-mkt-pro-banners .fc-banner-list-title small{font-size:10.5px!important}
+.fc-mkt-pro-bundles .fc-bundle-list-top b{font-size:12.5px!important}.fc-mkt-pro-bundles .fc-bundle-list-meta span{font-size:10.5px!important}
+
+/* Section boundaries: enough contrast to understand structure at a glance. */
+.fc-mkt-pro-form .fc-form-section-title{background:#f6f9fd!important;border-color:#d8e2ef!important;color:#334155!important}
+.fc-mkt-pro-form .fc-mini-field,.fc-mkt-pro-form .fc-settings-toggle-row,.fc-mkt-pro-form .fc-selection-launch{border-color:#dce5f0!important;background:#fff!important}
+.fc-mkt-pro-tier-detail>.fc-card,.fc-mkt-pro-tiers .fc-marketing-card,.fc-promo-list-card,.fc-banner-list-card,.fc-mkt-pro-bundles .fc-bundle-list-card{border-color:#d7e1ed!important}
+.fc-mkt-pro-tier-detail .fc-tier-step-row.has-border{border-top-color:#e1e8f1!important}
+
+@media(max-width:359px){
+  .fc-mkt-pro-form .fc-mini-field>span:first-child,.fc-mkt-pro-form .fc-settings-toggle-row b{font-size:10.5px!important}
+  .fc-mkt-pro-form input,.fc-mkt-pro-form select,.fc-mkt-pro-form textarea{font-size:12px!important}
+}
+
+/* ======================================================================
+   UStorE MARKETING — PROFESSIONAL UI SYSTEM
+   Scope: ONLY 2-, 3-, 4-bosqich marketing screens.
+   Source of truth: approved screenshots + FINAL MD files.
+   Important: selectors are intentionally scoped; platform/other shop UI is
+   not redesigned by this block.
+   ====================================================================== */
+:root{
+  --fc-mkt-border:color-mix(in srgb,var(--ustore-border,#dbe4ef) 90%,#cbd5e1 10%);
+  --fc-mkt-border-soft:color-mix(in srgb,var(--ustore-border,#e2e8f0) 72%,transparent);
+  --fc-mkt-panel:var(--ustore-card-bg,#fff);
+  --fc-mkt-page:var(--ustore-page-bg,#f6f8fc);
+  --fc-mkt-subtle:color-mix(in srgb,var(--ustore-primary,#2563eb) 4%,var(--ustore-card-bg,#fff));
+  --fc-mkt-blue-soft:color-mix(in srgb,var(--ustore-primary,#2563eb) 7%,var(--ustore-card-bg,#fff));
+  --fc-mkt-shadow:0 4px 15px rgba(15,23,42,.045);
+  --fc-mkt-shadow-soft:0 2px 8px rgba(15,23,42,.035);
+  --fc-mkt-radius:1rem;
+}
+
+/* ---------- Shared visual language: ONLY tagged marketing pages ---------- */
+.fc-mkt-pro{display:flex;flex-direction:column;gap:.72rem!important}
+.fc-mkt-pro>.fc-card,
+.fc-mkt-pro .fc-marketing-card,
+.fc-mkt-pro .fc-bundle-list-card,
+.fc-mkt-pro-sheet .fc-card{
+  border:1px solid var(--fc-mkt-border)!important;
+  border-radius:var(--fc-mkt-radius)!important;
+  background:var(--fc-mkt-panel)!important;
+  box-shadow:var(--fc-mkt-shadow)!important;
+}
+.fc-mkt-pro .fc-staff-intro{
+  min-height:4.1rem!important;padding:.78rem .82rem!important;gap:.7rem!important;
+  border:1px solid var(--fc-mkt-border)!important;border-radius:var(--fc-mkt-radius)!important;
+  background:linear-gradient(135deg,var(--fc-mkt-panel),var(--fc-mkt-subtle))!important;
+  box-shadow:var(--fc-mkt-shadow-soft)!important;
+}
+.fc-mkt-pro .fc-staff-intro h3{font-size:.76rem!important;line-height:1.28!important;font-weight:900!important;color:var(--ustore-text,#172033)!important}
+.fc-mkt-pro .fc-staff-intro p{font-size:.54rem!important;line-height:1.42!important;color:var(--ustore-secondary-text,#64748b)!important}
+.fc-mkt-pro .fc-btn,.fc-mkt-pro-sheet .fc-btn{min-height:2.55rem;border-radius:.74rem;font-size:.62rem;font-weight:850}
+.fc-mkt-pro .fc-btn-icon,.fc-mkt-pro-sheet .fc-btn-icon{min-width:2.45rem;width:2.45rem;min-height:2.45rem;height:2.45rem;border-radius:.72rem}
+.fc-mkt-pro .fc-badge,.fc-mkt-pro-sheet .fc-badge{min-height:1.48rem;padding:.12rem .48rem;border-radius:999px;font-size:.49rem!important;font-weight:850!important;white-space:nowrap}
+.fc-mkt-pro .fc-filter-chip{height:2.15rem;padding:0 .7rem;border:1px solid var(--fc-mkt-border);border-radius:999px;font-size:.54rem;font-weight:800;background:var(--fc-mkt-panel);box-shadow:0 1px 2px rgba(15,23,42,.02)}
+.fc-mkt-pro .fc-order-search-input,.fc-mkt-pro .fc-order-filter-select{
+  height:2.55rem!important;min-height:2.55rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.74rem!important;
+  background:var(--fc-mkt-panel)!important;color:var(--ustore-text,#172033)!important;font-size:.6rem!important;box-shadow:0 1px 2px rgba(15,23,42,.02)!important
+}
+.fc-mkt-pro .fc-order-search-input:focus,.fc-mkt-pro .fc-order-filter-select:focus,
+.fc-mkt-pro-sheet input:focus,.fc-mkt-pro-sheet select:focus,.fc-mkt-pro-sheet textarea:focus{
+  outline:none!important;border-color:color-mix(in srgb,var(--ustore-primary,#2563eb) 58%,var(--fc-mkt-border))!important;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--ustore-primary,#2563eb) 10%,transparent)!important
+}
+.fc-mkt-pro hr,.fc-mkt-pro-sheet hr{border:0;border-top:1px solid var(--fc-mkt-border-soft)}
+.fc-mkt-pro .border-b,.fc-mkt-pro-sheet .border-b{border-color:var(--fc-mkt-border-soft)!important}
+
+/* Compact KPI cards — screenshot hierarchy, no giant 2x2 cards on normal phones. */
+.fc-mkt-stat{min-height:4.05rem!important;padding:.48rem .18rem!important;margin:0!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;box-shadow:none!important}
+.fc-mkt-stat p{margin:0!important;font-size:.48rem!important;line-height:1.16!important;text-align:center!important;color:var(--ustore-secondary-text,#64748b)!important}
+.fc-mkt-stat b{display:block!important;margin-top:.22rem!important;font-size:.9rem!important;line-height:1.05!important;font-weight:950!important;color:var(--ustore-text,#172033)!important}
+@media(min-width:360px){
+  .fc-mkt-stats-grid,
+  .fc-mkt-pro-gifts>.grid.grid-cols-2.gap-2,
+  .fc-mkt-pro-personal>.grid.grid-cols-2.gap-2{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:.36rem!important}
+}
+
+/* ---------- Full-page-like admin/detail forms, preserving existing handlers ---------- */
+#fc-banner-preview-root .fc-sheet-overlay,#fc-banner-form-root .fc-sheet-overlay,
+#fc-bundle-preview-root .fc-sheet-overlay,#fc-bundle-form-root .fc-sheet-overlay,
+#fc-promo-preview-root .fc-sheet-overlay,#fc-promo-form-root .fc-sheet-overlay,
+#fc-tier-form-root .fc-sheet-overlay,
+#fc-gift-type-root .fc-sheet-overlay,#fc-coupon-preview-root .fc-sheet-overlay,#fc-coupon-reward-root .fc-sheet-overlay,
+#fc-reward-rule-form-root .fc-sheet-overlay,#fc-reward-preview-root .fc-sheet-overlay,
+#fc-personal-discount-form-root .fc-sheet-overlay,#fc-personal-discount-picker-root .fc-sheet-overlay,
+#fc-personal-offer-root .fc-sheet-overlay{
+  align-items:stretch!important;justify-content:center!important;padding:0!important;background:var(--fc-mkt-page)!important;backdrop-filter:none!important
+}
+#fc-banner-preview-root .fc-sheet,#fc-banner-form-root .fc-sheet,
+#fc-bundle-preview-root .fc-sheet,#fc-bundle-form-root .fc-sheet,
+#fc-promo-preview-root .fc-sheet,#fc-promo-form-root .fc-sheet,
+#fc-tier-form-root .fc-sheet,
+#fc-gift-type-root .fc-sheet,#fc-coupon-preview-root .fc-sheet,#fc-coupon-reward-root .fc-sheet,
+#fc-reward-rule-form-root .fc-sheet,#fc-reward-preview-root .fc-sheet,
+#fc-personal-discount-form-root .fc-sheet,#fc-personal-discount-picker-root .fc-sheet,
+#fc-personal-offer-root .fc-sheet{
+  width:100%!important;max-width:30rem!important;height:100%!important;max-height:none!important;margin:0 auto!important;
+  border-radius:0!important;border-left:1px solid var(--fc-mkt-border)!important;border-right:1px solid var(--fc-mkt-border)!important;
+  background:var(--fc-mkt-page)!important;box-shadow:none!important
+}
+.fc-mkt-pro-sheet .fc-sheet-handle{display:none!important}
+.fc-mkt-pro-sheet .fc-sheet-header{
+  min-height:3.75rem!important;padding:.7rem .9rem!important;background:var(--fc-mkt-panel)!important;border-bottom:1px solid var(--fc-mkt-border)!important;
+  position:sticky!important;top:0!important;z-index:4!important
+}
+.fc-mkt-pro-sheet .fc-sheet-title{font-size:.84rem!important;font-weight:900!important;color:var(--ustore-text,#172033)!important}
+.fc-mkt-pro-sheet .fc-sheet-body{padding:.78rem .82rem 1rem!important;background:var(--fc-mkt-page)!important}
+.fc-mkt-pro-sheet .fc-sheet-footer{
+  padding:.66rem .82rem calc(.66rem + env(safe-area-inset-bottom))!important;background:var(--fc-mkt-panel)!important;border-top:1px solid var(--fc-mkt-border)!important;
+  position:sticky!important;bottom:0!important;z-index:4!important
+}
+
+/* Forms — each section is visually recognizable at first glance. */
+.fc-mkt-pro-form .fc-form-section-title{
+  margin:.78rem 0 .38rem!important;padding:.56rem .64rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.7rem!important;
+  background:var(--fc-mkt-blue-soft)!important;color:var(--ustore-primary,#2563eb)!important;font-size:.57rem!important;font-weight:950!important;letter-spacing:.02em!important
+}
+.fc-mkt-pro-form .fc-form-section-title:first-child{margin-top:0!important}
+.fc-mkt-pro-form .fc-mini-field{display:flex;flex-direction:column;gap:.28rem;padding:.5rem .56rem;border:1px solid var(--fc-mkt-border-soft);border-radius:.72rem;background:var(--fc-mkt-panel)}
+.fc-mkt-pro-form .fc-mini-field>span:first-child{font-size:.53rem!important;line-height:1.3!important;font-weight:800!important;color:var(--ustore-text,#334155)!important}
+.fc-mkt-pro-form input,.fc-mkt-pro-form select,.fc-mkt-pro-form textarea{
+  min-height:2.5rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.66rem!important;background:var(--fc-mkt-panel)!important;
+  color:var(--ustore-text,#1f2937)!important;font-size:.62rem!important;padding:.52rem .62rem!important;box-shadow:0 1px 2px rgba(15,23,42,.018)!important
+}
+.fc-mkt-pro-form textarea{min-height:4.25rem!important;line-height:1.45!important;resize:vertical}
+.fc-mkt-pro-form .fc-tabs{padding:.2rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.7rem!important;background:var(--ustore-panel-bg,#f8fafc)!important;gap:.2rem!important}
+.fc-mkt-pro-form .fc-tab{min-height:2.15rem!important;border:1px solid transparent!important;border-radius:.56rem!important;font-size:.55rem!important;font-weight:850!important}
+.fc-mkt-pro-form .fc-tab-active{background:#eef4ff!important;color:#1d5bd1!important;border-color:#7aa2f5!important;box-shadow:0 1px 4px rgba(37,99,235,.07)!important}
+.fc-mkt-pro-form .fc-settings-toggle-row,.fc-mkt-pro-form .fc-selection-launch{
+  min-height:3.8rem!important;padding:.62rem .66rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.76rem!important;background:var(--fc-mkt-panel)!important;box-shadow:var(--fc-mkt-shadow-soft)!important
+}
+.fc-mkt-pro-form .fc-settings-toggle-row b,.fc-mkt-pro-form .fc-selection-launch b{font-size:.59rem!important;color:var(--ustore-text,#334155)!important}
+.fc-mkt-pro-form .fc-settings-toggle-row small,.fc-mkt-pro-form .fc-selection-launch small{font-size:.49rem!important;line-height:1.4!important;color:var(--ustore-secondary-text,#64748b)!important}
+
+/* Promo create/edit: approved A–F visual groups, business logic unchanged. */
+.fc-mkt-pro-promo-form .fc-sheet-body{counter-reset:promo-section}
+.fc-mkt-pro-promo-form .fc-form-section-title{counter-increment:promo-section;display:flex;align-items:center;gap:.5rem}
+.fc-mkt-pro-promo-form .fc-form-section-title::before{
+  content:counter(promo-section,upper-alpha);width:1.45rem;height:1.45rem;display:grid;place-items:center;flex:0 0 1.45rem;
+  border-radius:999px;background:var(--ustore-primary,#2563eb);color:#fff;font-size:.55rem;font-weight:950
+}
+
+/* ======================================================================
+   2-BOSQICH — BANNERS
+   ====================================================================== */
+.fc-mkt-pro-banners>.fc-card:first-child{padding:.8rem!important;background:linear-gradient(135deg,var(--fc-mkt-panel),var(--fc-mkt-subtle))!important}
+.fc-mkt-pro-banners>.fc-card:first-child h3{font-size:.72rem!important;font-weight:900!important;color:var(--ustore-text,#172033)!important}
+.fc-mkt-pro-banners>.fc-card:first-child p{margin-top:.14rem;font-size:.52rem!important;line-height:1.4!important;color:var(--ustore-secondary-text,#64748b)!important}
+.fc-mkt-pro-banners .fc-banner-slots-grid{gap:.36rem!important;margin-top:.5rem!important}
+.fc-mkt-pro-banners .fc-banner-slot{
+  border:1px solid var(--fc-mkt-border)!important;border-radius:.72rem!important;background:var(--fc-mkt-panel)!important;box-shadow:var(--fc-mkt-shadow-soft)!important;overflow:hidden
+}
+.fc-mkt-pro-banners .fc-banner-slot.is-empty{border:1.5px dashed color-mix(in srgb,var(--ustore-primary,#2563eb) 35%,var(--fc-mkt-border))!important;background:#f8faff!important}
+.fc-mkt-pro-banners .fc-banner-slot-badge{top:.24rem!important;left:.24rem!important;width:1.25rem!important;height:1.25rem!important;background:var(--ustore-primary,#2563eb)!important;font-size:.5rem!important}
+.fc-mkt-pro-banners .fc-banner-slot-drag{left:50%!important;right:auto!important;bottom:.15rem!important;transform:translateX(-50%);width:2rem!important;height:1.05rem!important;border:1px solid rgba(226,232,240,.8)!important;border-radius:.42rem!important;background:rgba(255,255,255,.94)!important;color:#64748b!important;box-shadow:0 1px 4px rgba(15,23,42,.1)!important}
+.fc-mkt-pro-banners .fc-banner-slot-swap{right:.15rem!important;bottom:.15rem!important;width:1.28rem!important;height:1.28rem!important;background:rgba(15,23,42,.72)!important}
+.fc-mkt-pro-banners .fc-banner-slots-note{margin-top:.55rem!important;padding:.54rem .62rem!important;border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 18%,var(--fc-mkt-border))!important;border-radius:.72rem!important;background:var(--fc-mkt-blue-soft)!important;font-size:.51rem!important;line-height:1.38!important}
+.fc-mkt-pro-banners .fc-banner-list-card{min-height:4.2rem!important;padding:.58rem!important;grid-template-columns:4rem minmax(0,1fr) 2.4rem!important;gap:.62rem!important;border-radius:.9rem!important}
+.fc-mkt-pro-banners .fc-marketing-thumb{width:4rem!important;height:2.66rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.66rem!important}
+.fc-mkt-pro-banners .fc-banner-list-title b{font-size:.67rem!important;line-height:1.28!important}.fc-mkt-pro-banners .fc-banner-list-title small{font-size:.51rem!important;margin-top:.12rem!important}
+.fc-mkt-pro-banners .fc-card-more-btn{width:2.3rem!important;height:2.3rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.72rem!important;background:var(--fc-mkt-panel)!important;color:#64748b!important}
+.fc-mkt-pro-banner-detail .fc-marketing-detail-image{border:1px solid var(--fc-mkt-border)!important;border-radius:.88rem!important;background:#f8fafc!important;box-shadow:0 5px 16px rgba(15,23,42,.055)!important}
+
+/* ======================================================================
+   2-BOSQICH — AKSIYALAR / BUNDLES
+   ====================================================================== */
+.fc-mkt-pro-bundles .fc-bundle-list-card{grid-template-columns:4.65rem minmax(0,1fr)!important;gap:.68rem!important;min-height:5.85rem!important;padding:.68rem!important;border-radius:.94rem!important}
+.fc-mkt-pro-bundles .fc-bundle-list-cover{width:4.65rem!important;height:4.65rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.82rem!important;background:#f8fafc!important}
+.fc-mkt-pro-bundles .fc-bundle-list-top b{font-size:.71rem!important;line-height:1.28!important}.fc-mkt-pro-bundles .fc-bundle-list-meta{gap:.36rem .62rem!important}.fc-mkt-pro-bundles .fc-bundle-list-meta span{font-size:.51rem!important;color:var(--ustore-secondary-text,#64748b)!important}
+.fc-mkt-pro-bundles .fc-bundle-thumb-strip img,.fc-mkt-pro-bundles .fc-bundle-thumb-more{width:1.72rem!important;height:1.72rem!important;border-radius:.48rem!important}
+.fc-mkt-pro-bundle-detail .fc-marketing-detail-image{border:1px solid var(--fc-mkt-border)!important;border-radius:.88rem!important;box-shadow:0 5px 16px rgba(15,23,42,.055)!important}
+.fc-mkt-pro-bundle-detail .fc-campaign-stat-cards>div{border:1px solid var(--fc-mkt-border)!important;border-radius:.76rem!important;box-shadow:var(--fc-mkt-shadow-soft)!important}
+.fc-mkt-pro-bundle-detail .fc-price-breakdown>div{border-bottom:1px dashed var(--fc-mkt-border-soft)!important}.fc-mkt-pro-bundle-detail .fc-price-breakdown>div:last-child{border-bottom:0!important}
+.fc-mkt-pro-bundle-detail .fc-bundle-detail-product-row:not(:last-child){border-bottom:1px solid var(--fc-mkt-border-soft)!important}
+
+/* User bundle/promo detail — same compact, card-led language. */
+.fc-mkt-pro-public-detail{display:flex;flex-direction:column;gap:.72rem}
+.fc-mkt-pro-public-detail>.fc-card,.fc-mkt-pro-public-detail .fc-card{border:1px solid var(--fc-mkt-border)!important;border-radius:.92rem!important;box-shadow:var(--fc-mkt-shadow)!important;background:var(--fc-mkt-panel)!important}
+.fc-mkt-pro-public-detail .fc-campaign-stat-cards>div{border:1px solid var(--fc-mkt-border)!important;box-shadow:var(--fc-mkt-shadow-soft)!important}
+.fc-mkt-pro-public-detail .fc-bundle-detail-product-row:not(:last-child){border-bottom:1px solid var(--fc-mkt-border-soft)!important}
+
+/* ======================================================================
+   3-BOSQICH — PROMO-KODLAR
+   ====================================================================== */
+.fc-mkt-pro-promos .fc-mkt-stats-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:.36rem!important}
+.fc-promo-toolbar{display:grid!important;grid-template-columns:minmax(0,1fr) 7.1rem!important;gap:.42rem!important}
+.fc-promo-toolbar input,.fc-promo-toolbar select{width:100%;min-width:0}
+.fc-mkt-pro-promos .fc-promo-list-card{padding:.66rem .72rem!important;gap:.46rem!important;border-radius:.92rem!important;box-shadow:0 3px 11px rgba(15,23,42,.04)!important}
+.fc-mkt-pro-promos .fc-promo-list-card>button{padding:0!important}
+.fc-mkt-pro-promos .fc-promo-list-card .font-mono{font-size:.85rem!important;letter-spacing:.035em!important;color:var(--ustore-text,#172033)!important}
+.fc-mkt-pro-promos .fc-discount-pill,.fc-mkt-pro-promo-detail .fc-discount-pill,.fc-mkt-pro-promo-usage .fc-discount-pill{
+  min-height:1.55rem!important;padding:.12rem .5rem!important;border:1px solid #b9e5c8!important;border-radius:999px!important;background:#eaf8ef!important;color:#148844!important;font-size:.56rem!important;font-weight:900!important
+}
+.fc-mkt-pro-promos .fc-marketing-card p.text-xs{font-size:.57rem!important;line-height:1.38!important}.fc-mkt-pro-promos .fc-marketing-card p.text-\[10px\]{font-size:.5rem!important;line-height:1.35!important}
+.fc-mkt-pro-promos .fc-marketing-actions{min-height:2.7rem!important;padding-top:.42rem!important;border-top:1px solid var(--fc-mkt-border-soft)!important}
+.fc-mkt-pro-promo-detail .fc-sheet-body>.fc-card:first-child{padding:.82rem!important;background:linear-gradient(135deg,#fff,#f7faff)!important}
+.fc-mkt-pro-promo-detail .font-mono.text-xl{font-size:1.05rem!important;letter-spacing:.04em!important}
+.fc-mkt-pro-promo-detail .fc-order-kv,.fc-mkt-pro-personal-user-detail .fc-order-kv{min-height:2.35rem!important;padding:.42rem 0!important;border-bottom:1px solid var(--fc-mkt-border-soft)!important}
+.fc-mkt-pro-promo-detail .fc-order-kv:last-child,.fc-mkt-pro-personal-user-detail .fc-order-kv:last-child{border-bottom:0!important}
+.fc-mkt-pro-promo-detail .fc-order-kv span,.fc-mkt-pro-personal-user-detail .fc-order-kv span{font-size:.53rem!important;color:var(--ustore-secondary-text,#64748b)!important}.fc-mkt-pro-promo-detail .fc-order-kv b,.fc-mkt-pro-personal-user-detail .fc-order-kv b{font-size:.57rem!important;text-align:right!important;color:var(--ustore-text,#172033)!important}
+.fc-mkt-pro-promo-usage .grid.grid-cols-3.gap-2{gap:.38rem!important}.fc-mkt-pro-promo-usage .grid.grid-cols-3.gap-2>.fc-card{min-height:4rem!important;padding:.48rem .16rem!important}.fc-mkt-pro-promo-usage .grid.grid-cols-3.gap-2 p{font-size:.48rem!important;line-height:1.15!important}.fc-mkt-pro-promo-usage .grid.grid-cols-3.gap-2 b{font-size:.82rem!important}
+.fc-mkt-pro-promo-usage .fc-promo-usage-row{padding:.64rem .7rem!important;border-radius:.82rem!important}.fc-mkt-pro-promo-usage .fc-promo-usage-main b{font-size:.61rem!important}.fc-mkt-pro-promo-usage .fc-promo-usage-main small{font-size:.48rem!important}.fc-mkt-pro-promo-usage .fc-promo-usage-amounts{font-size:.55rem!important}
+
+/* ======================================================================
+   3-BOSQICH — BOSQICHLI CHEGIRMALAR
+   Explicit user rule: cards/rows must be visible but borders stay soft.
+   ====================================================================== */
+.fc-mkt-pro-tiers .fc-marketing-card{padding:.7rem .74rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.92rem!important;box-shadow:0 3px 11px rgba(15,23,42,.04)!important}
+.fc-mkt-pro-tiers .fc-marketing-card b.text-sm{font-size:.7rem!important;line-height:1.28!important}.fc-mkt-pro-tiers .fc-marketing-card p{font-size:.52rem!important;line-height:1.38!important;color:var(--ustore-secondary-text,#64748b)!important}
+.fc-mkt-pro-tiers .fc-tier-preview-strip{margin-top:.48rem!important;padding:.5rem .58rem!important;border:1px solid var(--fc-mkt-border-soft)!important;border-radius:.68rem!important;background:#f7f9fd!important;font-size:.53rem!important;line-height:1.42!important;color:#334155!important}
+.fc-mkt-pro-tier-detail>.fc-card{padding:.74rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.92rem!important;box-shadow:var(--fc-mkt-shadow)!important}
+.fc-mkt-pro-tier-detail>.fc-card:nth-child(2){overflow:hidden}.fc-mkt-pro-tier-detail>.fc-card.p-0{padding:0!important;overflow:hidden!important}
+.fc-mkt-pro-tier-detail .fc-tier-diagram-svg{margin-top:.25rem;padding:.18rem;border-radius:.68rem;background:linear-gradient(180deg,#fff,#fafcff)}
+.fc-mkt-pro-tier-detail .fc-tier-step-row{min-height:3rem!important;padding:.6rem .7rem!important;background:var(--fc-mkt-panel)!important}.fc-mkt-pro-tier-detail .fc-tier-step-row.has-border{border-top:1px solid var(--fc-mkt-border)!important}
+.fc-mkt-pro-tier-detail .fc-tier-step-num{width:1.52rem!important;height:1.52rem!important;font-size:.55rem!important;box-shadow:0 2px 6px rgba(37,99,235,.13)}.fc-mkt-pro-tier-detail .fc-tier-step-row b{font-size:.62rem!important}.fc-mkt-pro-tier-detail .fc-tier-step-row b.is-value{color:#155bd3!important}
+
+/* Each CREATE/EDIT tier row is its own softly outlined unit. */
+.fc-mkt-pro-tier-form .fc-tier-step-form-row{
+  display:grid!important;grid-template-columns:1.35rem minmax(5.7rem,1fr) auto .9rem 3.2rem 2.4rem 2.2rem!important;
+  gap:.24rem!important;align-items:center!important;min-height:3.35rem!important;padding:.4rem .38rem!important;margin:.34rem 0!important;
+  border:1px solid var(--fc-mkt-border)!important;border-radius:.76rem!important;background:var(--fc-mkt-panel)!important;box-shadow:var(--fc-mkt-shadow-soft)!important
+}
+.fc-mkt-pro-tier-form .fc-tier-step-form-row input{height:2.3rem!important;min-height:2.3rem!important;min-width:0!important;padding:.4rem .42rem!important;font-size:.58rem!important}
+.fc-mkt-pro-tier-form .fc-tier-step-form-row .fc-tier-step-num{width:1.35rem!important;height:1.35rem!important;font-size:.5rem!important}.fc-mkt-pro-tier-form .fc-tier-step-unit{font-size:.48rem!important}.fc-mkt-pro-tier-form .fc-tier-step-type-btn{width:2.4rem!important;height:2.3rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.58rem!important;background:#f6f8fc!important;font-size:.54rem!important}.fc-mkt-pro-tier-form .fc-tier-step-form-row>.fc-btn-danger{width:2.2rem!important;min-width:2.2rem!important;height:2.3rem!important;min-height:2.3rem!important}
+.fc-mkt-pro-tier-form #tier-preview-diagram{padding:.68rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.8rem!important;background:linear-gradient(180deg,#fff,#f9fbff)!important;box-shadow:var(--fc-mkt-shadow-soft)!important}.fc-mkt-pro-tier-form #tier-preview-diagram>b{font-size:.59rem!important;color:#334155!important}
+
+/* ======================================================================
+   4-BOSQICH — AVTOMATIK SOVG'A
+   ====================================================================== */
+.fc-mkt-pro-gifts .fc-marketing-card{padding:.64rem .7rem!important;border-radius:.92rem!important}.fc-mkt-pro-gifts .fc-marketing-card-main{min-height:3.55rem!important;gap:.62rem!important}.fc-mkt-pro-gifts .fc-marketing-thumb.is-square,.fc-mkt-pro-gifts .fc-marketing-iconbox{width:3.25rem!important;height:3.25rem!important;border-radius:.76rem!important}.fc-mkt-pro-gifts .fc-marketing-copy b{font-size:.66rem!important;line-height:1.28!important}.fc-mkt-pro-gifts .fc-marketing-copy small{font-size:.5rem!important;line-height:1.38!important;white-space:normal!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.fc-mkt-pro-gifts .fc-marketing-actions{border-top:1px solid var(--fc-mkt-border-soft)!important}
+.fc-mkt-pro-gift-picker .fc-gift-type-grid{gap:.52rem!important}.fc-mkt-pro-gift-picker .fc-gift-type-card{min-height:6.8rem!important;padding:.66rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.86rem!important;background:var(--fc-mkt-panel)!important;box-shadow:var(--fc-mkt-shadow-soft)!important}.fc-mkt-pro-gift-picker .fc-gift-type-card b{font-size:.6rem!important;line-height:1.34!important}.fc-mkt-pro-gift-picker .fc-gift-type-card small{font-size:.49rem!important;line-height:1.38!important}
+.fc-mkt-pro-gift-detail .fc-gift-agar-unda,.fc-mkt-pro-gift-form .fc-gift-agar-unda{border:1px solid var(--fc-mkt-border)!important;border-radius:.88rem!important;overflow:hidden!important;background:var(--fc-mkt-panel)!important;box-shadow:var(--fc-mkt-shadow-soft)!important}.fc-mkt-pro-gift-detail .fc-gift-agar-unda>div,.fc-mkt-pro-gift-form .fc-gift-agar-unda>div{padding:.7rem .74rem!important}.fc-mkt-pro-gift-detail .fc-gift-agar-unda>div+div,.fc-mkt-pro-gift-form .fc-gift-agar-unda>div+div{border-top:1px solid var(--fc-mkt-border)!important}.fc-mkt-pro-gift-detail .fc-gift-agar-unda p,.fc-mkt-pro-gift-form .fc-gift-agar-unda p{font-size:.61rem!important;line-height:1.42!important}
+
+/* ======================================================================
+   4-BOSQICH — MARKETING HUB: exactly seven slim vertical cards + settings.
+   ====================================================================== */
+.fc-mkt-pro-hub .fc-marketing-summary{min-height:5.65rem!important;padding:.82rem!important;border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 18%,var(--fc-mkt-border))!important;border-radius:.94rem!important;background:linear-gradient(135deg,var(--fc-mkt-blue-soft),var(--fc-mkt-panel))!important;box-shadow:var(--fc-mkt-shadow)!important}.fc-mkt-pro-hub .fc-marketing-summary-icon{width:2.55rem!important;height:2.55rem!important;border-radius:.78rem!important}.fc-mkt-pro-hub .fc-marketing-summary small{font-size:.53rem!important}.fc-mkt-pro-hub .fc-marketing-summary b{font-size:.86rem!important;line-height:1.32!important}
+.fc-mkt-pro-hub .fc-marketing-hub-grid{display:grid!important;grid-template-columns:1fr!important;gap:.45rem!important}.fc-mkt-pro-hub .fc-marketing-hub-card{min-height:4.05rem!important;padding:.6rem .66rem!important;grid-template-columns:2.4rem minmax(0,1fr) 1.3rem!important;gap:.58rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.86rem!important;background:var(--fc-mkt-panel)!important;box-shadow:var(--fc-mkt-shadow-soft)!important}.fc-mkt-pro-hub .fc-marketing-hub-icon{width:2.4rem!important;height:2.4rem!important;border-radius:.72rem!important}.fc-mkt-pro-hub .fc-marketing-hub-card b{font-size:.65rem!important}.fc-mkt-pro-hub .fc-marketing-hub-card small{font-size:.49rem!important;margin-top:.08rem!important}.fc-mkt-pro-hub .fc-marketing-settings-sep{margin-top:.08rem;padding-top:.62rem;border-top:1px solid var(--fc-mkt-border-soft)!important}.fc-mkt-pro-hub .fc-marketing-settings-sep .fc-card{min-height:3.6rem!important;margin:0!important;padding:.65rem .72rem!important}
+
+/* ======================================================================
+   4-BOSQICH — SHAXSIY CHEGIRMALAR
+   ====================================================================== */
+.fc-mkt-pro-personal .fc-marketing-card{padding:.68rem .72rem!important;border-radius:.92rem!important}.fc-mkt-pro-personal .fc-marketing-card b.text-sm{font-size:.68rem!important;line-height:1.3!important}.fc-mkt-pro-personal .fc-marketing-card p{font-size:.52rem!important;line-height:1.38!important}
+.fc-mkt-pro-personal-detail .fc-card{border:1px solid var(--fc-mkt-border)!important}.fc-mkt-pro-personal-detail .grid.grid-cols-3.gap-2{gap:.36rem!important}.fc-mkt-pro-personal-detail .grid.grid-cols-3.gap-2>.fc-mkt-stat{min-height:3.95rem!important}.fc-mkt-pro-personal-detail .fc-staff-row{min-height:3.7rem;padding:.55rem .62rem;border:1px solid var(--fc-mkt-border-soft);border-radius:.76rem;background:var(--fc-mkt-panel);margin-bottom:.38rem}
+.fc-mkt-pro-personal-picker .fc-hier-picker-row{border:1px solid var(--fc-mkt-border-soft)!important;border-radius:.7rem!important;background:var(--fc-mkt-panel)!important;margin-bottom:.35rem!important}
+
+/* ======================================================================
+   4-BOSQICH — USER “AKSIYALAR VA CHEGIRMALAR” MASTER PAGE
+   Exactly six sections; clear section grouping with soft borders.
+   ====================================================================== */
+.fc-mkt-pro-public{display:flex!important;flex-direction:column!important;gap:.72rem!important}
+.fc-mkt-pro-public .fc-public-marketing-section{padding:.7rem!important;border:1px solid var(--fc-mkt-border)!important;border-radius:.94rem!important;background:var(--fc-mkt-panel)!important;box-shadow:var(--fc-mkt-shadow)!important}
+.fc-mkt-pro-public .fc-public-marketing-section>header{grid-template-columns:2.35rem minmax(0,1fr) auto!important;gap:.56rem!important;margin-bottom:.58rem!important}.fc-mkt-pro-public .fc-public-marketing-section>header>span{width:2.35rem!important;height:2.35rem!important;border-radius:.72rem!important}.fc-mkt-pro-public .fc-public-marketing-section h3{font-size:.72rem!important;line-height:1.25!important}.fc-mkt-pro-public .fc-public-marketing-section header small{font-size:.48rem!important}.fc-mkt-pro-public .fc-public-marketing-seeall{font-size:.5rem!important;font-weight:850!important}
+.fc-mkt-pro-public .fc-public-offer-card{min-height:4.1rem!important;padding:.58rem!important;border:1px solid var(--fc-mkt-border-soft)!important;border-radius:.78rem!important;background:#f8faff!important;box-shadow:0 2px 7px rgba(15,23,42,.025)!important}.fc-mkt-pro-public .fc-public-offer-card+ .fc-public-offer-card{margin-top:.42rem}.fc-mkt-pro-public .fc-public-offer-card img,.fc-mkt-pro-public .fc-public-offer-icon{width:3rem!important;height:3rem!important;border-radius:.68rem!important}.fc-mkt-pro-public .fc-public-offer-card b{font-size:.62rem!important;line-height:1.3!important;font-weight:850!important}.fc-mkt-pro-public .fc-public-offer-card p,.fc-mkt-pro-public .fc-public-offer-card span{font-size:.49rem!important;line-height:1.38!important}.fc-mkt-pro-public .fc-public-offer-card em{font-size:.49rem!important;color:var(--ustore-primary,#2563eb)!important;font-weight:800!important}.fc-mkt-pro-public .fc-public-marketing-empty{padding:.7rem!important;border:1px dashed var(--fc-mkt-border)!important;border-radius:.72rem!important;background:#fafbfe!important;font-size:.52rem!important}
+
+/* Dark theme: keep the same hierarchy without hardcoded white surfaces. */
+html.ustore-dark-theme .fc-mkt-pro>.fc-card,html.ustore-dark-theme .fc-mkt-pro .fc-marketing-card,html.ustore-dark-theme .fc-mkt-pro-sheet .fc-card,
+html.ustore-dark-theme .fc-mkt-pro-form .fc-mini-field,html.ustore-dark-theme .fc-mkt-pro-form .fc-settings-toggle-row,html.ustore-dark-theme .fc-mkt-pro-form .fc-selection-launch,
+html.ustore-dark-theme .fc-mkt-pro-public .fc-public-marketing-section,html.ustore-dark-theme .fc-mkt-pro-public .fc-public-offer-card{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important}
+html.ustore-dark-theme .fc-mkt-pro-tier-form .fc-tier-step-form-row,html.ustore-dark-theme .fc-mkt-pro-gift-detail .fc-gift-agar-unda,html.ustore-dark-theme .fc-mkt-pro-gift-form .fc-gift-agar-unda{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important}
+
+/* Narrow phones: preserve readability, no page-level horizontal overflow. */
+@media(max-width:359px){
+  .fc-mkt-pro-promos .fc-mkt-stats-grid,.fc-mkt-stats-grid,.fc-mkt-pro-gifts>.grid.grid-cols-2.gap-2,.fc-mkt-pro-personal>.grid.grid-cols-2.gap-2{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .fc-promo-toolbar{grid-template-columns:1fr!important}
+  .fc-mkt-pro-form .grid.grid-cols-2{grid-template-columns:1fr!important}
+  .fc-mkt-pro-tier-form .fc-tier-step-form-row{grid-template-columns:1.3rem minmax(5.2rem,1fr) auto .8rem 2.9rem 2.2rem!important;grid-template-rows:auto auto!important}
+  .fc-mkt-pro-tier-form .fc-tier-step-form-row>.fc-btn-danger{grid-column:6!important;grid-row:2!important;justify-self:end!important}
+  .fc-mkt-pro-public .fc-public-offer-card{grid-template-columns:2.85rem minmax(0,1fr)!important}
+}

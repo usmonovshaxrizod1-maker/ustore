@@ -4749,7 +4749,7 @@
             </div>
           </article>`;
         });
-        body = `<div class="fc-public-marketing-list">
+        body = `<div class="fc-public-marketing-list fc-mkt-pro-public">
           ${publicMarketingSectionHtml('mypromo', 'user-round-check', tr('Promo-kodlarim', 'Мои промокоды'), myPromoCards, 2)}
           ${publicMarketingSectionHtml('bundles', 'sparkles', tr('Aksiyalar', 'Акции'), bundleCards, 2)}
           ${publicMarketingSectionHtml('promo', 'ticket-percent', tr('Promo-kodlar va kuponlar', 'Промокоды и купоны'), promoCards, 2)}
@@ -4766,7 +4766,7 @@
       const c = marketingCampaigns.find(x => x.kind === 'PERSONAL_DISCOUNT' && String(x.id) === String(id));
       if (!c) return;
       const root = document.createElement('div'); root.id = 'fc-personal-offer-root';
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Shaxsiy taklif', 'Персональное предложение')}</div><button type="button" onclick="document.getElementById('fc-personal-offer-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-personal-user-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Shaxsiy taklif', 'Персональное предложение')}</div><button type="button" onclick="document.getElementById('fc-personal-offer-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
         <div class="fc-card"><b class="text-base block">${tr('Siz uchun shaxsiy taklif', 'Персональное предложение для вас')}</b><div class="flex items-center gap-1.5 mt-2">${discountGreenBadgeHtml(discountPctLabel(c), 'is-lg')}</div></div>
         <div class="fc-card space-y-1.5">
           <div class="fc-order-kv"><span>${tr('Minimal summa', 'Мин. сумма')}</span><b>${c.minOrderAmount ? money(c.minOrderAmount) : tr('Cheklovsiz', 'Без огр.')}</b></div>
@@ -4846,12 +4846,12 @@
       const bundlePriceBreakdown = c.kind==='BUNDLE'?`<div class="fc-card fc-price-breakdown"><div><span>${tr('Oddiy jami narx','Обычная сумма')}</span><b>${money(c.regularTotal)}</b></div><div><span>${tr('Aksiya narxi','Цена акции')}</span><b class="is-primary">${money(c.bundlePrice)}</b></div><div><span>${tr('Jami tejamkorlik','Общая экономия')}</span><b class="is-green">${money(c.savings)}</b></div></div>`:'';
       const bundleProductList = c.kind==='BUNDLE' && products.length ? `<div><h4 class="fc-detail-section-title">${tr('Aksiya mahsulotlari','Товары акции')}</h4><div class="fc-card fc-bundle-detail-products">${products.map(p => `<button type="button" onclick="openProductDetailModal('${p.id}')" class="fc-bundle-detail-product-row"><img src="${escapeHtml(p.imageUrl || FALLBACK_IMG)}" loading="lazy"><span><b>${escapeHtml(p.name)}</b></span><em>${money(p.price)}</em></button>`).join('')}</div></div>` : '';
       const bundleAboutCard = c.kind==='BUNDLE' && c.description ? `<div class="fc-card fc-campaign-about-card"><div><span><i data-lucide="gift" class="w-4 h-4"></i></span><b>${tr('Aksiya haqida','Об акции')}</b></div><p>${escapeHtml(c.description)}</p></div>` : '';
-      const body = c.kind==='BUNDLE' ? `<div class="fc-campaign-detail">
+      const body = c.kind==='BUNDLE' ? `<div class="fc-campaign-detail fc-mkt-pro-public-detail is-bundle">
         <div class="fc-detail-heading-row"><h3>${escapeHtml(c.name)}</h3><span class="fc-badge fc-badge-success">${tr('Faol','Активна')}</span></div>
         ${countdown ? `<div class="fc-detail-date-row"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${tr('Tugaydi','Заканчивается')}: ${new Date(c.endsAt).toLocaleDateString()}</div>` : ''}
         ${bundleStatCards}${bundlePriceBreakdown}${bundleProductList}${bundleAboutCard}
         <div class="fc-campaign-sticky-action"><div class="fc-sticky-price-note"><span>${tr('Jami','Итого')}: <b>${money(c.bundlePrice)}</b></span>${c.savings>0?`<small>${tr('Tejaysiz','Экономия')}: ${money(c.savings)}</small>`:''}</div>${renderBundleAddToCartHtml(c)}</div>
-      </div>` : `<div class="fc-campaign-detail">
+      </div>` : `<div class="fc-campaign-detail fc-mkt-pro-public-detail is-promo">
         <section class="fc-campaign-hero">${heroImage ? `<img src="${escapeHtml(heroImage)}" class="fc-campaign-hero-image" loading="lazy">` : ''}<div class="fc-campaign-hero-copy"><div class="fc-campaign-eyebrow">${tr('Promo taklif','Промо предложение')}</div><h2>${escapeHtml(c.name)}</h2><div class="fc-campaign-price">${c.discountLabel || ''}</div>${countdown}</div></section>
         ${c.description ? `<div class="fc-card fc-campaign-description"><b>${tr('Aksiya haqida','Об акции')}</b><p>${escapeHtml(c.description)}</p></div>` : ''}
         ${priceFacts}${codeBlock}${promoFacts}${mediaHtml}
@@ -9127,7 +9127,7 @@
             ${cardActionMenuHtml('banner', b.id)}
           </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="image" class="w-7 h-7"></i><p>${tr("Hozircha banner yo'q.", "Пока нет баннеров.")}</p></div>`;
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-banners">
         <div class="fc-card space-y-2">
           <div><h3 class="text-xs font-bold">${tr("Vitrinadagi bannerlar (tartib)", 'Баннеры в витрине (порядок)')}</h3><p class="text-[10px] text-gray-400">${tr("Bannerlarni tartiblash uchun ushlab turing va drag qiling. Bo'sh slotga yoki mavjud bannerni almashtirish uchun bosing.", 'Удерживайте и перетаскивайте баннеры, чтобы изменить порядок. Нажмите на пустой слот или на существующий баннер, чтобы заменить.')}</p></div>
           ${renderBannerSlotsHtml()}
@@ -9149,7 +9149,7 @@
       const root = document.createElement('div');
       root.id = 'fc-banner-preview-root';
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) this.parentElement.remove();">
-        <div class="fc-sheet fc-marketing-detail-sheet">
+        <div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-banner-detail">
           <div class="fc-sheet-handle"></div>
           <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Banner ma’lumotlari','Данные баннера')}</div><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
           <div class="fc-sheet-body space-y-3">
@@ -9215,7 +9215,7 @@
       const isEdit = !!d.id;
       const previewSrc = tempImagePreviewUrl || d.imageUrl || '';
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeBannerForm();">
-        <div class="fc-sheet">
+        <div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-form fc-mkt-pro-banner-form">
           <div class="fc-sheet-handle"></div>
           <div class="fc-sheet-header"><div class="fc-sheet-title">${isEdit ? tr("Bannerni tahrirlash", "Изменить баннер") : tr("Yangi banner", "Новый баннер")}</div><button type="button" onclick="closeBannerForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
           <div class="fc-sheet-body space-y-3">
@@ -9455,7 +9455,7 @@
             </div>
           </button>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="package" class="w-7 h-7"></i><p>${tr("Hozircha aksiya yo'q.", 'Пока нет акций.')}</p></div>`;
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-bundles">
         <div class="fc-card fc-staff-intro">
           <div><h3>${tr('Aksiyalar', 'Акции')}</h3><p>${tr("Bir nechta mahsulotni bitta to'plam narxida sotish.", 'Продажа нескольких товаров по цене набора.')}</p></div>
           <button type="button" onclick="openBundleForm()" class="fc-btn fc-btn-primary"><i data-lucide="plus" class="w-4 h-4"></i>${tr('Yaratish', 'Создать')}</button>
@@ -9489,7 +9489,7 @@
       const selected = (b.items || []).map(i => ({ item: i, product: products.find(p => String(p.id) === String(i.productId)) })).filter(x => x.product);
       const root = document.createElement('div'); root.id = 'fc-bundle-preview-root';
       const dateRangeText = b.startsAt || b.endsAt ? `${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '…'} – ${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно');
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Aksiya tafsiloti','Детали акции')}</div><button type="button" onclick="document.getElementById('fc-bundle-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-bundle-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Aksiya tafsiloti','Детали акции')}</div><button type="button" onclick="document.getElementById('fc-bundle-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
         ${b.coverImageUrl ? `<img src="${escapeHtml(b.coverImageUrl)}" class="fc-marketing-detail-image">` : ''}
         <div class="fc-detail-heading-row"><h3>${escapeHtml(b.name)}</h3><span class="fc-badge ${b.pauseReason ? 'fc-badge-warning' : b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.pauseReason ? tr('To‘xtatilgan', 'Приостановлена') : b.isActive ? tr('Faol','Активна') : tr('Nofaol','Неактивна')}</span></div>
         <div class="fc-detail-date-row"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${dateRangeText}</div>
@@ -9622,7 +9622,7 @@
       const previewSrc = tempImagePreviewUrl || d.coverImageUrl || '';
       const regularTotal = d.items.reduce((s, i) => { const p = products.find(pp => pp.id === i.productId); return s + (p ? Number(p.price) * i.qty : 0); }, 0);
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeBundleForm();">
-        <div class="fc-sheet">
+        <div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-form fc-mkt-pro-bundle-form">
           <div class="fc-sheet-handle"></div>
           <div class="fc-sheet-header"><div class="fc-sheet-title">${isEdit ? tr('Aksiyani tahrirlash', 'Изменить акцию') : tr('Yangi aksiya', 'Новая акция')}</div><button type="button" onclick="closeBundleForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
           <div class="fc-sheet-body space-y-3">
@@ -9799,7 +9799,7 @@
             <div class="fc-tier-preview-strip">${escapeHtml(tierGroupPreviewStripText(g.steps))}</div>
           </button>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="trending-up" class="w-7 h-7"></i><p>${tr("Hozircha bosqichli chegirma yo'q.", 'Пока нет ступенчатых скидок.')}</p></div>`;
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-tiers">
         <div class="fc-card fc-staff-intro">
           <div><h3>${tr('Bosqichli chegirma', 'Ступенчатые скидки')}</h3><p>${tr("Bitta qoida ichida bir nechta bosqich: masalan 2 mln'dan 1%, 5 mln'dan 3%. Faqat ENG YUQORI mos bosqich ishlaydi.", 'Одно правило с несколькими ступенями. Работает только САМАЯ ВЫСОКАЯ подходящая ступень.')}</p></div>
           <button type="button" onclick="openTierGroupForm()" class="fc-btn fc-btn-primary"><i data-lucide="plus" class="w-4 h-4"></i>${tr('Yaratish', 'Создать')}</button>
@@ -9831,7 +9831,7 @@
       }
       const g = tierGroupDetail;
       const steps = [...g.steps].sort((a, b) => a.thresholdAmount - b.thresholdAmount);
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-tier-detail">
         <div class="fc-card">
           <div class="flex items-start justify-between gap-2"><h3 class="font-black text-base">${escapeHtml(g.name || tr('Bosqichli chegirma', 'Ступенчатая скидка'))}</h3>${isAdmin ? `<span class="fc-badge ${g.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${g.isActive ? tr('Faol', 'Активна') : tr('Nofaol', 'Неактивна')}</span>` : ''}</div>
           <p class="text-xs text-gray-500 mt-1">${g.startsAt || g.endsAt ? `${g.startsAt ? new Date(g.startsAt).toLocaleDateString() : '…'} — ${g.endsAt ? new Date(g.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')} · ${tierGroupScopeLabel(g)}</p>
@@ -9913,7 +9913,7 @@
       const isEdit = !!d.id;
       const validSteps = tierDraftValidSteps();
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeTierForm();">
-        <div class="fc-sheet">
+        <div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-form fc-mkt-pro-tier-form">
           <div class="fc-sheet-handle"></div>
           <div class="fc-sheet-header"><div class="fc-sheet-title">${isEdit ? tr('Bosqichli chegirmani tahrirlash', 'Изменить ступенчатую скидку') : tr('Yangi bosqichli chegirma', 'Новая ступенчатая скидка')}</div><button type="button" onclick="closeTierForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
           <div class="fc-sheet-body space-y-3">
@@ -10126,7 +10126,7 @@
       const activeCount = items.filter(i => giftItemStatusKind(i) === 'ACTIVE').length;
       const scheduledCount = items.filter(i => giftItemStatusKind(i) === 'SCHEDULED').length;
       const doneCount = items.filter(i => ['EXPIRED', 'INACTIVE'].includes(giftItemStatusKind(i))).length;
-      const statCard = (label, value) => `<div class="fc-card text-center"><p class="text-gray-500 text-[11px]">${label}</p><b class="text-lg block">${value}</b></div>`;
+      const statCard = (label, value) => `<div class="fc-card fc-mkt-stat text-center"><p>${label}</p><b>${value}</b></div>`;
       const filters = [
         ['ALL', tr('Barchasi', 'Все')], ['COUPON', tr('Kupon', 'Купон')],
         ['ORDER_AMOUNT', tr('Summa bo‘yicha sovg‘a', 'По сумме')], ['SPECIFIC_PRODUCTS', tr('Mahsulot bo‘yicha', 'По товару')],
@@ -10154,7 +10154,7 @@
             </div>
           </div>
         `; }).join('') : `<div class="fc-empty-state"><i data-lucide="gift" class="w-7 h-7"></i><p>${tr("Hozircha qoida yo'q.", 'Пока нет правил.')}</p></div>`;
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-gifts">
         <div class="fc-card fc-staff-intro">
           <div><h3>${tr("Avtomatik sovg'alar", 'Автоматические подарки')}</h3><p>${tr("Shart bajarilganda mahsulot yoki bir martalik kupon beriladi.", 'При выполнении условия выдаётся товар или одноразовый купон.')}</p></div>
         </div>
@@ -10177,7 +10177,7 @@
         { id: 'SPECIFIC_PRODUCTS', icon: 'boxes', title: tr('Muayyan mahsulot(lar) xaridiga sovg‘a', 'Подарок за товар(ы)'), desc: tr('Whey Protein sotib ol → Shaker sovg‘a', 'Купи Whey Protein → шейкер в подарок') },
         { id: 'QUANTITY', icon: 'layers', title: tr('Miqdor bo‘yicha sovg‘a', 'Подарок по количеству'), desc: tr('2 dona ol → 1 dona sovg‘a', 'Возьми 2 шт → 1 шт в подарок') },
       ];
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Sovg‘a turini tanlang', 'Выберите тип подарка')}</div><button type="button" onclick="document.getElementById('fc-gift-type-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body"><div class="fc-gift-type-grid">${types.map(t => `<button type="button" onclick="document.getElementById('fc-gift-type-root')?.remove();openGiftTypeForm('${t.id}')" class="fc-gift-type-card"><i data-lucide="${t.icon}" class="w-5 h-5"></i><b>${t.title}</b><small>${t.desc}</small></button>`).join('')}</div></div></div></div>`;
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-gift-picker"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Sovg‘a turini tanlang', 'Выберите тип подарка')}</div><button type="button" onclick="document.getElementById('fc-gift-type-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body"><div class="fc-gift-type-grid">${types.map(t => `<button type="button" onclick="document.getElementById('fc-gift-type-root')?.remove();openGiftTypeForm('${t.id}')" class="fc-gift-type-card"><i data-lucide="${t.icon}" class="w-5 h-5"></i><b>${t.title}</b><small>${t.desc}</small></button>`).join('')}</div></div></div></div>`;
       document.body.appendChild(root); safeCreateIcons();
     }
     function openGiftTypeForm(type) {
@@ -10191,7 +10191,7 @@
       const r = couponRewardRules.find(x => String(x.id) === String(id)); if (!r) return;
       const item = { ...r, __kind: 'coupon' };
       const root = document.createElement('div'); root.id = 'fc-coupon-preview-root';
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Kupon qoidasi', 'Правило купона')}</div><button type="button" onclick="document.getElementById('fc-coupon-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-gift-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Kupon qoidasi', 'Правило купона')}</div><button type="button" onclick="document.getElementById('fc-coupon-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
         <div class="fc-card"><div class="flex justify-between gap-2"><h3 class="font-black text-base">${r.triggerType === 'ORDER_TOTAL' ? tr('Bir buyurtma uchun kupon', 'Купон за один заказ') : tr('Jami xaridlar uchun kupon', 'Купон за общие покупки')}</h3>${giftItemStatusBadge(item)}</div></div>
         <div class="fc-gift-agar-unda"><div class="is-agar"><span>AGAR</span><p>${escapeHtml(giftAgarText(item))}</p></div><div class="is-unda"><span>UNDA</span><p>${giftUndaText(item)}</p></div></div>
         <div class="fc-detail-grid"><div><small>${tr('Amal qilish muddati', 'Срок действия')}</small><b>${r.codeExpiryDays ? `${r.codeExpiryDays} ${tr('kun', 'дней')}` : tr('Muddatsiz', 'Бессрочно')}</b></div><div><small>${tr('Boshqa odamga berish', 'Передача другому')}</small><b>${r.transferable ? tr('Mumkin', 'Можно') : tr('Faqat egasi', 'Только владелец')}</b></div></div>
@@ -10203,7 +10203,7 @@
       const existing = id ? couponRewardRules.find(r => String(r.id) === String(id)) : null;
       let root = document.getElementById('fc-coupon-reward-root');
       if (!root) { root = document.createElement('div'); root.id = 'fc-coupon-reward-root'; document.body.appendChild(root); }
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${existing ? tr('Kuponni tahrirlash', 'Изменить купон') : tr('Yangi bir martalik kupon', 'Новый одноразовый купон')}</div><button type="button" onclick="document.getElementById('fc-coupon-reward-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-form fc-mkt-pro-gift-form"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${existing ? tr('Kuponni tahrirlash', 'Изменить купон') : tr('Yangi bir martalik kupon', 'Новый одноразовый купон')}</div><button type="button" onclick="document.getElementById('fc-coupon-reward-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
         <div class="fc-form-section-title">${tr('Shart', 'Условие')}</div>
         <label class="fc-mini-field"><span>${tr('Kupon berish sharti', 'Условие выдачи')}</span><select id="coupon-trigger" onchange="document.getElementById('coupon-period-wrap')?.classList.toggle('hidden', this.value !== 'LIFETIME_TOTAL')"><option value="ORDER_TOTAL" ${existing?.triggerType !== 'LIFETIME_TOTAL' ? 'selected' : ''}>${tr('Bitta buyurtma summasi', 'Сумма одного заказа')}</option><option value="LIFETIME_TOTAL" ${existing?.triggerType === 'LIFETIME_TOTAL' ? 'selected' : ''}>${tr('Mijozning jami xaridi', 'Общая сумма покупок клиента')}</option></select></label>
         <label class="fc-mini-field"><span>${tr('Kerakli xarid summasi', 'Необходимая сумма покупок')}</span><input id="coupon-threshold" type="number" min="1" value="${escapeHtml(String(existing?.thresholdAmount || ''))}" placeholder="5000000"></label>
@@ -10288,7 +10288,7 @@
         : (d.targetProductId ? `${d.thresholdQuantity} × ${escapeHtml(productNameSafe(d.targetProductId))}` : '');
       const undaPreview = d.giftProductId ? `${escapeHtml(productNameSafe(d.giftProductId))} ×${d.giftQuantity} — ${tr('SOVG‘A', 'ПОДАРОК')}` : '';
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeRewardRuleForm();">
-        <div class="fc-sheet">
+        <div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-form fc-mkt-pro-gift-form">
           <div class="fc-sheet-handle"></div>
           <div class="fc-sheet-header"><div class="fc-sheet-title">${isEdit ? tr('Qoidani tahrirlash', 'Изменить правило') : tr('Yangi qoida', 'Новое правило')}</div><button type="button" onclick="closeRewardRuleForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
           <div class="fc-sheet-body space-y-3">
@@ -10364,7 +10364,7 @@
     function openRewardRulePreview(id){
       const r=rewardRuleList.find(x=>String(x.id)===String(id));if(!r)return;const p=r.giftProduct||products.find(x=>String(x.id)===String(r.giftProductId));
       const item = { ...r, __kind: 'gift' };
-      const root=document.createElement('div');root.id='fc-reward-preview-root';root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr("Avtomatik sovg'a",'Автоматический подарок')}</div><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">${p?.img||p?.imageUrl?`<img src="${escapeHtml(p.img||p.imageUrl)}" class="fc-marketing-detail-image">`:''}<div class="fc-card"><div class="flex justify-between gap-2"><h3 class="font-black text-base">${escapeHtml(r.name)}</h3>${giftItemStatusBadge(item)}</div><p class="text-xs text-gray-500 mt-1">${giftTypeLabel(giftItemType(item))}</p></div><div class="fc-gift-agar-unda"><div class="is-agar"><span>AGAR</span><p>${escapeHtml(giftAgarText(item))}</p></div><div class="is-unda"><span>UNDA</span><p>${giftUndaText(item)}</p></div></div><div class="fc-detail-grid"><div><small>${tr('Qo‘llangan','Применено')}</small><b>${r.usageCount||0}</b></div><div><small>${tr('Qoldiq tugasa','Если закончится')}</small><b>${r.stockZeroPolicy==='AUTO_PAUSE'?tr('Avto to‘xtaydi','Автостоп'):tr('Sovg‘asiz davom','Без подарка')}</b></div><div><small>${tr('Boshlanish','Начало')}</small><b>${r.startsAt?new Date(r.startsAt).toLocaleDateString():'—'}</b></div><div><small>${tr('Tugash','Окончание')}</small><b>${r.endsAt?new Date(r.endsAt).toLocaleDateString():'—'}</b></div></div><div class="grid grid-cols-2 gap-2"><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();openRewardRuleForm('${r.id}')" class="fc-btn fc-btn-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();deleteRewardRuleAt('${r.id}')" class="fc-btn fc-btn-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish",'Удалить')}</button></div></div></div></div>`;document.body.appendChild(root);safeCreateIcons();
+      const root=document.createElement('div');root.id='fc-reward-preview-root';root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-gift-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr("Avtomatik sovg'a",'Автоматический подарок')}</div><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">${p?.img||p?.imageUrl?`<img src="${escapeHtml(p.img||p.imageUrl)}" class="fc-marketing-detail-image">`:''}<div class="fc-card"><div class="flex justify-between gap-2"><h3 class="font-black text-base">${escapeHtml(r.name)}</h3>${giftItemStatusBadge(item)}</div><p class="text-xs text-gray-500 mt-1">${giftTypeLabel(giftItemType(item))}</p></div><div class="fc-gift-agar-unda"><div class="is-agar"><span>AGAR</span><p>${escapeHtml(giftAgarText(item))}</p></div><div class="is-unda"><span>UNDA</span><p>${giftUndaText(item)}</p></div></div><div class="fc-detail-grid"><div><small>${tr('Qo‘llangan','Применено')}</small><b>${r.usageCount||0}</b></div><div><small>${tr('Qoldiq tugasa','Если закончится')}</small><b>${r.stockZeroPolicy==='AUTO_PAUSE'?tr('Avto to‘xtaydi','Автостоп'):tr('Sovg‘asiz davom','Без подарка')}</b></div><div><small>${tr('Boshlanish','Начало')}</small><b>${r.startsAt?new Date(r.startsAt).toLocaleDateString():'—'}</b></div><div><small>${tr('Tugash','Окончание')}</small><b>${r.endsAt?new Date(r.endsAt).toLocaleDateString():'—'}</b></div></div><div class="grid grid-cols-2 gap-2"><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();openRewardRuleForm('${r.id}')" class="fc-btn fc-btn-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();deleteRewardRuleAt('${r.id}')" class="fc-btn fc-btn-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish",'Удалить')}</button></div></div></div></div>`;document.body.appendChild(root);safeCreateIcons();
     }
     async function toggleRewardRuleActive(id,checked){const r=rewardRuleList.find(x=>String(x.id)===String(id));if(!r)return;try{await callApi('automatic_gift_update',{...r,id:r.id,isActive:checked});r.isActive=checked;render();loadMarketingSummaryLazy();}catch(e){render();showActionToast(tr("O'zgartirib bo'lmadi",'Не удалось изменить'),'error',1500);}}
     async function deleteRewardRuleAt(id) {
@@ -10426,7 +10426,7 @@
       const activeCount = personalDiscountBatchList.filter(b => personalDiscountStatusKind(b) === 'ACTIVE').length;
       const expiredCount = personalDiscountBatchList.filter(b => personalDiscountStatusKind(b) === 'EXPIRED').length;
       const totalUsed = personalDiscountBatchList.reduce((s, b) => s + (b.usedCount || 0), 0);
-      const statCard = (label, value) => `<div class="fc-card text-center"><p class="text-gray-500 text-[11px]">${label}</p><b class="text-lg block">${value}</b></div>`;
+      const statCard = (label, value) => `<div class="fc-card fc-mkt-stat text-center"><p>${label}</p><b>${value}</b></div>`;
       const q = personalDiscountSearch.trim().toLowerCase();
       const filters = [['ALL', tr('Barchasi', 'Все')], ['ACTIVE', tr('Faol', 'Активные')], ['SCHEDULED', tr('Rejalashtirilgan', 'Запланировано')], ['EXPIRED', tr('Tugagan', 'Истёкшие')]];
       const filtered = personalDiscountBatchList.filter(b => {
@@ -10446,8 +10446,8 @@
             <p class="text-[11px] text-gray-500 mt-1">${b.endsAt ? `${tr('Tugash', 'До')}: ${new Date(b.endsAt).toLocaleDateString()} · ` : ''}${b.memberCount} ${tr('ta mijoz', 'клиентов')} · ${tr('Ishlatilgan', 'Использовано')}: ${b.usedCount || 0}</p>
           </button>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="gem" class="w-7 h-7"></i><p>${tr("Hozircha shaxsiy chegirma yo'q.", 'Пока нет персональных скидок.')}</p></div>`;
-      const body = `<div class="space-y-3">
-        <div class="grid grid-cols-2 gap-2">${statCard(tr('Jami', 'Всего'), total)}${statCard(tr('Faol', 'Активные'), activeCount)}${statCard(tr('Muddati tugagan', 'Истёкшие'), expiredCount)}${statCard(tr('Jami ishlatilgan', 'Всего использовано'), totalUsed)}</div>
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-personal">
+        <div class="grid grid-cols-2 gap-2 fc-mkt-stats-grid">${statCard(tr('Jami', 'Всего'), total)}${statCard(tr('Faol', 'Активные'), activeCount)}${statCard(tr('Muddati tugagan', 'Истёкшие'), expiredCount)}${statCard(tr('Jami ishlatilgan', 'Всего использовано'), totalUsed)}</div>
         <div class="fc-filter-chip-row">${filters.map(([key, label]) => `<button type="button" onclick="personalDiscountFilter='${key}';render()" class="fc-filter-chip ${personalDiscountFilter === key ? 'is-active' : ''}">${label}</button>`).join('')}</div>
         <input type="text" value="${escapeHtml(personalDiscountSearch)}" oninput="personalDiscountSearch=this.value;render()" placeholder="${tr('Chegirma nomi bo‘yicha qidirish', 'Поиск по названию скидки')}" class="fc-order-search-input p-2 border rounded-xl w-full">
         <button type="button" onclick="openPersonalDiscountForm()" class="fc-btn fc-btn-primary w-full"><i data-lucide="plus" class="w-4 h-4"></i>${tr('Yangi chegirma', 'Новая скидка')}</button>
@@ -10487,7 +10487,7 @@
       const members = personalDiscountDetail.members || [];
       const usedCustomers = members.filter(m => m.usedCount > 0).length;
       const totalUsed = members.reduce((s, m) => s + (m.usedCount || 0), 0);
-      const statCard = (label, value) => `<div class="fc-card text-center"><p class="text-gray-500 text-[11px]">${label}</p><b class="text-lg block">${value}</b></div>`;
+      const statCard = (label, value) => `<div class="fc-card fc-mkt-stat text-center"><p>${label}</p><b>${value}</b></div>`;
       const membersHtml = members.map(m => `
         <div class="fc-staff-row">
           <div class="fc-staff-avatar">${escapeHtml((m.name || m.username || String(m.tgId)).slice(0, 1).toUpperCase())}</div>
@@ -10508,7 +10508,7 @@
             <div class="fc-promo-usage-amounts">${u.orderTotal != null ? `<span>${money(u.orderTotal)}</span>` : ''}<b>-${money(u.discountAmount)}</b></div>
           </div>
         `).join('') : `<div class="fc-empty-state compact"><p>${tr('Hozircha foydalanilmagan', 'Пока не использовалась')}</p></div>`;
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-personal-detail">
         <div class="fc-card">
           <div class="flex items-start justify-between gap-2"><h3 class="font-black text-base">${escapeHtml(b.name || tr('Shaxsiy chegirma', 'Персональная скидка'))}</h3>${personalDiscountStatusBadge(b)}</div>
           <div class="flex items-center gap-1.5 mt-1">${discountGreenBadgeHtml(promoDiscountLabel(b), 'is-lg')}</div>
@@ -10633,7 +10633,7 @@
       const rows = p.loading ? `<div class="fc-empty-state"><div class="fc-spinner"></div></div>`
         : p.results.length ? p.results.map(c => `<button type="button" onclick="togglePersonalDiscountPickerItem('${c.tgId}')" class="fc-hier-picker-row"><span class="fc-hier-picker-select ${p.selected.has(String(c.tgId)) ? 'is-selected' : ''}"><span class="fc-hier-picker-check">${p.selected.has(String(c.tgId)) ? '✓' : ''}</span><span>${escapeHtml(c.name || (c.username ? '@' + c.username : String(c.tgId)))}${c.phone ? ` · ${escapeHtml(c.phone)}` : ''}</span></span></button>`).join('')
         : `<div class="fc-empty-state compact"><p>${tr('Mijoz topilmadi', 'Клиент не найден')}</p></div>`;
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this){document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;}"><div class="fc-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Mijozlarni tanlash', 'Выбор клиентов')}</div><button type="button" onclick="document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-2">
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this){document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;}"><div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-personal-picker"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Mijozlarni tanlash', 'Выбор клиентов')}</div><button type="button" onclick="document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-2">
         <input type="text" oninput="onPersonalDiscountPickerSearch(this.value)" placeholder="${tr('Ism, username yoki telefon', 'Имя, username или телефон')}" class="fc-order-search-input p-2 border rounded-xl w-full">
         <div class="fc-move-list">${rows}</div>
       </div><div class="fc-sheet-footer"><button type="button" onclick="applyPersonalDiscountCustomerPicker()" class="fc-btn fc-btn-primary w-full" ${p.selected.size ? '' : 'disabled'}>${tr('Tanlash', 'Выбрать')} (${p.selected.size})</button></div></div></div>`;
@@ -10647,7 +10647,7 @@
       const customerCount = isEdit ? d.memberCount : (d.selectedCustomers || []).length;
       const previewCond = d.minOrderAmount && d.maxOrderAmount ? `${money(d.minOrderAmount)} – ${money(d.maxOrderAmount)}` : d.minOrderAmount ? `${money(d.minOrderAmount)}+` : d.maxOrderAmount ? `≤ ${money(d.maxOrderAmount)}` : tr('Cheklovsiz', 'Без огр.');
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closePersonalDiscountForm();">
-        <div class="fc-sheet">
+        <div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-form fc-mkt-pro-personal-form">
           <div class="fc-sheet-handle"></div>
           <div class="fc-sheet-header"><div class="fc-sheet-title">${isEdit ? tr('Chegirmani tahrirlash', 'Изменить скидку') : tr('Yangi shaxsiy chegirma', 'Новая персональная скидка')}</div><button type="button" onclick="closePersonalDiscountForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
           <div class="fc-sheet-body space-y-3">
@@ -10766,7 +10766,7 @@
         // shu yerga qo'shildi — ichki sahifaning o'zi 10-topshiriqda quriladi.
         { key: 'personal', icon: 'gem', title: tr('Shaxsiy chegirmalar', 'Персональные скидки'), onclick: 'openPersonalDiscountsPage()' },
       ];
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-hub">
         <section class="fc-marketing-summary">
           <span class="fc-marketing-summary-icon"><i data-lucide="megaphone" class="w-5 h-5"></i></span>
           <div><small>${tr('Hozir faol', 'Сейчас активно')}</small><b>${marketingSummaryLoading ? '…' : marketingSummary.activeTotal} ${tr('ta marketing vositasi', 'маркетинговых инструментов')}</b></div>
@@ -10904,7 +10904,7 @@
       const activeCount = promoList.filter(p => promoStatusKind(p) === 'ACTIVE').length;
       const limitCount = promoList.filter(p => promoStatusKind(p) === 'LIMIT_REACHED').length;
       const expiredCount = promoList.filter(p => promoStatusKind(p) === 'EXPIRED').length;
-      const statCard = (label, value) => `<div class="fc-card text-center"><p class="text-gray-500 text-[11px]">${label}</p><b class="text-lg block">${value}</b></div>`;
+      const statCard = (label, value) => `<div class="fc-card fc-mkt-stat text-center"><p>${label}</p><b>${value}</b></div>`;
       const q = promoSearchQuery.trim().toLowerCase();
       const filtered = promoList.filter(p => {
         if (promoStatusFilter !== 'ALL' && promoStatusKind(p) !== promoStatusFilter) return false;
@@ -10914,7 +10914,7 @@
       const rows = promoListLoading && !promoListLoaded
         ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
         : filtered.length ? filtered.map(p => `
-          <div class="fc-card fc-marketing-card">
+          <div class="fc-card fc-marketing-card fc-promo-list-card">
             <button type="button" onclick="openPromoPreview('${p.id}')" class="min-w-0 text-left w-full">
               <div class="flex items-start justify-between gap-2">
                 <span class="font-mono font-black text-base">${escapeHtml(p.code)}</span>
@@ -10932,14 +10932,14 @@
           </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="ticket-percent" class="w-7 h-7"></i><p>${tr("Hozircha promo-kod yo'q.", "Промокодов пока нет.")}</p></div>`;
 
-      const body = `<div class="space-y-3">
-        <div class="grid grid-cols-2 gap-2">
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-promos">
+        <div class="grid grid-cols-2 gap-2 fc-mkt-stats-grid">
           ${statCard(tr('Jami','Всего'), total)}
           ${statCard(tr('Faol','Активные'), activeCount)}
           ${statCard(tr('Limit tugagan','Лимит исчерпан'), limitCount)}
           ${statCard(tr('Muddati tugagan','Истёк срок'), expiredCount)}
         </div>
-        <div class="flex gap-2">
+        <div class="fc-promo-toolbar">
           <input type="text" value="${escapeHtml(promoSearchQuery)}" oninput="promoSearchQuery=this.value;render()" placeholder="${tr('Kod yoki nom bo‘yicha qidirish','Поиск по коду или названию')}" class="fc-order-search-input p-2 border rounded-xl flex-1 min-w-0">
           <select onchange="promoStatusFilter=this.value;render()" class="fc-order-filter-select p-2 border rounded-xl">
             <option value="ALL" ${promoStatusFilter==='ALL'?'selected':''}>${tr('Barchasi','Все')}</option>
@@ -10958,7 +10958,7 @@
     function openPromoPreview(id) {
       const p = promoList.find(x => String(x.id) === String(id)); if (!p) return;
       const root = document.createElement('div'); root.id = 'fc-promo-preview-root';
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Promo-kod tafsiloti','Детали промокода')}</div><button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-promo-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Promo-kod tafsiloti','Детали промокода')}</div><button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
         <div class="fc-card"><div class="flex items-start justify-between gap-2"><span class="font-mono font-black text-xl">${escapeHtml(p.code)}</span>${promoStatusBadge(p)}</div><p class="text-xs text-gray-500 mt-1">${escapeHtml(p.name)}</p><div class="flex items-center gap-2 mt-2">${discountGreenBadgeHtml(promoDiscountLabel(p), 'is-lg')}<button type="button" onclick="copyTextToClipboard('${escapeHtml(p.code)}')" class="fc-btn fc-btn-icon" aria-label="${tr('Nusxalash','Копировать')}"><i data-lucide="copy" class="w-4 h-4"></i></button></div><p class="text-xs text-gray-600 mt-2">${escapeHtml(promoConditionText(p))}</p></div>
         <div class="fc-card space-y-1.5">
           <div class="fc-order-kv"><span>${tr('Amal qilish muddati','Срок действия')}</span><b>${p.startsAt || p.endsAt ? `${p.startsAt ? new Date(p.startsAt).toLocaleDateString() : '…'} — ${p.endsAt ? new Date(p.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz','Бессрочно')}</b></div>
@@ -11036,7 +11036,7 @@
             </div>
           </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="users" class="w-7 h-7"></i><p>${tr("Hozircha hech kim ishlatmagan.", "Пока никто не использовал.")}</p></div>`;
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-promo-usage">
         <div class="fc-card"><div class="flex items-center justify-between gap-2"><span class="font-mono font-black text-sm">${escapeHtml(promo.code)}</span>${promoStatusBadge(promo)}</div><div class="flex items-center gap-1.5 mt-1">${discountGreenBadgeHtml(promoDiscountLabel(promo))}<small class="text-gray-500">${escapeHtml(promo.name)}</small></div></div>
         <div class="grid grid-cols-3 gap-2">
           <div class="fc-card text-center"><p class="text-gray-500 text-[11px]">${tr('Jami limit','Общий лимит')}</p><b class="text-lg block">${promo.usageLimit ?? tr('Cheksiz','Без огр.')}</b></div>
@@ -11118,7 +11118,7 @@
       const d = promoDraft;
       const isEdit = !!d.id;
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closePromoForm();">
-        <div class="fc-sheet">
+        <div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-form fc-mkt-pro-promo-form">
           <div class="fc-sheet-handle"></div>
           <div class="fc-sheet-header"><div class="fc-sheet-title">${isEdit ? tr("Promo-kodni tahrirlash", "Изменить промокод") : tr("Yangi promo-kod", "Новый промокод")}</div><button type="button" onclick="closePromoForm()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
           <div class="fc-sheet-body space-y-3">
