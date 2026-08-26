@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=66">
+  <link rel="stylesheet" href="./ustore.css?v=67">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -26,7 +26,7 @@
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=7"></script>
   <script defer src="./config.public.js?v=1"></script>
-  <script defer src="./ustore-shop-app.js?v=66"></script>
+  <script defer src="./ustore-shop-app.js?v=67"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
 
@@ -44,12 +44,14 @@
       <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400 shrink-0"></span>
     </div>
     <div class="flex items-center space-x-2">
-      <!-- Header'dagi savatcha tugmasi OLIB TASHLANDI: savatcha allaqachon
-           pastki menyuda bor edi, ya'ni u ikki joyda takrorlanardi. Mahsulot
-           soni ko'rsatkichi (#cart-badge) pastki menyudagi tugmaga ko'chirildi,
-           shunda hech qanday funksiya yo'qolmaydi — faqat takror olib
-           tashlanadi va header'da logotip/ADMIN belgisi uchun joy bo'shaydi. -->
-      <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi. -->
+      <!-- Foydalanuvchi qaytardi: savatcha tugmasi FAQAT admin rejimida
+           yashiriladi (updateHeaderChrome()da), oddiy mijoz uchun header'da
+           ko'rinadi — pastki menyudagi savatcha bilan bir qatorda. -->
+      <button onclick="switchTab('cart')" class="relative p-2 bg-gray-100 rounded-full" id="header-cart-btn" aria-label="Savatcha" title="Savatcha">
+        <i data-lucide="shopping-cart" class="w-5 h-5 text-gray-700"></i>
+        <span id="cart-badge" class="hidden absolute -top-1 -right-1 fc-bg-danger text-white text-[10px] font-bold w-4 h-4 rounded-full items-center justify-center">0</span>
+      </button>
+      <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi (savatchadan keyin). -->
       <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
       <button onclick="switchTab('profile')" class="p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
         <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
@@ -96,8 +98,6 @@
     </button>
     <button onclick="switchTab('cart')" class="nav-btn flex flex-col items-center text-gray-500" id="nav-cart">
       <i data-lucide="shopping-bag" class="w-5 h-5"></i>
-      <!-- Mahsulot soni ko'rsatkichi header'dan shu yerga ko'chirildi. -->
-      <span id="cart-badge" class="hidden ustore-nav-cart-badge">0</span>
       <span class="text-[10px] mt-1" id="nav-label-cart">Savatcha</span>
     </button>
     <button onclick="switchTab('orders')" class="nav-btn flex flex-col items-center text-gray-500" id="nav-orders">
