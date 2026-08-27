@@ -9875,7 +9875,7 @@
               </div>
             </div>
             <button type="button" onclick="openTierGroupDetail('${g.id}')" class="fc-tier-steps-preview">
-              ${shownSteps.map((step, i) => `<span class="fc-tier-step-chip"><small>${i + 1}</small><b>${reportCompactMoney(step.thresholdAmount)}</b><i data-lucide="arrow-right" class="w-3 h-3"></i><em>${discountPctLabel(step)}</em></span>`).join('')}
+              ${shownSteps.map((step, i) => `<span class="fc-tier-step-chip is-step-${Math.min(i + 1, 3)}"><small>${i + 1}</small><b>${reportCompactMoney(step.thresholdAmount)}</b><i data-lucide="arrow-right" class="w-3 h-3"></i><em>${discountPctLabel(step)}</em></span>`).join('')}
               ${rest ? `<span class="fc-tier-more-chip">+${rest}</span>` : ''}
             </button>
           </div>`;
@@ -11065,15 +11065,19 @@
         <div class="fc-sheet-body space-y-3">
           <div class="fc-card fc-promo-detail-hero">
             <div class="fc-promo-detail-top">
-              <div class="min-w-0">
-                <span class="font-mono font-black text-xl">${escapeHtml(p.code)}</span>
-                ${p.name ? `<p>${escapeHtml(p.name)}</p>` : ''}
+              <div class="fc-promo-detail-title-wrap">
+                <h3>${escapeHtml(p.name || tr('Promo-kod', 'Промокод'))}</h3>
+                <div class="fc-promo-code-row">
+                  <span class="fc-promo-code-label">${tr('Promo-kod','Промокод')}</span>
+                  <code>${escapeHtml(p.code)}</code>
+                  <button type="button" onclick="copyTextToClipboard('${escapeHtml(p.code)}')" class="fc-promo-copy-btn" aria-label="${tr('Nusxalash','Копировать')}" title="${tr('Nusxalash','Копировать')}"><i data-lucide="copy" class="w-4 h-4"></i></button>
+                </div>
               </div>
               ${promoStatusBadge(p)}
             </div>
             <div class="fc-promo-detail-discount-row">
               ${discountGreenBadgeHtml(promoDiscountLabel(p), 'is-lg')}
-              <button type="button" onclick="copyTextToClipboard('${escapeHtml(p.code)}')" class="fc-btn fc-btn-icon" aria-label="${tr('Nusxalash','Копировать')}"><i data-lucide="copy" class="w-4 h-4"></i></button>
+              <span>${tr('chegirma','скидка')}</span>
             </div>
             <p class="fc-promo-detail-condition">${escapeHtml(promoConditionText(p))}</p>
             <div class="fc-promo-detail-status-row">

@@ -4295,3 +4295,159 @@ html.ustore-dark-theme .fc-mkt-pro-personal .fc-personal-list-card{
   .fc-mkt-pro-gifts .fc-gift-list-card{grid-template-columns:minmax(0,1fr) 4rem!important}
   .fc-gift-list-side{min-width:4rem!important}
 }
+
+/* ============================================================
+   DESIGN ROUND v74 — approved precision fixes only
+   1) Promo detail: no horizontal overflow in Telegram WebView.
+   2) Promo detail hierarchy: promo NAME is title, code is copyable row.
+   3) Tier list: visible steps use positive blue -> teal -> green progression.
+   Scope: ONLY Promo detail + tier list visuals.
+   ============================================================ */
+
+/* Promo detail hard containment: WebView must never reveal a blank right gutter. */
+#fc-promo-preview-root,
+#fc-promo-preview-root .fc-sheet-overlay,
+#fc-promo-preview-root .fc-sheet,
+#fc-promo-preview-root .fc-sheet-header,
+#fc-promo-preview-root .fc-sheet-body{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-x:none!important;
+}
+#fc-promo-preview-root .fc-sheet-overlay{
+  position:fixed!important;
+  inset:0!important;
+  touch-action:pan-y!important;
+}
+#fc-promo-preview-root .fc-sheet{
+  margin:0!important;
+  border-left:0!important;
+  border-right:0!important;
+}
+#fc-promo-preview-root .fc-sheet-body{
+  contain:inline-size;
+}
+#fc-promo-preview-root .fc-sheet-body > *,
+#fc-promo-preview-root .fc-card,
+#fc-promo-preview-root .fc-promo-detail-section,
+#fc-promo-preview-root .fc-order-kv{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+}
+#fc-promo-preview-root .fc-order-kv{
+  grid-template-columns:minmax(5rem,42%) minmax(0,1fr)!important;
+}
+#fc-promo-preview-root .fc-order-kv span,
+#fc-promo-preview-root .fc-order-kv b{
+  min-width:0!important;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+/* Promo hero: name first, code second, copy action attached to the code itself. */
+.fc-promo-detail-title-wrap{
+  flex:1 1 auto;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:.42rem;
+}
+.fc-promo-detail-title-wrap h3{
+  margin:0;
+  max-width:100%;
+  font-size:.78rem;
+  line-height:1.32;
+  font-weight:900;
+  color:#202a3a;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+}
+.fc-promo-code-row{
+  width:100%;
+  min-width:0;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) 1.85rem;
+  align-items:center;
+  gap:.36rem;
+  padding:.42rem .46rem;
+  border:1px solid #dfe7f1;
+  border-radius:.68rem;
+  background:#f8faff;
+}
+.fc-promo-code-label{
+  font-size:.46rem;
+  font-weight:800;
+  color:#7b8796;
+  white-space:nowrap;
+}
+.fc-promo-code-row code{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-family:var(--font-mono,ui-monospace,monospace);
+  font-size:.61rem;
+  line-height:1.2;
+  font-weight:900;
+  letter-spacing:.035em;
+  color:#172033;
+}
+.fc-promo-copy-btn{
+  width:1.85rem;
+  height:1.85rem;
+  min-width:1.85rem;
+  padding:0;
+  border:1px solid #d7e2ef;
+  border-radius:.58rem;
+  background:#fff;
+  color:#2563eb;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.fc-promo-copy-btn:active{transform:scale(.95);background:#eef4ff}
+.fc-promo-detail-discount-row>span:last-child{
+  font-size:.55rem;
+  font-weight:700;
+  color:#64748b;
+}
+
+/* Tier list progression — visual reward increases with each visible step. */
+.fc-tier-step-chip.is-step-1{
+  border-color:#d9e7ff!important;
+  background:linear-gradient(180deg,#f7faff,#eef5ff)!important;
+}
+.fc-tier-step-chip.is-step-1 small{background:#dbeafe!important;color:#2563eb!important}
+.fc-tier-step-chip.is-step-1 em{color:#2563eb!important}
+.fc-tier-step-chip.is-step-1 svg{color:#7aa7ef!important}
+
+.fc-tier-step-chip.is-step-2{
+  border-color:#ccefee!important;
+  background:linear-gradient(180deg,#f5fffe,#eafbf9)!important;
+}
+.fc-tier-step-chip.is-step-2 small{background:#ccfbf1!important;color:#0f8f87!important}
+.fc-tier-step-chip.is-step-2 em{color:#0d9488!important}
+.fc-tier-step-chip.is-step-2 svg{color:#55b9b1!important}
+
+.fc-tier-step-chip.is-step-3{
+  border-color:#cfebd6!important;
+  background:linear-gradient(180deg,#f7fff9,#ecfdf3)!important;
+}
+.fc-tier-step-chip.is-step-3 small{background:#dcfce7!important;color:#16a34a!important}
+.fc-tier-step-chip.is-step-3 em{color:#16a34a!important}
+.fc-tier-step-chip.is-step-3 svg{color:#65b979!important}
+
+html.ustore-dark-theme #fc-promo-preview-root .fc-promo-code-row,
+html.ustore-dark-theme #fc-promo-preview-root .fc-promo-copy-btn,
+html.ustore-dark-theme .fc-tier-step-chip.is-step-1,
+html.ustore-dark-theme .fc-tier-step-chip.is-step-2,
+html.ustore-dark-theme .fc-tier-step-chip.is-step-3{
+  background:var(--ustore-panel-bg)!important;
+  border-color:var(--ustore-border)!important;
+}
