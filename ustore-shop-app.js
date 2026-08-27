@@ -5130,6 +5130,15 @@
       if (kind === 'bundle') {
         return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="openBundleForm('${id}');cardActionMenu=null;"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="deleteBundleAt('${id}');cardActionMenu=null;"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
       }
+      if (kind === 'reward-coupon') {
+        return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="openCouponRewardForm('${id}');cardActionMenu=null;"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="deleteCouponRewardRule('${id}');cardActionMenu=null;"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
+      }
+      if (kind === 'reward-gift') {
+        return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="openRewardRuleForm('${id}');cardActionMenu=null;"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="deleteRewardRuleAt('${id}');cardActionMenu=null;"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
+      }
+      if (kind === 'personal-discount') {
+        return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="openPersonalDiscountForm('${id}');cardActionMenu=null;"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="deletePersonalDiscountBatch('${id}');cardActionMenu=null;"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
+      }
       const edit = kind === 'product'
         ? `openProductDetailModal('${id}');cardActionMenu=null;render();`
         : `openEditCategoryModal('${id}', event);cardActionMenu=null;`;
@@ -9173,7 +9182,7 @@
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) this.parentElement.remove();">
         <div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-banner-detail">
           <div class="fc-sheet-handle"></div>
-          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Banner ma’lumotlari','Данные баннера')}</div><div class="fc-inline-action-wrap"><button type="button" onclick="toggleInlineActionMenu(this,event)" class="fc-btn fc-btn-icon" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><div class="fc-inline-action-menu"><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove();openBannerForm('${b.id}')"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="document.getElementById('fc-banner-preview-root')?.remove();deleteBannerAt('${b.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div></div><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Banner ma’lumotlari','Данные баннера')}</div><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
           <div class="fc-sheet-body space-y-3 fc-banner-detail-body">
             <div class="fc-banner-detail-media"><img src="${escapeHtml(b.imageUrl)}" class="fc-marketing-detail-image" loading="lazy"></div>
             <div class="fc-card fc-banner-detail-primary">
@@ -9190,7 +9199,7 @@
             <div class="fc-card fc-banner-detail-meta">
               <div class="fc-banner-detail-two-col"><div class="fc-banner-detail-cell"><small>${tr('Yaratilgan','Создан')}</small><b>${b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}</b></div><div class="fc-banner-detail-cell"><small>${tr('Yangilangan','Обновлён')}</small><b>${b.updatedAt ? new Date(b.updatedAt).toLocaleDateString() : '—'}</b></div></div>
             </div>
-            <button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove();openBannerForm('${b.id}')" class="fc-btn fc-btn-primary w-full fc-banner-detail-edit-btn"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button>
+            <div class="grid grid-cols-2 gap-2 fc-banner-detail-actions"><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove();openBannerForm('${b.id}')" class="fc-btn fc-btn-outline-primary fc-banner-detail-edit-btn"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove();deleteBannerAt('${b.id}')" class="fc-btn fc-btn-outline-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr('O‘chirish','Удалить')}</button></div>
           </div>
         </div>
       </div>`;
@@ -9534,7 +9543,7 @@
       const selected = (b.items || []).map(i => ({ item: i, product: products.find(p => String(p.id) === String(i.productId)) })).filter(x => x.product);
       const root = document.createElement('div'); root.id = 'fc-bundle-preview-root';
       const dateRangeText = b.startsAt || b.endsAt ? `${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '…'} – ${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно');
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-bundle-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Aksiya tafsiloti','Детали акции')}</div><div class="fc-inline-action-wrap"><button type="button" onclick="toggleInlineActionMenu(this,event)" class="fc-btn fc-btn-icon" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><div class="fc-inline-action-menu"><button type="button" onclick="document.getElementById('fc-bundle-preview-root')?.remove();openBundleForm('${b.id}')"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="document.getElementById('fc-bundle-preview-root')?.remove();deleteBundleAt('${b.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div></div><button type="button" onclick="document.getElementById('fc-bundle-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-bundle-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Aksiya tafsiloti','Детали акции')}</div><button type="button" onclick="document.getElementById('fc-bundle-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
         ${b.coverImageUrl ? `<img src="${escapeHtml(b.coverImageUrl)}" class="fc-marketing-detail-image">` : ''}
         <div class="fc-card fc-bundle-detail-head-card">
           <div class="fc-detail-heading-row"><div class="fc-bundle-detail-title-wrap"><span class="fc-bundle-detail-title-icon"><i data-lucide="megaphone" class="w-4 h-4"></i></span><h3>${escapeHtml(b.name)}</h3></div><span class="fc-badge ${b.pauseReason ? 'fc-badge-warning' : b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.pauseReason ? tr('To‘xtatilgan', 'Приостановлена') : b.isActive ? tr('Faol','Активна') : tr('Nofaol','Неактивна')}</span></div>
@@ -9824,6 +9833,11 @@
       linePath += ` L ${lastX} ${yFor(prevVal).toFixed(1)}`;
       const areaPath = `${linePath} L ${lastX} ${yFor(0).toFixed(1)} L ${xFor(0).toFixed(1)} ${yFor(0).toFixed(1)} Z`;
       const pointPalette = ['#2563eb', '#0891b2', '#0d9488', '#16a34a', '#22c55e'];
+      const progressiveSurface = !!opts.progressivePoints;
+      const gradKey = `fc-tier-${H}-${sorted.length}`;
+      const defs = progressiveSurface ? `<defs><linearGradient id="${gradKey}-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563eb"></stop><stop offset="55%" stop-color="#0891b2"></stop><stop offset="100%" stop-color="#16a34a"></stop></linearGradient><linearGradient id="${gradKey}-area" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#dbeafe"></stop><stop offset="55%" stop-color="#ccfbf1"></stop><stop offset="100%" stop-color="#dcfce7"></stop></linearGradient></defs>` : '';
+      const lineStroke = progressiveSurface ? `url(#${gradKey}-line)` : color;
+      const areaFill = progressiveSurface ? `url(#${gradKey}-area)` : color;
       const points = sorted.map((s, i) => {
         const progressive = !!opts.progressivePoints;
         const pointColor = progressive ? pointPalette[Math.min(pointPalette.length - 1, Math.round((i / Math.max(1, sorted.length - 1)) * (pointPalette.length - 1)))] : color;
@@ -9833,7 +9847,7 @@
       }).join('');
       const xLabels = [0, ...sorted.map(s => s.thresholdAmount)].map(amt => `<text x="${xFor(amt).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="8.5" fill="#94a3b8">${amt === 0 ? '0' : escapeHtml(reportCompactMoney(amt))}</text>`).join('');
       const yTicks = [0, 0.5, 1].map(f => { const val = maxValue * f; const y = yFor(val).toFixed(1); return `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#eef2f7" stroke-width="1"></line><text x="${padL - 5}" y="${(yFor(val) + 3).toFixed(1)}" text-anchor="end" font-size="8.5" fill="#94a3b8">${Math.round(val)}%</text>`; }).join('');
-      return `<svg viewBox="0 0 ${W} ${H}" class="fc-tier-diagram-svg" preserveAspectRatio="xMidYMid meet">${yTicks}<path d="${areaPath}" fill="${color}" opacity="0.12"></path><path d="${linePath}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></path>${points}${xLabels}</svg>`;
+      return `<svg viewBox="0 0 ${W} ${H}" class="fc-tier-diagram-svg" preserveAspectRatio="xMidYMid meet">${defs}${yTicks}<path d="${areaPath}" fill="${areaFill}" opacity="${progressiveSurface ? '0.72' : '0.12'}"></path><path d="${linePath}" fill="none" stroke="${lineStroke}" stroke-width="2.7" stroke-linejoin="round" stroke-linecap="round"></path>${points}${xLabels}</svg>`;
     }
     function tierGroupScopeLabel(g) {
       if (g.productIds?.length) return `${tr('Mahsulotlar', 'Товары')}: ${g.productIds.length}`;
@@ -9905,7 +9919,7 @@
               <h3>${escapeHtml(g.name || tr('Bosqichli chegirma', 'Ступенчатая скидка'))}</h3>
               <div class="fc-tier-detail-meta"><span><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${g.startsAt || g.endsAt ? `${g.startsAt ? new Date(g.startsAt).toLocaleDateString() : '…'} — ${g.endsAt ? new Date(g.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')}</span><span><i data-lucide="store" class="w-3.5 h-3.5"></i>${tierGroupScopeLabel(g)}</span></div>
             </div>
-            ${isAdmin ? `<div class="fc-tier-detail-head-actions"><span class="fc-badge ${g.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${g.isActive ? tr('Faol', 'Активна') : tr('Nofaol', 'Неактивна')}</span><button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('tier','${g.id}',event)" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>${cardActionMenuHtml('tier', g.id)}</div>` : ''}
+            ${isAdmin ? `<div class="fc-tier-detail-head-actions"><span class="fc-badge ${g.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${g.isActive ? tr('Faol', 'Активна') : tr('Nofaol', 'Неактивна')}</span></div>` : ''}
           </div>
           ${!isAdmin ? `<div class="fc-tier-detail-info-row"><i data-lucide="info" class="w-4 h-4"></i><span>${tr('Aksiya davomida buyurtma summasiga qarab chegirma miqdori ortib boradi.', 'Во время акции размер скидки растёт вместе с суммой заказа.')}</span></div>` : g.allowStacking ? `<div class="fc-tier-detail-info-row"><i data-lucide="badge-check" class="w-4 h-4"></i><span>${tr('Mos promo-kod bilan birga ishlashi mumkin', 'Может применяться вместе с подходящим промокодом')}</span></div>` : ''}
         </div>
@@ -10211,18 +10225,18 @@
           const type = giftItemType(item);
           const gp = item.giftProduct || (type !== 'COUPON' ? products.find(p => String(p.id) === String(item.giftProductId)) : null);
           const name = item.__kind === 'coupon' ? (item.triggerType === 'ORDER_TOTAL' ? tr('Bir buyurtma uchun kupon', 'Купон за один заказ') : tr('Jami xaridlar uchun kupon', 'Купон за общие покупки')) : item.name;
+          const menuKind = item.__kind === 'coupon' ? 'reward-coupon' : 'reward-gift';
+          const tone = type === 'COUPON' ? 'coupon' : type === 'ORDER_AMOUNT' ? 'amount' : type === 'SPECIFIC_PRODUCTS' ? 'product' : 'quantity';
           return `
-          <div class="fc-card fc-marketing-card">
-            <button type="button" onclick="openGiftDetail('${item.id}','${item.__kind}')" class="fc-marketing-card-main">
+          <div class="fc-card fc-marketing-card fc-gift-list-card is-${tone}">
+            <button type="button" onclick="openGiftDetail('${item.id}','${item.__kind}')" class="fc-marketing-card-main fc-gift-list-main">
               ${gp?.img || gp?.imageUrl ? `<img src="${escapeHtml(gp.img || gp.imageUrl)}" class="fc-marketing-thumb is-square">` : `<span class="fc-marketing-iconbox"><i data-lucide="${type === 'COUPON' ? 'ticket-percent' : 'gift'}" class="w-5 h-5"></i></span>`}
-              <span class="fc-marketing-copy"><b>${escapeHtml(name)}</b><small>${giftTypeLabel(type)} · ${escapeHtml(giftAgarText(item))}</small></span>
-              <i data-lucide="chevron-right" class="w-4 h-4 fc-marketing-chevron"></i>
+              <span class="fc-marketing-copy"><b>${escapeHtml(name)}</b><small>${giftTypeLabel(type)}</small><em>${escapeHtml(giftAgarText(item))}</em></span>
             </button>
-            <div class="fc-marketing-actions">
-              <button type="button" onclick="${item.__kind === 'coupon' ? `openCouponRewardForm('${item.id}')` : `openRewardRuleForm('${item.id}')`}" class="fc-btn fc-btn-icon" aria-label="${tr('Tahrirlash', 'Изменить')}"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
-              ${item.__kind === 'gift' ? `<span class="fc-toggle"><input type="checkbox" ${item.isActive ? 'checked' : ''} onchange="toggleRewardRuleActive('${item.id}',this.checked)"><span class="fc-toggle-track"></span></span>` : ''}
-              <button type="button" onclick="${item.__kind === 'coupon' ? `deleteCouponRewardRule('${item.id}')` : `deleteRewardRuleAt('${item.id}')`}" class="fc-btn fc-btn-icon fc-btn-danger" aria-label="${tr("O'chirish", 'Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-              <span class="ml-auto">${giftItemStatusBadge(item)}</span>
+            <div class="fc-gift-list-side">
+              ${giftItemStatusBadge(item)}
+              <button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('${menuKind}','${item.id}',event)" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
+              ${cardActionMenuHtml(menuKind, item.id)}
             </div>
           </div>
         `; }).join('') : `<div class="fc-empty-state"><i data-lucide="gift" class="w-7 h-7"></i><p>${tr("Hozircha qoida yo'q.", 'Пока нет правил.')}</p></div>`;
@@ -10231,8 +10245,8 @@
           <div><h3>${tr("Avtomatik sovg'alar", 'Автоматические подарки')}</h3><p>${tr("Shart bajarilganda mahsulot yoki bir martalik kupon beriladi.", 'При выполнении условия выдаётся товар или одноразовый купон.')}</p></div>
         </div>
         <div class="grid grid-cols-2 gap-2">
-          ${statCard(tr('Jami', 'Всего'), total)}${statCard(tr('Faol', 'Активные'), activeCount)}
-          ${statCard(tr('Rejalashtirilgan', 'Запланировано'), scheduledCount)}${statCard(tr('Tugagan/Nofaol', 'Истёк/неактивен'), doneCount)}
+          ${statCard(tr('Jami', 'Всего'), total, 'layers-3', 'blue')}${statCard(tr('Faol', 'Активные'), activeCount, 'circle-check', 'green')}
+          ${statCard(tr('Rejalashtirilgan', 'Запланировано'), scheduledCount, 'calendar-clock', 'amber')}${statCard(tr('Tugagan/Nofaol', 'Истёк/неактивен'), doneCount, 'circle-off', 'rose')}
         </div>
         <div class="fc-filter-chip-row">${filters.map(([key, label]) => `<button type="button" onclick="giftFilterType='${key}';render()" class="fc-filter-chip ${giftFilterType === key ? 'is-active' : ''}">${label}</button>`).join('')}</div>
         <button type="button" onclick="openGiftTypePicker()" class="fc-btn fc-btn-primary w-full"><i data-lucide="plus" class="w-4 h-4"></i>${tr('Yangi qoida', 'Новое правило')}</button>
@@ -10267,7 +10281,7 @@
         <div class="fc-card"><div class="flex justify-between gap-2"><h3 class="font-black text-base">${r.triggerType === 'ORDER_TOTAL' ? tr('Bir buyurtma uchun kupon', 'Купон за один заказ') : tr('Jami xaridlar uchun kupon', 'Купон за общие покупки')}</h3>${giftItemStatusBadge(item)}</div></div>
         <div class="fc-gift-agar-unda"><div class="is-agar"><span>AGAR</span><p>${escapeHtml(giftAgarText(item))}</p></div><div class="is-unda"><span>UNDA</span><p>${giftUndaText(item)}</p></div></div>
         <div class="fc-detail-grid"><div><small>${tr('Amal qilish muddati', 'Срок действия')}</small><b>${r.codeExpiryDays ? `${r.codeExpiryDays} ${tr('kun', 'дней')}` : tr('Muddatsiz', 'Бессрочно')}</b></div><div><small>${tr('Boshqa odamga berish', 'Передача другому')}</small><b>${r.transferable ? tr('Mumkin', 'Можно') : tr('Faqat egasi', 'Только владелец')}</b></div></div>
-        <button type="button" onclick="document.getElementById('fc-coupon-preview-root')?.remove();openCouponRewardForm('${r.id}')" class="fc-btn fc-btn-primary w-full"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash', 'Изменить')}</button>
+        <div class="grid grid-cols-2 gap-2 fc-gift-detail-actions"><button type="button" onclick="document.getElementById('fc-coupon-preview-root')?.remove();openCouponRewardForm('${r.id}')" class="fc-btn fc-btn-outline-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash', 'Изменить')}</button><button type="button" onclick="document.getElementById('fc-coupon-preview-root')?.remove();deleteCouponRewardRule('${r.id}')" class="fc-btn fc-btn-outline-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish", 'Удалить')}</button></div>
       </div></div></div>`;
       document.body.appendChild(root); safeCreateIcons();
     }
@@ -10436,7 +10450,7 @@
     function openRewardRulePreview(id){
       const r=rewardRuleList.find(x=>String(x.id)===String(id));if(!r)return;const p=r.giftProduct||products.find(x=>String(x.id)===String(r.giftProductId));
       const item = { ...r, __kind: 'gift' };
-      const root=document.createElement('div');root.id='fc-reward-preview-root';root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-gift-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr("Avtomatik sovg'a",'Автоматический подарок')}</div><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">${p?.img||p?.imageUrl?`<img src="${escapeHtml(p.img||p.imageUrl)}" class="fc-marketing-detail-image">`:''}<div class="fc-card"><div class="flex justify-between gap-2"><h3 class="font-black text-base">${escapeHtml(r.name)}</h3>${giftItemStatusBadge(item)}</div><p class="text-xs text-gray-500 mt-1">${giftTypeLabel(giftItemType(item))}</p></div><div class="fc-gift-agar-unda"><div class="is-agar"><span>AGAR</span><p>${escapeHtml(giftAgarText(item))}</p></div><div class="is-unda"><span>UNDA</span><p>${giftUndaText(item)}</p></div></div><div class="fc-detail-grid"><div><small>${tr('Qo‘llangan','Применено')}</small><b>${r.usageCount||0}</b></div><div><small>${tr('Qoldiq tugasa','Если закончится')}</small><b>${r.stockZeroPolicy==='AUTO_PAUSE'?tr('Avto to‘xtaydi','Автостоп'):tr('Sovg‘asiz davom','Без подарка')}</b></div><div><small>${tr('Boshlanish','Начало')}</small><b>${r.startsAt?new Date(r.startsAt).toLocaleDateString():'—'}</b></div><div><small>${tr('Tugash','Окончание')}</small><b>${r.endsAt?new Date(r.endsAt).toLocaleDateString():'—'}</b></div></div><div class="grid grid-cols-2 gap-2"><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();openRewardRuleForm('${r.id}')" class="fc-btn fc-btn-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();deleteRewardRuleAt('${r.id}')" class="fc-btn fc-btn-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish",'Удалить')}</button></div></div></div></div>`;document.body.appendChild(root);safeCreateIcons();
+      const root=document.createElement('div');root.id='fc-reward-preview-root';root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-gift-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr("Avtomatik sovg'a",'Автоматический подарок')}</div><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">${p?.img||p?.imageUrl?`<img src="${escapeHtml(p.img||p.imageUrl)}" class="fc-marketing-detail-image">`:''}<div class="fc-card"><div class="flex justify-between gap-2"><h3 class="font-black text-base">${escapeHtml(r.name)}</h3>${giftItemStatusBadge(item)}</div><p class="text-xs text-gray-500 mt-1">${giftTypeLabel(giftItemType(item))}</p></div><div class="fc-gift-agar-unda"><div class="is-agar"><span>AGAR</span><p>${escapeHtml(giftAgarText(item))}</p></div><div class="is-unda"><span>UNDA</span><p>${giftUndaText(item)}</p></div></div><div class="fc-detail-grid"><div><small>${tr('Qo‘llangan','Применено')}</small><b>${r.usageCount||0}</b></div><div><small>${tr('Qoldiq tugasa','Если закончится')}</small><b>${r.stockZeroPolicy==='AUTO_PAUSE'?tr('Avto to‘xtaydi','Автостоп'):tr('Sovg‘asiz davom','Без подарка')}</b></div><div><small>${tr('Boshlanish','Начало')}</small><b>${r.startsAt?new Date(r.startsAt).toLocaleDateString():'—'}</b></div><div><small>${tr('Tugash','Окончание')}</small><b>${r.endsAt?new Date(r.endsAt).toLocaleDateString():'—'}</b></div></div><label class="fc-settings-toggle-row fc-gift-detail-status"><span><b>${tr('Holati','Статус')}</b><small>${r.isActive ? tr('Faol','Активен') : tr('Nofaol','Неактивен')}</small></span><span class="fc-toggle"><input type="checkbox" ${r.isActive ? 'checked' : ''} onchange="toggleRewardRuleActive('${r.id}',this.checked)"><span class="fc-toggle-track"></span></span></label><div class="grid grid-cols-2 gap-2 fc-gift-detail-actions"><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();openRewardRuleForm('${r.id}')" class="fc-btn fc-btn-outline-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();deleteRewardRuleAt('${r.id}')" class="fc-btn fc-btn-outline-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish",'Удалить')}</button></div></div></div></div>`;document.body.appendChild(root);safeCreateIcons();
     }
     async function toggleRewardRuleActive(id,checked){const r=rewardRuleList.find(x=>String(x.id)===String(id));if(!r)return;try{await callApi('automatic_gift_update',{...r,id:r.id,isActive:checked});r.isActive=checked;render();loadMarketingSummaryLazy();}catch(e){render();showActionToast(tr("O'zgartirib bo'lmadi",'Не удалось изменить'),'error',1500);}}
     async function deleteRewardRuleAt(id) {
@@ -10509,14 +10523,12 @@
       const rows = personalDiscountBatchListLoading && !personalDiscountBatchListLoaded
         ? `<div class="fc-empty-state"><div class="fc-spinner"></div></div>`
         : filtered.length ? filtered.map(b => `
-          <button type="button" onclick="openPersonalDiscountDetail('${b.id}')" class="fc-card fc-marketing-card w-full text-left">
-            <div class="flex items-start justify-between gap-2">
-              <b class="text-sm">${escapeHtml(b.name || tr('Shaxsiy chegirma', 'Персональная скидка'))}</b>
-              ${personalDiscountStatusBadge(b)}
-            </div>
-            <div class="flex items-center gap-1.5 mt-1">${discountGreenBadgeHtml(promoDiscountLabel(b))}<small class="text-gray-500">${escapeHtml(personalDiscountConditionText(b))}</small></div>
-            <p class="text-[11px] text-gray-500 mt-1">${b.endsAt ? `${tr('Tugash', 'До')}: ${new Date(b.endsAt).toLocaleDateString()} · ` : ''}${b.memberCount} ${tr('ta mijoz', 'клиентов')} · ${tr('Ishlatilgan', 'Использовано')}: ${b.usedCount || 0}</p>
-          </button>
+          <div class="fc-card fc-marketing-card fc-personal-list-card">
+            <button type="button" onclick="openPersonalDiscountDetail('${b.id}')" class="fc-personal-list-main">
+              <div class="min-w-0"><b class="text-sm">${escapeHtml(b.name || tr('Shaxsiy chegirma', 'Персональная скидка'))}</b><div class="flex items-center gap-1.5 mt-1">${discountGreenBadgeHtml(promoDiscountLabel(b))}<small class="text-gray-500">${escapeHtml(personalDiscountConditionText(b))}</small></div><p class="text-[11px] text-gray-500 mt-1">${b.endsAt ? `${tr('Tugash', 'До')}: ${new Date(b.endsAt).toLocaleDateString()} · ` : ''}${b.memberCount} ${tr('ta mijoz', 'клиентов')} · ${tr('Ishlatilgan', 'Использовано')}: ${b.usedCount || 0}</p></div>
+            </button>
+            <div class="fc-personal-list-side">${personalDiscountStatusBadge(b)}<button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('personal-discount','${b.id}',event)" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>${cardActionMenuHtml('personal-discount', b.id)}</div>
+          </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="gem" class="w-7 h-7"></i><p>${tr("Hozircha shaxsiy chegirma yo'q.", 'Пока нет персональных скидок.')}</p></div>`;
       const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-personal">
         <div class="grid grid-cols-2 gap-2 fc-mkt-stats-grid">${statCard(tr('Jami', 'Всего'), total)}${statCard(tr('Faol', 'Активные'), activeCount)}${statCard(tr('Muddati tugagan', 'Истёкшие'), expiredCount)}${statCard(tr('Jami ishlatilgan', 'Всего использовано'), totalUsed)}</div>
@@ -11048,13 +11060,6 @@
         <div class="fc-sheet-handle"></div>
         <div class="fc-sheet-header">
           <div class="fc-sheet-title">${tr('Promo-kod tafsiloti','Детали промокода')}</div>
-          <div class="fc-inline-action-wrap">
-            <button type="button" onclick="toggleInlineActionMenu(this,event)" class="fc-btn fc-btn-icon" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
-            <div class="fc-inline-action-menu">
-              <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove();openPromoForm('${p.id}')"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button>
-              <button type="button" class="is-danger" onclick="document.getElementById('fc-promo-preview-root')?.remove();deletePromoAt('${p.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr("O'chirish",'Удалить')}</span></button>
-            </div>
-          </div>
           <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
         <div class="fc-sheet-body space-y-3">
