@@ -2811,6 +2811,11 @@
         }
       }
 
+      // Detail/sheet ichidagi uch nuqta menyusi: tashqariga bosilganda yopiladi.
+      if (!event.target?.closest?.('.fc-inline-action-wrap')) {
+        document.querySelectorAll('.fc-inline-action-wrap.is-open').forEach(el => el.classList.remove('is-open'));
+      }
+
       // Product/katalogdagi uch nuqta menyusi: tashqariga bosilganda yopiladi.
       if (cardActionMenu) {
         const target = event.target;
@@ -5100,6 +5105,13 @@
       render();
     }
     function closeCardActionMenu(event) { event?.stopPropagation?.(); cardActionMenu = null; render(); }
+    function toggleInlineActionMenu(button, event) {
+      event?.preventDefault?.(); event?.stopPropagation?.();
+      const wrap = button?.closest?.('.fc-inline-action-wrap');
+      if (!wrap) return;
+      document.querySelectorAll('.fc-inline-action-wrap.is-open').forEach(el => { if (el !== wrap) el.classList.remove('is-open'); });
+      wrap.classList.toggle('is-open');
+    }
     function cardActionMenuHtml(kind, id) {
       if (!cardActionMenu || cardActionMenu.kind !== kind || String(cardActionMenu.id) !== String(id)) return '';
       // 2-paket, 4-topshiriq: banner uchun "Ko'chirish" ma'nosiz (banner
@@ -5108,6 +5120,15 @@
       // ishlatiladi, yangi komponent yaratilmadi.
       if (kind === 'banner') {
         return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="openBannerForm('${id}');cardActionMenu=null;"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="deleteBannerAt('${id}');cardActionMenu=null;"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
+      }
+      if (kind === 'promo') {
+        return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="openPromoForm('${id}');cardActionMenu=null;"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="deletePromoAt('${id}');cardActionMenu=null;"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
+      }
+      if (kind === 'tier') {
+        return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="openTierGroupForm('${id}');cardActionMenu=null;"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="deleteTierGroupAt('${id}');cardActionMenu=null;"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
+      }
+      if (kind === 'bundle') {
+        return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="openBundleForm('${id}');cardActionMenu=null;"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="deleteBundleAt('${id}');cardActionMenu=null;"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
       }
       const edit = kind === 'product'
         ? `openProductDetailModal('${id}');cardActionMenu=null;render();`
@@ -9152,7 +9173,7 @@
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) this.parentElement.remove();">
         <div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-banner-detail">
           <div class="fc-sheet-handle"></div>
-          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Banner ma’lumotlari','Данные баннера')}</div><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+          <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Banner ma’lumotlari','Данные баннера')}</div><div class="fc-inline-action-wrap"><button type="button" onclick="toggleInlineActionMenu(this,event)" class="fc-btn fc-btn-icon" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><div class="fc-inline-action-menu"><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove();openBannerForm('${b.id}')"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="document.getElementById('fc-banner-preview-root')?.remove();deleteBannerAt('${b.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div></div><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
           <div class="fc-sheet-body space-y-3 fc-banner-detail-body">
             <div class="fc-banner-detail-media"><img src="${escapeHtml(b.imageUrl)}" class="fc-marketing-detail-image" loading="lazy"></div>
             <div class="fc-card fc-banner-detail-primary">
@@ -9460,18 +9481,24 @@
       const rows = bundleListLoading && !bundleListLoaded
         ? `<div class="fc-empty-state"><div class="fc-spinner"></div></div>`
         : bundleList.length ? bundleList.map(b => `
-          <button type="button" onclick="openBundlePreview('${b.id}')" class="fc-bundle-list-card">
-            ${bundleListCoverHtml(b)}
-            <div class="fc-bundle-list-body">
-              <div class="fc-bundle-list-top"><b>${escapeHtml(b.name)}</b><span class="fc-badge ${b.pauseReason ? 'fc-badge-warning' : b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.pauseReason ? tr('To‘xtatilgan', 'Приостановлена') : b.isActive ? tr('Faol', 'Активна') : tr('Faol emas', 'Неактивна')}</span></div>
-              <div class="fc-bundle-list-meta">
-                <span><i data-lucide="boxes" class="w-3.5 h-3.5"></i>${b.items.length} ${tr('ta mahsulot', 'товаров')}</span>
-                <span class="fc-bundle-price-meta"><i data-lucide="tag" class="w-3.5 h-3.5"></i>${money(b.bundlePrice)}</span>
-                <span class="fc-bundle-date-meta"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${b.startsAt || b.endsAt ? `${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '…'}—${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')}</span>
+          <div class="fc-bundle-list-card fc-bundle-list-card-with-menu">
+            <button type="button" onclick="openBundlePreview('${b.id}')" class="fc-bundle-list-main">
+              ${bundleListCoverHtml(b)}
+              <div class="fc-bundle-list-body">
+                <div class="fc-bundle-list-top"><b>${escapeHtml(b.name)}</b><span class="fc-badge ${b.pauseReason ? 'fc-badge-warning' : b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.pauseReason ? tr('To‘xtatilgan', 'Приостановлена') : b.isActive ? tr('Faol', 'Активна') : tr('Faol emas', 'Неактивна')}</span></div>
+                <div class="fc-bundle-list-meta">
+                  <span><i data-lucide="boxes" class="w-3.5 h-3.5"></i>${b.items.length} ${tr('ta mahsulot', 'товаров')}</span>
+                  <span class="fc-bundle-price-meta"><i data-lucide="tag" class="w-3.5 h-3.5"></i>${money(b.bundlePrice)}</span>
+                  <span class="fc-bundle-date-meta"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${b.startsAt || b.endsAt ? `${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '…'}—${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')}</span>
+                </div>
+                <div class="fc-bundle-list-footer">${bundleThumbStripHtml(b)}</div>
               </div>
-              <div class="fc-bundle-list-footer">${bundleThumbStripHtml(b)}<span class="fc-bundle-open-cue"><i data-lucide="chevron-right" class="w-4 h-4"></i></span></div>
+            </button>
+            <div class="fc-bundle-list-more-wrap">
+              <button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('bundle','${b.id}',event)" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
+              ${cardActionMenuHtml('bundle', b.id)}
             </div>
-          </button>
+          </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="package" class="w-7 h-7"></i><p>${tr("Hozircha aksiya yo'q.", 'Пока нет акций.')}</p></div>`;
       const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-bundles">
         <div class="fc-card fc-staff-intro">
@@ -9507,7 +9534,7 @@
       const selected = (b.items || []).map(i => ({ item: i, product: products.find(p => String(p.id) === String(i.productId)) })).filter(x => x.product);
       const root = document.createElement('div'); root.id = 'fc-bundle-preview-root';
       const dateRangeText = b.startsAt || b.endsAt ? `${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '…'} – ${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно');
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-bundle-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Aksiya tafsiloti','Детали акции')}</div><button type="button" onclick="document.getElementById('fc-bundle-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-bundle-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Aksiya tafsiloti','Детали акции')}</div><div class="fc-inline-action-wrap"><button type="button" onclick="toggleInlineActionMenu(this,event)" class="fc-btn fc-btn-icon" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><div class="fc-inline-action-menu"><button type="button" onclick="document.getElementById('fc-bundle-preview-root')?.remove();openBundleForm('${b.id}')"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" class="is-danger" onclick="document.getElementById('fc-bundle-preview-root')?.remove();deleteBundleAt('${b.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div></div><button type="button" onclick="document.getElementById('fc-bundle-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
         ${b.coverImageUrl ? `<img src="${escapeHtml(b.coverImageUrl)}" class="fc-marketing-detail-image">` : ''}
         <div class="fc-card fc-bundle-detail-head-card">
           <div class="fc-detail-heading-row"><div class="fc-bundle-detail-title-wrap"><span class="fc-bundle-detail-title-icon"><i data-lucide="megaphone" class="w-4 h-4"></i></span><h3>${escapeHtml(b.name)}</h3></div><span class="fc-badge ${b.pauseReason ? 'fc-badge-warning' : b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.pauseReason ? tr('To‘xtatilgan', 'Приостановлена') : b.isActive ? tr('Faol','Активна') : tr('Nofaol','Неактивна')}</span></div>
@@ -9796,7 +9823,14 @@
       const lastX = xFor(maxThreshold).toFixed(1);
       linePath += ` L ${lastX} ${yFor(prevVal).toFixed(1)}`;
       const areaPath = `${linePath} L ${lastX} ${yFor(0).toFixed(1)} L ${xFor(0).toFixed(1)} ${yFor(0).toFixed(1)} Z`;
-      const points = sorted.map(s => `<circle cx="${xFor(s.thresholdAmount).toFixed(1)}" cy="${yFor(s.discountValue).toFixed(1)}" r="4" fill="${color}" stroke="#fff" stroke-width="2"></circle><text x="${xFor(s.thresholdAmount).toFixed(1)}" y="${(yFor(s.discountValue) - 9).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="${color}">${escapeHtml(discountPctLabel(s))}</text>`).join('');
+      const pointPalette = ['#2563eb', '#0891b2', '#0d9488', '#16a34a', '#22c55e'];
+      const points = sorted.map((s, i) => {
+        const progressive = !!opts.progressivePoints;
+        const pointColor = progressive ? pointPalette[Math.min(pointPalette.length - 1, Math.round((i / Math.max(1, sorted.length - 1)) * (pointPalette.length - 1)))] : color;
+        const isLast = progressive && i === sorted.length - 1;
+        const cx = xFor(s.thresholdAmount).toFixed(1), cy = yFor(s.discountValue).toFixed(1);
+        return `${isLast ? `<circle cx="${cx}" cy="${cy}" r="8" fill="${pointColor}" opacity="0.12"></circle>` : ''}<circle cx="${cx}" cy="${cy}" r="${isLast ? '5' : '4'}" fill="${pointColor}" stroke="#fff" stroke-width="2"></circle><text x="${cx}" y="${(yFor(s.discountValue) - 9).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="${pointColor}">${escapeHtml(discountPctLabel(s))}</text>`;
+      }).join('');
       const xLabels = [0, ...sorted.map(s => s.thresholdAmount)].map(amt => `<text x="${xFor(amt).toFixed(1)}" y="${H - 6}" text-anchor="middle" font-size="8.5" fill="#94a3b8">${amt === 0 ? '0' : escapeHtml(reportCompactMoney(amt))}</text>`).join('');
       const yTicks = [0, 0.5, 1].map(f => { const val = maxValue * f; const y = yFor(val).toFixed(1); return `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#eef2f7" stroke-width="1"></line><text x="${padL - 5}" y="${(yFor(val) + 3).toFixed(1)}" text-anchor="end" font-size="8.5" fill="#94a3b8">${Math.round(val)}%</text>`; }).join('');
       return `<svg viewBox="0 0 ${W} ${H}" class="fc-tier-diagram-svg" preserveAspectRatio="xMidYMid meet">${yTicks}<path d="${areaPath}" fill="${color}" opacity="0.12"></path><path d="${linePath}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"></path>${points}${xLabels}</svg>`;
@@ -9809,16 +9843,29 @@
     function renderDiscountTiersPage(container) {
       const rows = tierListLoading && !tierListLoaded
         ? `<div class="fc-empty-state"><div class="fc-spinner"></div></div>`
-        : tierList.length ? tierList.map(g => `
-          <button type="button" onclick="openTierGroupDetail('${g.id}')" class="fc-card fc-marketing-card w-full text-left">
-            <div class="flex items-start justify-between gap-2">
-              <b class="text-sm">${escapeHtml(g.name || tr('Bosqichli chegirma', 'Ступенчатая скидка'))}</b>
-              <span class="fc-badge ${g.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${g.isActive ? tr('Faol', 'Активна') : tr('Nofaol', 'Неактивна')}</span>
+        : tierList.length ? tierList.map(g => {
+          const sortedSteps = [...(g.steps || [])].sort((a,b) => a.thresholdAmount - b.thresholdAmount);
+          const shownSteps = sortedSteps.slice(0, 3);
+          const rest = Math.max(0, sortedSteps.length - shownSteps.length);
+          return `
+          <div class="fc-card fc-marketing-card fc-tier-list-card">
+            <div class="fc-tier-list-head">
+              <button type="button" onclick="openTierGroupDetail('${g.id}')" class="fc-tier-list-title-btn">
+                <b>${escapeHtml(g.name || tr('Bosqichli chegirma', 'Ступенчатая скидка'))}</b>
+                <span>${g.startsAt || g.endsAt ? `${g.startsAt ? new Date(g.startsAt).toLocaleDateString() : '…'} — ${g.endsAt ? new Date(g.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')} · ${sortedSteps.length} ${tr('bosqich', 'ступеней')}</span>
+              </button>
+              <div class="fc-tier-list-head-actions">
+                <span class="fc-badge ${g.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${g.isActive ? tr('Faol', 'Активна') : tr('Nofaol', 'Неактивна')}</span>
+                <button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('tier','${g.id}',event)" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
+                ${cardActionMenuHtml('tier', g.id)}
+              </div>
             </div>
-            <p class="text-[11px] text-gray-500 mt-0.5">${g.startsAt || g.endsAt ? `${g.startsAt ? new Date(g.startsAt).toLocaleDateString() : '…'} — ${g.endsAt ? new Date(g.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')} · ${g.steps.length} ${tr('bosqich', 'ступеней')}</p>
-            <div class="fc-tier-preview-strip">${escapeHtml(tierGroupPreviewStripText(g.steps))}</div>
-          </button>
-        `).join('') : `<div class="fc-empty-state"><i data-lucide="trending-up" class="w-7 h-7"></i><p>${tr("Hozircha bosqichli chegirma yo'q.", 'Пока нет ступенчатых скидок.')}</p></div>`;
+            <button type="button" onclick="openTierGroupDetail('${g.id}')" class="fc-tier-steps-preview">
+              ${shownSteps.map((step, i) => `<span class="fc-tier-step-chip"><small>${i + 1}</small><b>${reportCompactMoney(step.thresholdAmount)}</b><i data-lucide="arrow-right" class="w-3 h-3"></i><em>${discountPctLabel(step)}</em></span>`).join('')}
+              ${rest ? `<span class="fc-tier-more-chip">+${rest}</span>` : ''}
+            </button>
+          </div>`;
+        }).join('') : `<div class="fc-empty-state"><i data-lucide="trending-up" class="w-7 h-7"></i><p>${tr("Hozircha bosqichli chegirma yo'q.", 'Пока нет ступенчатых скидок.')}</p></div>`;
       const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-tiers">
         <div class="fc-card fc-staff-intro">
           <div><h3>${tr('Bosqichli chegirma', 'Ступенчатые скидки')}</h3><p>${tr("Bitta qoida ichida bir nechta bosqich: masalan 2 mln'dan 1%, 5 mln'dan 3%. Faqat ENG YUQORI mos bosqich ishlaydi.", 'Одно правило с несколькими ступенями. Работает только САМАЯ ВЫСОКАЯ подходящая ступень.')}</p></div>
@@ -9852,21 +9899,26 @@
       const g = tierGroupDetail;
       const steps = [...g.steps].sort((a, b) => a.thresholdAmount - b.thresholdAmount);
       const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-tier-detail">
-        <div class="fc-card">
-          <div class="flex items-start justify-between gap-2"><h3 class="font-black text-base">${escapeHtml(g.name || tr('Bosqichli chegirma', 'Ступенчатая скидка'))}</h3>${isAdmin ? `<span class="fc-badge ${g.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${g.isActive ? tr('Faol', 'Активна') : tr('Nofaol', 'Неактивна')}</span>` : ''}</div>
-          <p class="text-xs text-gray-500 mt-1">${g.startsAt || g.endsAt ? `${g.startsAt ? new Date(g.startsAt).toLocaleDateString() : '…'} — ${g.endsAt ? new Date(g.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')} · ${tierGroupScopeLabel(g)}</p>
-          ${!isAdmin ? `<p class="text-xs text-gray-600 mt-2">${tr('Aksiya davomida buyurtma summasiga qarab chegirma miqdori ortib boradi.', 'Во время акции размер скидки растёт вместе с суммой заказа.')}</p>` : g.allowStacking ? `<p class="text-xs text-gray-500 mt-2">${tr('Mos promo-kod bilan birga ishlashi mumkin', 'Может применяться вместе с подходящим промокодом')}</p>` : ''}
+        <div class="fc-card fc-tier-detail-hero">
+          <div class="fc-tier-detail-head">
+            <div class="min-w-0">
+              <h3>${escapeHtml(g.name || tr('Bosqichli chegirma', 'Ступенчатая скидка'))}</h3>
+              <div class="fc-tier-detail-meta"><span><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${g.startsAt || g.endsAt ? `${g.startsAt ? new Date(g.startsAt).toLocaleDateString() : '…'} — ${g.endsAt ? new Date(g.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')}</span><span><i data-lucide="store" class="w-3.5 h-3.5"></i>${tierGroupScopeLabel(g)}</span></div>
+            </div>
+            ${isAdmin ? `<div class="fc-tier-detail-head-actions"><span class="fc-badge ${g.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${g.isActive ? tr('Faol', 'Активна') : tr('Nofaol', 'Неактивна')}</span><button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('tier','${g.id}',event)" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>${cardActionMenuHtml('tier', g.id)}</div>` : ''}
+          </div>
+          ${!isAdmin ? `<div class="fc-tier-detail-info-row"><i data-lucide="info" class="w-4 h-4"></i><span>${tr('Aksiya davomida buyurtma summasiga qarab chegirma miqdori ortib boradi.', 'Во время акции размер скидки растёт вместе с суммой заказа.')}</span></div>` : g.allowStacking ? `<div class="fc-tier-detail-info-row"><i data-lucide="badge-check" class="w-4 h-4"></i><span>${tr('Mos promo-kod bilan birga ishlashi mumkin', 'Может применяться вместе с подходящим промокодом')}</span></div>` : ''}
         </div>
-        <div class="fc-card">
-          <b class="text-xs text-gray-600 block mb-2">${tr('Bosqichlar', 'Ступени')}</b>
-          ${tierStepsDiagramSvg(steps, { color: isAdmin ? '#2563eb' : '#16a34a', height: isAdmin ? 200 : 220 })}
+        <div class="fc-card fc-tier-chart-card">
+          <div class="fc-tier-section-title"><span>${tr('Bosqichlar', 'Ступени')}</span><small>${steps.length} ${tr('ta', 'шт.')}</small></div>
+          ${tierStepsDiagramSvg(steps, { color: isAdmin ? '#2563eb' : '#16a34a', height: isAdmin ? 200 : 220, progressivePoints: true })}
         </div>
-        <div class="fc-card p-0 overflow-hidden">
-          ${steps.map((s, i) => `<div class="fc-tier-step-row ${i ? 'has-border' : ''}"><span class="fc-tier-step-num">${i + 1}</span><b>${money(s.thresholdAmount)}</b><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i><b class="is-value">${discountPctLabel(s)}</b></div>`).join('')}
+        <div class="fc-card p-0 overflow-hidden fc-tier-detail-steps-card">
+          ${steps.map((s, i) => `<div class="fc-tier-step-row ${i ? 'has-border' : ''}"><span class="fc-tier-step-num">${i + 1}</span><b>${money(s.thresholdAmount)}</b><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i><b class="is-value fc-tier-value-${Math.min(i+1,5)}">${discountPctLabel(s)}</b></div>`).join('')}
         </div>
-        ${isAdmin ? `<div class="grid grid-cols-2 gap-2">
-          <button type="button" onclick="openTierGroupForm('${g.id}')" class="fc-btn fc-btn-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash', 'Изменить')}</button>
-          <button type="button" onclick="deleteTierGroupAt('${g.id}')" class="fc-btn fc-btn-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish", 'Удалить')}</button>
+        ${isAdmin ? `<div class="grid grid-cols-2 gap-2 fc-tier-detail-actions">
+          <button type="button" onclick="openTierGroupForm('${g.id}')" class="fc-btn fc-btn-outline-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash', 'Изменить')}</button>
+          <button type="button" onclick="deleteTierGroupAt('${g.id}')" class="fc-btn fc-btn-outline-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish", 'Удалить')}</button>
         </div>` : ''}
       </div>`;
       renderPageShell(container, tr('Bosqichli chegirma', 'Ступенчатая скидка'), body, { onBack: backAction });
@@ -10146,7 +10198,7 @@
       const activeCount = items.filter(i => giftItemStatusKind(i) === 'ACTIVE').length;
       const scheduledCount = items.filter(i => giftItemStatusKind(i) === 'SCHEDULED').length;
       const doneCount = items.filter(i => ['EXPIRED', 'INACTIVE'].includes(giftItemStatusKind(i))).length;
-      const statCard = (label, value) => `<div class="fc-card fc-mkt-stat text-center"><p>${label}</p><b>${value}</b></div>`;
+      const statCard = (label, value, icon, tone) => `<div class="fc-card fc-mkt-stat fc-promo-stat is-${tone}"><span class="fc-promo-stat-icon"><i data-lucide="${icon}" class="w-4 h-4"></i></span><p>${label}</p><b>${value}</b></div>`;
       const filters = [
         ['ALL', tr('Barchasi', 'Все')], ['COUPON', tr('Kupon', 'Купон')],
         ['ORDER_AMOUNT', tr('Summa bo‘yicha sovg‘a', 'По сумме')], ['SPECIFIC_PRODUCTS', tr('Mahsulot bo‘yicha', 'По товару')],
@@ -10941,29 +10993,33 @@
         ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
         : filtered.length ? filtered.map(p => `
           <div class="fc-card fc-marketing-card fc-promo-list-card">
-            <button type="button" onclick="openPromoPreview('${p.id}')" class="min-w-0 text-left w-full">
-              <div class="flex items-start justify-between gap-2">
+            <div class="fc-promo-card-head">
+              <button type="button" onclick="openPromoPreview('${p.id}')" class="fc-promo-card-title-btn">
                 <span class="font-mono font-black text-base">${escapeHtml(p.code)}</span>
+                <span class="fc-promo-card-discount">${discountGreenBadgeHtml(promoDiscountLabel(p))}<small>${tr('chegirma','скидка')}</small></span>
+              </button>
+              <div class="fc-promo-card-head-actions">
                 ${promoStatusBadge(p)}
+                <button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('promo','${p.id}',event)" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
+                ${cardActionMenuHtml('promo', p.id)}
               </div>
-              <div class="flex items-center gap-1.5 mt-1">${discountGreenBadgeHtml(promoDiscountLabel(p))}<small class="text-gray-500">${tr('chegirma','скидка')}</small></div>
-              <p class="text-xs text-gray-600 mt-1">${escapeHtml(promoConditionText(p))}</p>
-              <p class="text-[10px] text-gray-400 mt-0.5">${p.endsAt ? `${tr('Tugash','До')}: ${new Date(p.endsAt).toLocaleDateString()} · ` : ''}${promoUsageLine(p)}</p>
-            </button>
-            <div class="fc-marketing-actions">
-              <button type="button" onclick="openPromoForm('${p.id}')" class="fc-btn fc-btn-icon" aria-label="${tr('Tahrirlash','Изменить')}"><i data-lucide="pencil" class="w-3.5 h-3.5"></i></button>
-              <span class="fc-toggle shrink-0"><input type="checkbox" ${p.isActive ? 'checked' : ''} onchange="togglePromoActive('${p.id}', this.checked)"><span class="fc-toggle-track"></span></span>
-              <button type="button" onclick="deletePromoAt('${p.id}')" class="fc-btn fc-btn-icon fc-btn-danger" aria-label="${tr("O'chirish", "Удалить")}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </div>
+            <button type="button" onclick="openPromoPreview('${p.id}')" class="fc-promo-card-body-btn">
+              <p class="fc-promo-condition">${escapeHtml(promoConditionText(p))}</p>
+              <div class="fc-promo-meta-row">
+                ${p.endsAt ? `<span><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${tr('Tugash','До')}: ${new Date(p.endsAt).toLocaleDateString()}</span>` : `<span><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${tr('Muddatsiz','Бессрочно')}</span>`}
+                <span><i data-lucide="history" class="w-3.5 h-3.5"></i>${promoUsageLine(p)}</span>
+              </div>
+            </button>
           </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="ticket-percent" class="w-7 h-7"></i><p>${tr("Hozircha promo-kod yo'q.", "Промокодов пока нет.")}</p></div>`;
 
       const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-promos">
         <div class="grid grid-cols-2 gap-2 fc-mkt-stats-grid">
-          ${statCard(tr('Jami','Всего'), total)}
-          ${statCard(tr('Faol','Активные'), activeCount)}
-          ${statCard(tr('Limit tugagan','Лимит исчерпан'), limitCount)}
-          ${statCard(tr('Muddati tugagan','Истёк срок'), expiredCount)}
+          ${statCard(tr('Jami','Всего'), total, 'tickets', 'blue')}
+          ${statCard(tr('Faol','Активные'), activeCount, 'circle-check', 'green')}
+          ${statCard(tr('Limit tugagan','Лимит исчерпан'), limitCount, 'hourglass', 'amber')}
+          ${statCard(tr('Muddati tugagan','Истёк срок'), expiredCount, 'calendar-x', 'rose')}
         </div>
         <div class="fc-promo-toolbar">
           <input type="text" value="${escapeHtml(promoSearchQuery)}" oninput="promoSearchQuery=this.value;render()" placeholder="${tr('Kod yoki nom bo‘yicha qidirish','Поиск по коду или названию')}" class="fc-order-search-input p-2 border rounded-xl flex-1 min-w-0">
@@ -10984,30 +11040,84 @@
     function openPromoPreview(id) {
       const p = promoList.find(x => String(x.id) === String(id)); if (!p) return;
       const root = document.createElement('div'); root.id = 'fc-promo-preview-root';
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-promo-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Promo-kod tafsiloti','Детали промокода')}</div><button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
-        <div class="fc-card"><div class="flex items-start justify-between gap-2"><span class="font-mono font-black text-xl">${escapeHtml(p.code)}</span>${promoStatusBadge(p)}</div><p class="text-xs text-gray-500 mt-1">${escapeHtml(p.name)}</p><div class="flex items-center gap-2 mt-2">${discountGreenBadgeHtml(promoDiscountLabel(p), 'is-lg')}<button type="button" onclick="copyTextToClipboard('${escapeHtml(p.code)}')" class="fc-btn fc-btn-icon" aria-label="${tr('Nusxalash','Копировать')}"><i data-lucide="copy" class="w-4 h-4"></i></button></div><p class="text-xs text-gray-600 mt-2">${escapeHtml(promoConditionText(p))}</p></div>
-        <div class="fc-card space-y-1.5">
-          <div class="fc-order-kv"><span>${tr('Amal qilish muddati','Срок действия')}</span><b>${p.startsAt || p.endsAt ? `${p.startsAt ? new Date(p.startsAt).toLocaleDateString() : '…'} — ${p.endsAt ? new Date(p.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz','Бессрочно')}</b></div>
-          <div class="fc-order-kv"><span>${tr('Minimal summa','Мин. сумма')}</span><b>${p.minOrderAmount ? money(p.minOrderAmount) : tr('Cheklovsiz','Без ограничения')}</b></div>
-          <div class="fc-order-kv"><span>${tr('Maksimal summa','Макс. сумма')}</span><b>${p.maxOrderAmount ? money(p.maxOrderAmount) : tr('Cheklovsiz','Без ограничения')}</b></div>
-          <div class="fc-order-kv"><span>${tr('Umumiy limit','Общий лимит')}</span><b>${p.usageLimit ?? tr('Cheklovsiz','Без ограничения')}</b></div>
-          <div class="fc-order-kv"><span>${tr('Mijoz uchun limit','Лимит на клиента')}</span><b>${p.perCustomerLimit ?? tr('Cheklovsiz','Без ограничения')}</b></div>
-          <div class="fc-order-kv"><span>${tr('Ishlatilgan','Использовано')}</span><b>${p.usedCount || 0}</b></div>
-          <div class="fc-order-kv"><span>${tr('Qolgan','Осталось')}</span><b>${p.usageLimit ? Math.max(0, p.usageLimit - (p.usedCount||0)) : tr('Cheksiz','Без огр.')}</b></div>
-          <div class="fc-order-kv"><span>${tr('Kim ishlata oladi','Кто может использовать')}</span><b>${p.newCustomerOnly ? tr('Faqat yangi mijozlar','Только новые клиенты') : tr('Barcha mijozlar','Все клиенты')}</b></div>
-          <div class="fc-order-kv"><span>${tr('Boshqa odamga berish','Передача другому')}</span><b>${p.allowStacking ? tr("Mijoz chegirmasi bilan birga ishlaydi","Сочетается со скидкой клиента") : tr('Boshqa chegirma bilan birlashmaydi','Не суммируется с другими скидками')}</b></div>
-          <div class="fc-order-kv"><span>${tr('Ko‘rinishi','Видимость')}</span><b>${p.isPublic === false ? tr("🔒 Yashirin","🔒 Скрытый") : tr("👁 Ochiq ro'yxatda","👁 Открытый в списке")}</b></div>
-          <div class="fc-order-kv"><span>${tr('Qo‘llanish doirasi','Область применения')}</span><b>${promoScopeLabel(p)}</b></div>
+      const remaining = p.usageLimit ? Math.max(0, p.usageLimit - (p.usedCount || 0)) : null;
+      const periodLabel = p.startsAt || p.endsAt
+        ? `${p.startsAt ? new Date(p.startsAt).toLocaleDateString() : '…'} — ${p.endsAt ? new Date(p.endsAt).toLocaleDateString() : '…'}`
+        : tr('Muddatsiz','Бессрочно');
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-promo-detail">
+        <div class="fc-sheet-handle"></div>
+        <div class="fc-sheet-header">
+          <div class="fc-sheet-title">${tr('Promo-kod tafsiloti','Детали промокода')}</div>
+          <div class="fc-inline-action-wrap">
+            <button type="button" onclick="toggleInlineActionMenu(this,event)" class="fc-btn fc-btn-icon" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
+            <div class="fc-inline-action-menu">
+              <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove();openPromoForm('${p.id}')"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button>
+              <button type="button" class="is-danger" onclick="document.getElementById('fc-promo-preview-root')?.remove();deletePromoAt('${p.id}')"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr("O'chirish",'Удалить')}</span></button>
+            </div>
+          </div>
+          <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button>
         </div>
-        <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove();openPromoUsagePage('${p.id}')" class="fc-card w-full text-left flex items-center justify-between gap-2">
-          <span><b class="text-xs block">${tr('Kimlar ishlatgan?','Кто использовал?')}</b><small class="text-gray-500">${p.usedCount || 0} ${tr('marta ishlatilgan','раз использован')}</small></span>
-          <i data-lucide="chevron-right" class="w-4 h-4 text-gray-400"></i>
-        </button>
-        <div class="grid grid-cols-2 gap-2">
-          <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove();openPromoForm('${p.id}')" class="fc-btn fc-btn-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button>
-          <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove();deletePromoAt('${p.id}')" class="fc-btn fc-btn-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish",'Удалить')}</button>
+        <div class="fc-sheet-body space-y-3">
+          <div class="fc-card fc-promo-detail-hero">
+            <div class="fc-promo-detail-top">
+              <div class="min-w-0">
+                <span class="font-mono font-black text-xl">${escapeHtml(p.code)}</span>
+                ${p.name ? `<p>${escapeHtml(p.name)}</p>` : ''}
+              </div>
+              ${promoStatusBadge(p)}
+            </div>
+            <div class="fc-promo-detail-discount-row">
+              ${discountGreenBadgeHtml(promoDiscountLabel(p), 'is-lg')}
+              <button type="button" onclick="copyTextToClipboard('${escapeHtml(p.code)}')" class="fc-btn fc-btn-icon" aria-label="${tr('Nusxalash','Копировать')}"><i data-lucide="copy" class="w-4 h-4"></i></button>
+            </div>
+            <p class="fc-promo-detail-condition">${escapeHtml(promoConditionText(p))}</p>
+            <div class="fc-promo-detail-status-row">
+              <span><i data-lucide="power" class="w-4 h-4"></i><b>${tr('Holati','Статус')}</b><small>${p.isActive ? tr('Faol','Активен') : tr('Nofaol','Неактивен')}</small></span>
+              <span class="fc-toggle shrink-0"><input type="checkbox" ${p.isActive ? 'checked' : ''} onchange="togglePromoActive('${p.id}', this.checked); const r=document.getElementById('fc-promo-preview-root'); if(r) r.remove();"><span class="fc-toggle-track"></span></span>
+            </div>
+          </div>
+
+          <div class="fc-promo-detail-section">
+            <div class="fc-promo-detail-section-title"><i data-lucide="calendar-range" class="w-4 h-4"></i>${tr('Muddat va summa shartlari','Срок и суммы')}</div>
+            <div class="fc-card fc-promo-detail-kv-card">
+              <div class="fc-order-kv"><span>${tr('Amal qilish muddati','Срок действия')}</span><b>${periodLabel}</b></div>
+              <div class="fc-order-kv"><span>${tr('Minimal summa','Мин. сумма')}</span><b>${p.minOrderAmount ? money(p.minOrderAmount) : tr('Cheklovsiz','Без ограничения')}</b></div>
+              <div class="fc-order-kv"><span>${tr('Maksimal summa','Макс. сумма')}</span><b>${p.maxOrderAmount ? money(p.maxOrderAmount) : tr('Cheklovsiz','Без ограничения')}</b></div>
+            </div>
+          </div>
+
+          <div class="fc-promo-detail-section">
+            <div class="fc-promo-detail-section-title"><i data-lucide="gauge" class="w-4 h-4"></i>${tr('Limitlar va foydalanish','Лимиты и использование')}</div>
+            <div class="fc-card fc-promo-detail-kv-card">
+              <div class="fc-order-kv"><span>${tr('Umumiy limit','Общий лимит')}</span><b>${p.usageLimit ?? tr('Cheklovsiz','Без ограничения')}</b></div>
+              <div class="fc-order-kv"><span>${tr('Mijoz uchun limit','Лимит на клиента')}</span><b>${p.perCustomerLimit ?? tr('Cheklovsiz','Без ограничения')}</b></div>
+              <div class="fc-order-kv"><span>${tr('Ishlatilgan','Использовано')}</span><b>${p.usedCount || 0}</b></div>
+              <div class="fc-order-kv"><span>${tr('Qolgan','Осталось')}</span><b>${remaining == null ? tr('Cheksiz','Без огр.') : remaining}</b></div>
+            </div>
+          </div>
+
+          <div class="fc-promo-detail-section">
+            <div class="fc-promo-detail-section-title"><i data-lucide="users" class="w-4 h-4"></i>${tr('Qo‘llanish qoidalari','Правила применения')}</div>
+            <div class="fc-card fc-promo-detail-kv-card">
+              <div class="fc-order-kv"><span>${tr('Kim ishlata oladi','Кто может использовать')}</span><b>${p.newCustomerOnly ? tr('Faqat yangi mijozlar','Только новые клиенты') : tr('Barcha mijozlar','Все клиенты')}</b></div>
+              <div class="fc-order-kv"><span>${tr('Boshqa odamga berish','Передача другому')}</span><b>${p.transferable ? tr('Mumkin','Можно') : tr('Faqat egasi','Только владелец')}</b></div>
+              <div class="fc-order-kv"><span>${tr('Boshqa chegirmalar bilan','С другими скидками')}</span><b>${p.allowStacking ? tr('Birga ishlashi mumkin','Можно совмещать') : tr('Birlashmaydi','Не суммируется')}</b></div>
+              <div class="fc-order-kv"><span>${tr('Ko‘rinishi','Видимость')}</span><b>${p.isPublic === false ? tr("Yashirin","Скрытый") : tr("Ochiq ro'yxatda","Открытый в списке")}</b></div>
+              <div class="fc-order-kv"><span>${tr('Qo‘llanish doirasi','Область применения')}</span><b>${promoScopeLabel(p)}</b></div>
+            </div>
+          </div>
+
+          <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove();openPromoUsagePage('${p.id}')" class="fc-card fc-promo-usage-link">
+            <span><b>${tr('Kimlar ishlatgan?','Кто использовал?')}</b><small>${p.usedCount || 0} ${tr('marta ishlatilgan','раз использован')}</small></span>
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+
+          <div class="grid grid-cols-2 gap-2 fc-promo-detail-actions">
+            <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove();openPromoForm('${p.id}')" class="fc-btn fc-btn-outline-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button>
+            <button type="button" onclick="document.getElementById('fc-promo-preview-root')?.remove();deletePromoAt('${p.id}')" class="fc-btn fc-btn-outline-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish",'Удалить')}</button>
+          </div>
         </div>
-      </div></div></div>`;
+      </div></div>`;
       document.body.appendChild(root); safeCreateIcons();
     }
 
