@@ -1198,6 +1198,26 @@
         if (Number.isFinite(base)) el.style.fontSize = `${(base * scale).toFixed(2)}px`;
       }
     }
+    // 2026-08-27: pinch-zoom "Marketing ichidagi" (aksiya/promo/sovg'a detail
+    // sheetlari va h.k.) matnlarga ta'sir qilmasligi bug'i — sabab: bu
+    // sheetlar (openBundlePreview, openPromoPreview, openRewardRulePreview,
+    // marketingPicker va h.k. — 20+ joy) `document.body.appendChild(root)`
+    // orqali TO'G'RIDAN-TO'G'RI qo'shiladi va render()ni chaqirmaydi, shuning
+    // uchun applyVisibleTextScale() (u faqat render() oxirida ishlaydi) ular
+    // ochilganda hech qachon chaqirilmagan bo'lardi. Har bir joyni alohida
+    // topib tuzatish o'rniga — bitta umumiy MutationObserver: body'ga
+    // to'g'ridan-to'g'ri YANGI element qo'shilganda avtomatik scale qilinadi
+    // (render()ning o'zi #app-content/#page-container ICHIGA innerHTML bilan
+    // yozadi, ular body'ning bevosita farzandi emas — shu observer ular uchun
+    // ortiqcha ishlamaydi, faqat body'ga to'g'ridan-to'g'ri appendChild
+    // qilingan sheet/modal root'lar uchun ishlaydi).
+    new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (node instanceof HTMLElement) applyVisibleTextScale(node);
+        }
+      }
+    }).observe(document.body, { childList: true });
     applyTextZoom(textZoomLevel);
     function setTextZoom(level) {
       applyTextZoom(level);
@@ -2784,23 +2804,40 @@
     // bo'lib, real Telegram'da logo ustidan chiqib qolardi. Endi tugmaning
     // haqiqiy joyi o'lchanadi va popover shunga aniq anchor qilinadi.
     function togglePersonMenu(event) {
-      if (event) event.stopPropagation();
-      const popover = document.getElementById('role-mode-popover');
-      const personBtn = document.getElementById('header-person-btn');
-      if (!popover || !personBtn) return;
-      const isOpen = !popover.classList.contains('hidden');
-      if (isOpen) { popover.classList.add('hidden'); return; }
-      const label = isAdminMode ? tr("👤 Userga o'tish", '👤 Перейти к пользователю') : tr("🛡️ Adminga o'tish", '🛡️ Перейти в админку');
-      popover.innerHTML = `<button onclick="document.getElementById('role-mode-popover').classList.add('hidden'); toggleAdminRole();" class="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap">${label}</button>`;
-      popover.classList.remove('hidden');
-      const rect = personBtn.getBoundingClientRect();
-      const popW = popover.offsetWidth || 200;
-      const margin = 8;
-      let left = rect.left + rect.width / 2 - popW / 2;
-      left = Math.max(margin, Math.min(left, window.innerWidth - popW - margin));
-      popover.style.top = `${rect.bottom + margin}px`;
-      popover.style.left = `${left}px`;
-      popover.style.right = 'auto';
+      // 2026-08-27: foydalanuvchi Marketing/Aksiyalar bo'limlarida bu tugma
+      // bosilganda "hech narsa chiqmaydi" deb xabar berdi — statik/mock
+      // tekshiruvda takrorlab bo'lmadi. Vaqtinchalik diagnostika: shu
+      // funksiya ichida biror joyda kutilmagan xato (masalan popover/
+      // personBtn kutilmagan holatda bo'lsa, yoki tr()/getBoundingClientRect
+      // biror sabab bilan yiqilsa) sodir bo'lsa, endi JIM YUTILMAYDI —
+      // ekranda ko'rinadigan xato-toast chiqadi, shunda REAL qurilmada nima
+      // yiqilayotgani aniq bo'ladi (avval xato sodir bo'lsa funksiya
+      // hech narsa demay to'xtab qolardi — foydalanuvchiga "bosilmayapti"
+      // bo'lib ko'rinardi).
+      try {
+        if (event) event.stopPropagation();
+        const popover = document.getElementById('role-mode-popover');
+        const personBtn = document.getElementById('header-person-btn');
+        if (!popover || !personBtn) {
+          showActionToast('DEBUG: role-mode-popover yoki header-person-btn topilmadi', 'error', 3000);
+          return;
+        }
+        const isOpen = !popover.classList.contains('hidden');
+        if (isOpen) { popover.classList.add('hidden'); return; }
+        const label = isAdminMode ? tr("👤 Userga o'tish", '👤 Перейти к пользователю') : tr("🛡️ Adminga o'tish", '🛡️ Перейти в админку');
+        popover.innerHTML = `<button onclick="document.getElementById('role-mode-popover').classList.add('hidden'); toggleAdminRole();" class="block w-full text-left px-4 py-2.5 text-xs font-bold text-gray-700 hover:bg-gray-50 whitespace-nowrap">${label}</button>`;
+        popover.classList.remove('hidden');
+        const rect = personBtn.getBoundingClientRect();
+        const popW = popover.offsetWidth || 200;
+        const margin = 8;
+        let left = rect.left + rect.width / 2 - popW / 2;
+        left = Math.max(margin, Math.min(left, window.innerWidth - popW - margin));
+        popover.style.top = `${rect.bottom + margin}px`;
+        popover.style.left = `${left}px`;
+        popover.style.right = 'auto';
+      } catch (err) {
+        try { showActionToast('DEBUG togglePersonMenu xato: ' + (err && err.message || err), 'error', 4000); } catch (_) {}
+      }
     }
     document.addEventListener('click', (event) => {
       const popover = document.getElementById('role-mode-popover');
@@ -2942,12 +2979,17 @@
     // modalni (masalan tovar tahrirlash formasi) yo'q qilib qo'ymaslik
     // uchun, chunki innerHTML almashtirish uning holatini yo'qotardi).
     function openImagePickerSheet(galleryInputId, filesInputId) {
-      // Bitta aniq yo'l: qurilma xotirasidan rasm tanlash. Eski ikki variantli
-      // "Galereya / Fayllar" oynasi foydalanuvchini adashtirardi.
+      // Bitta aniq yo'l: qurilma xotirasidan (Fayllar) rasm tanlash — Galereya
+      // EMAS. 2026-08-27: bu yerda oldin `accept="image/*"` MAJBURAN
+      // qo'yilardi — aynan shu sabab "Fayllar" input ishlatilsa ham telefon
+      // baribir Galereya/Foto ilovasini ochib yuborardi (accept="image/*"
+      // mobil brauzerlarda odatda to'g'ridan-to'g'ri Galereyaga yo'naltiradi).
+      // Endi `accept` UMUMAN qo'yilmaydi — shundagina qurilmaning haqiqiy
+      // fayl menejeri (Fayllar/Files, Yuklab olinganlar va h.k.) ochiladi.
       closeImagePickerSheet();
       const input = document.getElementById(filesInputId) || document.getElementById(galleryInputId);
       if (input) {
-        input.setAttribute('accept', 'image/*,.heic,.heif');
+        input.removeAttribute('accept');
         input.click();
       }
     }
@@ -2993,6 +3035,12 @@
         case 'MARKETING_HUB': renderMarketingHubPage(container); break;
         case 'MARKETING_SETTINGS': renderMarketingSettingsPage(container); break;
         case 'CAMPAIGNS': renderCampaignsPage(container); break;
+        case 'CAMPAIGNS_MYPROMO': renderCampaignsMyPromoPage(container); break;
+        case 'CAMPAIGNS_BUNDLES': renderCampaignsBundlesPage(container); break;
+        case 'CAMPAIGNS_PROMO': renderCampaignsPromoPage(container); break;
+        case 'CAMPAIGNS_TIERS': renderCampaignsTiersPage(container); break;
+        case 'CAMPAIGNS_GIFTS': renderCampaignsGiftsPage(container); break;
+        case 'CAMPAIGNS_PERSONAL': renderCampaignsPersonalPage(container); break;
         case 'CAMPAIGN_DETAIL': renderCampaignDetailPage(container); break;
         default:
           container.innerHTML = '';
@@ -4687,82 +4735,135 @@
     // Bosqichli chegirmalar / Avtomatik sovg'alar / Shaxsiy takliflar).
     // "Avtomatik sovg'alar" MD'dagi 4 turni birlashtiradi (kupon HAM shu
     // yerda — admin tarafdagi bir xil 4-tur unifikatsiyasiga mos).
-    let campaignsExpandedSections = new Set();
-    function toggleCampaignsSectionExpand(key) { campaignsExpandedSections.has(key) ? campaignsExpandedSections.delete(key) : campaignsExpandedSections.add(key); render(); }
-    function publicMarketingSectionHtml(key, icon, title, itemsArr, limit) {
-      const count = itemsArr.length;
-      const expanded = campaignsExpandedSections.has(key);
-      const shown = expanded ? itemsArr : itemsArr.slice(0, limit);
-      const seeAll = !expanded && count > limit ? `<button type="button" onclick="toggleCampaignsSectionExpand('${key}')" class="fc-public-marketing-seeall">${tr('Barchasini ko‘rish', 'Смотреть все')} →</button>` : '';
-      return `<section class="fc-public-marketing-section">
-        <header><span><i data-lucide="${icon}" class="w-4 h-4"></i></span><div><h3>${title}</h3><small>${count} ${tr('ta faol taklif', 'активных предложений')}</small></div>${seeAll}</header>
-        ${shown.join('') || `<div class="fc-public-marketing-empty">${tr('Hozircha bu bo‘limda faol taklif yo‘q.', 'В этом разделе пока нет активных предложений.')}</div>`}
-      </section>`;
+    //
+    // Foydalanuvchi so'rovi (2026-08-27): avval hammasi BITTA sahifada
+    // ("ko'proq ko'rish" bilan inline kengaytirilardi) ko'rinardi — endi
+    // bu bosh sahifa faqat 6 ta KIRISH qatori (admin Marketing Hub bilan
+    // bir xil naqsh), har biri o'zining ALOHIDA sahifasiga o'tadi.
+    function computePublicMarketingGroups() {
+      return {
+        bundles: marketingCampaigns.filter(c => c.kind === 'BUNDLE'),
+        gifts: marketingCampaigns.filter(c => c.kind === 'GIFT_RULE'),
+        promotions: marketingCampaigns.filter(c => c.kind === 'PROMOTION'),
+        rewards: marketingCampaigns.filter(c => c.kind === 'REWARD_RULE'),
+        tierGroups: marketingCampaigns.filter(c => c.kind === 'TIER_GROUP'),
+        personal: marketingCampaigns.filter(c => c.kind === 'PERSONAL_DISCOUNT'),
+      };
+    }
+    // 2. Aksiyalar — FAQAT mahsulotlar to'plami (bundle), boshqa aksiya
+    // turi qo'shilmaydi (avtomatik sovg'a endi o'z bo'limida, pastda).
+    function bundleCardsHtml(bundles) {
+      return bundles.map(c => `<button type="button" onclick="openCampaignDetail('BUNDLE','${c.id}')" class="fc-public-offer-card is-action">${c.coverImageUrl ? `<img src="${escapeHtml(c.coverImageUrl)}" loading="lazy">` : `<span class="fc-public-offer-icon">🎁</span>`}<div><b>${escapeHtml(c.name)}</b><p>${tr('Maxsus to‘plam narxi', 'Специальная цена комплекта')}: <strong>${c.discountLabel}</strong></p><span><i data-lucide="boxes" class="w-3.5 h-3.5"></i>${c.items?.length || 0} ${tr('ta mahsulot', 'товаров')}</span>${publicMarketingDateHtml(c)}${bundleThumbStripHtml(c)}<em>${tr('Batafsil ko‘rish', 'Подробнее')} →</em></div></button>`);
+    }
+    // 3. Promo-kodlar va kuponlar — FAQAT manual promo-kod (kupon turi
+    // "Avtomatik sovg'alar"ga ko'chdi).
+    function promoCardsHtml(promotions) {
+      return promotions.map(c => `<button type="button" onclick="openCampaignDetail('PROMOTION','${c.id}')" class="fc-public-offer-card is-promo"><span class="fc-public-code">${escapeHtml(c.code)}</span><div><b>${escapeHtml(c.name)}</b><p><strong>${c.discountLabel}</strong>${c.minOrderAmount ? ` · ${tr('kamida', 'от')} ${money(c.minOrderAmount)}` : ''}${c.maxOrderAmount ? ` · ${tr("ko'pi bilan", 'не более')} ${money(c.maxOrderAmount)}` : ''}${c.newCustomerOnly ? ` · ${tr('faqat yangi mijozga', 'только новым клиентам')}` : ''}</p>${c.usageLimit ? `<span>${tr('Qolgan', 'Осталось')}: ${Math.max(0, c.usageLimit - (c.usedCount || 0))} ${tr('ta', 'раз')}</span>` : ''}${publicMarketingDateHtml(c)}<em>${tr('Batafsil va mahsulotlar', 'Условия и товары')} →</em></div></button>`);
+    }
+    // 4. Bosqichli chegirmalar — o'z alohida bo'limi (grafik faqat
+    // detailda, bosh sahifada qisqa preview matn — 7.UI spec).
+    function tierCardsHtml(tierGroups) {
+      return tierGroups.map(c => `<button type="button" onclick="openTierGroupDetail('${c.id}')" class="fc-public-offer-card is-discount"><span class="fc-public-offer-icon">📈</span><div><b>${escapeHtml(c.name || tr('Bosqichli chegirma', 'Ступенчатая скидка'))}</b><p>${escapeHtml(tierGroupPreviewStripText(c.steps, 3))}</p><span><i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>${(c.categoryIds?.length || c.productIds?.length) ? tr('Tanlangan katalog yoki mahsulotlarga', 'На выбранные каталоги или товары') : tr('Butun do‘kon uchun', 'На весь магазин')}</span>${publicMarketingDateHtml(c)}<em>${tr('Batafsil ko‘rish', 'Подробнее')} →</em></div></button>`);
+    }
+    // 5. Avtomatik sovg'alar — MD'dagi 4 turning HAMMASI: kupon (reward
+    // rule) + 3 mahsulot-sovg'a turi (gift rule), admin tarafdagi bir
+    // xil unifikatsiyaga mos.
+    function giftSectionCardsHtml(rewards, gifts) {
+      return [
+        ...rewards.map(c => { const text = publicRewardRuleText(c); return `<article class="fc-public-offer-card is-action"><span class="fc-public-offer-icon">🏆</span><div><b>${escapeHtml(text.condition)}</b><p>${tr('Shart bajarilsa', 'За выполнение')}: <strong>${text.reward} ${tr('bir martalik kupon', 'одноразовый купон')}</strong></p><span><i data-lucide="clock-3" class="w-3.5 h-3.5"></i>${escapeHtml(text.expiry)}</span></div></article>`; }),
+        ...gifts.map(c => { const giftName = uiLang === 'ru' ? (c.giftProduct?.nameRu || c.giftProduct?.name) : c.giftProduct?.name; return `<article class="fc-public-offer-card is-action">${c.giftProduct?.imageUrl ? `<img src="${escapeHtml(c.giftProduct.imageUrl)}" loading="lazy">` : `<span class="fc-public-offer-icon">🎁</span>`}<div><b>${escapeHtml(c.name)}</b><p>${escapeHtml(publicGiftConditionText(c))} — <strong>${c.giftQuantity} × ${escapeHtml(giftName || tr('sovg‘a', 'подарок'))}</strong></p>${publicMarketingDateHtml(c)}</div></article>`; }),
+      ];
+    }
+    // 6. Shaxsiy takliflar — faqat joriy userga biriktirilgan.
+    function personalCardsHtml(personal) {
+      return personal.map(c => `<button type="button" onclick="openPersonalOfferDetail('${c.id}')" class="fc-public-offer-card is-personal"><span class="fc-public-offer-icon">💎</span><div><b>${tr('Siz uchun shaxsiy taklif', 'Персональное предложение для вас')}</b><p><strong>${discountPctLabel(c)}</strong> ${c.minOrderAmount || c.maxOrderAmount ? ` · ${escapeHtml(personalDiscountConditionText(c))}` : ''}</p><span><i data-lucide="repeat" class="w-3.5 h-3.5"></i>${c.usageLimit ? `${Math.max(0, c.usageLimit - (c.usedCount || 0))} ${tr('marta qoldi', 'раз осталось')}` : tr('Cheksiz', 'Без огр.')}</span>${publicMarketingDateHtml(c)}<em>${tr('Batafsil ko‘rish', 'Подробнее')} →</em></div></button>`);
+    }
+    // 15-band spec, 14-band: mijozga SHAXSAN berilgan promo-kodlar —
+    // umumiy "Promo-kodlar va kuponlar" (barcha faol takliflar)
+    // bo'limidan ALOHIDA, chunki bu shaxsiy ma'lumot (boshqa mijozga
+    // ko'rinmasligi kerak) va ishlatilgan/muddati tugagan holatini ham
+    // ko'rsatadi.
+    function myPromoCardsHtml(codes) {
+      return codes.map(c => {
+        const statusBadge = c.status === 'USED' ? `<span><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>${tr('Ishlatilgan', 'Использован')}</span>`
+          : c.status === 'EXPIRED' ? `<span><i data-lucide="clock-3" class="w-3.5 h-3.5"></i>${tr('Muddati tugagan', 'Истёк')}</span>`
+          : c.status === 'INACTIVE' ? `<span><i data-lucide="pause-circle" class="w-3.5 h-3.5"></i>${tr('Faol emas', 'Неактивен')}</span>`
+          : `<span><i data-lucide="badge-check" class="w-3.5 h-3.5"></i>${tr('Faol', 'Активен')}</span>`;
+        return `<article class="fc-public-offer-card is-promo">
+          <button type="button" class="fc-public-code" onclick="copyPromoCodeToClipboard('${escapeHtml(c.code)}')" title="${tr('Nusxalash', 'Копировать')}">${escapeHtml(c.code)}</button>
+          <div>
+            <b>${escapeHtml(c.name)}</b>
+            <p><strong>${campaignDiscountLabel(c.discountType, c.discountValue)}</strong>${c.minOrderAmount ? ` · ${tr('kamida', 'от')} ${money(c.minOrderAmount)}` : ''}${c.maxOrderAmount ? ` · ${tr("ko'pi bilan", 'не более')} ${money(c.maxOrderAmount)}` : ''}</p>
+            ${c.endsAt ? `<span><i data-lucide="clock-3" class="w-3.5 h-3.5"></i>${new Date(c.endsAt).toLocaleDateString()}${tr('gacha', ' — до')}</span>` : ''}
+            ${c.usageLimit === 1 ? `<p>${tr('Bir martalik kod', 'Одноразовый код')}</p>` : ''}
+            ${c.transferable ? `<p>${tr("O'zingiz ishlatishingiz yoki do'stingizga sovg'a qilishingiz mumkin.", 'Вы можете использовать сами или подарить другу.')}</p>` : ''}
+            ${statusBadge}
+          </div>
+        </article>`;
+      });
+    }
+    function publicMarketingSectionBody(cardsHtml, emptyText) {
+      return cardsHtml.join('') || `<div class="fc-public-marketing-empty">${emptyText}</div>`;
+    }
+    function openCampaignsSection(key) {
+      const pageId = 'CAMPAIGNS_' + key;
+      openPage(pageId, 'nav-profile');
+      ensureMarketingCampaignsLoaded(() => { if (activePage === pageId) render(); });
+    }
+    function renderCampaignsSubpageShell(container, title, cardsHtml, emptyText) {
+      if (marketingCampaignsLoading && !marketingCampaigns.length) {
+        renderPageShell(container, title, `<div class="fc-empty-state"><div class="fc-spinner"></div></div>`, { onBack: "openCampaignsPage()" });
+        return;
+      }
+      const body = `<div class="fc-public-marketing-list fc-mkt-pro-public">${publicMarketingSectionBody(cardsHtml, emptyText)}</div>`;
+      renderPageShell(container, title, body, { onBack: "openCampaignsPage()" });
+    }
+    function renderCampaignsMyPromoPage(container) {
+      renderCampaignsSubpageShell(container, tr('Promo-kodlarim', 'Мои промокоды'), myPromoCardsHtml(myPromoCodes), tr('Hozircha promo-kodingiz yo‘q.', 'Пока нет промокодов.'));
+    }
+    function renderCampaignsBundlesPage(container) {
+      const { bundles } = computePublicMarketingGroups();
+      renderCampaignsSubpageShell(container, tr('Aksiyalar', 'Акции'), bundleCardsHtml(bundles), tr('Hozircha bu bo‘limda faol taklif yo‘q.', 'В этом разделе пока нет активных предложений.'));
+    }
+    function renderCampaignsPromoPage(container) {
+      const { promotions } = computePublicMarketingGroups();
+      renderCampaignsSubpageShell(container, tr('Promo-kodlar va kuponlar', 'Промокоды и купоны'), promoCardsHtml(promotions), tr('Hozircha bu bo‘limda faol taklif yo‘q.', 'В этом разделе пока нет активных предложений.'));
+    }
+    function renderCampaignsTiersPage(container) {
+      const { tierGroups } = computePublicMarketingGroups();
+      renderCampaignsSubpageShell(container, tr('Bosqichli chegirmalar', 'Ступенчатые скидки'), tierCardsHtml(tierGroups), tr('Hozircha bu bo‘limda faol taklif yo‘q.', 'В этом разделе пока нет активных предложений.'));
+    }
+    function renderCampaignsGiftsPage(container) {
+      const { rewards, gifts } = computePublicMarketingGroups();
+      renderCampaignsSubpageShell(container, tr('Avtomatik sovg‘alar', 'Автоматические подарки'), giftSectionCardsHtml(rewards, gifts), tr('Hozircha bu bo‘limda faol taklif yo‘q.', 'В этом разделе пока нет активных предложений.'));
+    }
+    function renderCampaignsPersonalPage(container) {
+      const { personal } = computePublicMarketingGroups();
+      renderCampaignsSubpageShell(container, tr('Shaxsiy takliflar', 'Персональные предложения'), personalCardsHtml(personal), tr('Hozircha bu bo‘limda faol taklif yo‘q.', 'В этом разделе пока нет активных предложений.'));
     }
     function renderCampaignsPage(container) {
-      let body = `<div class="fc-empty-state"><div class="fc-spinner"></div></div>`;
-      if (!(marketingCampaignsLoading && !marketingCampaigns.length)) {
-        const bundles = marketingCampaigns.filter(c => c.kind === 'BUNDLE');
-        const gifts = marketingCampaigns.filter(c => c.kind === 'GIFT_RULE');
-        const promotions = marketingCampaigns.filter(c => c.kind === 'PROMOTION');
-        const rewards = marketingCampaigns.filter(c => c.kind === 'REWARD_RULE');
-        const tierGroups = marketingCampaigns.filter(c => c.kind === 'TIER_GROUP');
-        const personal = marketingCampaigns.filter(c => c.kind === 'PERSONAL_DISCOUNT');
-
-        // 2. Aksiyalar — FAQAT mahsulotlar to'plami (bundle), boshqa aksiya
-        // turi qo'shilmaydi (avtomatik sovg'a endi o'z bo'limida, pastda).
-        const bundleCards = bundles.map(c => `<button type="button" onclick="openCampaignDetail('BUNDLE','${c.id}')" class="fc-public-offer-card is-action">${c.coverImageUrl ? `<img src="${escapeHtml(c.coverImageUrl)}" loading="lazy">` : `<span class="fc-public-offer-icon">🎁</span>`}<div><b>${escapeHtml(c.name)}</b><p>${tr('Maxsus to‘plam narxi', 'Специальная цена комплекта')}: <strong>${c.discountLabel}</strong></p><span><i data-lucide="boxes" class="w-3.5 h-3.5"></i>${c.items?.length || 0} ${tr('ta mahsulot', 'товаров')}</span>${publicMarketingDateHtml(c)}${bundleThumbStripHtml(c)}<em>${tr('Batafsil ko‘rish', 'Подробнее')} →</em></div></button>`);
-
-        // 3. Promo-kodlar va kuponlar — FAQAT manual promo-kod (kupon turi
-        // "Avtomatik sovg'alar"ga ko'chdi).
-        const promoCards = promotions.map(c => `<button type="button" onclick="openCampaignDetail('PROMOTION','${c.id}')" class="fc-public-offer-card is-promo"><span class="fc-public-code">${escapeHtml(c.code)}</span><div><b>${escapeHtml(c.name)}</b><p><strong>${c.discountLabel}</strong>${c.minOrderAmount ? ` · ${tr('kamida', 'от')} ${money(c.minOrderAmount)}` : ''}${c.maxOrderAmount ? ` · ${tr("ko'pi bilan", 'не более')} ${money(c.maxOrderAmount)}` : ''}${c.newCustomerOnly ? ` · ${tr('faqat yangi mijozga', 'только новым клиентам')}` : ''}</p>${c.usageLimit ? `<span>${tr('Qolgan', 'Осталось')}: ${Math.max(0, c.usageLimit - (c.usedCount || 0))} ${tr('ta', 'раз')}</span>` : ''}${publicMarketingDateHtml(c)}<em>${tr('Batafsil va mahsulotlar', 'Условия и товары')} →</em></div></button>`);
-
-        // 4. Bosqichli chegirmalar — o'z alohida bo'limi (grafik faqat
-        // detailda, bosh sahifada qisqa preview matn — 7.UI spec).
-        const tierCards = tierGroups.map(c => `<button type="button" onclick="openTierGroupDetail('${c.id}')" class="fc-public-offer-card is-discount"><span class="fc-public-offer-icon">📈</span><div><b>${escapeHtml(c.name || tr('Bosqichli chegirma', 'Ступенчатая скидка'))}</b><p>${escapeHtml(tierGroupPreviewStripText(c.steps, 3))}</p><span><i data-lucide="shopping-bag" class="w-3.5 h-3.5"></i>${(c.categoryIds?.length || c.productIds?.length) ? tr('Tanlangan katalog yoki mahsulotlarga', 'На выбранные каталоги или товары') : tr('Butun do‘kon uchun', 'На весь магазин')}</span>${publicMarketingDateHtml(c)}<em>${tr('Batafsil ko‘rish', 'Подробнее')} →</em></div></button>`);
-
-        // 5. Avtomatik sovg'alar — MD'dagi 4 turning HAMMASI: kupon (reward
-        // rule) + 3 mahsulot-sovg'a turi (gift rule), admin tarafdagi bir
-        // xil unifikatsiyaga mos.
-        const giftSectionCards = [
-          ...rewards.map(c => { const text = publicRewardRuleText(c); return `<article class="fc-public-offer-card is-action"><span class="fc-public-offer-icon">🏆</span><div><b>${escapeHtml(text.condition)}</b><p>${tr('Shart bajarilsa', 'За выполнение')}: <strong>${text.reward} ${tr('bir martalik kupon', 'одноразовый купон')}</strong></p><span><i data-lucide="clock-3" class="w-3.5 h-3.5"></i>${escapeHtml(text.expiry)}</span></div></article>`; }),
-          ...gifts.map(c => { const giftName = uiLang === 'ru' ? (c.giftProduct?.nameRu || c.giftProduct?.name) : c.giftProduct?.name; return `<article class="fc-public-offer-card is-action">${c.giftProduct?.imageUrl ? `<img src="${escapeHtml(c.giftProduct.imageUrl)}" loading="lazy">` : `<span class="fc-public-offer-icon">🎁</span>`}<div><b>${escapeHtml(c.name)}</b><p>${escapeHtml(publicGiftConditionText(c))} — <strong>${c.giftQuantity} × ${escapeHtml(giftName || tr('sovg‘a', 'подарок'))}</strong></p>${publicMarketingDateHtml(c)}</div></article>`; }),
-        ];
-
-        // 6. Shaxsiy takliflar — faqat joriy userga biriktirilgan.
-        const personalCards = personal.map(c => `<button type="button" onclick="openPersonalOfferDetail('${c.id}')" class="fc-public-offer-card is-personal"><span class="fc-public-offer-icon">💎</span><div><b>${tr('Siz uchun shaxsiy taklif', 'Персональное предложение для вас')}</b><p><strong>${discountPctLabel(c)}</strong> ${c.minOrderAmount || c.maxOrderAmount ? ` · ${escapeHtml(personalDiscountConditionText(c))}` : ''}</p><span><i data-lucide="repeat" class="w-3.5 h-3.5"></i>${c.usageLimit ? `${Math.max(0, c.usageLimit - (c.usedCount || 0))} ${tr('marta qoldi', 'раз осталось')}` : tr('Cheksiz', 'Без огр.')}</span>${publicMarketingDateHtml(c)}<em>${tr('Batafsil ko‘rish', 'Подробнее')} →</em></div></button>`);
-
-        // 15-band spec, 14-band: mijozga SHAXSAN berilgan promo-kodlar —
-        // umumiy "Promo-kodlar va kuponlar" (barcha faol takliflar)
-        // bo'limidan ALOHIDA, chunki bu shaxsiy ma'lumot (boshqa mijozga
-        // ko'rinmasligi kerak) va ishlatilgan/muddati tugagan holatini ham
-        // ko'rsatadi.
-        const myPromoCards = myPromoCodes.map(c => {
-          const statusBadge = c.status === 'USED' ? `<span><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>${tr('Ishlatilgan', 'Использован')}</span>`
-            : c.status === 'EXPIRED' ? `<span><i data-lucide="clock-3" class="w-3.5 h-3.5"></i>${tr('Muddati tugagan', 'Истёк')}</span>`
-            : c.status === 'INACTIVE' ? `<span><i data-lucide="pause-circle" class="w-3.5 h-3.5"></i>${tr('Faol emas', 'Неактивен')}</span>`
-            : `<span><i data-lucide="badge-check" class="w-3.5 h-3.5"></i>${tr('Faol', 'Активен')}</span>`;
-          return `<article class="fc-public-offer-card is-promo">
-            <button type="button" class="fc-public-code" onclick="copyPromoCodeToClipboard('${escapeHtml(c.code)}')" title="${tr('Nusxalash', 'Копировать')}">${escapeHtml(c.code)}</button>
-            <div>
-              <b>${escapeHtml(c.name)}</b>
-              <p><strong>${campaignDiscountLabel(c.discountType, c.discountValue)}</strong>${c.minOrderAmount ? ` · ${tr('kamida', 'от')} ${money(c.minOrderAmount)}` : ''}${c.maxOrderAmount ? ` · ${tr("ko'pi bilan", 'не более')} ${money(c.maxOrderAmount)}` : ''}</p>
-              ${c.endsAt ? `<span><i data-lucide="clock-3" class="w-3.5 h-3.5"></i>${new Date(c.endsAt).toLocaleDateString()}${tr('gacha', ' — до')}</span>` : ''}
-              ${c.usageLimit === 1 ? `<p>${tr('Bir martalik kod', 'Одноразовый код')}</p>` : ''}
-              ${c.transferable ? `<p>${tr("O'zingiz ishlatishingiz yoki do'stingizga sovg'a qilishingiz mumkin.", 'Вы можете использовать сами или подарить другу.')}</p>` : ''}
-              ${statusBadge}
-            </div>
-          </article>`;
-        });
-        body = `<div class="fc-public-marketing-list fc-mkt-pro-public">
-          ${publicMarketingSectionHtml('mypromo', 'user-round-check', tr('Promo-kodlarim', 'Мои промокоды'), myPromoCards, 2)}
-          ${publicMarketingSectionHtml('bundles', 'sparkles', tr('Aksiyalar', 'Акции'), bundleCards, 2)}
-          ${publicMarketingSectionHtml('promo', 'ticket-percent', tr('Promo-kodlar va kuponlar', 'Промокоды и купоны'), promoCards, 2)}
-          ${publicMarketingSectionHtml('tiers', 'trending-up', tr('Bosqichli chegirmalar', 'Ступенчатые скидки'), tierCards, 2)}
-          ${publicMarketingSectionHtml('gifts', 'gift', tr('Avtomatik sovg‘alar', 'Автоматические подарки'), giftSectionCards, 3)}
-          ${publicMarketingSectionHtml('personal', 'gem', tr('Shaxsiy takliflar', 'Персональные предложения'), personalCards, 2)}
-        </div>`;
+      if (marketingCampaignsLoading && !marketingCampaigns.length) {
+        renderPageShell(container, tr('Aksiyalar va chegirmalar', 'Акции и скидки'), `<div class="fc-empty-state"><div class="fc-spinner"></div></div>`);
+        return;
       }
+      const g = computePublicMarketingGroups();
+      const items = [
+        { icon: 'user-round-check', tone: 'blue', title: tr('Promo-kodlarim', 'Мои промокоды'), onclick: "openCampaignsSection('MYPROMO')", count: myPromoCodes.length },
+        { icon: 'sparkles', tone: 'violet', title: tr('Aksiyalar', 'Акции'), onclick: "openCampaignsSection('BUNDLES')", count: g.bundles.length },
+        { icon: 'ticket-percent', tone: 'amber', title: tr('Promo-kodlar va kuponlar', 'Промокоды и купоны'), onclick: "openCampaignsSection('PROMO')", count: g.promotions.length },
+        { icon: 'trending-up', tone: 'emerald', title: tr('Bosqichli chegirmalar', 'Ступенчатые скидки'), onclick: "openCampaignsSection('TIERS')", count: g.tierGroups.length },
+        { icon: 'gift', tone: 'purple', title: tr('Avtomatik sovg‘alar', 'Автоматические подарки'), onclick: "openCampaignsSection('GIFTS')", count: g.rewards.length + g.gifts.length },
+        { icon: 'gem', tone: 'rose', title: tr('Shaxsiy takliflar', 'Персональные предложения'), onclick: "openCampaignsSection('PERSONAL')", count: g.personal.length },
+      ];
+      const body = `<div class="fc-marketing-hub-grid fc-mkt-pro fc-mkt-pro-public-hub">
+        ${items.map(it => `
+          <button type="button" onclick="${it.onclick}" class="fc-marketing-hub-card fc-marketing-hub-tone-${it.tone}">
+            <span class="fc-marketing-hub-icon"><i data-lucide="${it.icon}" class="w-4 h-4"></i></span>
+            <span><b>${it.title}</b><small>${it.count} ${tr('ta', 'шт.')}</small></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 fc-marketing-hub-chevron"></i>
+          </button>
+        `).join('')}
+      </div>`;
       renderPageShell(container, tr('Aksiyalar va chegirmalar', 'Акции и скидки'), body);
     }
     // 4-paket, 10.14/10.UI.8-band: user — read-only shaxsiy taklif detail
@@ -5675,7 +5776,15 @@
         if (key !== currentCartDiscountKey()) return;
         cartDiscountState = result || null;
         cartDiscountPreviewKey = key;
-      } catch (_) {
+      } catch (err) {
+        // 2026-08-27: avval bu yerda xato JIM yutilardi — agar
+        // discount_preview biror sabab bilan xato bersa (masalan yangi
+        // avtomatik-sovg'a maydonlari serverda hali yo'q bo'lsa),
+        // foydalanuvchi hech qanday xabar ko'rmasdan, chegirma/sovg'a
+        // shunchaki ko'rinmay qolardi ("nega sovg'a chiqmayapti" shikoyati
+        // shu sababdan bo'lishi mumkin). Endi konsolga yoziladi — kamida
+        // remote-debug orqali tekshirish mumkin bo'ladi.
+        console.error('discount_preview xato:', err);
         if (key === currentCartDiscountKey()) { cartDiscountState = null; cartDiscountPreviewKey = key; }
       } finally {
         if (cartDiscountLoadingKey === key) cartDiscountLoadingKey = '';
@@ -9905,7 +10014,7 @@
     }
     function renderTierGroupDetailPage(container) {
       const isAdmin = isAdminMode && isUserAnAdmin;
-      const backAction = isAdmin ? "openPage('DISCOUNT_TIERS')" : "openCampaignsPage()";
+      const backAction = isAdmin ? "openPage('DISCOUNT_TIERS')" : "openCampaignsSection('TIERS')";
       if (!tierGroupDetail) {
         renderPageShell(container, tr('Bosqichli chegirma', 'Ступенчатая скидка'), `<div class="fc-empty-state"><p>${tr('Topilmadi', 'Не найдено')}</p></div>`, { onBack: backAction });
         return;
@@ -15384,14 +15493,32 @@
       if(event.clientY<edge) window.scrollBy({top:-12,behavior:'auto'});
       else if(event.clientY>(window.innerHeight-edge)) window.scrollBy({top:12,behavior:'auto'});
       const items=Array.from(st.list.children).filter(el=>el!==st.placeholder && (st.kind==='product'?el.matches('[data-product-card-id]'):el.matches('[data-category-row-id]')));
-      let inserted=false;
+      let target=null, placeBefore=false;
       for(const item of items){
         const r=item.getBoundingClientRect();
         const horizontal = st.kind==='product' && Math.abs(r.left - st.placeholder.getBoundingClientRect().left) > 8;
         const before = horizontal ? (event.clientY < r.top+r.height/2 || (event.clientY < r.bottom && event.clientX < r.left+r.width/2)) : event.clientY < r.top+r.height/2;
-        if(before){ if(st.placeholder.nextSibling!==item) st.list.insertBefore(st.placeholder,item); inserted=true; break; }
+        if(before){ target=item; placeBefore=true; break; }
       }
-      if(!inserted) st.list.appendChild(st.placeholder);
+      // 2026-08-27: joy siljishi allaqachon ishlar edi (placeholder DOM
+      // ichida ko'chirilardi), lekin qolgan kartalar ANIMATSIYASIZ,
+      // sakrab joy almashardi. Endi FLIP naqshi: ko'chirishdan OLDIN har
+      // bir kartaning joriy o'rnini o'lchab olamiz, ko'chiramiz, keyin
+      // farqni translate() bilan "qaytarib" darhol ko'rsatamiz-da, bitta
+      // keyingi kadrda transition bilan 0'ga tekislaymiz — natijada karta
+      // silliq suriladi (haqiqiy layout siljishi emas, faqat vizual).
+      if(target ? st.placeholder.nextSibling!==target : st.list.lastElementChild!==st.placeholder){
+        const before=new Map(items.map(el=>[el,el.getBoundingClientRect()]));
+        if(placeBefore) st.list.insertBefore(st.placeholder,target); else st.list.appendChild(st.placeholder);
+        for(const el of items){
+          const prev=before.get(el),next=el.getBoundingClientRect();
+          const dx=prev.left-next.left,dy=prev.top-next.top;
+          if(!dx&&!dy)continue;
+          el.style.transition='none';
+          el.style.transform=`translate(${dx}px,${dy}px)`;
+          requestAnimationFrame(()=>{el.style.transition='transform .18s ease';el.style.transform='';});
+        }
+      }
       const slots=Array.from(st.list.children).filter(el=>el===st.placeholder || (st.kind==='product'?el.matches('[data-product-card-id]'):el.matches('[data-category-row-id]')));
       st.dropIndex=slots.indexOf(st.placeholder);
     }
