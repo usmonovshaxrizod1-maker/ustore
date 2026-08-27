@@ -13,7 +13,7 @@
 (function () {
   'use strict';
 
-  const tg = window.Telegram?.WebApp;
+  let tg = window.Telegram?.WebApp || null;
   if (tg) tg.expand();
 
   if (!window.APP_CONFIG) {
@@ -22,7 +22,7 @@
   }
   const CONFIG = window.APP_CONFIG;
 
-  async function callPlatformApi(action, payload) {
+  async function callPlatformApi(action, payload, options) {
     const initData = tg?.initData || '';
     const res = await fetch(`${CONFIG.SUPABASE_URL}/functions/v1/platform-api`, {
       method: 'POST',
@@ -32,6 +32,7 @@
         'apikey': CONFIG.SUPABASE_KEY,
       },
       body: JSON.stringify({ action, payload: payload || {}, initData }),
+      signal: options?.signal,
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -40,6 +41,40 @@
       throw err;
     }
     return data;
+  }
+
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  async function waitForTelegramContext(timeoutMs = 2800) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      tg = window.Telegram?.WebApp || tg || null;
+      if (tg?.initData) {
+        try { tg.expand(); } catch (_) {}
+        return true;
+      }
+      await sleep(80);
+    }
+    return !!tg?.initData;
+  }
+  async function platformBootRequestWithRetry() {
+    const delays = [0, 450, 1100];
+    let lastError = null;
+    for (let i = 0; i < delays.length; i += 1) {
+      if (delays[i]) await sleep(delays[i]);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      try {
+        return await callPlatformApi('platform_boot', {}, { signal: controller.signal });
+      } catch (e) {
+        lastError = e;
+        const message = String(e?.message || e || '');
+        const nonRetryable = message.startsWith('forbidden:') || message.startsWith('auth_failed:');
+        if (nonRetryable || i === delays.length - 1) throw e;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+    throw lastError || new Error('platform_boot_failed');
   }
 
   function escapeHtml(str) {
@@ -114,6 +149,7 @@
 
   // ---- STATE -----------------------------------------------------------
   let loading = true;
+  let bootInFlight = false;
   let accessDenied = false;
   let bootError = null;
   let isSuperAdmin = false;
@@ -267,35 +303,43 @@
 
   // ---- BOOT --------------------------------------------------------------
   async function boot() {
-    if (!tg || !tg.initData) {
-      document.getElementById('app').innerHTML = `
-        <div class="wrap"><header class="top"><h1>UStorE</h1></header>
-        <p class="notice error">⚠️ Bu panel faqat Telegram bot orqali ishlaydi.</p></div>`;
-      return;
-    }
+    if (bootInFlight) return;
+    bootInFlight = true;
+    loading = true;
+    accessDenied = false;
+    bootError = null;
+    render();
     try {
-      const data = await callPlatformApi('platform_boot', {});
+      const telegramReady = await waitForTelegramContext();
+      if (!telegramReady) {
+        bootError = 'Telegram sessiyasi tayyor bo‘lmadi. Mini App’ni bot ichidan qayta oching.';
+        return;
+      }
+      const data = await platformBootRequestWithRetry();
       isSuperAdmin = data.isSuperAdmin === true;
-      myShops = data.myShops || [];
-      tariffs = data.tariffs || [];
-      currentTab = myShops.length ? 'home' : 'home'; // ikkalasida ham 'home', render() landing/dashboard'ni tanlaydi
+      myShops = Array.isArray(data.myShops) ? data.myShops : [];
+      tariffs = Array.isArray(data.tariffs) ? data.tariffs : [];
+      if (dashboardShopId && !myShops.some((shop) => shop.id === dashboardShopId)) dashboardShopId = null;
+      currentTab = isAdminMode ? 'dashboard' : 'home';
     } catch (e) {
-      if (String(e.message || '').startsWith('forbidden:') || String(e.message || '').startsWith('auth_failed:')) {
+      const message = String(e?.message || e || '');
+      if (message.startsWith('forbidden:') || message.startsWith('auth_failed:')) {
         accessDenied = true;
+      } else if (e?.name === 'AbortError') {
+        bootError = 'Server javobi kechikdi. Internetni tekshirib, qayta urinib ko‘ring.';
       } else {
-        bootError = e.message || String(e);
+        bootError = 'Ma’lumotlarni yuklab bo‘lmadi. Internetni tekshirib, qayta urinib ko‘ring.';
+        console.error('platform boot error', e);
       }
     } finally {
       loading = false;
+      bootInFlight = false;
       render();
-      // 2026-08-27: Dashboard'dagi "Yangi xabarlar" statistikasi/muhim-holat
-      // uchun mySupportTickets kerak — avval faqat Yordam->Support sahifasi
-      // ochilganda yuklanardi. Endi do'koni bor userlar uchun bosh sahifa
-      // shu ma'lumotga ham muhtoj, shuning uchun fonda oldindan yuklanadi
-      // (mavjud loadMySupportTickets() qayta ishlatiladi, dublikat yo'q).
-      if (!isAdminMode && myShops.length) loadMySupportTickets();
+      if (!accessDenied && !bootError && !isAdminMode && myShops.length) loadMySupportTickets();
     }
   }
+  function retryBoot() { boot(); }
+
 
   // ---- RENDER ROOT ---------------------------------------------------------
   function render() {
@@ -305,17 +349,22 @@
       return;
     }
     if (loading) {
-      app.innerHTML = `<div class="wrap"><header class="top"><h1>UStorE</h1></header><p class="muted">Yuklanmoqda...</p></div>`;
+      app.innerHTML = `<div class="plat-boot-state"><div class="plat-boot-brand">UStorE</div><span class="plat-boot-spinner"></span><b>UStorE yuklanmoqda...</b><small>Do‘konlaringiz va obuna ma’lumotlari tayyorlanmoqda.</small></div>`;
       return;
     }
     if (bootError) {
-      app.innerHTML = `<div class="wrap"><header class="top"><h1>UStorE</h1></header><div class="notice error">${escapeHtml(bootError)}</div></div>`;
+      app.innerHTML = `<div class="plat-boot-state is-error"><div class="plat-boot-brand">UStorE</div><span class="plat-boot-error-icon">${pIcon('info', 24)}</span><b>Ma’lumotlarni yuklab bo‘lmadi</b><small>${escapeHtml(bootError)}</small><button class="primary plat-boot-retry" onclick="retryBoot()">Qayta urinish</button></div>`;
       return;
     }
 
     if (activePage) {
-      app.innerHTML = `${renderChrome('')}<div id="plat-page-container">${renderActivePage()}</div>`;
-      if (activePage === 'CONNECT_SHOP') wireConnectShopView();
+      try {
+        app.innerHTML = `${renderChrome('')}<div id="plat-page-container">${renderActivePage()}</div>`;
+        if (activePage === 'CONNECT_SHOP') wireConnectShopView();
+      } catch (e) {
+        console.error('platform active-page render error', { activePage, error: e });
+        app.innerHTML = `${renderChrome(`<div class="plat-render-error"><span>${pIcon('info',24)}</span><h2>Sahifani ochib bo‘lmadi</h2><p>Qayta urinib ko‘ring yoki bosh sahifaga qayting.</p><button class="primary" onclick="retryCurrentView()">Qayta urinish</button><button class="secondary" onclick="goHomePage()">Bosh sahifa</button></div>`)}`;
+      }
       return;
     }
 
@@ -326,8 +375,19 @@
     // bekor qilinmoqda — MD buni aniq talab qiladi (skrinshot 02).
     const showLanding = !isAdminMode && currentTab === 'home' && !myShops.length;
     const showDashboard = !isAdminMode && currentTab === 'home' && myShops.length > 0;
-    const body = showLanding ? renderLandingHero() : showDashboard ? renderShopDashboard() : renderTabBody();
-    app.innerHTML = `${renderChrome(body)}`;
+    try {
+      const body = showLanding ? renderLandingHero() : showDashboard ? renderShopDashboard() : renderTabBody();
+      app.innerHTML = `${renderChrome(body)}`;
+    } catch (e) {
+      console.error('platform render error', { currentTab, activePage, error: e });
+      app.innerHTML = `${renderChrome(`<div class="plat-render-error"><span>${pIcon('info',24)}</span><h2>Sahifani ochib bo‘lmadi</h2><p>Ma’lumotlar saqlanib turibdi. Qayta urinib ko‘ring.</p><button class="primary" onclick="retryCurrentView()">Qayta urinish</button></div>`)}`;
+    }
+  }
+
+  function retryCurrentView() {
+    if (bootError) { retryBoot(); return; }
+    render();
+    onTabEnter(currentTab);
   }
 
   function renderChrome(bodyHtml) {
@@ -555,6 +615,18 @@
   // LANDING (yangi tashrif buyuruvchi, hali do'koni yo'q)
   // ======================================================================
   // 3.2-band: "Nega UStorE?" — 8 ta karta, gorizontal swipe-carousel.
+  // Tarif imkoniyatlari backendda alohida feature-matrix sifatida saqlanmaydi;
+  // shu sabab UI tariflar orasida fake farq o'ylab topmaydi. Barcha tariflarda
+  // mavjud bo'lgan real platform imkoniyatlari ko'rsatiladi, haqiqiy farq esa
+  // tarif nomi/narxi/productLimit orqali backenddan keladi.
+  const TARIFF_FEATURE_LIST = [
+    "Telegram e-do'kon",
+    'Katalog va mahsulotlar',
+    'Buyurtmalarni boshqarish',
+    'Ombor nazorati',
+    'Marketing va hisobotlar',
+  ];
+
   const WHY_USTORE_CARDS = [
     ['bag', '24/7 ishlaydigan onlayn do\'kon', 'Mijozlaringiz Telegram\'dan chiqmasdan mahsulotlarni ko\'radi va buyurtma beradi.'],
     ['box', 'Ombor nazorati', 'Qoldiq, kam qolgan va tugagan mahsulotlarni bir joydan kuzating.'],
@@ -673,6 +745,13 @@
         <button class="primary" onclick="startNewShopFlow()">${pIcon('rocket',16)} Do'kon ochish</button>
       </section>
     `;
+  }
+  function renderBillingToggle() {
+    return `
+      <div class="plat-billing-toggle" role="group" aria-label="Obuna muddati">
+        <button class="plat-billing-opt ${tariffBillingPeriod === 'monthly' ? 'active' : ''}" onclick="setTariffBillingPeriod('monthly')" type="button"><b>Oylik</b><small>Har oy to‘lov</small></button>
+        <button class="plat-billing-opt ${tariffBillingPeriod === 'annual' ? 'active' : ''}" onclick="setTariffBillingPeriod('annual')" type="button"><b>Yillik <span class="plat-billing-free-badge">2 oy bepul</span></b><small>10 oylik to‘lov bilan 12 oy</small></button>
+      </div>`;
   }
   function setTariffBillingPeriod(period) { tariffBillingPeriod = period; render(); }
 
@@ -918,42 +997,45 @@
   // dan.
   // ======================================================================
   function renderShopDashboard() {
-    if (!dashboardShopId || !myShops.some((s) => s.id === dashboardShopId)) dashboardShopId = myShops[0].id;
-    const s = myShops.find((sh) => sh.id === dashboardShopId) || myShops[0];
+    if (!dashboardShopId || !myShops.some((shop) => shop.id === dashboardShopId)) dashboardShopId = myShops[0].id;
+    const s = myShops.find((shop) => shop.id === dashboardShopId) || myShops[0];
     const left = daysUntil(s.subscriptionExpiresAt);
-    const unreadSupport = mySupportTickets.filter((t) => t.status === 'ANSWERED').length;
+    const unreadSupport = mySupportTickets.filter((ticket) => ticket.status === 'ANSWERED').length;
     const alerts = [];
-    if (left !== null && left <= 7) alerts.push(['calendar', left <= 0 ? 'Obuna muddati tugagan' : `Obuna tugashiga ${left} kun qoldi`, "Do'kon uzluksiz ishlashi uchun obunani yangilang.", `startExtendFor('${s.id}')`, left <= 1 ? 'danger' : 'warn']);
+    if (!s.tariffId || !s.tariffName) {
+      alerts.push(['diamond', 'Tarif tanlanmagan', 'Obunani faollashtirib do‘kon imkoniyatlarini yoqing.', `startUpgradeFor('${s.id}')`, 'warn']);
+    } else if (left !== null && left <= 7) {
+      alerts.push(['calendar', left <= 0 ? 'Obuna muddati tugagan' : `Obuna tugashiga ${left} kun qoldi`, "Do'kon uzluksiz ishlashi uchun obunani yangilang.", `startExtendFor('${s.id}')`, left <= 1 ? 'danger' : 'warn']);
+    }
     if (unreadSupport > 0) alerts.push(['chat', `${unreadSupport} ta yangi javob`, 'Support javoblarini ko‘ring.', "openSupportPage()", 'info']);
     const productLimit = s.productLimit ?? null;
     const usedProducts = Number(s.usedProductCount || 0);
     const productPct = productLimit ? Math.min(100, Math.round(usedProducts / productLimit * 100)) : null;
+    const tabsClass = myShops.length === 1 ? 'is-one' : myShops.length === 2 ? 'is-two' : 'is-many';
+    const shopAction = s.botUsername
+      ? `<a class="primary plat-dashboard-open-shop" href="https://t.me/${escapeHtml(s.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',15)} Do'konni ochish</a>`
+      : '';
     return `
-      <div class="plat-dashboard-head"><div><p class="plat-dashboard-eyebrow">Mening do'konlarim</p><h1>${myShops.length} ta ulangan do'kon</h1></div><button class="plat-icon-button" onclick="switchTab('shops')">${pIcon('shop',17)}</button></div>
-      <div class="plat-dashboard-shop-tabs">
-        ${myShops.map((sh)=>{ const d=daysUntil(sh.subscriptionExpiresAt); const active=sh.id===s.id; return `<button class="plat-dashboard-shop-card ${active?'active':''}" onclick="setDashboardShop('${sh.id}')"><span class="plat-shop-avatar">${shopAvatarHtml(sh)}</span><span class="plat-dashboard-shop-copy"><b>${escapeHtml(sh.shopName || sh.botUsername || sh.publicCode)}</b><small>${escapeHtml(sh.tariffName || 'Tarifsiz')}</small><em class="${d!==null&&d<=7?'is-warn':''}">${d===null?'Obuna ma’lumoti yo‘q':d<=0?'Obuna tugagan':`Obunaga ${d} kun qoldi`}</em></span><span class="status-dot ${sh.status==='ACTIVE'?'ok':''}"></span></button>`; }).join('')}
+      <div class="plat-dashboard-head"><div><p class="plat-dashboard-eyebrow">Mening do'konlarim</p><h1>${myShops.length} ta ulangan do'kon</h1></div><button class="plat-icon-button" onclick="switchTab('shops')" aria-label="Do‘konlarim">${pIcon('shop',17)}</button></div>
+      <div class="plat-dashboard-shop-tabs ${tabsClass}">
+        ${myShops.map((shop)=>{ const d=daysUntil(shop.subscriptionExpiresAt); const active=shop.id===s.id; const plan=shop.tariffName || 'Tarifsiz'; return `<button class="plat-dashboard-shop-card ${active?'active':''}" onclick="setDashboardShop('${shop.id}')"><span class="plat-shop-avatar">${shopAvatarHtml(shop)}</span><span class="plat-dashboard-shop-copy"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${escapeHtml(plan)}</small><em class="${d!==null&&d<=7?'is-warn':''}">${d===null?'Obuna ma’lumoti yo‘q':d<=0?'Obuna tugagan':`Obunaga ${d} kun qoldi`}</em></span><span class="status-dot ${shop.status==='ACTIVE'?'ok':''}"></span></button>`; }).join('')}
       </div>
 
       <section class="card plat-dashboard-focus">
-        <div class="plat-dashboard-focus-title"><div><small>Tanlangan do'kon</small><h2>${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</h2></div><span class="status-pill status-${s.status}">${statusLabel(s.status)}</span></div>
+        <div class="plat-dashboard-focus-title"><div><small>Tanlangan do'kon</small><h2>${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</h2><p>${escapeHtml(s.tariffName || 'Tarifsiz')}${left === null ? '' : left <= 0 ? ' · Obuna tugagan' : ` · ${left} kun qoldi`}</p></div><span class="status-pill status-${s.status}">${statusLabel(s.status)}</span></div>
         <div class="plat-dashboard-kpis">
           <div class="tone-blue"><span>${pIcon('bag',18)}</span><small>Bugungi buyurtmalar</small><b>${Number(s.ordersToday || 0)}</b></div>
           <div class="tone-violet"><span>${pIcon('box',18)}</span><small>Mahsulotlar</small><b>${usedProducts}</b>${productPct!==null?`<em>${productPct}% limit</em>`:''}</div>
           <div class="tone-green"><span>${pIcon('chat',18)}</span><small>Yangi xabarlar</small><b>${unreadSupport}</b></div>
           <div class="tone-amber"><span>${pIcon('diamond',18)}</span><small>Tarif</small><b class="textual">${escapeHtml(s.tariffName || 'Tarifsiz')}</b></div>
         </div>
+        ${shopAction ? `<div class="plat-dashboard-focus-actions">${shopAction}</div>` : ''}
       </section>
 
       ${alerts.length ? `<section><h2 class="plat-section-title">Diqqat talab qiladi</h2><div class="card plat-alert-list">${alerts.map(([icon,title,sub,action,tone])=>`<button class="plat-alert-row tone-${tone}" onclick="${action}"><span class="plat-alert-icon">${pIcon(icon,16)}</span><span><b>${title}</b><small>${sub}</small></span><span class="plat-alert-chevron">›</span></button>`).join('')}</div></section>` : `<div class="plat-health-strip">${pIcon('check',17)}<div><b>Hammasi joyida</b><small>Hozircha e'tibor talab qiladigan holat yo'q.</small></div></div>`}
-
-      <section><h2 class="plat-section-title">Tezkor amallar</h2><div class="plat-quick-actions">
-        ${s.botUsername ? `<a class="plat-quick-action" href="https://t.me/${escapeHtml(s.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',19)}<span>Do'konni ochish</span></a>` : ''}
-        <button class="plat-quick-action" onclick="switchTab('shops')">${pIcon('layers',19)}<span>Do'konlarim</span></button>
-        <button class="plat-quick-action" onclick="switchTab('subscription')">${pIcon('diamond',19)}<span>Obuna</span></button>
-        <button class="plat-quick-action" onclick="switchTab('help')">${pIcon('headset',19)}<span>Yordam</span></button>
-      </div></section>
     `;
   }
+
   function toggleDashboardShopMenu(event) {
     event?.stopPropagation?.();
     document.getElementById('plat-dashboard-shop-menu')?.classList.toggle('hidden');
@@ -979,20 +1061,37 @@
     return '';
   }
   function renderMyShopsTab() {
-    const activeCount = myShops.filter((s) => s.status === 'ACTIVE').length;
-    const expiringCount = myShops.filter((s) => { const d = daysUntil(s.subscriptionExpiresAt); return d !== null && d >= 0 && d <= 7; }).length;
+    const activeCount = myShops.filter((shop) => shop.status === 'ACTIVE').length;
+    const expiringCount = myShops.filter((shop) => { const d = daysUntil(shop.subscriptionExpiresAt); return d !== null && d >= 0 && d <= 7; }).length;
+    const noPlanCount = myShops.filter((shop) => !shop.tariffId || !shop.subscriptionExpiresAt).length;
     if (!myShops.length) return `<div class="plat-empty-pro"><span>${pIcon('shop',30)}</span><h1>Do'konlaringiz shu yerda ko'rinadi</h1><p>Birinchi do'konni yaratish uchun tarifni tanlang.</p><button class="primary" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon yaratish</button></div>`;
+    const thirdCount = noPlanCount > 0 ? noPlanCount : expiringCount;
+    const thirdLabel = noPlanCount > 0 ? 'Tarifsiz' : 'Tez tugaydi';
     return `
-      <div class="plat-tab-head"><div><h1>Do'konlarim</h1><p>${myShops.length} ta do'kon</p></div><button class="primary plat-compact-cta" onclick="startNewShopFlow()">${pIcon('plus',14)} Yangi do'kon</button></div>
-      <div class="plat-summary-strip"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length}</b><small>Do'kon</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-amber">${pIcon('calendar',16)}</span><b>${expiringCount}</b><small>Tez tugaydi</small></div></div>
-      <div class="plat-shop-pro-list">${myShops.map((s)=>{ const left=daysUntil(s.subscriptionExpiresAt); const limit=s.productLimit??null; const used=Number(s.usedProductCount||0); const pct=limit?Math.min(100,Math.round(used/limit*100)):null; const warn=left!==null&&left<=7; return `
+      <div class="plat-tab-head plat-shops-head"><div><h1>Do'konlarim</h1><p>${myShops.length} ta ulangan do'kon</p></div></div>
+      <div class="plat-summary-strip plat-shops-summary"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length}</b><small>Do'kon</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-amber">${pIcon(noPlanCount > 0 ? 'diamond' : 'calendar',16)}</span><b>${thirdCount}</b><small>${thirdLabel}</small></div></div>
+      <button class="primary plat-new-shop-main" onclick="startNewShopFlow()">${pIcon('plus',17)} Yangi do'kon</button>
+      <div class="plat-shop-pro-list">${myShops.map((shop)=>{
+        const left=daysUntil(shop.subscriptionExpiresAt);
+        const limit=shop.productLimit??null;
+        const used=Number(shop.usedProductCount||0);
+        const pct=limit?Math.min(100,Math.round(used/limit*100)):null;
+        const warn=left!==null&&left<=7;
+        const noPlan=!shop.tariffId || !shop.subscriptionExpiresAt;
+        const subscriptionTitle=noPlan?'Tarif tanlanmagan':left===null?'Obuna ma’lumoti yo‘q':left<=0?'Obuna tugagan':`${left} kun qoldi`;
+        const subscriptionMeta=noPlan?'Obuna muddati yo‘q':shop.subscriptionExpiresAt?formatDate(shop.subscriptionExpiresAt)+' gacha':'Obuna sanasi yo‘q';
+        const secondaryAction=noPlan?`<button class="secondary plat-small-btn" onclick="startUpgradeFor('${shop.id}')">${pIcon('diamond',14)} Tarif tanlash</button>`:`<button class="secondary plat-small-btn" onclick="openMyShopManage('${shop.id}')">${pIcon('gear',14)} Obunani boshqarish</button>`;
+        return `
         <article class="plat-shop-pro-card ${warn?'is-expiring':''}">
-          <div class="plat-shop-pro-head"><span class="plat-shop-avatar plat-shop-avatar-lg">${shopAvatarHtml(s)}</span><div><h2>${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</h2>${s.botUsername?`<p>@${escapeHtml(s.botUsername)}</p>`:''}<div class="plat-shop-badges"><span class="status-pill status-${s.status}">${statusLabel(s.status)}</span><span class="plan-pill">${escapeHtml(s.tariffName||'Tarifsiz')}</span></div></div><button class="plat-more-btn" aria-label="Obunani boshqarish" onclick="openMyShopManage('${s.id}')">•••</button></div>
-          <div class="plat-shop-pro-metrics"><div><span>${pIcon('box',15)}</span><b>${used}${limit!==null?` / ${limit}`:''}</b><small>mahsulot</small>${pct!==null?`<div class="mini-progress"><i style="width:${pct}%"></i></div>`:''}</div><div class="${warn?'is-warn':''}"><span>${pIcon('calendar',15)}</span><b>${left===null?'—':left<=0?'Tugagan':`${left} kun qoldi`}</b><small>${s.subscriptionExpiresAt?formatDate(s.subscriptionExpiresAt)+' gacha':'Obuna sanasi yo‘q'}</small>${left!==null&&left>0?`<div class="mini-progress time"><i style="width:${Math.max(4,Math.min(100,Math.round((30-Math.min(30,left))/30*100)))}%"></i></div>`:''}</div></div>
-          <div class="plat-shop-pro-actions">${s.botUsername?`<a class="primary plat-small-btn" href="https://t.me/${escapeHtml(s.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',14)} Do'konni ochish</a>`:''}<button class="secondary plat-small-btn" onclick="openMyShopManage('${s.id}')">${pIcon('gear',14)} Obunani boshqarish</button></div>
-        </article>`; }).join('')}</div>
+          <div class="plat-shop-pro-head"><span class="plat-shop-avatar plat-shop-avatar-lg">${shopAvatarHtml(shop)}</span><div><h2>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</h2>${shop.botUsername?`<p>@${escapeHtml(shop.botUsername)}</p>`:''}<div class="plat-shop-badges"><span class="status-pill status-${shop.status}">${statusLabel(shop.status)}</span><span class="plan-pill">${escapeHtml(shop.tariffName||'Tarifsiz')}</span></div></div><button class="plat-more-btn" aria-label="Do‘konni boshqarish" onclick="openMyShopManage('${shop.id}')">•••</button></div>
+          <div class="plat-shop-pro-metrics"><div><span>${pIcon('box',16)}</span><b>${used}${limit!==null?` / ${limit}`:''} <small class="metric-unit">mahsulot</small></b>${pct!==null?`<div class="mini-progress"><i style="width:${pct}%"></i></div><small>${pct}% foydalanilgan</small>`:`<small>Jami mahsulotlar</small>`}</div><div class="${warn?'is-warn':''}"><span>${pIcon('calendar',16)}</span><b>${subscriptionTitle}</b><small>${subscriptionMeta}</small>${!noPlan&&left!==null&&left>0?`<div class="mini-progress time"><i style="width:${Math.max(4,Math.min(100,Math.round((30-Math.min(30,left))/30*100)))}%"></i></div>`:''}</div></div>
+          <div class="plat-shop-pro-actions">${shop.botUsername?`<a class="primary plat-small-btn" href="https://t.me/${escapeHtml(shop.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',14)} Do'konni ochish</a>`:`<button class="secondary plat-small-btn" disabled>${pIcon('shop',14)} Bot ulanmoqda</button>`}${secondaryAction}</div>
+        </article>`;
+      }).join('')}</div>
+      <div class="plat-shops-info">${pIcon('info',15)}<span>Do'konlarni ochish va obunani boshqarish shu yerdan amalga oshiriladi.</span></div>
     `;
   }
+
   // Ehtiyot: platform.js'da admin tarafda AYNAN shu nomdagi
   // openShopDetails() allaqachon bor (boshqa do'konlarni boshqarish uchun,
   // adminShops/selectedShopDetails ustida ishlaydi) — nom to'qnashib
@@ -1870,6 +1969,8 @@
   // ---- Global handler eksporti (inline onclick uchun) -------------------
   window.openPage = openPage;
   window.closePage = closePage;
+  window.retryBoot = retryBoot;
+  window.retryCurrentView = retryCurrentView;
   window.goHomePage = goHomePage;
   window.switchTab = switchTab;
   window.togglePersonMenu = togglePersonMenu;
@@ -1880,6 +1981,7 @@
   window.closeTermsPrivacyPage = closeTermsPrivacyPage;
   window.setConsentAccepted = setConsentAccepted;
   window.selectTariffAndContinue = selectTariffAndContinue;
+  window.setTariffBillingPeriod = setTariffBillingPeriod;
   window.startNewShopFlow = startNewShopFlow;
   window.startNewShopWithTariff = startNewShopWithTariff;
   window.chooseNewShop = chooseNewShop;
@@ -1889,6 +1991,9 @@
   window.onReceiptPicked = onReceiptPicked;
   window.submitSubscriptionRequest = submitSubscriptionRequest;
   window.startUpgradeFor = startUpgradeFor;
+  window.startExtendFor = startExtendFor;
+  window.setDashboardShop = setDashboardShop;
+  window.openMyShopManage = openMyShopManage;
   window.openShopDetails = openShopDetails;
   window.applyTariffFromShopDetails = applyTariffFromShopDetails;
   window.setGrantDaysPreset = setGrantDaysPreset;
