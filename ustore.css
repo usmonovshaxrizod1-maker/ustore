@@ -3296,3 +3296,197 @@ html.ustore-dark-theme .fc-mkt-pro-tier-form .fc-tier-step-form-row,html.ustore-
   .fc-mkt-pro-tier-form .fc-tier-step-form-row>.fc-btn-danger{grid-column:6!important;grid-row:2!important;justify-self:end!important}
   .fc-mkt-pro-public .fc-public-offer-card{grid-template-columns:2.85rem minmax(0,1fr)!important}
 }
+
+/* ======================================================================
+   2026-08-27 — APPROVED DESIGN REFINEMENT (UI ONLY)
+   Scope is intentionally limited to:
+   1) Marketing hub, 2) Banner list/vitrine, 3) Banner detail.
+   No create/edit form or business-logic styles are changed here.
+   ====================================================================== */
+
+/* 1) Marketing hub — denser, clearer hierarchy, white cards + tinted icons. */
+.fc-mkt-pro-hub{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:.54rem!important;
+  padding-bottom:5.5rem!important;
+}
+.fc-mkt-pro-hub> *{margin-top:0!important}
+.fc-mkt-pro-hub .fc-marketing-summary{
+  min-height:4.35rem!important;
+  padding:.68rem .76rem!important;
+  gap:.66rem!important;
+  border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 24%,var(--fc-mkt-border))!important;
+  border-radius:.9rem!important;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--ustore-primary,#2563eb) 7%,var(--fc-mkt-panel)),var(--fc-mkt-panel))!important;
+  box-shadow:0 5px 16px rgba(15,23,42,.045)!important;
+}
+.fc-mkt-pro-hub .fc-marketing-summary-icon{
+  width:2.35rem!important;height:2.35rem!important;border-radius:.72rem!important;
+  box-shadow:0 6px 14px color-mix(in srgb,var(--ustore-primary,#2563eb) 18%,transparent)!important;
+}
+.fc-mkt-pro-hub .fc-marketing-summary small{font-size:.5rem!important;line-height:1.2!important}
+.fc-mkt-pro-hub .fc-marketing-summary b{font-size:.79rem!important;line-height:1.25!important}
+.fc-mkt-pro-hub .fc-marketing-hub-grid{gap:.38rem!important}
+.fc-mkt-pro-hub .fc-marketing-hub-card{
+  min-height:3.48rem!important;
+  padding:.52rem .62rem!important;
+  grid-template-columns:2.18rem minmax(0,1fr) 1.05rem!important;
+  gap:.56rem!important;
+  border:1px solid color-mix(in srgb,var(--fc-mkt-border) 92%,#94a3b8)!important;
+  border-radius:.82rem!important;
+  background:var(--fc-mkt-panel)!important;
+  box-shadow:0 3px 10px rgba(15,23,42,.035)!important;
+  transition:border-color .16s ease,box-shadow .16s ease,transform .12s ease!important;
+}
+.fc-mkt-pro-hub .fc-marketing-hub-card:active{transform:scale(.992)!important}
+.fc-mkt-pro-hub .fc-marketing-hub-icon{
+  width:2.18rem!important;height:2.18rem!important;border-radius:.68rem!important;
+  color:var(--hub-tone,var(--ustore-primary,#2563eb))!important;
+  background:var(--hub-tone-soft,#eef4ff)!important;
+  border:1px solid color-mix(in srgb,var(--hub-tone,var(--ustore-primary,#2563eb)) 15%,transparent)!important;
+}
+.fc-mkt-pro-hub .fc-marketing-hub-card b{font-size:.64rem!important;line-height:1.22!important;font-weight:850!important}
+.fc-mkt-pro-hub .fc-marketing-hub-card small{font-size:.47rem!important;line-height:1.25!important;margin-top:.08rem!important;color:var(--ustore-secondary-text,#64748b)!important}
+.fc-mkt-pro-hub .fc-marketing-hub-chevron{color:#94a3b8!important}
+.fc-marketing-hub-tone-cyan{--hub-tone:#0891b2;--hub-tone-soft:#ecfeff}
+.fc-marketing-hub-tone-blue{--hub-tone:#2563eb;--hub-tone-soft:#eef4ff}
+.fc-marketing-hub-tone-violet{--hub-tone:#7c3aed;--hub-tone-soft:#f5f3ff}
+.fc-marketing-hub-tone-amber{--hub-tone:#d97706;--hub-tone-soft:#fff7ed}
+.fc-marketing-hub-tone-emerald{--hub-tone:#059669;--hub-tone-soft:#ecfdf5}
+.fc-marketing-hub-tone-purple{--hub-tone:#9333ea;--hub-tone-soft:#faf5ff}
+.fc-marketing-hub-tone-rose{--hub-tone:#e11d48;--hub-tone-soft:#fff1f2}
+.fc-marketing-hub-tone-slate{--hub-tone:#475569;--hub-tone-soft:#f1f5f9}
+.fc-mkt-pro-hub .fc-marketing-settings-sep{
+  margin-top:.06rem!important;
+  padding-top:.48rem!important;
+  border-top:1px solid var(--fc-mkt-border-soft)!important;
+}
+.fc-mkt-pro-hub .fc-marketing-settings-card{width:100%!important;margin:0!important}
+
+/* 2) Banner list/vitrine — compact, soft but visible boundaries. */
+.fc-mkt-pro-banners{
+  padding-bottom:5.5rem!important;
+}
+.fc-mkt-pro-banners>.fc-card.fc-banner-vitrine-card{
+  padding:.72rem!important;
+  border:1px solid color-mix(in srgb,var(--fc-mkt-border) 92%,#94a3b8)!important;
+  border-radius:.9rem!important;
+  background:linear-gradient(145deg,var(--fc-mkt-panel),color-mix(in srgb,var(--ustore-primary,#2563eb) 2.5%,var(--fc-mkt-panel)))!important;
+  box-shadow:0 4px 14px rgba(15,23,42,.04)!important;
+}
+.fc-mkt-pro-banners .fc-banner-section-heading{padding:0 .04rem .02rem!important}
+.fc-mkt-pro-banners .fc-banner-section-heading h3{font-size:.69rem!important;line-height:1.3!important}
+.fc-mkt-pro-banners .fc-banner-section-heading p{font-size:.49rem!important;line-height:1.42!important;max-width:96%!important}
+.fc-mkt-pro-banners .fc-banner-slots-grid{gap:.32rem!important;margin-top:.42rem!important}
+.fc-mkt-pro-banners .fc-banner-slot{
+  border:1px solid color-mix(in srgb,var(--fc-mkt-border) 86%,#94a3b8)!important;
+  border-radius:.68rem!important;
+  box-shadow:0 2px 7px rgba(15,23,42,.04)!important;
+}
+.fc-mkt-pro-banners .fc-banner-slot.is-filled img{object-fit:cover!important}
+.fc-mkt-pro-banners .fc-banner-slot-badge{
+  top:.22rem!important;left:.22rem!important;width:1.16rem!important;height:1.16rem!important;
+  border:1px solid rgba(255,255,255,.72)!important;box-shadow:0 2px 5px rgba(15,23,42,.14)!important
+}
+.fc-mkt-pro-banners .fc-banner-slot-drag{
+  bottom:.12rem!important;width:1.82rem!important;height:.96rem!important;border-radius:.36rem!important;
+  border-color:rgba(203,213,225,.82)!important;box-shadow:0 1px 3px rgba(15,23,42,.08)!important
+}
+.fc-mkt-pro-banners .fc-banner-slot-swap{
+  top:.18rem!important;right:.18rem!important;bottom:auto!important;
+  width:1.12rem!important;height:1.12rem!important;
+  color:#475569!important;background:rgba(255,255,255,.9)!important;
+  border:1px solid rgba(203,213,225,.88)!important;box-shadow:0 2px 5px rgba(15,23,42,.09)!important;
+}
+.fc-mkt-pro-banners .fc-banner-slot.is-empty{
+  border:1.5px dashed color-mix(in srgb,var(--ustore-primary,#2563eb) 38%,var(--fc-mkt-border))!important;
+  background:color-mix(in srgb,var(--ustore-primary,#2563eb) 2.5%,var(--fc-mkt-panel))!important;
+}
+.fc-mkt-pro-banners .fc-banner-slot.is-empty small{font-size:.44rem!important;line-height:1.15!important;margin-top:.12rem!important}
+.fc-mkt-pro-banners .fc-banner-slots-note{
+  margin-top:.46rem!important;padding:.46rem .56rem!important;border-radius:.66rem!important;
+  font-size:.48rem!important;line-height:1.36!important;gap:.38rem!important;
+}
+.fc-mkt-pro-banners .fc-banner-library-head{
+  min-height:4.15rem!important;padding:.62rem .68rem!important;gap:.66rem!important;
+  border:1px solid color-mix(in srgb,var(--fc-mkt-border) 92%,#94a3b8)!important;
+  border-radius:.88rem!important;box-shadow:0 3px 11px rgba(15,23,42,.035)!important;
+}
+.fc-mkt-pro-banners .fc-banner-library-copy{min-width:0!important;flex:1!important}
+.fc-mkt-pro-banners .fc-banner-library-title-row{display:flex!important;align-items:center!important;gap:.38rem!important;flex-wrap:wrap!important}
+.fc-mkt-pro-banners .fc-banner-library-title-row h3{font-size:.7rem!important;line-height:1.2!important;margin:0!important}
+.fc-mkt-pro-banners .fc-banner-library-copy p{font-size:.5rem!important;line-height:1.4!important;margin-top:.22rem!important;color:var(--ustore-secondary-text,#64748b)!important}
+.fc-mkt-pro-banners .fc-banner-count-chip{
+  display:inline-flex!important;align-items:center!important;min-height:1.25rem!important;padding:.16rem .4rem!important;
+  border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 18%,var(--fc-mkt-border))!important;
+  border-radius:999px!important;background:var(--fc-mkt-blue-soft)!important;color:#3567b8!important;font-size:.47rem!important;font-weight:850!important;
+}
+.fc-mkt-pro-banners .fc-banner-add-btn{
+  min-height:2.55rem!important;height:2.55rem!important;padding:.42rem .68rem!important;border-radius:.7rem!important;
+  font-size:.58rem!important;line-height:1.12!important;white-space:normal!important;max-width:7.4rem!important;flex:0 0 auto!important;
+}
+.fc-mkt-pro-banners .fc-banner-list-stack>*+*{margin-top:.42rem!important}
+.fc-mkt-pro-banners .fc-banner-list-card{
+  min-height:3.82rem!important;padding:.52rem .56rem!important;
+  grid-template-columns:3.72rem minmax(0,1fr) 2.18rem!important;gap:.56rem!important;
+  border:1px solid color-mix(in srgb,var(--fc-mkt-border) 92%,#94a3b8)!important;border-radius:.84rem!important;
+  box-shadow:0 3px 10px rgba(15,23,42,.03)!important;
+}
+.fc-mkt-pro-banners .fc-marketing-thumb{width:3.72rem!important;height:2.48rem!important;border-radius:.6rem!important}
+.fc-mkt-pro-banners .fc-banner-list-title b{font-size:.64rem!important;line-height:1.24!important;font-weight:850!important}
+.fc-mkt-pro-banners .fc-banner-list-title small{font-size:.48rem!important;line-height:1.3!important;margin-top:.1rem!important}
+.fc-mkt-pro-banners .fc-card-more-btn{width:2.1rem!important;height:2.1rem!important;border-radius:.66rem!important}
+
+/* 3) Banner detail — unmistakable sections, compact information hierarchy. */
+#fc-banner-preview-root .fc-banner-detail-body{padding-bottom:1.1rem!important}
+#fc-banner-preview-root .fc-banner-detail-media{
+  overflow:hidden!important;border:1px solid color-mix(in srgb,var(--fc-mkt-border) 92%,#94a3b8)!important;
+  border-radius:.9rem!important;background:#f8fafc!important;box-shadow:0 5px 16px rgba(15,23,42,.045)!important;
+}
+#fc-banner-preview-root .fc-banner-detail-media .fc-marketing-detail-image{
+  width:100%!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;
+  object-fit:contain!important;background:#f8fafc!important;
+}
+#fc-banner-preview-root .fc-banner-detail-primary,
+#fc-banner-preview-root .fc-banner-detail-link,
+#fc-banner-preview-root .fc-banner-detail-period,
+#fc-banner-preview-root .fc-banner-detail-meta{
+  border:1px solid color-mix(in srgb,var(--fc-mkt-border) 92%,#94a3b8)!important;
+  border-radius:.86rem!important;background:var(--fc-mkt-panel)!important;
+  box-shadow:0 3px 10px rgba(15,23,42,.03)!important;
+}
+#fc-banner-preview-root .fc-banner-detail-primary{padding:.68rem .72rem!important}
+#fc-banner-preview-root .fc-banner-detail-title-row{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:.65rem!important}
+#fc-banner-preview-root .fc-banner-detail-title{display:block!important;font-size:.76rem!important;line-height:1.28!important;font-weight:900!important;color:var(--ustore-text,#172033)!important}
+#fc-banner-preview-root .fc-banner-detail-subtitle{margin:.18rem 0 0!important;font-size:.53rem!important;line-height:1.4!important;color:var(--ustore-secondary-text,#64748b)!important}
+#fc-banner-preview-root .fc-banner-detail-link{display:grid!important;grid-template-columns:2rem minmax(0,1fr)!important;align-items:center!important;gap:.58rem!important;padding:.62rem .68rem!important}
+#fc-banner-preview-root .fc-banner-detail-icon{
+  width:2rem!important;height:2rem!important;display:grid!important;place-items:center!important;flex:0 0 auto!important;
+  border-radius:.62rem!important;color:var(--ustore-primary,#2563eb)!important;background:var(--fc-mkt-blue-soft)!important;
+  border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 15%,var(--fc-mkt-border))!important;
+}
+#fc-banner-preview-root .fc-banner-detail-icon-link{color:#7c3aed!important;background:#f5f3ff!important;border-color:#e9d5ff!important}
+#fc-banner-preview-root .fc-banner-detail-link-copy{min-width:0!important;display:flex!important;flex-direction:column!important;gap:.12rem!important}
+#fc-banner-preview-root .fc-banner-detail-link-copy small{font-size:.48rem!important;color:var(--ustore-secondary-text,#64748b)!important}
+#fc-banner-preview-root .fc-banner-detail-link-copy b{font-size:.58rem!important;line-height:1.34!important;color:var(--ustore-text,#172033)!important;overflow-wrap:anywhere!important}
+#fc-banner-preview-root .fc-banner-detail-period{padding:.64rem .68rem!important}
+#fc-banner-preview-root .fc-banner-detail-meta{padding:.55rem .62rem!important}
+#fc-banner-preview-root .fc-banner-detail-section-head{display:flex!important;align-items:center!important;gap:.5rem!important;margin-bottom:.55rem!important}
+#fc-banner-preview-root .fc-banner-detail-section-head b{font-size:.59rem!important;color:var(--ustore-text,#334155)!important}
+#fc-banner-preview-root .fc-banner-detail-two-col{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:.45rem!important}
+#fc-banner-preview-root .fc-banner-detail-cell{
+  min-width:0!important;padding:.5rem .54rem!important;border:1px solid var(--fc-mkt-border-soft)!important;
+  border-radius:.68rem!important;background:color-mix(in srgb,var(--fc-mkt-subtle) 72%,var(--fc-mkt-panel))!important;
+  display:flex!important;flex-direction:column!important;gap:.12rem!important;
+}
+#fc-banner-preview-root .fc-banner-detail-cell small{font-size:.46rem!important;line-height:1.2!important;color:var(--ustore-secondary-text,#64748b)!important}
+#fc-banner-preview-root .fc-banner-detail-cell b{font-size:.58rem!important;line-height:1.24!important;color:var(--ustore-text,#172033)!important;white-space:normal!important}
+#fc-banner-preview-root .fc-banner-detail-edit-btn{min-height:3rem!important;border-radius:.78rem!important;font-size:.64rem!important}
+
+@media(max-width:359px){
+  .fc-mkt-pro-hub .fc-marketing-hub-card{grid-template-columns:2.05rem minmax(0,1fr) .9rem!important;padding:.5rem!important}
+  .fc-mkt-pro-hub .fc-marketing-hub-icon{width:2.05rem!important;height:2.05rem!important}
+  .fc-mkt-pro-banners .fc-banner-library-head{align-items:stretch!important;flex-direction:column!important}
+  .fc-mkt-pro-banners .fc-banner-add-btn{max-width:none!important;width:100%!important}
+}

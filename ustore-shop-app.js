@@ -9128,16 +9128,16 @@
           </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="image" class="w-7 h-7"></i><p>${tr("Hozircha banner yo'q.", "Пока нет баннеров.")}</p></div>`;
       const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-banners">
-        <div class="fc-card space-y-2">
-          <div><h3 class="text-xs font-bold">${tr("Vitrinadagi bannerlar (tartib)", 'Баннеры в витрине (порядок)')}</h3><p class="text-[10px] text-gray-400">${tr("Bannerlarni tartiblash uchun ushlab turing va drag qiling. Bo'sh slotga yoki mavjud bannerni almashtirish uchun bosing.", 'Удерживайте и перетаскивайте баннеры, чтобы изменить порядок. Нажмите на пустой слот или на существующий баннер, чтобы заменить.')}</p></div>
+        <div class="fc-card space-y-2 fc-banner-vitrine-card">
+          <div class="fc-banner-section-heading"><h3 class="text-xs font-bold">${tr("Vitrinadagi bannerlar (tartib)", 'Баннеры в витрине (порядок)')}</h3><p class="text-[10px] text-gray-400">${tr("Bannerlarni tartiblash uchun ushlab turing va drag qiling. Bo'sh slotga yoki mavjud bannerni almashtirish uchun bosing.", 'Удерживайте и перетаскивайте баннеры, чтобы изменить порядок. Нажмите на пустой слот или на существующий баннер, чтобы заменить.')}</p></div>
           ${renderBannerSlotsHtml()}
           <div class="fc-banner-slots-note"><i data-lucide="lightbulb" class="w-4 h-4"></i><span>${tr("Vitrinada maksimal 5 ta banner ko'rinadi. Ularning tartibi shu yerda belgilanadi.", 'В витрине показывается максимум 5 баннеров. Их порядок задаётся здесь.')}</span></div>
         </div>
-        <div class="fc-card fc-staff-intro">
-          <div><h3>${tr('Barcha bannerlar', 'Все баннеры')}</h3><p>${tr("Jami 10 tagacha banner saqlashingiz mumkin, ulardan 5 tasi vitrinada ko'rinadi.", "Можно сохранить до 10 баннеров, из них 5 показываются в витрине.")}</p><p class="text-[10px] text-gray-400 mt-1">${bannerList.length} / 10</p></div>
-          <button type="button" onclick="openBannerForm()" class="fc-btn fc-btn-primary" ${bannerList.length >= 10 ? 'disabled' : ''}><i data-lucide="plus" class="w-4 h-4"></i>${tr("Banner qo'shish", "Добавить")}</button>
+        <div class="fc-card fc-staff-intro fc-banner-library-head">
+          <div class="fc-banner-library-copy"><div class="fc-banner-library-title-row"><h3>${tr('Barcha bannerlar', 'Все баннеры')}</h3><span class="fc-banner-count-chip">${bannerList.length} / 10</span></div><p>${tr("Jami 10 tagacha banner saqlashingiz mumkin, ulardan 5 tasi vitrinada ko'rinadi.", "Можно сохранить до 10 баннеров, из них 5 показываются в витрине.")}</p></div>
+          <button type="button" onclick="openBannerForm()" class="fc-btn fc-btn-primary fc-banner-add-btn" ${bannerList.length >= 10 ? 'disabled' : ''}><i data-lucide="plus" class="w-4 h-4"></i>${tr("Banner qo'shish", "Добавить")}</button>
         </div>
-        <div class="space-y-2">${rows}</div>
+        <div class="space-y-2 fc-banner-list-stack">${rows}</div>
       </div>`;
       renderPageShell(container, tr('Bannerlar', 'Баннеры'), body, { onBack: "openMarketingHubPage()" });
     }
@@ -9152,13 +9152,23 @@
         <div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-banner-detail">
           <div class="fc-sheet-handle"></div>
           <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Banner ma’lumotlari','Данные баннера')}</div><button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
-          <div class="fc-sheet-body space-y-3">
-            <img src="${escapeHtml(b.imageUrl)}" class="fc-marketing-detail-image" loading="lazy">
-            <div class="fc-card space-y-1"><div class="flex items-center justify-between gap-2"><b class="text-sm">${escapeHtml(b.title || tr('Banner','Баннер'))}</b><span class="fc-badge ${b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.isActive ? tr('Faol','Активен') : tr('Nofaol','Неактивен')}</span></div>${b.subtitle ? `<p class="text-xs text-gray-500">${escapeHtml(b.subtitle)}</p>` : ''}</div>
-            <div class="fc-card flex items-center justify-between gap-3"><span class="text-xs text-gray-500">${tr('Ulangan joy','Привязано к')}</span><b class="text-xs text-right">${target}</b></div>
-            <div class="grid grid-cols-2 gap-2"><div class="fc-card"><small>${tr('Boshlanish','Начало')}</small><b>${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '—'}</b></div><div class="fc-card"><small>${tr('Tugash','Окончание')}</small><b>${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '—'}</b></div></div>
-            <div class="grid grid-cols-2 gap-2"><div class="fc-card"><small>${tr('Yaratilgan','Создан')}</small><b>${b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}</b></div><div class="fc-card"><small>${tr('Yangilangan','Обновлён')}</small><b>${b.updatedAt ? new Date(b.updatedAt).toLocaleDateString() : '—'}</b></div></div>
-            <button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove();openBannerForm('${b.id}')" class="fc-btn fc-btn-primary w-full"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button>
+          <div class="fc-sheet-body space-y-3 fc-banner-detail-body">
+            <div class="fc-banner-detail-media"><img src="${escapeHtml(b.imageUrl)}" class="fc-marketing-detail-image" loading="lazy"></div>
+            <div class="fc-card fc-banner-detail-primary">
+              <div class="fc-banner-detail-title-row"><div class="min-w-0"><b class="fc-banner-detail-title">${escapeHtml(b.title || tr('Banner','Баннер'))}</b>${b.subtitle ? `<p class="fc-banner-detail-subtitle">${escapeHtml(b.subtitle)}</p>` : ''}</div><span class="fc-badge ${b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.isActive ? tr('Faol','Активен') : tr('Nofaol','Неактивен')}</span></div>
+            </div>
+            <div class="fc-card fc-banner-detail-link">
+              <span class="fc-banner-detail-icon fc-banner-detail-icon-link"><i data-lucide="link-2" class="w-4 h-4"></i></span>
+              <div class="fc-banner-detail-link-copy"><small>${tr('Ulangan joy','Привязано к')}</small><b>${target}</b></div>
+            </div>
+            <div class="fc-card fc-banner-detail-period">
+              <div class="fc-banner-detail-section-head"><span class="fc-banner-detail-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><b>${tr('Amal qilish muddati','Период действия')}</b></div>
+              <div class="fc-banner-detail-two-col"><div class="fc-banner-detail-cell"><small>${tr('Boshlanish','Начало')}</small><b>${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '—'}</b></div><div class="fc-banner-detail-cell"><small>${tr('Tugash','Окончание')}</small><b>${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '—'}</b></div></div>
+            </div>
+            <div class="fc-card fc-banner-detail-meta">
+              <div class="fc-banner-detail-two-col"><div class="fc-banner-detail-cell"><small>${tr('Yaratilgan','Создан')}</small><b>${b.createdAt ? new Date(b.createdAt).toLocaleDateString() : '—'}</b></div><div class="fc-banner-detail-cell"><small>${tr('Yangilangan','Обновлён')}</small><b>${b.updatedAt ? new Date(b.updatedAt).toLocaleDateString() : '—'}</b></div></div>
+            </div>
+            <button type="button" onclick="document.getElementById('fc-banner-preview-root')?.remove();openBannerForm('${b.id}')" class="fc-btn fc-btn-primary w-full fc-banner-detail-edit-btn"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button>
           </div>
         </div>
       </div>`;
@@ -10756,15 +10766,15 @@
     }
     function renderMarketingHubPage(container) {
       const items = [
-        { key: 'featured', icon: 'folder-heart', title: tr('Bosh sahifa kataloglari', 'Каталоги на главной'), onclick: 'openFeaturedCategoriesPage()', count: featuredCategories.length },
-        { key: 'banners', icon: 'image', title: tr('Bannerlar', 'Баннеры'), onclick: 'openBannersPage()' },
-        { key: 'bundles', icon: 'package', title: tr('Aksiyalar', 'Акции'), onclick: 'openBundlesPage()' },
-        { key: 'promos', icon: 'ticket-percent', title: tr('Promo-kodlar', 'Промокоды'), onclick: 'openPromoPage()' },
-        { key: 'tiers', icon: 'trending-up', title: tr('Bosqichli chegirmalar', 'Ступенчатые скидки'), onclick: 'openDiscountTiersPage()' },
-        { key: 'gifts', icon: 'gift', title: tr("Avtomatik sovg'a", 'Автоматический подарок'), onclick: 'openRewardRulesPage()' },
+        { key: 'featured', icon: 'folder-heart', tone: 'cyan', title: tr('Bosh sahifa kataloglari', 'Каталоги на главной'), onclick: 'openFeaturedCategoriesPage()', count: featuredCategories.length },
+        { key: 'banners', icon: 'image', tone: 'blue', title: tr('Bannerlar', 'Баннеры'), onclick: 'openBannersPage()' },
+        { key: 'bundles', icon: 'package', tone: 'violet', title: tr('Aksiyalar', 'Акции'), onclick: 'openBundlesPage()' },
+        { key: 'promos', icon: 'ticket-percent', tone: 'amber', title: tr('Promo-kodlar', 'Промокоды'), onclick: 'openPromoPage()' },
+        { key: 'tiers', icon: 'trending-up', tone: 'emerald', title: tr('Bosqichli chegirmalar', 'Ступенчатые скидки'), onclick: 'openDiscountTiersPage()' },
+        { key: 'gifts', icon: 'gift', tone: 'purple', title: tr("Avtomatik sovg'a", 'Автоматический подарок'), onclick: 'openRewardRulesPage()' },
         // 4-paket, 9.5-band: 10-topshiriqdagi "Shaxsiy chegirmalar" kartasi
         // shu yerga qo'shildi — ichki sahifaning o'zi 10-topshiriqda quriladi.
-        { key: 'personal', icon: 'gem', title: tr('Shaxsiy chegirmalar', 'Персональные скидки'), onclick: 'openPersonalDiscountsPage()' },
+        { key: 'personal', icon: 'gem', tone: 'rose', title: tr('Shaxsiy chegirmalar', 'Персональные скидки'), onclick: 'openPersonalDiscountsPage()' },
       ];
       const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-hub">
         <section class="fc-marketing-summary">
@@ -10773,14 +10783,20 @@
         </section>
         <div class="fc-marketing-hub-grid">
         ${items.map(it => `
-          <button type="button" onclick="${it.onclick}" class="fc-marketing-hub-card">
+          <button type="button" onclick="${it.onclick}" class="fc-marketing-hub-card fc-marketing-hub-tone-${it.tone}">
             <span class="fc-marketing-hub-icon"><i data-lucide="${it.icon}" class="w-4 h-4"></i></span>
-            <span><b>${it.title}</b><small>${it.count !== undefined ? it.count : (marketingSummaryLoading ? '…' : Number(marketingSummary[it.key]) || 0)} ${tr('ta jami', 'всего')}</small></span>
-            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            <span><b>${it.title}</b><small>${it.count !== undefined ? it.count : (marketingSummaryLoading ? '…' : Number(marketingSummary[it.key]) || 0)} ${tr('ta', 'шт.')}</small></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 fc-marketing-hub-chevron"></i>
           </button>
         `).join('')}
         </div>
-        <div class="fc-marketing-settings-sep"><button type="button" onclick="openMarketingSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i>${tr("Marketing sozlamalari", "Настройки маркетинга")}</span><span>›</span></button></div>
+        <div class="fc-marketing-settings-sep">
+          <button type="button" onclick="openMarketingSettingsPage()" class="fc-marketing-hub-card fc-marketing-settings-card fc-marketing-hub-tone-slate">
+            <span class="fc-marketing-hub-icon"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i></span>
+            <span><b>${tr("Marketing sozlamalari", "Настройки маркетинга")}</b><small>${tr('Marketing parametrlarini boshqarish', 'Управление параметрами маркетинга')}</small></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 fc-marketing-hub-chevron"></i>
+          </button>
+        </div>
       </div>`;
       renderPageShell(container, tr('Marketing', 'Маркетинг'), body);
     }
