@@ -9046,17 +9046,18 @@
       const cards = [];
       for (let i = 0; i < 5; i++) {
         const b = slots[i];
-        // 2-paket, 4.1/4.2-topshiriq: har slot ustida tartib raqami (1-5)
-        // va — faqat BAND slotlarda — drag tutqichi. Bo'sh slot hali
-        // tartiblanadigan narsa emas, shuning uchun drag'siz qoladi.
+        // Vitrina sloti: rasm hududi toza qoladi. Almashtirish rasmning
+        // yuqori o'ng burchagida, drag tutqichi esa rasmning TAGIDA alohida
+        // ikki qator nuqtali hududda turadi. Tartib raqami ko'rsatilmaydi.
         cards.push(b ? `
           <div class="fc-banner-slot is-filled" data-banner-slot-id="${escapeHtml(String(b.id))}">
-            <span class="fc-banner-slot-badge">${i + 1}</span>
-            <button type="button" class="fc-banner-slot-drag" aria-label="${tr('Tartiblash', 'Сортировать')}" onpointerdown="beginBannerSlotDrag('${b.id}',event)" onpointermove="moveBannerSlotDrag(event)" onpointerup="endBannerSlotDrag(event)" onpointercancel="cancelBannerSlotDrag()">${ICON_GRIP_6}</button>
-            <img src="${escapeHtml(b.imageUrl)}" loading="lazy">
-            <button type="button" class="fc-banner-slot-swap" onclick="openBannerSlotPicker(${i})" aria-label="${tr('Almashtirish', 'Заменить')}"><i data-lucide="repeat" class="w-3.5 h-3.5"></i></button>
+            <div class="fc-banner-slot-media">
+              <img src="${escapeHtml(b.imageUrl)}" loading="lazy">
+              <button type="button" class="fc-banner-slot-swap" onclick="openBannerSlotPicker(${i})" aria-label="${tr('Almashtirish', 'Заменить')}"><i data-lucide="repeat" class="w-3.5 h-3.5"></i></button>
+            </div>
+            <button type="button" class="fc-banner-slot-drag" aria-label="${tr('Tartiblash', 'Сортировать')}" onpointerdown="beginBannerSlotDrag('${b.id}',event)" onpointermove="moveBannerSlotDrag(event)" onpointerup="endBannerSlotDrag(event)" onpointercancel="cancelBannerSlotDrag()"><span class="fc-banner-drag-dots" aria-hidden="true">•••••<br>•••••</span></button>
           </div>` : `
-          <button type="button" class="fc-banner-slot is-empty" onclick="openBannerSlotPicker(${i})"><span class="fc-banner-slot-badge">${i + 1}</span><i data-lucide="plus" class="w-5 h-5"></i><small>${tr("Banner qo'shish", 'Добавить')}</small></button>`);
+          <button type="button" class="fc-banner-slot is-empty" onclick="openBannerSlotPicker(${i})"><i data-lucide="plus" class="w-5 h-5"></i><small>${tr("Banner qo'shish", 'Добавить')}</small></button>`);
       }
       return `<div class="fc-banner-slots-grid">${cards.join('')}</div>`;
     }
@@ -9448,20 +9449,27 @@
       const rest = b.items.length - shown.length;
       return `<div class="fc-bundle-thumb-strip">${shown.map(src => `<img src="${escapeHtml(src)}" loading="lazy">`).join('')}${rest > 0 ? `<span class="fc-bundle-thumb-more">+${rest}</span>` : ''}</div>`;
     }
+    function bundleListCoverHtml(b) {
+      if (b.coverImageUrl) return `<img src="${escapeHtml(b.coverImageUrl)}" class="fc-bundle-list-cover" loading="lazy">`;
+      const imgs = (b.items || []).map(i => products.find(p => String(p.id) === String(i.productId))?.img).filter(Boolean).slice(0, 3);
+      if (!imgs.length) return `<span class="fc-bundle-list-cover fc-marketing-placeholder"><i data-lucide="package" class="w-6 h-6"></i></span>`;
+      return `<span class="fc-bundle-list-cover fc-bundle-cover-collage is-${Math.min(imgs.length,3)}">${imgs.map((src,idx)=>`<img src="${escapeHtml(src)}" loading="lazy" alt="" data-collage-index="${idx}">`).join('')}</span>`;
+    }
+
     function renderBundlesPage(container) {
       const rows = bundleListLoading && !bundleListLoaded
         ? `<div class="fc-empty-state"><div class="fc-spinner"></div></div>`
         : bundleList.length ? bundleList.map(b => `
           <button type="button" onclick="openBundlePreview('${b.id}')" class="fc-bundle-list-card">
-            ${b.coverImageUrl ? `<img src="${escapeHtml(b.coverImageUrl)}" class="fc-bundle-list-cover" loading="lazy">` : `<span class="fc-bundle-list-cover fc-marketing-placeholder"><i data-lucide="package" class="w-6 h-6"></i></span>`}
+            ${bundleListCoverHtml(b)}
             <div class="fc-bundle-list-body">
               <div class="fc-bundle-list-top"><b>${escapeHtml(b.name)}</b><span class="fc-badge ${b.pauseReason ? 'fc-badge-warning' : b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.pauseReason ? tr('To‘xtatilgan', 'Приостановлена') : b.isActive ? tr('Faol', 'Активна') : tr('Faol emas', 'Неактивна')}</span></div>
               <div class="fc-bundle-list-meta">
                 <span><i data-lucide="boxes" class="w-3.5 h-3.5"></i>${b.items.length} ${tr('ta mahsulot', 'товаров')}</span>
-                <span><i data-lucide="tag" class="w-3.5 h-3.5"></i>${money(b.bundlePrice)}</span>
-                <span><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${b.startsAt || b.endsAt ? `${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '…'}—${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')}</span>
+                <span class="fc-bundle-price-meta"><i data-lucide="tag" class="w-3.5 h-3.5"></i>${money(b.bundlePrice)}</span>
+                <span class="fc-bundle-date-meta"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${b.startsAt || b.endsAt ? `${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '…'}—${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')}</span>
               </div>
-              ${bundleThumbStripHtml(b)}
+              <div class="fc-bundle-list-footer">${bundleThumbStripHtml(b)}<span class="fc-bundle-open-cue"><i data-lucide="chevron-right" class="w-4 h-4"></i></span></div>
             </div>
           </button>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="package" class="w-7 h-7"></i><p>${tr("Hozircha aksiya yo'q.", 'Пока нет акций.')}</p></div>`;
@@ -9470,8 +9478,8 @@
           <div><h3>${tr('Aksiyalar', 'Акции')}</h3><p>${tr("Bir nechta mahsulotni bitta to'plam narxida sotish.", 'Продажа нескольких товаров по цене набора.')}</p></div>
           <button type="button" onclick="openBundleForm()" class="fc-btn fc-btn-primary"><i data-lucide="plus" class="w-4 h-4"></i>${tr('Yaratish', 'Создать')}</button>
         </div>
-        <div class="fc-card fc-staff-intro"><div><h3>${tr('Barcha aksiyalar', 'Все акции')}</h3><p>${bundleList.length} ${tr('ta jami', 'всего')}</p></div></div>
-        <div class="space-y-2">${rows}</div>
+        <div class="fc-bundle-section-head"><div><h3>${tr('Barcha aksiyalar', 'Все акции')}</h3><p>${bundleList.length} ${tr('ta', 'шт.')}</p></div></div>
+        <div class="space-y-2 fc-bundle-list-stack">${rows}</div>
       </div>`;
       renderPageShell(container, tr('Aksiyalar', 'Акции'), body, { onBack: "openMarketingHubPage()" });
     }
@@ -9501,9 +9509,11 @@
       const dateRangeText = b.startsAt || b.endsAt ? `${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '…'} – ${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно');
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-bundle-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Aksiya tafsiloti','Детали акции')}</div><button type="button" onclick="document.getElementById('fc-bundle-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">
         ${b.coverImageUrl ? `<img src="${escapeHtml(b.coverImageUrl)}" class="fc-marketing-detail-image">` : ''}
-        <div class="fc-detail-heading-row"><h3>${escapeHtml(b.name)}</h3><span class="fc-badge ${b.pauseReason ? 'fc-badge-warning' : b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.pauseReason ? tr('To‘xtatilgan', 'Приостановлена') : b.isActive ? tr('Faol','Активна') : tr('Nofaol','Неактивна')}</span></div>
-        <div class="fc-detail-date-row"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${dateRangeText}</div>
-        ${b.pauseReason ? `<p class="fc-bundle-paused-note">⏸ ${escapeHtml(bundlePauseReasonText(b))}</p>` : ''}
+        <div class="fc-card fc-bundle-detail-head-card">
+          <div class="fc-detail-heading-row"><div class="fc-bundle-detail-title-wrap"><span class="fc-bundle-detail-title-icon"><i data-lucide="megaphone" class="w-4 h-4"></i></span><h3>${escapeHtml(b.name)}</h3></div><span class="fc-badge ${b.pauseReason ? 'fc-badge-warning' : b.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${b.pauseReason ? tr('To‘xtatilgan', 'Приостановлена') : b.isActive ? tr('Faol','Активна') : tr('Nofaol','Неактивна')}</span></div>
+          <div class="fc-detail-date-row"><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${dateRangeText}</div>
+          ${b.pauseReason ? `<div class="fc-bundle-paused-note"><i data-lucide="triangle-alert" class="w-4 h-4"></i><span>${escapeHtml(bundlePauseReasonText(b))}</span></div>` : ''}
+        </div>
         <div class="fc-campaign-stat-cards"><div><span class="fc-stat-icon is-blue"><i data-lucide="box" class="w-4 h-4"></i></span><b>${selected.length} ${tr('ta','шт')}</b><small>${tr('mahsulot','товаров')}</small></div><div><span class="fc-stat-icon is-blue"><i data-lucide="tag" class="w-4 h-4"></i></span><b>${money(facts.campaignTotal)}</b><small>${tr('aksiya narxi','цена акции')}</small></div><div><span class="fc-stat-icon is-green"><i data-lucide="wallet" class="w-4 h-4"></i></span><b class="is-green">${money(facts.savings)}</b><small>${tr('jami tejamkorlik','общая экономия')}</small></div></div>
         <div class="fc-card fc-price-breakdown"><div><span>${tr('Oddiy jami narx','Обычная сумма')}</span><b>${money(facts.regularTotal)}</b></div><div><span>${tr('Aksiya narxi','Цена акции')}</span><b class="is-primary">${money(facts.campaignTotal)}</b></div><div><span>${tr('Jami tejamkorlik','Общая экономия')}</span><b class="is-green">${money(facts.savings)}</b></div></div>
         <div><h4 class="fc-detail-section-title">${tr('Aksiya mahsulotlari','Товары акции')}</h4><div class="fc-card fc-bundle-detail-products">${selected.map(x => `<button type="button" onclick="openProductDetailModal('${x.product.id}')" class="fc-bundle-detail-product-row"><img src="${escapeHtml(x.product.img || FALLBACK_IMG)}" loading="lazy"><span><b>${escapeHtml(productName(x.product))}</b><small>${escapeHtml(categoryName(categories.find(c => String(c.id) === String(x.product.categoryId))) || '')}</small></span><em>${money(x.product.price)}</em></button>`).join('')}</div></div>
