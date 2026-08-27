@@ -10512,7 +10512,7 @@
       const activeCount = personalDiscountBatchList.filter(b => personalDiscountStatusKind(b) === 'ACTIVE').length;
       const expiredCount = personalDiscountBatchList.filter(b => personalDiscountStatusKind(b) === 'EXPIRED').length;
       const totalUsed = personalDiscountBatchList.reduce((s, b) => s + (b.usedCount || 0), 0);
-      const statCard = (label, value) => `<div class="fc-card fc-mkt-stat text-center"><p>${label}</p><b>${value}</b></div>`;
+      const statCard = (label, value, icon, tone) => `<div class="fc-card fc-mkt-stat fc-personal-stat is-${tone}"><span class="fc-personal-stat-icon"><i data-lucide="${icon}" class="w-4 h-4"></i></span><p>${label}</p><b>${value}</b></div>`;
       const q = personalDiscountSearch.trim().toLowerCase();
       const filters = [['ALL', tr('Barchasi', 'Все')], ['ACTIVE', tr('Faol', 'Активные')], ['SCHEDULED', tr('Rejalashtirilgan', 'Запланировано')], ['EXPIRED', tr('Tugagan', 'Истёкшие')]];
       const filtered = personalDiscountBatchList.filter(b => {
@@ -10525,13 +10525,22 @@
         : filtered.length ? filtered.map(b => `
           <div class="fc-card fc-marketing-card fc-personal-list-card">
             <button type="button" onclick="openPersonalDiscountDetail('${b.id}')" class="fc-personal-list-main">
-              <div class="min-w-0"><b class="text-sm">${escapeHtml(b.name || tr('Shaxsiy chegirma', 'Персональная скидка'))}</b><div class="flex items-center gap-1.5 mt-1">${discountGreenBadgeHtml(promoDiscountLabel(b))}<small class="text-gray-500">${escapeHtml(personalDiscountConditionText(b))}</small></div><p class="text-[11px] text-gray-500 mt-1">${b.endsAt ? `${tr('Tugash', 'До')}: ${new Date(b.endsAt).toLocaleDateString()} · ` : ''}${b.memberCount} ${tr('ta mijoz', 'клиентов')} · ${tr('Ishlatilgan', 'Использовано')}: ${b.usedCount || 0}</p></div>
+              <div class="fc-personal-list-title">
+                <b>${escapeHtml(b.name || tr('Shaxsiy chegirma', 'Персональная скидка'))}</b>
+                ${discountGreenBadgeHtml(promoDiscountLabel(b))}
+              </div>
+              <p class="fc-personal-list-condition">${escapeHtml(personalDiscountConditionText(b))}</p>
+              <div class="fc-personal-list-meta">
+                ${b.endsAt ? `<span><i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>${tr('Tugash','До')}: ${new Date(b.endsAt).toLocaleDateString()}</span>` : ''}
+                <span><i data-lucide="users" class="w-3.5 h-3.5"></i>${b.memberCount} ${tr('ta mijoz','клиентов')}</span>
+                <span><i data-lucide="history" class="w-3.5 h-3.5"></i>${tr('Ishlatilgan','Использовано')}: ${b.usedCount || 0}</span>
+              </div>
             </button>
             <div class="fc-personal-list-side">${personalDiscountStatusBadge(b)}<button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('personal-discount','${b.id}',event)" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>${cardActionMenuHtml('personal-discount', b.id)}</div>
           </div>
         `).join('') : `<div class="fc-empty-state"><i data-lucide="gem" class="w-7 h-7"></i><p>${tr("Hozircha shaxsiy chegirma yo'q.", 'Пока нет персональных скидок.')}</p></div>`;
       const body = `<div class="space-y-3 fc-mkt-pro fc-mkt-pro-personal">
-        <div class="grid grid-cols-2 gap-2 fc-mkt-stats-grid">${statCard(tr('Jami', 'Всего'), total)}${statCard(tr('Faol', 'Активные'), activeCount)}${statCard(tr('Muddati tugagan', 'Истёкшие'), expiredCount)}${statCard(tr('Jami ishlatilgan', 'Всего использовано'), totalUsed)}</div>
+        <div class="grid grid-cols-2 gap-2 fc-mkt-stats-grid fc-personal-stats-grid">${statCard(tr('Jami', 'Всего'), total, 'gem', 'blue')}${statCard(tr('Faol', 'Активные'), activeCount, 'circle-check', 'green')}${statCard(tr('Muddati tugagan', 'Истёкшие'), expiredCount, 'calendar-x', 'amber')}${statCard(tr('Jami ishlatilgan', 'Всего использовано'), totalUsed, 'history', 'violet')}</div>
         <div class="fc-filter-chip-row">${filters.map(([key, label]) => `<button type="button" onclick="personalDiscountFilter='${key}';render()" class="fc-filter-chip ${personalDiscountFilter === key ? 'is-active' : ''}">${label}</button>`).join('')}</div>
         <input type="text" value="${escapeHtml(personalDiscountSearch)}" oninput="personalDiscountSearch=this.value;render()" placeholder="${tr('Chegirma nomi bo‘yicha qidirish', 'Поиск по названию скидки')}" class="fc-order-search-input p-2 border rounded-xl w-full">
         <button type="button" onclick="openPersonalDiscountForm()" class="fc-btn fc-btn-primary w-full"><i data-lucide="plus" class="w-4 h-4"></i>${tr('Yangi chegirma', 'Новая скидка')}</button>
@@ -10571,17 +10580,17 @@
       const members = personalDiscountDetail.members || [];
       const usedCustomers = members.filter(m => m.usedCount > 0).length;
       const totalUsed = members.reduce((s, m) => s + (m.usedCount || 0), 0);
-      const statCard = (label, value) => `<div class="fc-card fc-mkt-stat text-center"><p>${label}</p><b>${value}</b></div>`;
+      const statCard = (label, value) => `<div class="fc-personal-detail-stat"><p>${label}</p><b>${value}</b></div>`;
       const membersHtml = members.map(m => `
-        <div class="fc-staff-row">
+        <div class="fc-personal-member-row">
           <div class="fc-staff-avatar">${escapeHtml((m.name || m.username || String(m.tgId)).slice(0, 1).toUpperCase())}</div>
-          <div class="min-w-0 flex-1">
+          <div class="fc-personal-member-main">
             <div class="fc-staff-name">${escapeHtml(m.name || (m.username ? '@' + m.username : tr('Mijoz', 'Клиент')))}</div>
-            <div class="fc-staff-id">${m.phone ? escapeHtml(m.phone) : (m.username ? '@' + escapeHtml(m.username) : `ID: ${escapeHtml(String(m.tgId))}`)}</div>
+            <div class="fc-staff-id">${m.username ? '@' + escapeHtml(m.username) : ''}${m.username && m.phone ? ' · ' : ''}${m.phone ? escapeHtml(m.phone) : (!m.username ? `ID: ${escapeHtml(String(m.tgId))}` : '')}</div>
           </div>
-          <div class="text-right">
-            <small class="block text-[10px] text-gray-400">${tr('Ishlatgan', 'Исп.')}: ${m.usedCount}</small>
-            <span class="fc-badge ${m.isActive ? 'fc-badge-success' : 'fc-badge-muted'}">${m.remaining === null ? tr('Cheksiz', 'Без огр.') : `${tr('Qolgan', 'Ост.')}: ${m.remaining}`}</span>
+          <div class="fc-personal-member-side">
+            <span class="fc-badge ${m.usedCount > 0 ? 'fc-badge-success' : 'fc-badge-muted'}">${m.usedCount > 0 ? tr('Foydalangan','Использовал') : tr('Foydalanmagan','Не использовал')}</span>
+            <small>${tr('Ishlatilgan','Использовано')}: <b>${m.usedCount || 0}</b>${m.remaining === null ? ` · ${tr('Cheksiz','Без огр.')}` : ` · ${tr('Qolgan','Ост.')}: ${m.remaining}`}</small>
           </div>
         </div>
       `).join('') || `<div class="fc-empty-state compact"><p>${tr('Mijozlar topilmadi', 'Клиенты не найдены')}</p></div>`;
@@ -10600,7 +10609,7 @@
           <div class="fc-order-kv"><span>${tr('Foydalanish limiti', 'Лимит использования')}</span><b>${b.usageLimit ? `${b.usageLimit} ${tr('marta / mijoz', 'раз на клиента')}` : tr('Cheksiz', 'Без ограничения')}</b></div>
           <div class="fc-order-kv"><span>${tr('Amal qilish muddati', 'Срок действия')}</span><b>${b.startsAt || b.endsAt ? `${b.startsAt ? new Date(b.startsAt).toLocaleDateString() : '…'} — ${b.endsAt ? new Date(b.endsAt).toLocaleDateString() : '…'}` : tr('Muddatsiz', 'Бессрочно')}</b></div>
         </div>
-        <div class="grid grid-cols-3 gap-2">${statCard(tr('Berilgan mijozlar', 'Клиентов'), members.length)}${statCard(tr('Foydalangan', 'Использовали'), usedCustomers)}${statCard(tr('Jami ishlatilgan', 'Всего использовано'), totalUsed)}</div>
+        <div class="fc-card fc-personal-detail-stats">${statCard(tr('Berilgan mijozlar', 'Клиентов'), members.length)}${statCard(tr('Foydalangan', 'Использовали'), usedCustomers)}${statCard(tr('Jami ishlatilgan', 'Всего использовано'), totalUsed)}</div>
         <div class="fc-tabs"><button type="button" onclick="setPersonalDiscountDetailTab('MEMBERS')" class="fc-tab ${personalDiscountDetailTab === 'MEMBERS' ? 'fc-tab-active' : ''}">${tr('Mijozlar', 'Клиенты')}</button><button type="button" onclick="setPersonalDiscountDetailTab('USAGE')" class="fc-tab ${personalDiscountDetailTab === 'USAGE' ? 'fc-tab-active' : ''}">${tr('Foydalanish tarixi', 'История использования')}</button></div>
         <div class="space-y-2">${personalDiscountDetailTab === 'MEMBERS' ? membersHtml : usageHtml}</div>
         <div class="grid grid-cols-2 gap-2">
@@ -10680,7 +10689,12 @@
     // Mijoz qidirish/tanlash — mavjud get_customer_report'dan (yangi
     // dublikat analytics/customer-list engine yozilmaydi, 10.3-band).
     function openPersonalDiscountCustomerPicker() {
-      personalDiscountPicker = { search: '', results: [], loading: false, selected: new Set((personalDiscountDraft.selectedCustomers || []).map(c => String(c.tgId))) };
+      const initial = personalDiscountDraft.selectedCustomers || [];
+      personalDiscountPicker = {
+        search: '', results: [], loading: false,
+        selected: new Set(initial.map(c => String(c.tgId))),
+        selectedRows: new Map(initial.map(c => [String(c.tgId), { ...c }]))
+      };
       renderPersonalDiscountCustomerPickerSheet();
       loadPersonalDiscountPickerResults();
     }
@@ -10699,13 +10713,22 @@
     }
     function togglePersonalDiscountPickerItem(tgId) {
       const key = String(tgId);
-      if (personalDiscountDraft.customerMode === 'SINGLE') personalDiscountPicker.selected = new Set([key]);
-      else if (personalDiscountPicker.selected.has(key)) personalDiscountPicker.selected.delete(key); else personalDiscountPicker.selected.add(key);
+      const row = personalDiscountPicker.results.find(c => String(c.tgId) === key);
+      const normalized = row ? { tgId: row.tgId, name: row.name || row.username || String(row.tgId), username: row.username || null, phone: row.phone || null } : { tgId };
+      if (personalDiscountDraft.customerMode === 'SINGLE') {
+        personalDiscountPicker.selected = new Set([key]);
+        personalDiscountPicker.selectedRows = new Map([[key, normalized]]);
+      } else if (personalDiscountPicker.selected.has(key)) {
+        personalDiscountPicker.selected.delete(key);
+        personalDiscountPicker.selectedRows.delete(key);
+      } else {
+        personalDiscountPicker.selected.add(key);
+        personalDiscountPicker.selectedRows.set(key, normalized);
+      }
       renderPersonalDiscountCustomerPickerSheet();
     }
     function applyPersonalDiscountCustomerPicker() {
-      const ids = personalDiscountPicker.selected;
-      personalDiscountDraft.selectedCustomers = personalDiscountPicker.results.filter(c => ids.has(String(c.tgId))).map(c => ({ tgId: c.tgId, name: c.name || c.username || String(c.tgId) }));
+      personalDiscountDraft.selectedCustomers = Array.from(personalDiscountPicker.selectedRows.values()).filter(c => personalDiscountPicker.selected.has(String(c.tgId)));
       document.getElementById('fc-personal-discount-picker-root')?.remove();
       personalDiscountPicker = null;
       renderPersonalDiscountFormSheet();
@@ -10715,12 +10738,21 @@
       if (!root) { root = document.createElement('div'); root.id = 'fc-personal-discount-picker-root'; document.body.appendChild(root); }
       const p = personalDiscountPicker;
       const rows = p.loading ? `<div class="fc-empty-state"><div class="fc-spinner"></div></div>`
-        : p.results.length ? p.results.map(c => `<button type="button" onclick="togglePersonalDiscountPickerItem('${c.tgId}')" class="fc-hier-picker-row"><span class="fc-hier-picker-select ${p.selected.has(String(c.tgId)) ? 'is-selected' : ''}"><span class="fc-hier-picker-check">${p.selected.has(String(c.tgId)) ? '✓' : ''}</span><span>${escapeHtml(c.name || (c.username ? '@' + c.username : String(c.tgId)))}${c.phone ? ` · ${escapeHtml(c.phone)}` : ''}</span></span></button>`).join('')
+        : p.results.length ? p.results.map(c => {
+          const selected = p.selected.has(String(c.tgId));
+          const displayName = c.name || (c.username ? '@' + c.username : tr('Mijoz', 'Клиент'));
+          const initial = String(displayName || '?').trim().charAt(0).toUpperCase();
+          return `<button type="button" onclick="togglePersonalDiscountPickerItem('${c.tgId}')" class="fc-personal-picker-row ${selected ? 'is-selected' : ''}">
+            <span class="fc-personal-picker-check">${selected ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}</span>
+            <span class="fc-personal-picker-avatar">${escapeHtml(initial)}</span>
+            <span class="fc-personal-picker-copy"><b>${escapeHtml(displayName)}</b>${c.username && c.name ? `<small>@${escapeHtml(c.username)}</small>` : ''}${c.phone ? `<small>${escapeHtml(c.phone)}</small>` : ''}</span>
+          </button>`;
+        }).join('')
         : `<div class="fc-empty-state compact"><p>${tr('Mijoz topilmadi', 'Клиент не найден')}</p></div>`;
-      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this){document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;}"><div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-personal-picker"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Mijozlarni tanlash', 'Выбор клиентов')}</div><button type="button" onclick="document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-2">
-        <input type="text" oninput="onPersonalDiscountPickerSearch(this.value)" placeholder="${tr('Ism, username yoki telefon', 'Имя, username или телефон')}" class="fc-order-search-input p-2 border rounded-xl w-full">
-        <div class="fc-move-list">${rows}</div>
-      </div><div class="fc-sheet-footer"><button type="button" onclick="applyPersonalDiscountCustomerPicker()" class="fc-btn fc-btn-primary w-full" ${p.selected.size ? '' : 'disabled'}>${tr('Tanlash', 'Выбрать')} (${p.selected.size})</button></div></div></div>`;
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this){document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;}"><div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-personal-picker"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Mijozlarni tanlash', 'Выбор клиентов')}</div><button type="button" onclick="document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body fc-personal-picker-body">
+        <label class="fc-personal-picker-search"><i data-lucide="search" class="w-4 h-4"></i><input type="text" value="${escapeHtml(p.search || '')}" oninput="onPersonalDiscountPickerSearch(this.value)" placeholder="${tr('Ism, username yoki telefon', 'Имя, username или телефон')}"></label>
+        <div class="fc-personal-picker-list">${rows}</div>
+      </div><div class="fc-sheet-footer fc-personal-picker-footer"><button type="button" onclick="applyPersonalDiscountCustomerPicker()" class="fc-btn fc-btn-primary w-full" ${p.selected.size ? '' : 'disabled'}>${tr('Tanlash', 'Выбрать')} (${p.selected.size})</button></div></div></div>`;
       safeCreateIcons();
     }
     function renderPersonalDiscountFormSheet() {
@@ -11007,7 +11039,7 @@
           <div class="fc-card fc-marketing-card fc-promo-list-card">
             <div class="fc-promo-card-head">
               <button type="button" onclick="openPromoPreview('${p.id}')" class="fc-promo-card-title-btn">
-                <span class="font-mono font-black text-base">${escapeHtml(p.code)}</span>
+                <span class="fc-promo-card-name">${escapeHtml(p.name || tr('Promo-kod', 'Промокод'))}</span>
                 <span class="fc-promo-card-discount">${discountGreenBadgeHtml(promoDiscountLabel(p))}<small>${tr('chegirma','скидка')}</small></span>
               </button>
               <div class="fc-promo-card-head-actions">
@@ -11015,6 +11047,11 @@
                 <button type="button" class="fc-card-more-btn" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('promo','${p.id}',event)" aria-label="${tr('Amallar','Действия')}"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button>
                 ${cardActionMenuHtml('promo', p.id)}
               </div>
+            </div>
+            <div class="fc-promo-list-code-row">
+              <span>${tr('Promo-kod','Промокод')}</span>
+              <code>${escapeHtml(p.code)}</code>
+              <button type="button" onclick="event.stopPropagation();copyTextToClipboard('${escapeHtml(p.code)}')" class="fc-promo-list-copy-btn" aria-label="${tr('Nusxalash','Копировать')}" title="${tr('Nusxalash','Копировать')}"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
             </div>
             <button type="button" onclick="openPromoPreview('${p.id}')" class="fc-promo-card-body-btn">
               <p class="fc-promo-condition">${escapeHtml(promoConditionText(p))}</p>
