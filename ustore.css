@@ -2705,7 +2705,16 @@ html.ustore-dark-theme .fc-stat-icon.is-green{background:rgba(16,185,129,.14)}
   --ustore-layer-toast:60;
 }
 html{scroll-padding-top:calc(var(--ustore-header-height) + var(--ustore-home-sticky-height) + .75rem)}
-.ustore-topbar{min-height:var(--ustore-header-height);padding-top:max(.75rem,env(safe-area-inset-top));z-index:40!important;border-bottom:1px solid var(--ustore-border)}
+/* 2026-08-27: bu yerda ATAYLAB EMAS z-index:40 yozilgan edi — bu YUQORIDA
+   (1521-1527-qator) "header hech qachon #page-container ostida qolmasin,
+   doim z-50" deb ATAYLAB belgilangan qoidani JIM ravishda bekor qilib
+   qo'ygan edi (ikkalasi ham !important, keyingisi — shu qator — g'olib
+   chiqadi). Natija: Marketing/Aksiyalar kabi to'liq sahifa ochilganda,
+   #page-container (z-40, Tailwind) header bilan TENG darajaga tushib
+   qolgan — teng bo'lganda DOM'da KEYINGI kelgan (#page-container) ustidan
+   bosiladi, shuning uchun header'dagi odamcha/til/savatcha tugmalari
+   o'sha sahifalarda bosilmay qolgan edi. Endi asl niyatga (z-50) qaytarildi. */
+.ustore-topbar{min-height:var(--ustore-header-height);padding-top:max(.75rem,env(safe-area-inset-top));z-index:50!important;border-bottom:1px solid var(--ustore-border)}
 .ustore-header-action,#lang-flag-btn,#header-cart-btn,#header-person-btn,#header-settings-btn{width:2.5rem;height:2.5rem;min-width:2.5rem;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--ustore-border);border-radius:999px;background:var(--ustore-panel-bg)!important;color:var(--ustore-header-text)!important}
 #header-logo-edit-btn{width:2rem;height:2rem;min-width:2rem}
 #text-zoom-popover{position:fixed;top:calc(var(--ustore-header-height) + env(safe-area-inset-top) + .35rem);right:.75rem;z-index:var(--ustore-layer-overlay);width:min(15.5rem,calc(100vw - 1.5rem));display:grid;grid-template-columns:1.6rem minmax(0,1fr) 1.6rem;align-items:center;gap:.65rem;padding:.8rem;border:1px solid var(--ustore-border);border-radius:1rem;background:var(--ustore-card-bg);color:var(--ustore-primary);box-shadow:0 18px 45px rgba(15,23,42,.2)}

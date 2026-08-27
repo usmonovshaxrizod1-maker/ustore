@@ -10801,6 +10801,13 @@
       const initial = personalDiscountDraft.selectedCustomers || [];
       personalDiscountPicker = {
         search: '', results: [], loading: false,
+        // 2026-08-27: mijoz tanlagichi endi doim ko'p-tanlovli (SINGLE/MULTI/
+        // TOPN tab'lari tashqi shakl uchun qoladi, lekin ICHKARIDA tanlash
+        // har doim bir nechtasini belgilashga ruxsat beradi — foydalanuvchi
+        // "faqat bitta tanlanyapti" deb shikoyat qilgan edi). Shu bilan
+        // birga saralash (yangi qo'shilgan / eng ko'p savdo — vaqt oynasi
+        // bilan) va haqiqiy sahifalash (20 tadan, 1 2 3...) qo'shildi.
+        sort: 'DEFAULT', sortPeriod: 'week', page: 1, totalPages: 1, totalCount: 0,
         selected: new Set(initial.map(c => String(c.tgId))),
         selectedRows: new Map(initial.map(c => [String(c.tgId), { ...c }]))
       };
@@ -10810,29 +10817,59 @@
     let personalDiscountPickerSearchTimer = null;
     function onPersonalDiscountPickerSearch(v) {
       clearTimeout(personalDiscountPickerSearchTimer);
-      personalDiscountPickerSearchTimer = setTimeout(() => { personalDiscountPicker.search = v; loadPersonalDiscountPickerResults(); }, 350);
+      personalDiscountPickerSearchTimer = setTimeout(() => { personalDiscountPicker.search = v; personalDiscountPicker.page = 1; loadPersonalDiscountPickerResults(); }, 350);
+    }
+    function setPersonalDiscountPickerSort(sort) {
+      if (personalDiscountPicker.sort === sort) return;
+      personalDiscountPicker.sort = sort; personalDiscountPicker.page = 1;
+      loadPersonalDiscountPickerResults();
+    }
+    function setPersonalDiscountPickerSortPeriod(period) {
+      if (personalDiscountPicker.sortPeriod === period) return;
+      personalDiscountPicker.sortPeriod = period; personalDiscountPicker.page = 1;
+      loadPersonalDiscountPickerResults();
+    }
+    function setPersonalDiscountPickerPage(page) {
+      personalDiscountPicker.page = Math.max(1, page);
+      loadPersonalDiscountPickerResults();
     }
     async function loadPersonalDiscountPickerResults() {
-      personalDiscountPicker.loading = true; renderPersonalDiscountCustomerPickerSheet();
+      const p = personalDiscountPicker;
+      p.loading = true; renderPersonalDiscountCustomerPickerSheet();
       try {
-        const data = await callApi('get_customer_report', { search: personalDiscountPicker.search, segment: 'ALL', page: 1, pageSize: 30 });
-        personalDiscountPicker.results = data.customers || [];
-      } catch (e) { personalDiscountPicker.results = []; }
-      finally { personalDiscountPicker.loading = false; renderPersonalDiscountCustomerPickerSheet(); }
+        const segment = p.sort === 'NEWEST_JOINED' ? 'NEWEST_JOINED' : p.sort === 'TOP_SPEND_PERIOD' ? 'TOP_SPEND_PERIOD' : 'ALL';
+        const data = await callApi('get_customer_report', { search: p.search, segment, period: p.sortPeriod, page: p.page, pageSize: 20 });
+        p.results = data.customers || [];
+        p.totalPages = data.totalPages || 1;
+        p.totalCount = data.totalCount || 0;
+        p.page = data.page || p.page;
+      } catch (e) { p.results = []; p.totalPages = 1; p.totalCount = 0; }
+      finally { p.loading = false; renderPersonalDiscountCustomerPickerSheet(); }
     }
     function togglePersonalDiscountPickerItem(tgId) {
       const key = String(tgId);
       const row = personalDiscountPicker.results.find(c => String(c.tgId) === key);
       const normalized = row ? { tgId: row.tgId, name: row.name || row.username || String(row.tgId), username: row.username || null, phone: row.phone || null } : { tgId };
-      if (personalDiscountDraft.customerMode === 'SINGLE') {
-        personalDiscountPicker.selected = new Set([key]);
-        personalDiscountPicker.selectedRows = new Map([[key, normalized]]);
-      } else if (personalDiscountPicker.selected.has(key)) {
+      if (personalDiscountPicker.selected.has(key)) {
         personalDiscountPicker.selected.delete(key);
         personalDiscountPicker.selectedRows.delete(key);
       } else {
         personalDiscountPicker.selected.add(key);
         personalDiscountPicker.selectedRows.set(key, normalized);
+      }
+      renderPersonalDiscountCustomerPickerSheet();
+    }
+    // Joriy sahifada ko'ringan barchasini bir bosishda tanlash/bekor qilish
+    // (haqiqiy "hammasi" — barcha sahifalar — talab qilinmagan, chunki bu
+    // yangi so'rov/murakkablik talab qilardi; sahifama-sahifa tanlash bilan
+    // ham istalgancha mijozni yig'ish mumkin).
+    function togglePersonalDiscountPickerSelectAllOnPage() {
+      const p = personalDiscountPicker;
+      const allSelected = p.results.length > 0 && p.results.every(c => p.selected.has(String(c.tgId)));
+      for (const c of p.results) {
+        const key = String(c.tgId);
+        if (allSelected) { p.selected.delete(key); p.selectedRows.delete(key); }
+        else { p.selected.add(key); p.selectedRows.set(key, { tgId: c.tgId, name: c.name || c.username || String(c.tgId), username: c.username || null, phone: c.phone || null }); }
       }
       renderPersonalDiscountCustomerPickerSheet();
     }
@@ -10858,9 +10895,26 @@
           </button>`;
         }).join('')
         : `<div class="fc-empty-state compact"><p>${tr('Mijoz topilmadi', 'Клиент не найден')}</p></div>`;
+      const allOnPageSelected = p.results.length > 0 && p.results.every(c => p.selected.has(String(c.tgId)));
+      const sortTabsHtml = `<div class="fc-tabs">
+        <button type="button" onclick="setPersonalDiscountPickerSort('DEFAULT')" class="fc-tab ${p.sort === 'DEFAULT' ? 'fc-tab-active' : ''}">${tr('Barchasi', 'Все')}</button>
+        <button type="button" onclick="setPersonalDiscountPickerSort('NEWEST_JOINED')" class="fc-tab ${p.sort === 'NEWEST_JOINED' ? 'fc-tab-active' : ''}">${tr('Yangi qo‘shilganlar', 'Новые')}</button>
+        <button type="button" onclick="setPersonalDiscountPickerSort('TOP_SPEND_PERIOD')" class="fc-tab ${p.sort === 'TOP_SPEND_PERIOD' ? 'fc-tab-active' : ''}">${tr('Eng ko‘p savdo qilganlar', 'Больше всех купили')}</button>
+      </div>`;
+      // Vaqt oynasi tugmalari faqat "eng ko'p savdo" saralanganda chiqadi
+      // (foydalanuvchi aniq shunday so'radi — "yangi qo'shilganlar"da yo'q).
+      const periodTabsHtml = p.sort === 'TOP_SPEND_PERIOD' ? `<div class="fc-tabs">
+        <button type="button" onclick="setPersonalDiscountPickerSortPeriod('week')" class="fc-tab ${p.sortPeriod === 'week' ? 'fc-tab-active' : ''}">${tr('1 hafta', '1 неделя')}</button>
+        <button type="button" onclick="setPersonalDiscountPickerSortPeriod('month')" class="fc-tab ${p.sortPeriod === 'month' ? 'fc-tab-active' : ''}">${tr('1 oy', '1 месяц')}</button>
+        <button type="button" onclick="setPersonalDiscountPickerSortPeriod('year')" class="fc-tab ${p.sortPeriod === 'year' ? 'fc-tab-active' : ''}">${tr('1 yil', '1 год')}</button>
+      </div>` : '';
+      const selectAllHtml = p.results.length ? `<label class="fc-settings-toggle-row fc-personal-picker-select-all"><span><b>${tr('Barchasini tanlash', 'Выбрать все')}</b><small>${tr('Shu sahifadagi', 'На этой странице')} ${p.results.length} ${tr('ta', 'шт.')}</small></span><span class="fc-toggle"><input type="checkbox" ${allOnPageSelected ? 'checked' : ''} onchange="togglePersonalDiscountPickerSelectAllOnPage()"><span class="fc-toggle-track"></span></span></label>` : '';
+      const pagerHtml = renderPagerHTML(p.page, p.totalPages, 'setPersonalDiscountPickerPage');
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this){document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;}"><div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-personal-picker"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Mijozlarni tanlash', 'Выбор клиентов')}</div><button type="button" onclick="document.getElementById('fc-personal-discount-picker-root')?.remove();personalDiscountPicker=null;" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body fc-personal-picker-body">
         <label class="fc-personal-picker-search"><i data-lucide="search" class="w-4 h-4"></i><input type="text" value="${escapeHtml(p.search || '')}" oninput="onPersonalDiscountPickerSearch(this.value)" placeholder="${tr('Ism, username yoki telefon', 'Имя, username или телефон')}"></label>
+        ${sortTabsHtml}${periodTabsHtml}${selectAllHtml}
         <div class="fc-personal-picker-list">${rows}</div>
+        ${pagerHtml}
       </div><div class="fc-sheet-footer fc-personal-picker-footer"><button type="button" onclick="applyPersonalDiscountCustomerPicker()" class="fc-btn fc-btn-primary w-full" ${p.selected.size ? '' : 'disabled'}>${tr('Tanlash', 'Выбрать')} (${p.selected.size})</button></div></div></div>`;
       safeCreateIcons();
     }
