@@ -405,3 +405,183 @@ select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(
 .plat-final-cta { text-align: center; padding: 28px 10px; margin-top: 10px; }
 .plat-final-cta-title { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
 .plat-final-cta-desc { font-size: 12px; color: #64748b; margin-bottom: 14px; }
+
+/* ==========================================================================
+   2026-08-27 — USER PLATFORM REDESIGN (5 skrinshot: Bosh sahifa yangi user /
+   Dashboard / Do'konlarim / Obuna / Yordam markazi). Rangli tokenlar aynan
+   spec bo'yicha (2.4-band); mavjud .plat-* klasslarga QO'SHIMCHA — hech
+   birini o'chirmaydi, faqat yangi komponentlar.
+   ========================================================================== */
+:root {
+  --plat2-bg: #F5F8FF;
+  --plat2-card: #FFFFFF;
+  --plat2-primary: #2563EB;
+  --plat2-primary-pressed: #1D4ED8;
+  --plat2-primary-soft: #EEF4FF;
+  --plat2-title: #102A4C;
+  --plat2-text: #1E293B;
+  --plat2-muted: #64748B;
+  --plat2-border: #DCE6F5;
+  --plat2-success: #16A34A; --plat2-success-bg: #ECFDF3;
+  --plat2-warning: #F59E0B; --plat2-warning-bg: #FFF7E6;
+  --plat2-error: #DC2626; --plat2-error-bg: #FEF2F2;
+}
+.is-ok { color: var(--plat2-success) !important; }
+.is-warn { color: var(--plat2-warning) !important; }
+.is-danger { color: var(--plat2-error) !important; }
+.plat-tiny { font-size: 11px; margin: 2px 0; }
+.plat-inline-link { background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 700; color: var(--plat2-primary); }
+.plat-section-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 28px; }
+.plat-section-title-row .plat-section-title { margin-top: 0; }
+
+/* ---- Do'konlarim (skrinshot 03) ---- */
+.plat-shops-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.plat-shops-header-icon { width: 46px; height: 46px; border-radius: 14px; background: var(--plat2-primary-soft); color: var(--plat2-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.plat-shops-header h1 { font-size: 22px; font-weight: 800; color: var(--plat2-title); margin: 0; }
+.plat-shops-header .muted { font-size: 12.5px; margin-top: 2px; }
+.plat-shops-header-cta { margin-left: auto; }
+.plat-tip-banner, .plat-grow-banner {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px;
+  background: var(--plat2-primary-soft); border: 1px solid #cfe1fd; margin-bottom: 16px; font-size: 12px; color: var(--plat2-text);
+}
+.plat-tip-banner b, .plat-grow-banner b { font-size: 13px; color: var(--plat2-title); display: block; margin-bottom: 2px; }
+.plat-tip-banner p, .plat-grow-banner p { margin: 0; color: var(--plat2-muted); line-height: 1.4; }
+.plat-tip-banner span { color: var(--plat2-primary); flex-shrink: 0; }
+.plat-grow-banner { background: var(--plat2-success-bg); border-color: #bbf0d1; margin-top: 16px; }
+.plat-grow-banner span { font-size: 22px; flex-shrink: 0; }
+
+.plat-shop-avatar { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--plat2-primary-soft); color: var(--plat2-primary); font-weight: 800; }
+.plat-shop-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.plat-shop-avatar-fallback { font-size: 17px; }
+.plat-shop-avatar-lg { width: 52px; height: 52px; border-radius: 14px; }
+
+.plat-shop-card-v2 { padding: 14px; }
+.plat-shop-card-v2-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.plat-shop-card-v2-title { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.plat-shop-card-v2-title b { font-size: 15px; font-weight: 800; color: var(--plat2-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plat-shop-card-v2-title small { font-size: 11.5px; color: var(--plat2-primary); }
+.plat-shop-days-pill {
+  display: flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 10px; font-size: 10.5px; font-weight: 700;
+  background: var(--plat2-success-bg); color: var(--plat2-success); flex-shrink: 0; white-space: nowrap;
+}
+.plat-shop-days-pill.is-warn { background: var(--plat2-warning-bg); color: var(--plat2-warning); }
+.plat-shop-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px 0; border-top: 1px solid var(--plat2-border); border-bottom: 1px solid var(--plat2-border); margin-bottom: 10px; }
+.plat-shop-metrics div { text-align: center; }
+.plat-shop-metrics b { display: block; font-size: 13px; font-weight: 800; color: var(--plat2-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plat-shop-metrics small { font-size: 10px; color: var(--plat2-muted); }
+.plat-shop-card-actions { display: flex; gap: 8px; }
+.plat-shop-card-actions > * { flex: 1; text-align: center; }
+.plat-shop-status-row { display: flex; align-items: center; gap: 7px; margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--plat2-success-bg); color: var(--plat2-success); font-size: 11.5px; font-weight: 600; }
+.plat-shop-status-row.is-warn { background: var(--plat2-warning-bg); color: var(--plat2-warning); }
+.plat-shop-status-row.is-danger { background: var(--plat2-error-bg); color: var(--plat2-error); }
+.plat-new-shop-cta {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px; margin-top: 4px;
+  border: 1.5px dashed #b6cdf2; border-radius: 14px; background: var(--plat2-primary-soft); text-align: left;
+}
+.plat-new-shop-cta:active { transform: scale(0.99); }
+.plat-new-shop-cta-icon { width: 38px; height: 38px; border-radius: 999px; background: var(--plat2-primary); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.plat-new-shop-cta b { display: block; font-size: 13.5px; color: var(--plat2-primary); }
+.plat-new-shop-cta small { font-size: 11px; color: var(--plat2-muted); }
+
+/* ---- Obuna (skrinshot 04) ---- */
+.plat-shop-selector { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.plat-shop-selector select { flex: 1; max-width: 220px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--plat2-border); background: #fff; font-size: 12.5px; font-weight: 600; color: var(--plat2-text); }
+.plat-subscription-summary-top { display: flex; align-items: flex-start; gap: 12px; }
+.plat-subscription-summary-name { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+.plat-subscription-summary-name b { font-size: 16px; font-weight: 800; color: var(--plat2-title); }
+.plat-subscription-summary-mid { display: flex; gap: 16px; margin: 12px 0; padding: 10px 0; border-top: 1px solid var(--plat2-border); }
+.plat-subscription-summary-mid b { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--plat2-title); margin: 2px 0; }
+.plat-subscription-summary-actions { display: flex; gap: 8px; }
+.plat-subscription-summary-actions > * { flex: 1; }
+
+.plat-billing-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 10px; }
+.plat-billing-opt { padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--plat2-border); background: #fff; text-align: left; }
+.plat-billing-opt b { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; color: var(--plat2-text); }
+.plat-billing-opt small { font-size: 11px; color: var(--plat2-muted); }
+.plat-billing-opt.active { border-color: var(--plat2-primary); background: var(--plat2-primary-soft); }
+.plat-billing-opt.active b { color: var(--plat2-primary); }
+.plat-billing-free-badge { font-size: 9.5px; font-weight: 800; color: var(--plat2-success); background: var(--plat2-success-bg); padding: 2px 7px; border-radius: 999px; }
+.plat-billing-promo { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--plat2-primary-soft); border: 1px solid #cfe1fd; margin-bottom: 12px; }
+.plat-billing-promo-icon { width: 30px; height: 30px; border-radius: 999px; background: var(--plat2-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
+.plat-billing-promo b { font-size: 12.5px; color: var(--plat2-title); display: block; }
+.plat-billing-promo p { margin: 2px 0 0; font-size: 11.5px; color: var(--plat2-muted); }
+
+.plat-tariff-price-strike { font-size: 11.5px; color: var(--plat2-muted); text-decoration: line-through; margin-top: 8px; }
+.plat-tariff-price-strike + .plat-tariff-price { margin-top: 1px; }
+.plat-tariff-annual-badge { display: inline-block; margin-top: 4px; font-size: 10px; font-weight: 800; color: var(--plat2-success); background: var(--plat2-success-bg); padding: 3px 8px; border-radius: 999px; }
+.plat-tariff-features { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.plat-tariff-features li { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--plat2-text); }
+.plat-tariff-features li .p-icon { color: var(--plat2-success); flex-shrink: 0; }
+.plat-tariff-card.is-current { border-color: var(--plat2-primary); box-shadow: 0 0 0 1px var(--plat2-primary) inset, 0 6px 18px rgba(37,99,235,0.14); }
+.plat-tariff-badge.is-current { background: var(--plat2-primary); color: #fff; }
+.plat-tariff-current-btn { color: var(--plat2-primary) !important; background: var(--plat2-primary-soft) !important; border-color: var(--plat2-primary) !important; opacity: 1 !important; cursor: default; }
+
+/* ---- Bosh sahifa dashboard, do'koni bor user (skrinshot 02) ---- */
+.plat-dashboard-summary { position: relative; }
+.plat-dashboard-summary-top { display: flex; align-items: center; gap: 12px; }
+.plat-dashboard-summary-mid { flex: 1; min-width: 0; }
+.plat-dashboard-greet { font-size: 12px; color: var(--plat2-muted); margin: 0 0 2px; }
+.plat-dashboard-summary-name { display: flex; align-items: center; gap: 4px; }
+.plat-dashboard-summary-name b { font-size: 16px; font-weight: 800; color: var(--plat2-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plat-shop-switch-btn { background: none; border: none; color: var(--plat2-muted); display: flex; padding: 2px; flex-shrink: 0; }
+.plat-dashboard-shop-menu { position: absolute; top: 60px; left: 14px; right: 14px; z-index: 5; background: #fff; border: 1px solid var(--plat2-border); border-radius: 12px; box-shadow: 0 10px 26px rgba(15,23,42,0.12); overflow: hidden; }
+.plat-dashboard-shop-menu button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: none; font-size: 12.5px; color: var(--plat2-text); border-bottom: 1px solid #f1f5f9; }
+.plat-dashboard-shop-menu button:last-child { border-bottom: none; }
+.plat-dashboard-summary-bottom { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--plat2-border); font-size: 12px; color: var(--plat2-text); }
+.plat-dashboard-summary-bottom span { display: flex; align-items: center; gap: 5px; }
+
+.plat-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.plat-stat-card { display: flex; flex-direction: column; gap: 4px; padding: 12px; }
+.plat-stat-icon { width: 32px; height: 32px; border-radius: 10px; background: var(--plat2-primary-soft); color: var(--plat2-primary); display: flex; align-items: center; justify-content: center; }
+.plat-stat-card small { font-size: 11px; color: var(--plat2-muted); }
+.plat-stat-card b { font-size: 22px; font-weight: 800; color: var(--plat2-title); }
+
+.plat-quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.plat-quick-action {
+  display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 6px; border-radius: 14px;
+  background: #fff; border: 1px solid var(--plat2-border); color: var(--plat2-primary); text-align: center; text-decoration: none;
+}
+.plat-quick-action:active { transform: scale(0.97); background: var(--plat2-primary-soft); }
+.plat-quick-action span { font-size: 10.5px; font-weight: 700; color: var(--plat2-text); line-height: 1.25; }
+
+.plat-alert-list { padding: 4px 14px; }
+.plat-alert-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; text-align: left; background: none; border-left: none; border-right: none; border-top: none; }
+.plat-alert-row:last-child { border-bottom: none; }
+.plat-alert-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--plat2-success-bg); color: var(--plat2-success); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.plat-alert-row b { display: block; font-size: 12.5px; color: var(--plat2-text); }
+.plat-alert-row small { font-size: 11px; color: var(--plat2-muted); }
+.plat-alert-chevron { margin-left: auto; color: #94a3b8; flex-shrink: 0; }
+.plat-all-ok { display: flex; align-items: center; gap: 8px; color: var(--plat2-success); font-size: 13px; }
+
+.plat-capability-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.plat-capability-card { display: flex; align-items: center; gap: 9px; padding: 12px; border-radius: 14px; background: #fff; border: 1px solid var(--plat2-border); color: var(--plat2-primary); }
+.plat-capability-card span { font-size: 11.5px; font-weight: 600; color: var(--plat2-text); line-height: 1.3; }
+
+/* ---- Yordam markazi (skrinshot 05) ---- */
+.plat-help-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 6px 2px 18px; }
+.plat-help-hero h1 { font-size: 24px; font-weight: 800; color: var(--plat2-title); margin: 0 0 4px; }
+.plat-help-hero .muted { font-size: 12.5px; max-width: 230px; line-height: 1.4; }
+.plat-help-hero-icon { color: var(--plat2-primary-soft); opacity: 0.9; flex-shrink: 0; }
+.plat-help-row { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; border: 1px solid var(--plat2-border); }
+.plat-help-row-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.plat-help-icon-blue { background: var(--plat2-primary-soft); color: var(--plat2-primary); }
+.plat-help-icon-green { background: var(--plat2-success-bg); color: var(--plat2-success); }
+.plat-help-icon-orange { background: var(--plat2-warning-bg); color: var(--plat2-warning); }
+.plat-help-row-copy { flex: 1; min-width: 0; }
+.plat-help-row-copy b { display: block; font-size: 13.5px; font-weight: 800; color: var(--plat2-title); }
+.plat-help-row-copy small { font-size: 11px; color: var(--plat2-muted); line-height: 1.35; }
+.plat-help-row-chevron { color: #94a3b8; flex-shrink: 0; }
+.plat-help-row-action { background: var(--plat2-primary-soft); border-color: #cfe1fd; }
+.plat-help-row-action.plat-help-row-green { background: var(--plat2-success-bg); border-color: #bbf0d1; }
+.plat-help-row-action .plat-small-btn { flex-shrink: 0; }
+.plat-btn-green { color: var(--plat2-success) !important; border-color: var(--plat2-success) !important; background: #fff !important; }
+.plat-faq-preview { padding: 4px 4px; }
+.plat-faq-preview-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 12px; border-bottom: 1px solid #f1f5f9; text-align: left; background: none; border-left: none; border-right: none; border-top: none; font-size: 12.5px; color: var(--plat2-text); }
+.plat-faq-preview-row:last-child { border-bottom: none; }
+.plat-faq-preview-icon { width: 22px; height: 22px; border-radius: 999px; background: var(--plat2-primary-soft); color: var(--plat2-primary); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+.plat-faq-preview-chevron { margin-left: auto; color: #94a3b8; flex-shrink: 0; }
+
+@media (max-width: 359px) {
+  .plat-quick-actions { grid-template-columns: repeat(2, 1fr); }
+  .plat-shop-metrics { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+}
