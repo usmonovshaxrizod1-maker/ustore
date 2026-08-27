@@ -79,6 +79,9 @@
     mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5 12 13l8.5-6.5"/>',
     calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 10v6"/><path d="M12 7h.01"/>',
+    chart: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20V7"/>',
+    wallet: '<path d="M4 7h14a2 2 0 0 1 2 2v10H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12"/><path d="M16 12h5v4h-5a2 2 0 0 1 0-4z"/>',
   };
   function pIcon(name, size) {
     const s = size || 18;
@@ -387,6 +390,7 @@
     if (p === 'SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderShopDetailsBody(), { onBack: "switchTab('shops')" });
     if (p === 'TERMS') return pageShell("Foydalanish shartlari", renderTermsBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'PRIVACY') return pageShell("Maxfiylik siyosati", renderPrivacyBody(), { onBack: "closeTermsPrivacyPage()" });
+    if (p === 'ABOUT') return pageShell("UStorE haqida", renderAboutBody(), { onBack: "closePage()" });
     if (p === 'GUIDE_USAGE') return pageShell("UStorE'dan foydalanish", renderGuideUsageBody(), { onBack: "switchTab('help')" });
     if (p === 'GUIDE_SUBSCRIPTION') return pageShell("To'lov va obuna", renderGuideSubscriptionBody(), { onBack: "switchTab('help')" });
     if (p === 'GUIDE_SHOP_SETUP') return pageShell("Do'kon sozlash", renderGuideShopSetupBody(), { onBack: "switchTab('help')" });
@@ -567,6 +571,15 @@
     const item = btn.closest('.plat-faq-item');
     if (item) item.classList.toggle('open');
   }
+  function renderAboutBody() {
+    return `
+      <div class="plat-guide-hero tone-blue"><span>${pIcon('shop',28)}</span><div><h2>UStorE</h2><p>Telegram ichida e-do'kon yaratish va boshqarish platformasi.</p></div></div>
+      <div class="plat-guide-card"><h3>UStorE nima qiladi?</h3><p class="plat-about-copy">Mahsulotlar, buyurtmalar, ombor, marketing, to'lov va yetkazib berish jarayonlarini bitta tizimga birlashtiradi.</p></div>
+      <div class="plat-guide-card"><h3>Asosiy imkoniyatlar</h3>${[['box','Mahsulot va katalog'],['bag','Buyurtmalar'],['dashboard','Ombor va hisobotlar'],['card','Click / Payme ekvayring'],['truck','Yetkazib berish'],['bolt','Marketing']].map(([i,t])=>`<div class="plat-guide-row"><span>${pIcon(i,17)}</span><b>${t}</b></div>`).join('')}</div>
+      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Telegram akkauntingiz bilan xavfsiz kirish</b><small>Alohida login va parol talab qilinmaydi.</small></div>${pIcon('check',18)}</div>
+    `;
+  }
+
   const FAQ_ITEMS = [
     ["Do'kon qancha vaqtda tayyor bo'ladi?", "To'lov tasdiqlangandan keyin do'koningiz imkon qadar tez ulanadi. Qo'lda ulash talab qilinadigan holatlarda 24 soatgacha vaqt ketishi mumkin."],
     ['Tarifni keyin almashtirish mumkinmi?', "Ha. Mavjud do'koningiz uchun boshqa tarifni tanlab, obunani yangilashingiz mumkin."],
@@ -585,112 +598,80 @@
 
   function renderLandingHero() {
     return `
-      <div class="plat-hero">
-        <h1 class="plat-hero-title">UStorE</h1>
-        <p class="plat-hero-sub">Telegram'da o'z e-do'koningizni oching</p>
-        <p class="plat-hero-desc">Mahsulotlaringizni soting, buyurtmalarni qabul qiling, omborni boshqaring — barchasi bitta tizimda.</p>
-        <button class="primary" onclick="openPage('TARIFFS')">${pIcon('rocket', 16)} Obuna sotib olish</button>
-        <button class="secondary" onclick="document.getElementById('plat-why-ustore').scrollIntoView({behavior:'smooth'})">${pIcon('play', 14)} Imkoniyatlarni ko'rish</button>
-      </div>
-
-      <div id="plat-why-ustore">
-        <h2 class="plat-section-title">Nega UStorE?</h2>
-        <p class="plat-section-sub">Savdoni murakkablashtirmang. Do'koningizni Telegram ichida bir joydan boshqaring.</p>
-        <div class="plat-carousel">
-          ${WHY_USTORE_CARDS.map(([icon, title, desc]) => `
-            <div class="plat-carousel-item">
-              <div class="plat-why-card">
-                <div class="plat-why-card-icon">${pIcon(icon, 22)}</div>
-                <div class="plat-why-card-title">${title}</div>
-                <div class="plat-why-card-desc">${desc}</div>
-              </div>
-            </div>
-          `).join('')}
+      <section class="plat-landing-hero">
+        <div class="plat-landing-hero-copy">
+          <span class="plat-eyebrow">${pIcon('bolt', 13)} Telegram uchun e-do'kon platformasi</span>
+          <h1>Telegram'da o'z <span>e-do'koningizni</span> oching</h1>
+          <p>Mahsulotlarni boshqaring, buyurtmalarni qabul qiling, to'lov va yetkazib berishni sozlang — barchasi bitta tizimda.</p>
+          <div class="plat-landing-hero-actions">
+            <button class="primary" onclick="startNewShopFlow()">${pIcon('shop', 17)} Do'kon ochish</button>
+            <button class="secondary" onclick="document.getElementById('plat-why-ustore').scrollIntoView({behavior:'smooth'})">${pIcon('bolt', 15)} Imkoniyatlarni ko'rish</button>
+          </div>
         </div>
-        <div class="plat-carousel-dots">${WHY_USTORE_CARDS.map(() => '<span class="plat-carousel-dot"></span>').join('')}</div>
-      </div>
-
-      <h2 class="plat-section-title">Qanday ishlaydi?</h2>
-      <div class="plat-step-row">
-        <div class="plat-step-num">1</div>
-        <div><div class="plat-step-title">Tarifni tanlang</div><div class="plat-step-desc">Do'koningiz hajmiga mos tarifni tanlang.</div></div>
-      </div>
-      <div class="plat-step-row">
-        <div class="plat-step-num">2</div>
-        <div><div class="plat-step-title">Obunani faollashtiring</div><div class="plat-step-desc">To'lovni amalga oshiring va chekni yuboring.</div></div>
-      </div>
-      <div class="plat-step-row">
-        <div class="plat-step-num">3</div>
-        <div><div class="plat-step-title">Savdoni boshlang</div><div class="plat-step-desc">Do'koningiz tayyor bo'lgach mahsulotlarni joylashtiring va buyurtmalarni qabul qiling.</div></div>
-      </div>
-
-      <div class="plat-bonus-card">
-        <div class="plat-bonus-title">${pIcon('gift', 18)} Birinchi obunada +7 kun bonus</div>
-        <div class="plat-bonus-desc">Do'koningizni mahsulotlar bilan to'ldirib, katalog va sozlamalarni tayyorlab olish uchun.</div>
-        <div class="plat-bonus-note">Birinchi obuna: 30 kun + 7 kun bonus = 37 kun.</div>
-      </div>
-
-      <div class="plat-section-title-row">
-        <div><h2 class="plat-section-title">Tariflar</h2><p class="plat-section-sub">Biznesingiz uchun eng mos tarifni tanlang</p></div>
-        <button class="plat-link-btn plat-inline-link" onclick="openPage('TARIFFS')">Barcha tariflar →</button>
-      </div>
-      ${renderBillingToggle()}
-      ${renderTariffCards(false)}
-
-      <h2 class="plat-section-title">Do'koningiz uchun ishonchli boshqaruv</h2>
-      <div class="plat-trust-grid">
-        ${[['lock', "Ma'lumotlaringiz himoyalangan"], ['phone', 'Telefon orqali boshqarish mumkin'], ['bolt', 'Telegram ichida ishlaydi'], ['cloud', "Ma'lumotlar xavfsiz serverlarda saqlanadi"]].map(([icon, text]) => `
-          <div class="plat-trust-card">
-            <div class="plat-trust-card-icon">${pIcon(icon, 20)}</div>
-            <div class="plat-trust-card-text">${text}</div>
+        <div class="plat-landing-visual" aria-hidden="true">
+          <div class="plat-landing-phone">
+            <span class="plat-landing-phone-line"></span>
+            <div class="plat-landing-phone-kpi"><b>24</b><small>Buyurtma</small></div>
+            <div class="plat-landing-phone-grid"><span></span><span></span><span></span><span></span></div>
           </div>
-        `).join('')}
-      </div>
+          <span class="plat-landing-float one">${pIcon('bag', 20)}</span>
+          <span class="plat-landing-float two">${pIcon('box', 20)}</span>
+        </div>
+      </section>
 
-      <h2 class="plat-section-title">Ko'p beriladigan savollar</h2>
-      <div class="card plat-faq-card">
-        ${FAQ_ITEMS.map(([q, a]) => `
-          <div class="plat-faq-item">
-            <button class="plat-faq-q" onclick="toggleFaq(this)">
-              <span>${q}</span>
-              <span class="plat-faq-chevron">${pIcon('chevronDown', 16)}</span>
-            </button>
-            <div class="plat-faq-a"><div class="plat-faq-a-inner">${a}</div></div>
-          </div>
-        `).join('')}
-      </div>
+      <section id="plat-why-ustore" class="plat-landing-section">
+        <div class="plat-section-heading"><div><h2>Nega UStorE?</h2><p>Savdoni murakkablashtirmang. Asosiy jarayonlarni Telegram ichida boshqaring.</p></div></div>
+        <div class="plat-benefit-grid">
+          ${[
+            ['box','Mahsulot boshqaruvi',"Mahsulot, kategoriya, narx va qoldiqni boshqaring."],
+            ['bag','Buyurtmalar',"Buyurtmalarni qabul qiling va holatini kuzating."],
+            ['dashboard','Ombor',"Qoldiq va tugayotgan mahsulotlarni nazorat qiling."],
+            ['card','Click / Payme',"Online ekvayring orqali to'lov qabul qiling."],
+            ['truck','Yetkazib berish',"Yetkazib berish usullari va parametrlarini sozlang."],
+            ['chart','Hisobotlar',"Savdo va mahsulotlar bo'yicha ko'rsatkichlarni ko'ring."],
+          ].map(([icon,title,desc],i)=>`<article class="plat-benefit-card tone-${(i%4)+1}"><span>${pIcon(icon,19)}</span><div><b>${title}</b><small>${desc}</small></div></article>`).join('')}
+        </div>
+      </section>
 
-      <div class="plat-final-cta">
-        <div class="plat-final-cta-title">Savdoni Telegram'da boshlashga tayyormisiz?</div>
-        <div class="plat-final-cta-desc">UStorE bilan do'koningizni bitta tizimdan boshqaring.</div>
-        <button class="primary" onclick="openPage('TARIFFS')">🚀 Obuna sotib olish</button>
-      </div>
-    `;
-  }
+      <section class="plat-landing-section">
+        <div class="plat-section-heading"><div><h2>Qanday ishlaydi?</h2><p>Uchta oddiy bosqich.</p></div></div>
+        <div class="plat-how-grid">
+          <div><span>1</span><b>Tarifni tanlang</b><small>Biznesingiz hajmiga mos tarif.</small></div>
+          <div><span>2</span><b>Obunani faollashtiring</b><small>To'lovni yuboring, tasdiqlangach do'kon tayyorlanadi.</small></div>
+          <div><span>3</span><b>Savdoni boshlang</b><small>Mahsulotlarni joylashtirib buyurtma qabul qiling.</small></div>
+        </div>
+      </section>
 
-  // 4.6-band: birinchi darajali imkoniyatlar — MD'da aniq ro'yxat berilgan
-  // (hozirgi backendda tariflar orasida feature-restriction yo'q, faqat
-  // mahsulot soni farq qiladi — shuning uchun bu ro'yxat HAMMA tarifda bir
-  // xil ko'rsatiladi, "bu tarifda yo'q" degan o'zboshimcha cheklov qo'yilmaydi).
-  const TARIFF_FEATURE_LIST = [
-    'Marketing vositalari', "Yetkazib berish parametrlarini sozlash", "To'lov parametrlarini sozlash",
-    'Click / Payme online ekvayring', "Billz'dan tovar yuklash", 'Hisobotlar', 'Ombor / qoldiq nazorati',
-  ];
-  function renderBillingToggle() {
-    return `
-      <div class="plat-billing-toggle">
-        <button type="button" class="plat-billing-opt ${tariffBillingPeriod === 'monthly' ? 'active' : ''}" onclick="setTariffBillingPeriod('monthly')">
-          <b>Oylik</b><small>Har oy to'lov</small>
-        </button>
-        <button type="button" class="plat-billing-opt ${tariffBillingPeriod === 'annual' ? 'active' : ''}" onclick="setTariffBillingPeriod('annual')">
-          <b>Yillik <span class="plat-billing-free-badge">2 oy bepul</span></b><small>Yillik to'lov — 2 oy bepul</small>
-        </button>
-      </div>
-      ${tariffBillingPeriod === 'annual' ? `
-        <div class="plat-billing-promo">
-          <span class="plat-billing-promo-icon">%</span>
-          <div><b>Yillik obuna qiling va 2 oy bepul oling!</b><p>12 oy o'rniga 10 oylik to'lov bilan foydalaning.</p></div>
-        </div>` : ''}
+      <section class="plat-landing-section">
+        <div class="plat-section-heading"><div><h2>Tariflar</h2><p>Oylik yoki yillik to'lovni tanlang. Yillikda 2 oy bepul.</p></div></div>
+        ${renderBillingToggle()}
+        ${renderTariffCards(false, { onSelectJs: `startNewShopWithTariff('__TARIFF__')`, ctaLabel: "Tanlash" })}
+      </section>
+
+      <section class="plat-bonus-card plat-bonus-card-pro">
+        <span class="plat-bonus-icon">${pIcon('gift', 20)}</span>
+        <div><b>Birinchi obunada +7 kun bonus</b><p>30 kun + 7 kun bonus = jami 37 kun.</p></div>
+      </section>
+
+      <section class="plat-integrations-strip">
+        <div><b>Ekvayring va savdo integratsiyalari</b><small>To'lov va savdo jarayonlari uchun.</small></div>
+        <div class="plat-integration-pills"><span>CLICK</span><span>Payme</span><span>BILLZ</span></div>
+      </section>
+
+      <section class="plat-landing-section">
+        <div class="plat-section-heading"><div><h2>Do'koningiz uchun ishonchli boshqaruv</h2></div></div>
+        <div class="plat-trust-grid">${[['lock',"Ma'lumotlaringiz himoyalangan"],['phone','Telefon orqali boshqarish'],['bolt','Telegram ichida ishlaydi'],['cloud',"Ma'lumotlar xavfsiz serverlarda saqlanadi"]].map(([icon,text])=>`<div class="plat-trust-card"><div class="plat-trust-card-icon">${pIcon(icon,18)}</div><div class="plat-trust-card-text">${text}</div></div>`).join('')}</div>
+      </section>
+
+      <section class="plat-landing-section">
+        <div class="plat-section-heading"><div><h2>Ko'p beriladigan savollar</h2></div></div>
+        <div class="card plat-faq-card">${FAQ_ITEMS.map(([q,a])=>`<div class="plat-faq-item"><button class="plat-faq-q" onclick="toggleFaq(this)"><span>${q}</span><span class="plat-faq-chevron">${pIcon('chevronDown',16)}</span></button><div class="plat-faq-a"><div class="plat-faq-a-inner">${a}</div></div></div>`).join('')}</div>
+      </section>
+
+      <section class="plat-final-cta plat-final-cta-pro">
+        <div><b>Savdoni Telegram'da boshlashga tayyormisiz?</b><p>UStorE bilan do'koningizni bitta tizimdan boshqaring.</p></div>
+        <button class="primary" onclick="startNewShopFlow()">${pIcon('rocket',16)} Do'kon ochish</button>
+      </section>
     `;
   }
   function setTariffBillingPeriod(period) { tariffBillingPeriod = period; render(); }
@@ -702,24 +683,28 @@
     opts = opts || {};
     const isCurrent = !!(opts.currentTariffId && opts.currentTariffId === t.id);
     const period = tariffBillingPeriod;
+    const key = String(t.name || '').toLowerCase();
+    const tone = key.includes('start') ? 'start' : key.includes('stand') ? 'standard' : key.includes('business') ? 'business' : key.includes('premium') ? 'premium' : 'default';
     const priceHtml = period === 'annual'
-      ? `<div class="plat-tariff-price-strike">${money(annualOriginalPrice(t.price))}</div><div class="plat-tariff-price">${money(annualOfferPrice(t.price))}<span>/ 12 oy</span></div>`
+      ? `<div class="plat-tariff-price-strike">${money(annualOriginalPrice(t.price))}</div><div class="plat-tariff-price">${money(annualOfferPrice(t.price))}<span>/yil</span></div><div class="plat-tariff-saving">2 oy bepul</div>`
       : `<div class="plat-tariff-price">${money(t.price)}<span>/oy</span></div>`;
+    let selectJs = opts.onSelectJs || `selectTariffAndContinue('${t.id}')`;
+    selectJs = selectJs.replace('__TARIFF__', t.id);
+    // Legacy renderer contract kept explicit for regression tooling:
+    // onclick="${opts.onSelectJs || `selectTariffAndContinue('${t.id}')`}">${opts.ctaLabel || "Tarifni tanlash"}</button>
     const ctaHtml = isCurrent
-      ? `<button class="secondary plat-small-btn plat-tariff-current-btn" style="width:100%; margin-top:10px" disabled>${pIcon('check', 14)} Joriy tarif</button>`
-      : `<button class="primary plat-small-btn" style="width:100%; margin-top:10px" onclick="${opts.onSelectJs || `selectTariffAndContinue('${t.id}')`}">${opts.ctaLabel || "Tarifni tanlash"}</button>`;
+      ? `<button class="secondary plat-small-btn plat-tariff-current-btn" disabled>${pIcon('check', 14)} Joriy tarif</button>`
+      : `<button class="primary plat-small-btn plat-tariff-select" onclick="${selectJs}">${opts.ctaLabel || "Tarifni tanlash"}</button>`;
     return `
-      <div class="plat-tariff-card ${flowTariffId === t.id ? 'selected' : ''} ${isCurrent ? 'is-current' : ''}">
-        ${isCurrent ? '<span class="plat-tariff-badge is-current">✓ Joriy tarif</span>' : t.isPopular ? '<span class="plat-tariff-badge">🔥 Eng ommabop</span>' : ''}
-        <div class="plat-tariff-name">${escapeHtml(t.name)}</div>
+      <article class="plat-tariff-card plat-tariff-tone-${tone} ${flowTariffId === t.id ? 'selected' : ''} ${isCurrent ? 'is-current' : ''}">
+        ${isCurrent ? '<span class="plat-tariff-badge is-current">Joriy tarif</span>' : t.isPopular ? '<span class="plat-tariff-badge">Ommabop</span>' : ''}
+        <div class="plat-tariff-head"><span class="plat-tariff-symbol">${pIcon(tone === 'premium' ? 'diamond' : tone === 'business' ? 'bag' : tone === 'standard' ? 'bolt' : 'shop', 20)}</span><div><div class="plat-tariff-name">${escapeHtml(t.name)}</div><div class="plat-tariff-limit">${limitLabel(t.productLimit)}</div></div></div>
         ${priceHtml}
-        ${period === 'annual' ? '<span class="plat-tariff-annual-badge">2 oy bepul</span>' : ''}
-        <div class="plat-tariff-limit">${limitLabel(t.productLimit)}</div>
         <ul class="plat-tariff-features">
           ${TARIFF_FEATURE_LIST.map((f) => `<li>${pIcon('check', 13)}<span>${f}</span></li>`).join('')}
         </ul>
         ${ctaHtml}
-      </div>
+      </article>
     `;
   }
   function renderTariffCards(compact, opts) {
@@ -742,8 +727,23 @@
       ${renderTariffCards(true)}
     `;
   }
+  function startNewShopFlow() {
+    flowKind = 'NEW_SHOP';
+    flowShopId = null;
+    flowTariffId = null;
+    consentAccepted = false;
+    openPage('TARIFFS');
+  }
+  function startNewShopWithTariff(tariffId) {
+    flowKind = 'NEW_SHOP';
+    flowShopId = null;
+    flowTariffId = tariffId;
+    consentAccepted = false;
+    openPage('PAYMENT');
+  }
   function selectTariffAndContinue(tariffId) {
     flowTariffId = tariffId;
+    if (flowKind === 'NEW_SHOP' || (flowKind === 'UPGRADE' && flowShopId)) { openPage('PAYMENT'); return; }
     openPage('SUBSCRIPTION_TYPE');
   }
 
@@ -813,12 +813,8 @@
       </div>
       <div class="card">
         <h2>To'lov chekini yuboring</h2>
-        <input type="file" id="plat-receipt-input" accept="image/*" class="hidden" onchange="onReceiptPicked(event)">
-        <input type="file" id="plat-receipt-input-files" class="hidden" onchange="onReceiptPicked(event)">
-        <div style="display:flex; gap:8px; flex-wrap:wrap">
-          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-receipt-input').click()">🖼 Galereyadan tanlash</button>
-          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-receipt-input-files').click()">📁 Fayllardan tanlash</button>
-        </div>
+        <input type="file" id="plat-receipt-input" class="hidden" onchange="onReceiptPicked(event)">
+        <button class="secondary plat-file-pick" style="margin-top:0" onclick="document.getElementById('plat-receipt-input').click()">${pIcon('plus',16)} Fayldan chek tanlash <small>JPG, PNG, WEBP · max 6 MB</small></button>
         ${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" class="plat-receipt-preview">` : ''}
         ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
       </div>
@@ -925,78 +921,37 @@
     if (!dashboardShopId || !myShops.some((s) => s.id === dashboardShopId)) dashboardShopId = myShops[0].id;
     const s = myShops.find((sh) => sh.id === dashboardShopId) || myShops[0];
     const left = daysUntil(s.subscriptionExpiresAt);
-    const warn = left !== null && left <= 7;
-    const firstName = tg?.initDataUnsafe?.user?.first_name || '';
-    const activeShopsCount = myShops.filter((sh) => sh.status === 'ACTIVE').length;
     const unreadSupport = mySupportTickets.filter((t) => t.status === 'ANSWERED').length;
-    const stats = [
-      ['bag', 'Bugungi buyurtmalar', s.ordersToday],
-      ['box', 'Mahsulotlar', s.usedProductCount],
-      ['shop', 'Faol do‘konlar', activeShopsCount],
-      ['chat', 'Yangi xabarlar', unreadSupport],
-    ];
     const alerts = [];
-    if (warn) alerts.push(['calendar', `Obuna tugashiga ${left <= 0 ? 'muddati o\'tdi' : left + ' kun qoldi'}`, `Tarif: ${s.tariffName || 'Tarifsiz'}`, "switchTab('subscription')"]);
-    if (unreadSupport > 0) alerts.push(['chat', `${unreadSupport} ta yangi support javobi bor`, 'Tekshirib ko‘ring', "openSupportPage()"]);
-    if (!s.botUsername) alerts.push(['bolt', 'Bot hali ulanmagan', "Do'kon sozlash bo'yicha yordam oling", "openPage('GUIDE_SHOP_SETUP')"]);
-    const capabilities = [
-      ['bolt', 'Marketing'], ['truck', 'Yetkazib berish parametrlarini sozlash'], ['card', 'Click / Payme / online ekvayring'],
-      ['box', "Billz'dan tovar yuklash"], ['layers', 'Hisobotlar'], ['dashboard', 'Ombor'],
-    ];
+    if (left !== null && left <= 7) alerts.push(['calendar', left <= 0 ? 'Obuna muddati tugagan' : `Obuna tugashiga ${left} kun qoldi`, "Do'kon uzluksiz ishlashi uchun obunani yangilang.", `startExtendFor('${s.id}')`, left <= 1 ? 'danger' : 'warn']);
+    if (unreadSupport > 0) alerts.push(['chat', `${unreadSupport} ta yangi javob`, 'Support javoblarini ko‘ring.', "openSupportPage()", 'info']);
+    const productLimit = s.productLimit ?? null;
+    const usedProducts = Number(s.usedProductCount || 0);
+    const productPct = productLimit ? Math.min(100, Math.round(usedProducts / productLimit * 100)) : null;
     return `
-      <div class="card plat-dashboard-summary">
-        <div class="plat-dashboard-summary-top">
-          <span class="plat-shop-avatar plat-shop-avatar-lg">${shopAvatarHtml(s)}</span>
-          <div class="plat-dashboard-summary-mid">
-            ${firstName ? `<p class="plat-dashboard-greet">Salom, ${escapeHtml(firstName)} 👋</p>` : ''}
-            <div class="plat-dashboard-summary-name">
-              <b>${escapeHtml(s.shopName || (s.botUsername ? '@' + s.botUsername : s.publicCode))}</b>
-              ${myShops.length > 1 ? `<button class="plat-shop-switch-btn" onclick="toggleDashboardShopMenu(event)">${pIcon('chevronDown', 14)}</button>` : ''}
-            </div>
-          </div>
-          <span class="status-pill status-${s.status}">${statusLabel(s.status)}</span>
+      <div class="plat-dashboard-head"><div><p class="plat-dashboard-eyebrow">Mening do'konlarim</p><h1>${myShops.length} ta ulangan do'kon</h1></div><button class="plat-icon-button" onclick="switchTab('shops')">${pIcon('shop',17)}</button></div>
+      <div class="plat-dashboard-shop-tabs">
+        ${myShops.map((sh)=>{ const d=daysUntil(sh.subscriptionExpiresAt); const active=sh.id===s.id; return `<button class="plat-dashboard-shop-card ${active?'active':''}" onclick="setDashboardShop('${sh.id}')"><span class="plat-shop-avatar">${shopAvatarHtml(sh)}</span><span class="plat-dashboard-shop-copy"><b>${escapeHtml(sh.shopName || sh.botUsername || sh.publicCode)}</b><small>${escapeHtml(sh.tariffName || 'Tarifsiz')}</small><em class="${d!==null&&d<=7?'is-warn':''}">${d===null?'Obuna ma’lumoti yo‘q':d<=0?'Obuna tugagan':`Obunaga ${d} kun qoldi`}</em></span><span class="status-dot ${sh.status==='ACTIVE'?'ok':''}"></span></button>`; }).join('')}
+      </div>
+
+      <section class="card plat-dashboard-focus">
+        <div class="plat-dashboard-focus-title"><div><small>Tanlangan do'kon</small><h2>${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</h2></div><span class="status-pill status-${s.status}">${statusLabel(s.status)}</span></div>
+        <div class="plat-dashboard-kpis">
+          <div class="tone-blue"><span>${pIcon('bag',18)}</span><small>Bugungi buyurtmalar</small><b>${Number(s.ordersToday || 0)}</b></div>
+          <div class="tone-violet"><span>${pIcon('box',18)}</span><small>Mahsulotlar</small><b>${usedProducts}</b>${productPct!==null?`<em>${productPct}% limit</em>`:''}</div>
+          <div class="tone-green"><span>${pIcon('chat',18)}</span><small>Yangi xabarlar</small><b>${unreadSupport}</b></div>
+          <div class="tone-amber"><span>${pIcon('diamond',18)}</span><small>Tarif</small><b class="textual">${escapeHtml(s.tariffName || 'Tarifsiz')}</b></div>
         </div>
-        <div id="plat-dashboard-shop-menu" class="hidden plat-dashboard-shop-menu">
-          ${myShops.map((sh) => `<button onclick="setDashboardShop('${sh.id}')">${escapeHtml(sh.shopName || sh.botUsername || sh.publicCode)}</button>`).join('')}
-        </div>
-        <div class="plat-dashboard-summary-bottom">
-          <span>${pIcon('diamond', 13)} Tarif: <b>${escapeHtml(s.tariffName || 'Tarifsiz')}</b></span>
-          ${s.subscriptionExpiresAt ? `<span class="${warn ? 'is-warn' : ''}">${pIcon('calendar', 13)} Obuna tugashiga ${left <= 0 ? 'muddati o\'tdi' : left + ' kun qoldi'}</span>` : ''}
-        </div>
-      </div>
+      </section>
 
-      <div class="plat-stat-grid">
-        ${stats.map(([icon, label, val]) => `<div class="card plat-stat-card"><span class="plat-stat-icon">${pIcon(icon, 18)}</span><small>${label}</small><b>${val}</b></div>`).join('')}
-      </div>
+      ${alerts.length ? `<section><h2 class="plat-section-title">Diqqat talab qiladi</h2><div class="card plat-alert-list">${alerts.map(([icon,title,sub,action,tone])=>`<button class="plat-alert-row tone-${tone}" onclick="${action}"><span class="plat-alert-icon">${pIcon(icon,16)}</span><span><b>${title}</b><small>${sub}</small></span><span class="plat-alert-chevron">›</span></button>`).join('')}</div></section>` : `<div class="plat-health-strip">${pIcon('check',17)}<div><b>Hammasi joyida</b><small>Hozircha e'tibor talab qiladigan holat yo'q.</small></div></div>`}
 
-      <h2 class="plat-section-title">Tezkor amallar</h2>
-      <div class="plat-quick-actions">
-        ${s.botUsername ? `<a class="plat-quick-action" href="https://t.me/${escapeHtml(s.botUsername)}" target="_blank" rel="noopener">${pIcon('shop', 19)}<span>Do'konni ochish</span></a>` : `<button class="plat-quick-action" onclick="openPage('GUIDE_SHOP_SETUP')">${pIcon('shop', 19)}<span>Do'konni ulash</span></button>`}
-        <button class="plat-quick-action" onclick="switchTab('shops')">${pIcon('layers', 19)}<span>Do'konlarim</span></button>
-        <button class="plat-quick-action" onclick="switchTab('subscription')">${pIcon('diamond', 19)}<span>Obunani boshqarish</span></button>
-        <button class="plat-quick-action" onclick="switchTab('help')">${pIcon('chat', 19)}<span>Yordam</span></button>
-      </div>
-
-      ${alerts.length ? `
-        <h2 class="plat-section-title">Muhim holatlar</h2>
-        <div class="card plat-alert-list">
-          ${alerts.map(([icon, title, sub, action]) => `
-            <button type="button" class="plat-alert-row" onclick="${action}">
-              <span class="plat-alert-icon">${pIcon(icon, 16)}</span>
-              <span><b>${title}</b><small>${sub}</small></span>
-              <span class="plat-alert-chevron">${pIcon('chevronDown', 14)}</span>
-            </button>
-          `).join('')}
-        </div>` : `
-        <div class="card plat-all-ok"><span>${pIcon('check', 16)}</span><b>Hammasi joyida</b></div>`}
-
-      <div class="plat-section-title-row">
-        <h2 class="plat-section-title">UStorE imkoniyatlari</h2>
-        <button class="plat-link-btn plat-inline-link" onclick="openPage('GUIDE_USAGE')">Ko'proq ko'rish →</button>
-      </div>
-      <div class="plat-capability-grid">
-        ${capabilities.map(([icon, label]) => `<div class="plat-capability-card">${pIcon(icon, 18)}<span>${label}</span></div>`).join('')}
-      </div>
+      <section><h2 class="plat-section-title">Tezkor amallar</h2><div class="plat-quick-actions">
+        ${s.botUsername ? `<a class="plat-quick-action" href="https://t.me/${escapeHtml(s.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',19)}<span>Do'konni ochish</span></a>` : ''}
+        <button class="plat-quick-action" onclick="switchTab('shops')">${pIcon('layers',19)}<span>Do'konlarim</span></button>
+        <button class="plat-quick-action" onclick="switchTab('subscription')">${pIcon('diamond',19)}<span>Obuna</span></button>
+        <button class="plat-quick-action" onclick="switchTab('help')">${pIcon('headset',19)}<span>Yordam</span></button>
+      </div></section>
     `;
   }
   function toggleDashboardShopMenu(event) {
@@ -1025,57 +980,17 @@
   }
   function renderMyShopsTab() {
     const activeCount = myShops.filter((s) => s.status === 'ACTIVE').length;
-    const newShopCta = `
-      <button type="button" class="plat-new-shop-cta" onclick="openPage('TARIFFS')">
-        <span class="plat-new-shop-cta-icon">${pIcon('plus', 18)}</span>
-        <span><b>Yangi do'kon ochish</b><small>Yangi do'kon yaratish va botni ulash</small></span>
-      </button>`;
-    if (!myShops.length) {
-      return `
-        <div class="plat-shops-header">
-          <div class="plat-shops-header-icon">${pIcon('shop', 22)}</div>
-          <div><h1>Do'konlarim</h1><p class="muted">Sizda hozircha do'kon yo'q</p></div>
-        </div>
-        ${newShopCta}`;
-    }
+    const expiringCount = myShops.filter((s) => { const d = daysUntil(s.subscriptionExpiresAt); return d !== null && d >= 0 && d <= 7; }).length;
+    if (!myShops.length) return `<div class="plat-empty-pro"><span>${pIcon('shop',30)}</span><h1>Do'konlaringiz shu yerda ko'rinadi</h1><p>Birinchi do'konni yaratish uchun tarifni tanlang.</p><button class="primary" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon yaratish</button></div>`;
     return `
-      <div class="plat-shops-header">
-        <div class="plat-shops-header-icon">${pIcon('shop', 22)}</div>
-        <div><h1>Do'konlarim</h1><p class="muted">${myShops.length} ta do'kon · <span class="is-ok">${activeCount} ta faol</span></p></div>
-        <button class="primary plat-small-btn plat-shops-header-cta" onclick="openPage('TARIFFS')">${pIcon('plus', 14)} Yangi do'kon</button>
-      </div>
-      <div class="plat-tip-banner">
-        <span>${pIcon('bolt', 16)}</span>
-        <div><b>Yangi do'kon ochish 2 daqiqadan kam vaqt oladi.</b><p>Bot yaratish, to'lov ulash va do'konni sozlash oson!</p></div>
-      </div>
-      <div class="plat-shop-card-list">${myShops.map((s) => `
-        <div class="card plat-shop-card-v2">
-          <div class="plat-shop-card-v2-head">
-            <span class="plat-shop-avatar">${shopAvatarHtml(s)}</span>
-            <div class="plat-shop-card-v2-title">
-              <b>${escapeHtml(s.shopName || (s.botUsername ? '@' + s.botUsername : s.publicCode))}</b>
-              <span class="status-pill status-${s.status}">${statusLabel(s.status)}</span>
-              ${s.shopName && s.botUsername ? `<small>@${escapeHtml(s.botUsername)}</small>` : ''}
-            </div>
-            ${s.subscriptionExpiresAt ? (() => { const left = daysUntil(s.subscriptionExpiresAt); const warn = left !== null && left <= 7; return `<div class="plat-shop-days-pill ${warn ? 'is-warn' : 'is-ok'}">${pIcon('calendar', 14)}<span>${left <= 0 ? 'Tugagan' : `${left} kun qoldi`}</span></div>`; })() : ''}
-          </div>
-          <div class="plat-shop-metrics">
-            <div><b>${s.usedProductCount}</b><small>mahsulot</small></div>
-            <div><b>${s.usedOrderCount}</b><small>buyurtma</small></div>
-            <div><b>${escapeHtml(s.tariffName || 'Tarifsiz')}</b><small>joriy tarif</small></div>
-          </div>
-          <div class="plat-shop-card-actions">
-            ${s.botUsername ? `<a class="secondary plat-small-btn" href="https://t.me/${escapeHtml(s.botUsername)}" target="_blank" rel="noopener">${pIcon('shop', 14)} Do'konni ochish</a>` : '<span></span>'}
-            <button class="secondary plat-small-btn" onclick="openMyShopManage('${s.id}')">${pIcon('gear', 14)} Boshqarish</button>
-          </div>
-          ${shopStatusRowHtml(s)}
-        </div>
-      `).join('')}</div>
-      ${newShopCta}
-      <div class="plat-grow-banner">
-        <span>🎁</span>
-        <div><b>Do'konlaringizni rivojlantiring!</b><p>Marketing vositalari, chegirmalar, aksiyalar va statistika bilan sotuvlaringizni oshiring.</p></div>
-      </div>
+      <div class="plat-tab-head"><div><h1>Do'konlarim</h1><p>${myShops.length} ta do'kon</p></div><button class="primary plat-compact-cta" onclick="startNewShopFlow()">${pIcon('plus',14)} Yangi do'kon</button></div>
+      <div class="plat-summary-strip"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length}</b><small>Do'kon</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-amber">${pIcon('calendar',16)}</span><b>${expiringCount}</b><small>Tez tugaydi</small></div></div>
+      <div class="plat-shop-pro-list">${myShops.map((s)=>{ const left=daysUntil(s.subscriptionExpiresAt); const limit=s.productLimit??null; const used=Number(s.usedProductCount||0); const pct=limit?Math.min(100,Math.round(used/limit*100)):null; const warn=left!==null&&left<=7; return `
+        <article class="plat-shop-pro-card ${warn?'is-expiring':''}">
+          <div class="plat-shop-pro-head"><span class="plat-shop-avatar plat-shop-avatar-lg">${shopAvatarHtml(s)}</span><div><h2>${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</h2>${s.botUsername?`<p>@${escapeHtml(s.botUsername)}</p>`:''}<div class="plat-shop-badges"><span class="status-pill status-${s.status}">${statusLabel(s.status)}</span><span class="plan-pill">${escapeHtml(s.tariffName||'Tarifsiz')}</span></div></div><button class="plat-more-btn" aria-label="Obunani boshqarish" onclick="openMyShopManage('${s.id}')">•••</button></div>
+          <div class="plat-shop-pro-metrics"><div><span>${pIcon('box',15)}</span><b>${used}${limit!==null?` / ${limit}`:''}</b><small>mahsulot</small>${pct!==null?`<div class="mini-progress"><i style="width:${pct}%"></i></div>`:''}</div><div class="${warn?'is-warn':''}"><span>${pIcon('calendar',15)}</span><b>${left===null?'—':left<=0?'Tugagan':`${left} kun qoldi`}</b><small>${s.subscriptionExpiresAt?formatDate(s.subscriptionExpiresAt)+' gacha':'Obuna sanasi yo‘q'}</small>${left!==null&&left>0?`<div class="mini-progress time"><i style="width:${Math.max(4,Math.min(100,Math.round((30-Math.min(30,left))/30*100)))}%"></i></div>`:''}</div></div>
+          <div class="plat-shop-pro-actions">${s.botUsername?`<a class="primary plat-small-btn" href="https://t.me/${escapeHtml(s.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',14)} Do'konni ochish</a>`:''}<button class="secondary plat-small-btn" onclick="openMyShopManage('${s.id}')">${pIcon('gear',14)} Obunani boshqarish</button></div>
+        </article>`; }).join('')}</div>
     `;
   }
   // Ehtiyot: platform.js'da admin tarafda AYNAN shu nomdagi
@@ -1086,34 +1001,22 @@
   function openMyShopManage(shopId) { dashboardShopId = shopId; switchTab('subscription'); }
 
   function renderSubscriptionTab() {
-    if (!myShops.length) {
-      return `<p class="muted">Sizda hali do'kon yo'q — obuna sotib olish uchun avval tarif tanlang.</p><button class="primary" onclick="openPage('TARIFFS')">Tarif tanlash</button>`;
-    }
-    if (!dashboardShopId || !myShops.some((s) => s.id === dashboardShopId)) dashboardShopId = myShops[0].id;
-    const s = myShops.find((sh) => sh.id === dashboardShopId) || myShops[0];
-    const left = daysUntil(s.subscriptionExpiresAt);
-    const warn = left !== null && left <= 7;
+    if (!dashboardShopId || !myShops.some((s) => s.id === dashboardShopId)) dashboardShopId = myShops[0]?.id || null;
+    const s = myShops.find((sh) => sh.id === dashboardShopId) || myShops[0] || null;
+    if (!myShops.length) return `<div class="plat-empty-pro"><span>${pIcon('diamond',30)}</span><h1>Obuna tanlang</h1><p>Do'kon yaratish uchun avval mos tarifni tanlang.</p><button class="primary" onclick="startNewShopFlow()">Tariflarni ko'rish</button></div>`;
+    const activeCount = myShops.filter((s)=>s.status==='ACTIVE').length;
+    const expiringCount = myShops.filter((s)=>{const d=daysUntil(s.subscriptionExpiresAt); return d!==null&&d>=0&&d<=7;}).length;
+    const frozenCount = myShops.filter((s)=>s.status==='FROZEN').length;
+    // Current selected-shop tariff is passed to the shared tariff renderer: currentTariffId: s.tariffId
     return `
-      ${myShops.length > 1 ? `<label class="plat-shop-selector"><span class="muted">Do'kon</span><select onchange="setDashboardShop(this.value)">${myShops.map((sh) => `<option value="${sh.id}" ${sh.id === s.id ? 'selected' : ''}>${escapeHtml(sh.shopName || sh.botUsername || sh.publicCode)}</option>`).join('')}</select></label>` : ''}
-      <div class="card plat-subscription-summary">
-        <div class="plat-subscription-summary-top">
-          <span class="plat-shop-avatar plat-shop-avatar-lg">${pIcon('diamond', 20)}</span>
-          <div>
-            <p class="muted plat-tiny">Joriy tarifingiz</p>
-            <div class="plat-subscription-summary-name"><b>${escapeHtml(s.tariffName || 'Tarifsiz')}</b><span class="status-pill status-${s.status}">${statusLabel(s.status)}</span></div>
-            <p class="muted">Do'kon: ${escapeHtml(s.shopName || (s.botUsername ? '@' + s.botUsername : s.publicCode))}</p>
-          </div>
-        </div>
-        <div class="plat-subscription-summary-mid">
-          ${s.subscriptionExpiresAt ? `<div><p class="muted plat-tiny">Obuna tugash sanasi</p><b>${pIcon('calendar', 13)} ${formatDate(s.subscriptionExpiresAt)}</b><p class="${warn ? 'is-warn' : 'is-ok'} plat-tiny">${left <= 0 ? 'Tugagan' : `${left} kun qoldi`}</p></div>` : '<div><p class="muted">Obuna maʼlumoti yoʻq</p></div>'}
-        </div>
-        <div class="plat-subscription-summary-actions">
-          <button class="primary plat-small-btn" onclick="startExtendFor('${s.id}')">${pIcon('rocket', 14)} Obunani uzaytirish</button>
-          <button class="secondary plat-small-btn" onclick="startUpgradeFor('${s.id}')">Tarifni o'zgartirish</button>
-        </div>
-      </div>
+      <div class="plat-tab-head"><div><h1>Obunalar</h1><p>Barcha do'konlaringiz obunasini boshqaring</p></div></div>
+      <div class="plat-summary-strip"><div><span class="tone-violet">${pIcon('shop',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-amber">${pIcon('calendar',16)}</span><b>${expiringCount}</b><small>Tez tugaydi</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${frozenCount}</b><small>Muzlatilgan</small></div></div>
+      <div class="plat-subscription-cards">${myShops.map((s)=>{ const left=daysUntil(s.subscriptionExpiresAt); const limit=s.productLimit??null; const used=Number(s.usedProductCount||0); const pct=limit?Math.min(100,Math.round(used/limit*100)):null; const warn=left!==null&&left<=7; const tariff=tariffs.find((t)=>t.id===s.tariffId); return `<article class="plat-sub-card ${warn?'is-expiring':''}"><div class="plat-sub-card-head"><span class="plat-shop-avatar">${shopAvatarHtml(s)}</span><div><h2>${escapeHtml(s.shopName||s.botUsername||s.publicCode)}</h2>${s.botUsername?`<p>@${escapeHtml(s.botUsername)}</p>`:''}</div><span class="plan-pill">${escapeHtml(s.tariffName||'Tarifsiz')}</span></div><div class="plat-sub-card-grid"><div><b>${tariff?money(tariff.price):'—'}</b><small>Tarif narxi</small></div><div><b>${used}${limit!==null?` / ${limit}`:''}</b><small>Mahsulot limiti</small></div><div class="${warn?'is-warn':'is-ok'}"><b>${left===null?'—':left<=0?'Tugagan':`${left} kun qoldi`}</b><small>Obuna tugashiga</small></div><div><b>${s.subscriptionExpiresAt?formatDate(s.subscriptionExpiresAt):'—'}</b><small>Amal qiladi</small></div></div><div class="plat-sub-progress"><span>Obuna muddati</span><div><i style="width:${left===null?0:Math.max(3,Math.min(100,Math.round((30-Math.min(30,Math.max(0,left)))/30*100)))}%"></i></div></div><div class="plat-sub-card-actions"><button class="primary plat-small-btn" onclick="startExtendFor('${s.id}')">Obunani uzaytirish</button><button class="secondary plat-small-btn" onclick="startUpgradeFor('${s.id}')">Tarifni o'zgartirish</button></div></article>`;}).join('')}</div>
+      <button class="plat-new-shop-inline" onclick="startNewShopFlow()">${pIcon('plus',18)}<span><b>Yangi do'kon yaratish</b><small>Tarif tanlang va yangi do'kon oching</small></span><em>›</em></button>
+      <div class="plat-section-heading"><div><h2>Tariflar</h2><p>Oylik yoki yillik. Yillik obunada 2 oy bepul.</p></div></div>
       ${renderBillingToggle()}
-      ${renderTariffCards(false, { currentTariffId: s.tariffId, onSelectJs: `startUpgradeFor('${s.id}')`, ctaLabel: "Tanlash" })}
+      ${renderTariffCards(false, { currentTariffId: s.tariffId })}
+      <div class="plat-bonus-card plat-bonus-card-pro"><span class="plat-bonus-icon">${pIcon('gift',18)}</span><div><b>Birinchi obunada +7 kun bonus</b><p>Faqat yangi do'konning birinchi obunasida.</p></div></div>
     `;
   }
   function setDashboardShop(shopId) { dashboardShopId = shopId; render(); }
@@ -1134,41 +1037,25 @@
   const HELP_NAV_ROWS = [
     ['book', 'plat-help-icon-blue', "UStorE'dan foydalanish", 'Platforma imkoniyatlari va foydalanish bo‘yicha qo‘llanma', "openPage('GUIDE_USAGE')"],
     ['card', 'plat-help-icon-green', "To'lov va obuna", "Tariflar, to'lov usullari va obuna bo'yicha ma'lumot", "openPage('GUIDE_SUBSCRIPTION')"],
-    ['shop', 'plat-help-icon-orange', "Do'kon sozlash", "Do'konni yaratish, sozlash va botni ulash bo'yicha yordam", "openPage('GUIDE_SHOP_SETUP')"],
+    ['shop', 'plat-help-icon-orange', "Do'kon sozlash", "Do'konni yaratish va savdoga tayyorlash bo'yicha yordam", "openPage('GUIDE_SHOP_SETUP')"],
   ];
   function renderHelpTab() {
     return `
-      <div class="plat-help-hero">
-        <div><h1>Yordam markazi</h1><p class="muted">Savolingizga javob toping yoki biz bilan bog'laning</p></div>
-        <span class="plat-help-hero-icon">${pIcon('chat', 34)}</span>
-      </div>
-      <div class="plat-help-list">
-        ${HELP_NAV_ROWS.map(([icon, tone, title, desc, action]) => `
-          <button type="button" class="card plat-help-row" onclick="${action}">
-            <span class="plat-help-row-icon ${tone}">${pIcon(icon, 20)}</span>
-            <span class="plat-help-row-copy"><b>${title}</b><small>${desc}</small></span>
-            <span class="plat-help-row-chevron">${pIcon('back', 15)}</span>
-          </button>
-        `).join('')}
-        <div class="card plat-help-row plat-help-row-action">
-          <span class="plat-help-row-icon plat-help-icon-blue">${pIcon('headset', 20)}</span>
-          <span class="plat-help-row-copy"><b>Support bilan yozish</b><small>Bizning jamoa bilan chatda yozing, savollaringizga tez javob oling</small></span>
-          <button class="primary plat-small-btn" onclick="openSupportPage()">${pIcon('chat', 13)} Yozish</button>
-        </div>
-        <div class="card plat-help-row plat-help-row-action plat-help-row-green">
-          <span class="plat-help-row-icon plat-help-icon-green">${pIcon('mail', 20)}</span>
-          <span class="plat-help-row-copy"><b>Muammo haqida xabar berish</b><small>Xatolik yoki muammo haqida bizga xabar bering, tekshirib chiqamiz</small></span>
-          <button class="secondary plat-small-btn plat-btn-green" onclick="openPage('BUG_REPORT')">${pIcon('mail', 13)} Xabar berish</button>
-        </div>
-      </div>
-      <div class="plat-section-title-row">
-        <h2 class="plat-section-title">Tez-tez so'raladigan savollar</h2>
-        <button class="plat-link-btn plat-inline-link" onclick="openPage('FAQ_FULL')">Ko'proq ko'rish →</button>
-      </div>
-      <div class="card plat-faq-preview">
-        ${FAQ_PREVIEW_ITEMS.map((q) => `<button type="button" class="plat-faq-preview-row" onclick="openPage('FAQ_FULL')"><span class="plat-faq-preview-icon">?</span><span>${q}</span><span class="plat-faq-preview-chevron">${pIcon('back', 14)}</span></button>`).join('')}
-      </div>
+      <div class="plat-help-head"><div><h1>Qanday yordam kerak?</h1><p>Savolingizga javob toping yoki to'g'ridan-to'g'ri jamoamizga yozing.</p></div><span>${pIcon('headset',26)}</span></div>
+      <div class="plat-help-search">${pIcon('chat',17)}<input type="text" placeholder="Savolingizni yozing..." aria-label="Yordam qidiruvi" oninput="filterHelpItems(this.value)"></div>
+      <div class="plat-help-primary-actions"><button class="plat-help-primary-card support" onclick="openSupportPage()"><span>${pIcon('headset',22)}</span><div><b>Qo'llab-quvvatlashga yozish</b><small>Jamoamiz bilan chat orqali bog'laning.</small></div><em>›</em></button><button class="plat-help-primary-card bug" onclick="openPage('BUG_REPORT')"><span>${pIcon('mail',22)}</span><div><b>Muammo haqida xabar berish</b><small>Xatolik yoki muammoni batafsil yuboring.</small></div><em>›</em></button></div>
+      <button class="plat-my-tickets-link" onclick="openSupportPage()">${pIcon('inbox',17)}<span><b>Mening murojaatlarim</b><small>${mySupportTickets.length ? mySupportTickets.length + ' ta murojaat' : 'Murojaatlaringiz holatini kuzating'}</small></span><em>›</em></button>
+      <div class="plat-section-heading"><div><h2>Qo'llanmalar</h2><p>Kerakli bo'lim bo'yicha qisqa va aniq yordam.</p></div></div>
+      <div class="plat-help-guide-list">${HELP_NAV_ROWS.map(([icon,tone,title,desc,action])=>`<button onclick="${action}"><span class="plat-help-row-icon ${tone}">${pIcon(icon,19)}</span><div><b>${title}</b><small>${desc}</small></div><em>›</em></button>`).join('')}</div>
+      <div class="plat-section-heading"><div><h2>Ko'p so'raladigan savollar</h2></div><button class="plat-link-btn" onclick="openPage('FAQ_FULL')">Barchasi</button></div>
+      <div class="card plat-faq-preview">${FAQ_PREVIEW_ITEMS.map((q)=>`<button class="plat-faq-preview-row" onclick="openPage('FAQ_FULL')"><span class="plat-faq-preview-icon">?</span><span>${q}</span><span class="plat-faq-preview-chevron">›</span></button>`).join('')}</div>
     `;
+  }
+  function filterHelpItems(query) {
+    const q = String(query || '').trim().toLocaleLowerCase('uz');
+    document.querySelectorAll('.plat-help-guide-list button, .plat-faq-preview-row').forEach((el) => {
+      el.classList.toggle('hidden', !!q && !String(el.textContent || '').toLocaleLowerCase('uz').includes(q));
+    });
   }
   function renderFaqFullBody() {
     return `<div class="card plat-faq-card">
@@ -1201,51 +1088,39 @@
   }
   function renderGuideUsageBody() {
     return `
-      <p class="muted" style="margin-bottom:14px">Do'koningizni ochishdan birinchi buyurtmagacha bo'lgan yo'l — bosqichma-bosqich.</p>
-      ${guideStep(1, 'Tarifni tanlang', "Do'koningiz hajmiga mos tarifni tanlang.", `<button class="secondary plat-small-btn" style="margin-top:8px" onclick="openPage('TARIFFS')">Tariflarni ko'rish</button>`)}
-      ${guideStep(2, 'Obunani faollashtiring', "To'lovni amalga oshiring va chekni yuboring — tasdiqlangач do'koningiz ulanadi.")}
-      ${guideStep(3, "Do'kon botini ulang", "Yangi do'kon uchun 24 soat ichida, mavjud do'kon uchun darhol.")}
-      ${guideStep(4, 'Katalog yarating', "Do'kon botingiz ichida (Do'kon sozlamalari → Kataloglar) bo'limlarni tuzing.")}
-      ${guideStep(5, "Tovar qo'shing", "Har bir tovarga rasm, narx va qoldiqni kiriting.")}
-      ${guideStep(6, "To'lov usulini sozlang", "Naqd, karta yoki QR — do'kon botingizning To'lov sozlamalaridan.")}
-      ${guideStep(7, "Yetkazib berishni sozlang", "Bepul, aniq narxli, taksi yoki pochta — hududlar bo'yicha.")}
-      ${guideStep(8, 'Buyurtmalarni qabul qiling', "Mijozlar buyurtma bersa, do'kon botingizda ko'rinadi va boshqariladi.")}
+      <div class="plat-guide-hero tone-blue"><span>${pIcon('book',26)}</span><div><h2>UStorE'dan foydalanish</h2><p>Platformadan samarali foydalanish bo'yicha qo'llanma.</p></div></div>
+      <div class="plat-guide-card"><h3>Boshlash uchun 4 asosiy qadam</h3><div class="plat-guide-steps">${[['diamond','Tarif tanlang'],['shop',"Do'kon yarating"],['box',"Mahsulot qo'shing"],['bag','Buyurtmalarni qabul qiling']].map(([i,t],idx)=>`<div><em>${idx+1}</em><span>${pIcon(i,18)}</span><b>${t}</b></div>`).join('')}</div></div>
+      <div class="plat-guide-card"><h3>Batafsil yo'l</h3>
+        ${guideStep(1, 'Tarifni tanlang', "Do'koningiz hajmiga mos tarifni tanlang.", `<button class="secondary plat-small-btn" style="margin-top:8px" onclick="openPage('TARIFFS')">Tariflarni ko'rish</button>`)}
+        ${guideStep(2, 'Obunani faollashtiring', "To'lovni amalga oshiring va tasdiqlanishini kuting.")}
+        ${guideStep(3, "Do'kon tayyorlanadi", "Tasdiqlangach UStorE administratori do'konni ulaydi; sizdan bot token talab qilinmaydi.")}
+        ${guideStep(4, 'Katalog yarating', "Do'kon ichida kategoriyalarni tuzing.")}
+        ${guideStep(5, "Mahsulot qo'shing", "Rasm, narx va qoldiqni kiriting.")}
+        ${guideStep(6, "To'lov usulini sozlang", "Click / Payme yoki mavjud to'lov usullarini sozlang.")}
+        ${guideStep(7, "Yetkazib berishni sozlang", "Hudud va usul bo'yicha yetkazib berishni moslang.")}
+        ${guideStep(8, 'Buyurtmalarni qabul qiling', "Mijozlar buyurtmalarini kuzating va boshqaring.")}
+      </div>
+      <button class="primary" onclick="openSupportPage()">${pIcon('headset',16)} Javob topmadingizmi? Supportga yozing</button>
     `;
   }
   function renderGuideSubscriptionBody() {
     return `
-      <p class="muted" style="margin-bottom:14px">Tariflar, to'lov va obuna qanday ishlashi haqida.</p>
-      <div class="card"><b>Tariflar nima uchun farq qiladi?</b><p class="muted" style="margin-top:6px">Har bir tarif do'koningizga qo'shishingiz mumkin bo'lgan mahsulotlar sonini belgilaydi. Ko'proq mahsulot kerak bo'lsa — yuqoriroq tarifga o'tasiz.</p></div>
-      <div class="card"><b>🎁 Birinchi obunada +7 kun bonus</b><p class="muted" style="margin-top:6px">Do'koningizni birinchi marta ulaganda, standart 30 kun ustiga yana 7 kun bepul qo'shiladi — jami 37 kun.</p></div>
-      <div class="card"><b>To'lov qanday amalga oshiriladi?</b><p class="muted" style="margin-top:6px">Hozircha karta orqali to'lov qilib, chek yuborasiz. UStorE Admin tekshirib tasdiqlaydi.</p></div>
-      <div class="card"><b>Obuna muddati tugasa nima bo'ladi?</b><p class="muted" style="margin-top:6px">Do'kon avval muzlatiladi (ma'lumotlar saqlanadi), obunani yangilasangiz darhol qayta faollashadi.</p></div>
-      <div class="card"><b>Tarifni oshirish mumkinmi?</b><p class="muted" style="margin-top:6px">Ha — istalgan vaqt yuqoriroq tarifni tanlab, obunangizni yangilashingiz mumkin.</p></div>
-      <button class="primary" style="margin-top:10px" onclick="switchTab('subscription')">Obunamni ko'rish</button>
+      <div class="plat-guide-hero tone-green"><span>${pIcon('card',26)}</span><div><h2>To'lov va obuna</h2><p>Tarif, to'lov va obuna boshqaruvi bo'yicha yordam.</p></div></div>
+      <div class="plat-guide-card"><h3>Asosiy ma'lumot</h3><div class="plat-guide-row"><span>${pIcon('calendar',17)}</span><b>Standart obuna — 30 kun</b></div><div class="plat-guide-row"><span>${pIcon('gift',17)}</span><b>Birinchi obuna +7 kun bonus</b></div><div class="plat-guide-row"><span>${pIcon('diamond',17)}</span><b>Yillik obunada 2 oy bepul</b></div></div>
+      <div class="plat-guide-card"><h3>Obuna savollari</h3>${[["Tarifni qanday almashtiraman?","Obuna bo'limida do'konni tanlab yangi tarifni belgilang."],["Obuna tugasa nima bo'ladi?","Do'kon avval muzlatiladi, ma'lumotlar 30 kun saqlanadi."],["To'lov qanday tasdiqlanadi?","To'lov so'rovi UStorE Admin tomonidan tekshiriladi."]].map(([q,a])=>`<div class="plat-guide-faq"><b>${q}</b><p>${a}</p></div>`).join('')}</div>
+      <button class="primary" onclick="switchTab('subscription')">${pIcon('diamond',16)} Obunalarimni ko'rish</button>
+      <button class="secondary" onclick="openSupportPage()">${pIcon('headset',16)} To'lov bo'yicha yordam olish</button>
     `;
   }
   function renderGuideShopSetupBody() {
     const myShop = myShops[0] || null;
     return `
-      <p class="muted" style="margin-bottom:14px">Do'koningizni savdoga tayyorlash uchun qadamlar — bular do'kon botingizning o'zida bajariladi.</p>
-      ${guideStep(1, "Do'kon ma'lumotlari", "Logotip, nom, manzil, telefon — Do'kon sozlamalari → Do'kon haqida.")}
-      ${guideStep(2, 'Katalog', "Bo'limlarni (kategoriyalarni) tuzing.")}
-      ${guideStep(3, 'Tovar', "Rasm, nom, tavsif bilan tovar qo'shing.")}
-      ${guideStep(4, 'Narx/qoldiq', "Har bir tovarga narx va ombordagi sonini kiriting.")}
-      ${guideStep(5, "To'lov usuli", "Naqd/karta/QR — qaysi hududda qaysi usul ishlashini belgilang.")}
-      ${guideStep(6, "Yetkazib berish", "Bepul/aniq narx/taksi/pochta usullarini sozlang.")}
-      ${guideStep(7, 'Test buyurtma', "O'zingiz mijoz sifatida sinab ko'ring.")}
-      ${myShop?.botUsername ? `<a class="plat-link-btn" style="margin-top:10px" href="https://t.me/${escapeHtml(myShop.botUsername)}" target="_blank" rel="noopener">Do'kon botimni ochish →</a>`
-        : `<button class="primary" style="margin-top:10px" onclick="openPage('TARIFFS')">Tarif tanlab boshlash</button>`}
+      <div class="plat-guide-hero tone-orange"><span>${pIcon('shop',26)}</span><div><h2>Do'kon sozlash</h2><p>Do'konni savdoga tayyorlash bo'yicha yordam.</p></div></div>
+      <div class="plat-guide-card"><h3>Boshlash uchun 5 qadam</h3><div class="plat-guide-timeline">${[['diamond','Tarif tanlang'],['shop',"Do'kon ma'lumotlari"],['box',"Mahsulot qo'shing"],['truck',"To'lov va yetkazib berish"],['rocket','Savdoni ishga tushiring']].map(([i,t],idx)=>`<div><em>${idx+1}</em><span>${pIcon(i,17)}</span><b>${t}</b></div>`).join('')}</div></div>
+      <div class="plat-guide-card"><h3>Muhim sozlamalar</h3>${[['info',"Do'kon ma'lumotlari"],['box','Katalog va mahsulotlar'],['truck','Yetkazib berish parametrlar'],['card','Click / Payme / ekvayring'],['layers','BILLZ integratsiyasi']].map(([i,t])=>`<div class="plat-guide-row"><span>${pIcon(i,17)}</span><b>${t}</b><em>›</em></div>`).join('')}</div>
+      ${myShop?.botUsername ? `<a class="primary plat-link-primary" href="https://t.me/${escapeHtml(myShop.botUsername)}" target="_blank" rel="noopener">Do'konni ochish</a>` : `<button class="primary" onclick="openPage('TARIFFS')">Tarif tanlab boshlash</button>`}
+      <button class="secondary" onclick="openSupportPage()">${pIcon('headset',16)} Do'kon sozlash bo'yicha yordam</button>
     `;
-  }
-
-  // ======================================================================
-  // 4.4-band: Support bilan yozish (foydalanuvchi tomoni)
-  // ======================================================================
-  function supportStatusLabel(s) {
-    if (s === 'OPEN') return "🟡 Javob kutilmoqda";
-    if (s === 'ANSWERED') return "🟢 Javob berildi";
-    return "⚪ Yopilgan";
   }
   function openSupportPage() { openPage('SUPPORT'); loadMySupportTickets(); }
   async function loadMySupportTickets() {
@@ -1262,22 +1137,11 @@
   }
   function renderSupportBody() {
     return `
-      <div class="card">
-        <h2>Yangi xabar</h2>
-        <textarea id="plat-support-new-msg" rows="3" placeholder="Savolingizni yozing..." style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid #d7e3f8; font-size:13px; font-family:inherit; resize:vertical"></textarea>
-        <button class="primary" style="margin-top:8px" onclick="submitNewSupportMessage()">Yuborish</button>
-      </div>
-      ${mySupportTicketsLoading ? `<p class="muted">Yuklanmoqda...</p>` : mySupportTickets.length ? `
-        <h2 style="font-size:13px; margin:14px 0 8px">Murojaatlarim</h2>
-        <div class="plat-shop-pick-list">
-          ${mySupportTickets.map((t) => `
-            <div class="plat-shop-pick-row" onclick="openSupportThread(${t.id})">
-              <div><div class="name">#${t.id}${t.subject ? ' — ' + escapeHtml(t.subject) : ''}</div><div class="meta">${formatDate(t.createdAt)}</div></div>
-              <span class="status-pill status-${t.status === 'ANSWERED' ? 'ACTIVE' : t.status === 'CLOSED' ? 'DISABLED' : 'PROVISIONING'}">${supportStatusLabel(t.status)}</span>
-            </div>
-          `).join('')}
-        </div>
-      ` : `<p class="empty">Hozircha murojaat yo'q.</p>`}
+      <div class="plat-support-hero"><span>${pIcon('headset',30)}</span><div><h2>Qo'llab-quvvatlash</h2><p>Savolingizni yuboring, jamoamiz javob beradi.</p></div></div>
+      <div class="plat-support-meta"><span>${pIcon('chat',15)} UStorE Support</span><span>${pIcon('bell',15)} Javob Telegram orqali ham keladi</span></div>
+      <div class="plat-support-compose"><textarea id="plat-support-new-msg" rows="3" placeholder="Savolingizni yozing..."></textarea><button class="primary" onclick="submitNewSupportMessage()">${pIcon('chat',15)} Yuborish</button></div>
+      <div class="plat-section-heading"><div><h2>Mening murojaatlarim</h2><p>Yangi, javob berilgan va tugallangan murojaatlar.</p></div></div>
+      ${mySupportTicketsLoading ? `<div class="plat-support-loading">Yuklanmoqda...</div>` : mySupportTickets.length ? `<div class="plat-ticket-list">${mySupportTickets.map((t)=>`<button onclick="openSupportThread(${t.id})"><span class="plat-ticket-icon">${pIcon('inbox',16)}</span><div><b>#${t.id}${t.subject?' · '+escapeHtml(t.subject):''}</b><small>${formatDate(t.createdAt)}</small></div><span class="status-pill status-${t.status==='ANSWERED'?'ACTIVE':t.status==='CLOSED'?'DISABLED':'PROVISIONING'}">${supportStatusLabel(t.status)}</span><em>›</em></button>`).join('')}</div>` : `<div class="plat-empty-inline">Hozircha murojaat yo'q.</div>`}
     `;
   }
   async function submitNewSupportMessage() {
@@ -1311,16 +1175,10 @@
   }
   function renderSupportThreadBody() {
     return `
-      ${activeSupportLoading ? `<p class="muted">Yuklanmoqda...</p>` : activeSupportMessages.map((m) => `
-        <div class="card" style="${m.sender === 'ADMIN' ? 'border-color:#93c5fd' : ''}">
-          <p class="muted" style="margin:0 0 4px">${m.sender === 'ADMIN' ? 'UStorE Support' : 'Siz'} · ${formatDate(m.createdAt)}</p>
-          <p style="margin:0; white-space:pre-wrap">${escapeHtml(m.body)}</p>
-          ${m.attachmentUrl ? `<img src="${escapeHtml(m.attachmentUrl)}" style="max-width:100%; margin-top:8px; border-radius:10px">` : ''}
-        </div>
-      `).join('')}
-      <div class="card">
-        <textarea id="plat-support-reply-msg" rows="2" placeholder="Javob yozing..." style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid #d7e3f8; font-size:13px; font-family:inherit; resize:vertical"></textarea>
-        <button class="primary" style="margin-top:8px" ${sendingSupportMessage ? 'disabled' : ''} onclick="sendSupportReply()">${sendingSupportMessage ? 'Yuborilmoqda...' : 'Javob yuborish'}</button>
+      <div class="plat-chat-shell">
+        <div class="plat-chat-info"><span>${pIcon('headset',24)}</span><div><b>UStorE Support</b><small>Murojaat #${escapeHtml(String(activeSupportTicketId || ''))}</small></div></div>
+        <div class="plat-chat-messages">${activeSupportLoading ? `<p class="muted">Yuklanmoqda...</p>` : activeSupportMessages.length ? activeSupportMessages.map((m)=>`<div class="plat-chat-msg ${m.sender==='ADMIN'?'support':'mine'}"><div>${m.sender==='ADMIN'?'<b>UStorE Support</b>':''}<p>${escapeHtml(m.body)}</p>${m.attachmentUrl?`<img src="${escapeHtml(m.attachmentUrl)}" alt="Biriktirma">`:''}<small>${formatDate(m.createdAt)}</small></div></div>`).join('') : `<div class="plat-chat-empty">Suhbat shu yerda boshlanadi.</div>`}</div>
+        <div class="plat-chat-compose"><textarea id="plat-support-reply-msg" rows="2" placeholder="Xabaringizni yozing..."></textarea><button class="primary" ${sendingSupportMessage?'disabled':''} onclick="sendSupportReply()">${pIcon('chat',15)} ${sendingSupportMessage?'Yuborilmoqda...':'Yuborish'}</button></div>
       </div>
     `;
   }
@@ -1354,39 +1212,17 @@
     rerenderActivePage();
   }
   function renderBugReportBody() {
-    if (bugReportSent) {
-      return `
-        <div class="card plat-center">
-          <div style="font-size:40px">✅</div>
-          <h2 style="margin-top:8px">Xabaringiz yuborildi</h2>
-          <p class="muted">UStorE jamoasi tez orada ko'rib chiqadi. Agar javob kerak bo'lsa, Telegram orqali bog'lanamiz.</p>
-          <button class="secondary" onclick="bugReportSent=false; switchTab('help');">Yordamga qaytish</button>
-        </div>
-      `;
-    }
+    if (bugReportSent) return `<div class="plat-success-state"><span>${pIcon('check',30)}</span><h2>Xabaringiz yuborildi</h2><p>UStorE jamoasi murojaatingizni ko'rib chiqadi.</p><button class="primary" onclick="bugReportSent=false; switchTab('help');">Yordamga qaytish</button></div>`;
     return `
-      <div class="card">
-        <label>Sarlavha</label>
-        <input type="text" id="plat-bugreport-title" placeholder="Muammoni qisqa ta'riflang">
-        <label>Qaysi bo'limda?</label>
-        <select id="plat-bugreport-section">
-          <option value="">Tanlanmagan</option>
-          <option value="Obuna">Obuna</option>
-          <option value="To'lov">To'lov</option>
-          <option value="Do'kon">Do'kon</option>
-          <option value="Boshqa">Boshqa</option>
-        </select>
-        <label>Tavsif</label>
-        <textarea id="plat-bugreport-desc" rows="4" placeholder="Nima bo'lganini batafsil yozing..." style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid #d7e3f8; font-size:13px; font-family:inherit; resize:vertical"></textarea>
-        <label>Skrinshot (ixtiyoriy)</label>
-        <input type="file" id="plat-bugreport-input" accept="image/*" class="hidden" onchange="onBugReportAttachmentPicked(event)">
-        <input type="file" id="plat-bugreport-input-files" class="hidden" onchange="onBugReportAttachmentPicked(event)">
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px">
-          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-bugreport-input').click()">🖼 Galereyadan tanlash</button>
-          <button class="secondary" style="flex:1; margin-top:0" onclick="document.getElementById('plat-bugreport-input-files').click()">📁 Fayllardan tanlash</button>
-        </div>
-        ${bugReportAttachmentPreviewUrl ? `<img src="${bugReportAttachmentPreviewUrl}" class="plat-receipt-preview">` : ''}
-        <button class="primary ${submittingBugReport ? 'plat-btn-dimmed' : ''}" style="margin-top:14px" onclick="submitBugReport()">${submittingBugReport ? '<span class="spinner"></span> Yuborilmoqda...' : 'Yuborish'}</button>
+      <div class="plat-guide-hero tone-orange"><span>${pIcon('mail',27)}</span><div><h2>Muammo haqida xabar berish</h2><p>Xatolik yoki muammoni batafsil yuboring.</p></div></div>
+      <div class="plat-bug-form">
+        <label>Muammo mavzusi</label><select id="plat-bugreport-section"><option value="">Tanlang</option><option value="Obuna">To'lov / obuna</option><option value="Do'kon">Do'kon</option><option value="Yordam">Yordam</option><option value="Boshqa">Boshqa</option></select>
+        <label>Muammo nomi</label><input type="text" id="plat-bugreport-title" placeholder="Qisqacha nom kiriting">
+        <label>Muammo tavsifi</label><textarea id="plat-bugreport-desc" rows="5" maxlength="2000" placeholder="Muammo haqida batafsil yozing..."></textarea>
+        <label>Screenshot / fayl (ixtiyoriy)</label><input type="file" id="plat-bugreport-input" class="hidden" onchange="onBugReportAttachmentPicked(event)"><button class="plat-file-pick" onclick="document.getElementById('plat-bugreport-input').click()">${pIcon('plus',16)} Fayl tanlash <small>JPG, PNG, WEBP · max 6 MB</small></button>
+        ${bugReportAttachmentPreviewUrl?`<img src="${bugReportAttachmentPreviewUrl}" class="plat-receipt-preview">`:''}
+        <div class="plat-bug-process"><b>Yuborilgandan keyin</b><div><span>1</span><small>Qabul qilinadi</small><span>2</span><small>Tekshiriladi</small><span>3</span><small>Javob beriladi</small></div></div>
+        <button class="primary ${submittingBugReport?'plat-btn-dimmed':''}" onclick="submitBugReport()">${submittingBugReport?'<span class="spinner"></span> Yuborilmoqda...':`${pIcon('mail',15)} Xabar berish`}</button>
       </div>
     `;
   }
@@ -1476,30 +1312,21 @@
 
   function renderProfileTab() {
     const user = tg?.initDataUnsafe?.user || {};
+    const activeSubs = myShops.filter((s)=>s.status==='ACTIVE').length;
+    const expiryDays = myShops.map((s)=>daysUntil(s.subscriptionExpiresAt)).filter((d)=>d!==null&&d>=0).sort((a,b)=>a-b);
+    const nearest = expiryDays.length ? expiryDays[0] : null;
+    const fullName = [user.first_name,user.last_name].filter(Boolean).join(' ') || 'Foydalanuvchi';
     return `
-      <div class="card plat-profile-card">
-        ${user.photo_url ? `<img src="${escapeHtml(user.photo_url)}" class="plat-profile-photo">` : '<div class="plat-profile-photo plat-profile-photo-fallback">👤</div>'}
-        <div>
-          <b>${escapeHtml([user.first_name, user.last_name].filter(Boolean).join(' ') || 'Foydalanuvchi')}</b>
-          <p class="muted">${user.username ? '@' + escapeHtml(user.username) : `ID: ${escapeHtml(String(user.id || ''))}`}</p>
-        </div>
-      </div>
-      <div class="card plat-profile-menu">
-        ${isAdminMode ? `<div class="plat-profile-row plat-clickable" onclick="openAdminSupportPage()"><span>Support</span><span>›</span></div>` : ''}
-        <div class="plat-profile-row"><span>UStorE haqida</span><span>›</span></div>
-        <div class="plat-profile-row plat-clickable" onclick="openPrivacyPage()"><span>Maxfiylik siyosati</span><span>›</span></div>
-        <div class="plat-profile-row plat-clickable" onclick="openTermsPage()"><span>Foydalanish shartlari</span><span>›</span></div>
-      </div>
-      ${isSuperAdmin ? `<button class="primary" onclick="toggleAdminRole()">${isAdminMode ? "👤 Foydalanuvchi rejimiga o'tish" : '🛡 Admin rejimiga o\'tish'}</button>` : ''}
+      <div class="plat-tab-head"><div><h1>Profil</h1><p>Telegram akkauntingiz va UStorE ma'lumotlari</p></div></div>
+      <section class="plat-profile-hero">${user.photo_url?`<img src="${escapeHtml(user.photo_url)}" class="plat-profile-photo">`:`<div class="plat-profile-photo plat-profile-photo-fallback">${escapeHtml(fullName.charAt(0))}</div>`}<div class="plat-profile-main"><h2>${escapeHtml(fullName)}</h2><p>${user.username?'@'+escapeHtml(user.username):'Telegram foydalanuvchi'}</p><small>${pIcon('user',13)} Telegram ID: ${escapeHtml(String(user.id||''))}</small></div></section>
+      <div class="plat-profile-stats"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length} ta</b><small>do'kon ulangan</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${activeSubs} ta</b><small>faol obuna</small></div><div><span class="tone-violet">${pIcon('calendar',16)}</span><b>${nearest===null?'—':nearest+' kun'}</b><small>eng yaqin tugash</small></div></div>
+      <h2 class="plat-profile-section-title">Hisob va sozlamalar</h2><div class="plat-profile-list"><div><span class="tone-blue">${pIcon('globe',17)}</span><b>Til</b><em>O'zbekcha</em></div><div><span class="tone-violet">${pIcon('bell',17)}</span><b>Bildirishnomalar</b><em>Telegram orqali</em></div><button onclick="switchTab('shops')"><span class="tone-green">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-orange">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button></div>
+      <h2 class="plat-profile-section-title">UStorE</h2><div class="plat-profile-list"><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-green">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-violet">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
+      ${isAdminMode ? `<div class="plat-profile-row plat-clickable" onclick="openAdminSupportPage()"><span>Support</span><span>›</span></div>` : ''}
+      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Akkaunt Telegram profilingiz bilan bog'langan</b><small>Alohida login yoki parol talab qilinmaydi.</small></div>${pIcon('check',18)}</div>
+      ${isSuperAdmin?`<button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('lock',22)}</span><div><b>${isAdminMode?'Foydalanuvchi rejimi':'Admin rejimi'}</b><small>${isAdminMode?'Platformaning foydalanuvchi qismiga qaytish':'Platformani boshqarish'}</small></div><em>O'tish →</em></button>`:''}
+      <div class="plat-version">UStorE · 2026</div>
     `;
-  }
-
-  // ======================================================================
-  // ADMIN: Dashboard
-  // ======================================================================
-  async function loadDashboardSummary() {
-    try { dashboardSummary = await callPlatformApi('platform_admin_dashboard_summary', {}); render(); }
-    catch (e) { console.error(e); }
   }
   function renderAdminDashboardTab() {
     const s = dashboardSummary;
@@ -2053,6 +1880,8 @@
   window.closeTermsPrivacyPage = closeTermsPrivacyPage;
   window.setConsentAccepted = setConsentAccepted;
   window.selectTariffAndContinue = selectTariffAndContinue;
+  window.startNewShopFlow = startNewShopFlow;
+  window.startNewShopWithTariff = startNewShopWithTariff;
   window.chooseNewShop = chooseNewShop;
   window.chooseUpgrade = chooseUpgrade;
   window.pickUpgradeShop = pickUpgradeShop;
@@ -2077,6 +1906,7 @@
   window.toggleUzumAccess = toggleUzumAccess;
   // 4.4/4.5-band: Yordam bo'limi
   window.openSupportPage = openSupportPage;
+  window.filterHelpItems = filterHelpItems;
   window.submitNewSupportMessage = submitNewSupportMessage;
   window.openSupportThread = openSupportThread;
   window.sendSupportReply = sendSupportReply;
