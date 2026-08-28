@@ -903,10 +903,14 @@
     // Click.uz avtomatik to'lov integratsiyasi — Billz bilan bir xil
     // ruxsat-darvoza naqshi (platforma bosh admin ruxsat berganda true).
     let clickAccessGranted = false;
-    let clickConnectionStatus = null; // {status, merchantId, serviceId}
+    let clickConnectionStatus = null; // {status, merchantId, serviceId, verified}
+    // 048-band: ulangandan keyin, xaridorlarga ochilishidan OLDIN majburiy
+    // 3 marta real "Sinash" — {verified, confirmedCount, pending}.
+    let clickTestProgress = null;
     // Payme/Uzum avtomatik to'lov integratsiyasi — Click bilan bir xil naqsh.
     let paymeAccessGranted = false;
-    let paymeConnectionStatus = null; // {status, merchantId, login}
+    let paymeConnectionStatus = null; // {status, merchantId, login, verified}
+    let paymeTestProgress = null;
     let uzumAccessGranted = false;
     let uzumConnectionStatus = null; // {status, terminalId}
     // Billz Phase 2 — katalog ko'rish/import holati.
@@ -12648,17 +12652,81 @@
 
     // Click.uz avtomatik to'lov integratsiyasi — Billz sozlamalari bilan bir
     // xil naqsh (openBillzSettings/connectBillz/disconnectBillz nusxasi).
+    // 048-band: Click va Payme uchun bir xil "Sinash" bloki — ulangandan
+    // keyin, xaridorlarga ochilishidan oldin 3 marta real tasdiqlangan
+    // to'lov talab qilinadi. Foydalanuvchi so'ragan aniq ogohlantirish matni
+    // (o'zim yozib berganim, "3 marta sinov" talabini tushuntiradi).
+    function clickPaymentVerifyBlockHtml(provider, progress) {
+      const confirmed = progress?.confirmedCount || 0;
+      const pending = progress?.pending || null;
+      const isClick = provider === 'click';
+      return `
+        <div class="fc-checkout-notice">
+          <b>⚠️ ${tr("Avtomatik to'lovni sinab ko'rish shart", "Обязательно протестируйте автоматическую оплату")}</b>
+          <p class="mt-1">${tr(
+            "Bu — avtomatik tizim, texnik sabablarga ko'ra ba'zan noto'g'ri ishlashi mumkin. Shuning uchun xaridorlaringizga ko'rsatishdan oldin, pastdagi \"Sinash\" tugmasi orqali 3 marta sinov to'lovini albatta amalga oshiring. Faqat uchalasi ham muvaffaqiyatli o'tib, botingizda \"to'landi\" deb tasdiqlansagina, bu to'lov usuli xaridorlaringizga avtomatik ko'rinadi.",
+            "Это автоматическая система — иногда возможны технические сбои. Поэтому, прежде чем показывать этот способ покупателям, обязательно проведите 3 тестовых платежа кнопкой \"Тест\" ниже. Только когда все 3 подтвердятся оплатой в вашем боте, этот способ автоматически откроется для покупателей."
+          )}</p>
+        </div>
+        <div class="flex items-center justify-between gap-2 py-1">
+          <b class="text-gray-700">${tr('Tasdiqlangan sinovlar', 'Подтверждённые тесты')}</b>
+          <span class="fc-badge ${confirmed >= 3 ? 'fc-badge-success' : 'fc-badge-warning'}">${confirmed}/3</span>
+        </div>
+        ${pending ? `
+          <div class="fc-bg-warning-soft border fc-border-warning fc-text-warning p-2.5 rounded-xl">
+            ${isClick
+              ? tr("📲 Click ilovangizga to'lov so'rovi yuborilgan — tasdiqlang, so'ng shu yerga qayting.", "📲 В приложение Click отправлен запрос на оплату — подтвердите и вернитесь сюда.")
+              : tr("💳 To'lov sahifasi ochilgan edi — tasdiqlagan bo'lsangiz, holatni yangilang.", "💳 Была открыта страница оплаты — если оплатили, обновите статус.")}
+            <button onclick="${isClick ? 'refreshClickTestProgress()' : 'refreshPaymeTestProgress()'}" class="w-full mt-2 bg-white border fc-border-warning fc-text-warning font-bold py-2 rounded-xl">${tr('Holatni yangilash', 'Обновить статус')}</button>
+          </div>
+        ` : `
+          <label class="fc-mini-field"><span>${tr('Sinov summasi (so‘m)', 'Сумма теста (сум)')}</span><input type="number" id="${isClick ? 'click' : 'payme'}-test-amount-input" value="1000" min="500" max="50000" step="100"></label>
+          ${isClick ? `<label class="fc-mini-field"><span>${tr('Telefon raqamingiz (Click)', 'Ваш номер (Click)')}</span><input type="tel" id="click-test-phone-input" placeholder="998901234567"></label>` : ''}
+          <button onclick="${isClick ? 'startClickTestPayment()' : 'startPaymeTestPayment()'}" id="${isClick ? 'click' : 'payme'}-test-btn" class="w-full bg-amber-500 text-white font-bold py-2.5 rounded-xl">${tr('Sinash', 'Тест')}</button>
+        `}
+      `;
+    }
     async function openClickSettings() {
       activePopupModal = 'CLICK_SETTINGS';
       clickConnectionStatus = null;
+      clickTestProgress = null;
       render();
       try {
         clickConnectionStatus = await callApi('click_get_status', {});
+        if (clickConnectionStatus.status === 'CONNECTED' && !clickConnectionStatus.verified) await refreshClickTestProgress(false);
       } catch (e) {
         console.error(e);
-        clickConnectionStatus = { status: 'DISCONNECTED', merchantId: null, serviceId: null };
+        clickConnectionStatus = { status: 'DISCONNECTED', merchantId: null, serviceId: null, verified: false };
       }
       if (activePopupModal === 'CLICK_SETTINGS') render();
+    }
+    async function refreshClickTestProgress(shouldRender) {
+      try {
+        clickTestProgress = await callApi('click_test_progress', {});
+        if (clickTestProgress.verified && clickConnectionStatus) clickConnectionStatus = { ...clickConnectionStatus, verified: true };
+      } catch (e) { console.error(e); }
+      if (shouldRender !== false && activePopupModal === 'CLICK_SETTINGS') render();
+    }
+    // 048-band: "Sinash" — admin o'z Click ilovasiga kelgan real (kichik
+    // summali) to'lov so'rovini tasdiqlaydi; buni 3 marta qilgach avtomatik
+    // to'lov usuli xaridorlarga ochiladi (click_start_test_payment/
+    // click-webhook Complete birgalikda hisoblaydi — bu yerda faqat so'rov
+    // yuboriladi va progress oldindan aytilgan ogohlantirish bilan kuzatiladi).
+    async function startClickTestPayment() {
+      const amount = Math.max(500, Math.min(50000, Number(document.getElementById('click-test-amount-input')?.value) || 1000));
+      const phoneNumber = document.getElementById('click-test-phone-input')?.value.trim();
+      if (!phoneNumber) return alert(tr("Click ilovangizga bog'langan telefon raqamini kiriting.", "Введите номер телефона, привязанный к вашему приложению Click."));
+      const btn = document.getElementById('click-test-btn');
+      if (btn) { btn.disabled = true; btn.textContent = tr("Yuborilmoqda...", "Отправка..."); }
+      try {
+        const result = await callApi('click_start_test_payment', { amount, phoneNumber });
+        showActionToast(tr(`📲 ${result.attemptNumber}/3 — Click ilovangizga to'lov so'rovi yuborildi, tasdiqlang.`, `📲 ${result.attemptNumber}/3 — запрос отправлен в приложение Click, подтвердите.`), 'success', 3500);
+        await refreshClickTestProgress();
+      } catch (e) {
+        console.error(e);
+        alert(tr("Sinov to'lovini yuborib bo'lmadi: ", "Не удалось отправить тестовый платёж: ") + (e.message || e));
+        if (btn) { btn.disabled = false; btn.textContent = tr("Sinash", "Тест"); }
+      }
     }
     async function connectClick() {
       const merchantId = document.getElementById('click-merchant-id-input')?.value.trim();
@@ -12700,14 +12768,38 @@
     async function openPaymeSettings() {
       activePopupModal = 'PAYME_SETTINGS';
       paymeConnectionStatus = null;
+      paymeTestProgress = null;
       render();
       try {
         paymeConnectionStatus = await callApi('payme_get_status', {});
+        if (paymeConnectionStatus.status === 'CONNECTED' && !paymeConnectionStatus.verified) await refreshPaymeTestProgress(false);
       } catch (e) {
         console.error(e);
-        paymeConnectionStatus = { status: 'DISCONNECTED', merchantId: null, login: null };
+        paymeConnectionStatus = { status: 'DISCONNECTED', merchantId: null, login: null, verified: false };
       }
       if (activePopupModal === 'PAYME_SETTINGS') render();
+    }
+    async function refreshPaymeTestProgress(shouldRender) {
+      try {
+        paymeTestProgress = await callApi('payme_test_progress', {});
+        if (paymeTestProgress.verified && paymeConnectionStatus) paymeConnectionStatus = { ...paymeConnectionStatus, verified: true };
+      } catch (e) { console.error(e); }
+      if (shouldRender !== false && activePopupModal === 'PAYME_SETTINGS') render();
+    }
+    async function startPaymeTestPayment() {
+      const amount = Math.max(500, Math.min(50000, Number(document.getElementById('payme-test-amount-input')?.value) || 1000));
+      const btn = document.getElementById('payme-test-btn');
+      if (btn) { btn.disabled = true; btn.textContent = tr("Ochilmoqda...", "Открытие..."); }
+      try {
+        const result = await callApi('payme_start_test_payment', { amount });
+        openSafeExternalUrl(result.checkoutUrl);
+        showActionToast(tr(`${result.attemptNumber}/3 — to'lovni tasdiqlang, so'ng qayting.`, `${result.attemptNumber}/3 — подтвердите платёж и вернитесь.`), 'success', 3500);
+        await refreshPaymeTestProgress();
+      } catch (e) {
+        console.error(e);
+        alert(tr("Sinov to'lovini boshlab bo'lmadi: ", "Не удалось начать тестовый платёж: ") + (e.message || e));
+        if (btn) { btn.disabled = false; btn.textContent = tr("Sinash", "Тест"); }
+      }
     }
     async function connectPayme() {
       const merchantId = document.getElementById('payme-merchant-id-input')?.value.trim();
@@ -13836,8 +13928,12 @@
                 <input type="text" id="click-merchant-user-id-input" autocomplete="off" placeholder="Merchant User ID" class="w-full p-2 border rounded-xl font-mono">
                 <input type="password" id="click-secret-key-input" autocomplete="off" placeholder="Secret Key" class="w-full p-2 border rounded-xl font-mono">
                 <button onclick="connectClick()" id="click-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
-              ` : `
+              ` : !cst.verified ? `
                 <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
+                ${clickPaymentVerifyBlockHtml('click', clickTestProgress)}
+                <button onclick="disconnectClick()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
+              ` : `
+                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan va tekshirildi", "Подключено и проверено")}</div>
                 <p class="text-gray-500">${tr("Endi \"To'lov sozlamalari\"da \"Click orqali (avtomatik)\" metodini yoqishingiz mumkin.", "Теперь вы можете включить метод \"Click (автоматически)\" в настройках оплаты.")}</p>
                 <button onclick="disconnectClick()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
               `}
@@ -13864,8 +13960,12 @@
                 <input type="text" id="payme-login-input" autocomplete="off" placeholder="Login" class="w-full p-2 border rounded-xl font-mono">
                 <input type="password" id="payme-password-input" autocomplete="off" placeholder="Password" class="w-full p-2 border rounded-xl font-mono">
                 <button onclick="connectPayme()" id="payme-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
-              ` : `
+              ` : !pst.verified ? `
                 <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
+                ${clickPaymentVerifyBlockHtml('payme', paymeTestProgress)}
+                <button onclick="disconnectPayme()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
+              ` : `
+                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan va tekshirildi", "Подключено и проверено")}</div>
                 <p class="text-gray-500">${tr("Endi \"To'lov sozlamalari\"da \"Payme orqali (avtomatik)\" metodini yoqishingiz mumkin.", "Теперь вы можете включить метод \"Payme (автоматически)\" в настройках оплаты.")}</p>
                 <button onclick="disconnectPayme()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
               `}
