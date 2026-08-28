@@ -79,6 +79,15 @@ input[type="text"], input[type="password"] {
 }
 input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
 
+/* 2026-08-28: tarif "Xususiyatlar" ko'p qatorli maydoni — inputlar bilan
+   bir xil ramka/rang, faqat matn uchun oddiy shrift va vertikal resize. */
+textarea {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d7e3f8;
+  background: #fff; color: #0f172a; font-size: 13px; font-family: inherit; line-height: 1.5;
+  resize: vertical; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
 .notice { font-size: 12px; padding: 10px 12px; border-radius: 10px; margin-top: 10px; }
 .notice.error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 .notice.success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
@@ -256,6 +265,21 @@ select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(
 
 .plat-shop-card-list { display: flex; flex-direction: column; gap: 12px; }
 .plat-shop-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+/* 2026-08-28: "Obuna tarixi" (proratsiya audit) qatorlari. */
+.plat-history-row { padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+.plat-history-row:last-child { border-bottom: none; }
+.plat-history-row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.plat-history-row-head b { font-size: 12.5px; color: #0f172a; }
+.plat-history-row-head small { font-size: 10.5px; color: #94a3b8; }
+/* 2026-08-28: So'rovlar kartasidagi DERIVED 5-holat belgisi (Kutilmoqda/
+   Tekshirilmoqda/Tasdiqlangan/Rad etilgan/Chek talab qilindi). */
+.plat-request-status-row { margin-bottom: 8px; }
+.plat-request-status-pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+.plat-request-status-pill.is-muted { background: #f1f5f9; color: #64748b; }
+.plat-request-status-pill.is-info { background: #dbeafe; color: #1d4ed8; }
+.plat-request-status-pill.is-warn { background: #fef3c7; color: #b45309; }
+.plat-request-status-pill.is-ok { background: #dcfce7; color: #15803d; }
+.plat-request-status-pill.is-danger { background: #fee2e2; color: #b91c1c; }
 .plat-shop-card-actions { display: flex; gap: 8px; margin-top: 8px; }
 .plat-shop-card-actions > * { flex: 1; margin-top: 0; }
 .plat-link-btn {
@@ -291,6 +315,22 @@ select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(
 
 .plat-mini-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; font-size: 12.5px; }
 
+/* 2026-08-28: Billz/Click/Payme/Uzum integratsiya UX birlashtirish — ruxsat
+   tumbleri (yuqorida, .plat-mini-row) + haqiqiy ulanish holati (pastda). */
+.plat-integrations-hint { font-size: 10.5px; line-height: 1.4; margin: 0 0 10px; }
+.plat-integration-row { padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+.plat-integration-row:last-child { border-bottom: none; }
+.plat-integration-row .plat-mini-row { padding: 4px 0; }
+.plat-integration-status-line { display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 2px 0 4px; }
+.plat-integration-status-dot { width: 7px; height: 7px; border-radius: 999px; flex: none; background: #94a3b8; }
+.plat-integration-status-line.is-muted { color: #64748b; }
+.plat-integration-status-line.is-ok { color: #15803d; }
+.plat-integration-status-line.is-ok .plat-integration-status-dot { background: #22c55e; }
+.plat-integration-status-line.is-warn { color: #b45309; }
+.plat-integration-status-line.is-warn .plat-integration-status-dot { background: #f59e0b; }
+.plat-integration-status-line.is-danger { color: #b91c1c; }
+.plat-integration-status-line.is-danger .plat-integration-status-dot { background: #ef4444; }
+
 .plat-tab-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .plat-small-btn { width: auto; padding: 8px 14px; margin-top: 0; font-size: 12px; }
 .plat-clickable { cursor: pointer; }
@@ -301,6 +341,15 @@ select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(
   color: #64748b; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .plat-filter-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+/* 2026-08-28: 5+ chip bo'lganda (Do'konlar status-filtri) flex:1 matnni
+   siqib qo'yadi — shu variant siqmasdan gorizontal skroll qiladi. */
+.plat-filter-row.is-scroll { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.plat-filter-row.is-scroll .plat-filter-btn { flex: 0 0 auto; white-space: nowrap; }
+.plat-shops-search {
+  display: block; width: 100%; padding: 10px 12px; margin-bottom: 10px; border-radius: 12px;
+  border: 1px solid #e1ebfb; background: #fff; font-size: 12.5px; color: #1e293b; font-family: inherit;
+}
+.plat-shops-search:focus { outline: none; border-color: #2563eb; }
 
 .plat-request-actions { display: flex; gap: 8px; margin-top: 10px; }
 .plat-request-actions > * { flex: 1; margin-top: 0; }
@@ -535,6 +584,50 @@ select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(
 .plat-stat-icon { width: 32px; height: 32px; border-radius: 10px; background: var(--plat2-primary-soft); color: var(--plat2-primary); display: flex; align-items: center; justify-content: center; }
 .plat-stat-card small { font-size: 11px; color: var(--plat2-muted); }
 .plat-stat-card b { font-size: 22px; font-weight: 800; color: var(--plat2-title); }
+
+/* ---- Admin Dashboard — KPI kartalari (2026-08-28, "Muddati tugagan" ishi) ---- */
+.plat-admin-dash-head { margin: 0 0 16px; }
+.plat-admin-dash-head h1 { font-size: 22px; font-weight: 800; color: var(--plat2-title); margin: 0 0 2px; }
+.plat-admin-dash-head p { font-size: 12.5px; color: var(--plat2-muted); margin: 0; }
+.plat-admin-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.plat-admin-kpi-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px;
+  border-radius: 16px; background: var(--plat2-card); border: 1px solid var(--plat2-border);
+  text-align: left; box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+}
+button.plat-admin-kpi-card { cursor: pointer; }
+button.plat-admin-kpi-card:active { transform: scale(0.98); }
+.plat-admin-kpi-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--plat2-primary-soft); color: var(--plat2-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+.plat-admin-kpi-card.is-warn .plat-admin-kpi-icon { background: var(--plat2-warning-bg); color: var(--plat2-warning); }
+.plat-admin-kpi-card b { font-size: 22px; font-weight: 800; color: var(--plat2-title); line-height: 1.1; }
+.plat-admin-kpi-card small { font-size: 11.5px; font-weight: 600; color: var(--plat2-text); }
+.plat-admin-kpi-card em { font-size: 10.5px; font-style: normal; color: var(--plat2-muted); }
+.plat-admin-kpi-card.is-warn em { color: var(--plat2-warning); }
+
+/* ---- Admin Dashboard — Analitika bo'limi (2026-08-28) ---- */
+.plat-analytics-card h2 { font-size: 15px; font-weight: 800; color: var(--plat2-title); margin: 0; }
+.plat-analytics-subtitle { font-size: 12.5px; font-weight: 800; color: var(--plat2-title); margin: 16px 0 8px; }
+.plat-analytics-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.plat-analytics-kpi { padding: 10px 12px; border-radius: 12px; background: var(--plat2-bg); border: 1px solid var(--plat2-border); }
+.plat-analytics-kpi b { display: block; font-size: 16px; font-weight: 800; color: var(--plat2-title); }
+.plat-analytics-kpi small { font-size: 10.5px; color: var(--plat2-muted); }
+.plat-analytics-kpi.is-primary { background: var(--plat2-primary-soft); border-color: #cfe1fd; }
+.plat-analytics-kpi.is-primary b { color: var(--plat2-primary); }
+.plat-analytics-breakdown-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--plat2-border); font-size: 12px; }
+.plat-analytics-breakdown-row:last-child { border-bottom: none; }
+.plat-analytics-breakdown-row span { color: var(--plat2-muted); }
+.plat-analytics-breakdown-row b { color: var(--plat2-title); font-weight: 700; }
+/* Kunlik savdo dinamikasi — bitta rangli ustunli diagramma, SVG/path
+   interpolatsiyasiz (spec: mobil-do'st, "rainbow" emas). */
+.plat-analytics-bars { display: flex; align-items: flex-end; gap: 4px; height: 110px; padding-top: 8px; overflow-x: auto; }
+.plat-analytics-bar-col { flex: 1 0 14px; min-width: 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.plat-analytics-bar { width: 100%; max-width: 18px; border-radius: 4px 4px 0 0; background: var(--plat2-primary); min-height: 4px; }
+.plat-analytics-bar-col small { display: block; margin-top: 4px; font-size: 8.5px; color: var(--plat2-muted); white-space: nowrap; }
+
+/* ---- Muddati tugagan do'konlar ro'yxati (yosh-guruhlangan) ---- */
+.plat-expired-group { margin-bottom: 16px; }
+.plat-expired-group-title { font-size: 12.5px; font-weight: 800; color: var(--plat2-title); margin: 0 0 8px; }
+.plat-expired-group-title span { font-weight: 600; color: var(--plat2-muted); }
 
 .plat-quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .plat-quick-action {
@@ -950,6 +1043,15 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
 .plat-payment-shop-row b,.plat-payment-bonus b { display:block;font-size:11px;color:var(--u-text); }
 .plat-payment-shop-row small,.plat-payment-bonus small { display:block;margin-top:2px;font-size:9px;color:var(--u-muted); }
 .plat-payment-bonus>svg { color:var(--u-violet);flex:none; }
+/* 2026-08-28: tarif almashtirish preview'i ("qolgan qiymatingiz N kunga
+   aylanadi") — Karta bo'limi tepasida, mavjud plat-payment-bonus bilan
+   bir xil yumshoq karta uslubi. */
+.plat-tariff-preview { margin-top:12px;padding:10px 12px;border-radius:13px;background:var(--u-blue-soft);border:1px solid #d9e6fb; }
+.plat-tariff-preview p { margin:0;font-size:10.5px;line-height:1.5;color:var(--u-text);display:flex;align-items:flex-start;gap:6px; }
+.plat-tariff-preview p+p { margin-top:4px; }
+.plat-tariff-preview p.muted { color:var(--u-muted); }
+.plat-tariff-preview.is-loading { display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--u-muted); }
+.plat-tariff-preview.is-loading .spinner { border-color:rgba(37,99,235,0.25); border-top-color:var(--u-blue); }
 .plat-payment-summary-line { display:flex;align-items:center;justify-content:space-between;margin-top:11px;padding-top:10px;border-top:1px solid var(--u-border);font-size:10px;color:var(--u-muted); }
 .plat-payment-summary-line b { color:var(--u-text); }
 .plat-payment-card { padding:15px;margin-bottom:13px;border:1px solid var(--u-border);border-radius:19px;background:#fff;box-shadow:var(--u-shadow); }
@@ -967,6 +1069,27 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
 .plat-payment-bank-card .plat-card-number { display:block;margin-top:4px;font-size:16px;letter-spacing:.7px; }
 .plat-card-holder { margin-top:5px; }
 .plat-copy-btn { display:inline-flex;align-items:center;gap:5px;min-height:36px;border-radius:11px;background:#fff; }
+/* 2026-08-28: Karta ostidagi qo'shimcha Click/Payme/Paynet havola-usullari
+   (052-migratsiya) — soddagina "soft card" qatorlar, bosilsa yangi tabda
+   admin qo'ygan tashqi to'lov havolasi ochiladi. */
+.plat-payment-alt-methods { display:flex;flex-direction:column;gap:8px;margin-top:10px; }
+.plat-payment-alt-method {
+  display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:13px;
+  background:#fff;border:1px solid var(--u-border);text-decoration:none;color:var(--u-text);
+}
+.plat-payment-alt-method:active { transform:scale(0.98); }
+.plat-payment-alt-method span { flex:none;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--u-blue-soft);color:var(--u-blue); }
+.plat-payment-alt-method b { flex:1;font-size:12px;font-weight:700; }
+.plat-payment-alt-method em { flex:none;font-style:normal;color:var(--u-muted);font-size:16px; }
+/* 2026-08-28: to'lovdan oldin majburiy ogohlantirish (spec) — havola
+   ochilishidan oldin inline kengayadigan tasdiqlash qutisi. */
+.plat-payment-warning-box { padding:13px;border-radius:14px;background:var(--u-amber-soft);border:1px solid #f3dcae; }
+.plat-payment-warning-head { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+.plat-payment-warning-head span { flex:none;color:var(--u-amber); }
+.plat-payment-warning-head b { font-size:12.5px;color:var(--u-text); }
+.plat-payment-warning-box>p { margin:0 0 10px;font-size:10.5px;line-height:1.45;color:var(--u-amber); }
+.plat-payment-warning-actions { display:flex;gap:8px;margin-top:10px; }
+.plat-payment-warning-actions>* { flex:1;margin-top:0; }
 .plat-upload-zone { width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:18px 12px;border:1.5px dashed #b8ccee;border-radius:15px;background:#fbfdff;color:var(--u-blue);font-family:inherit;cursor:pointer; }
 .plat-upload-zone>span { width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--u-blue-soft); }
 .plat-upload-zone b { display:block;text-align:left;font-size:11.5px;color:var(--u-text); }
@@ -993,6 +1116,13 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
 .plat-request-success>p { margin:6px 0 12px;font-size:10.5px;line-height:1.45;color:var(--u-muted); }
 .plat-request-status { display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:999px;background:var(--u-amber-soft);color:var(--u-amber);font-size:10px;font-weight:800; }
 .plat-request-context { margin:13px 0;padding:10px;border-radius:13px;background:#f8faff;color:#526277;font-size:10px;line-height:1.45; }
+
+/* ---- 2026-08-28: chek ixtiyoriy — "To'ladim" da'vo qutisi ---- */
+.plat-receipt-hint { margin:8px 2px 0;font-size:9.5px;line-height:1.4;color:var(--u-muted); }
+.plat-payment-claim-box { margin:14px 0;padding:14px;border-radius:15px;background:var(--u-amber-soft);border:1px solid #f3dcae;text-align:left; }
+.plat-payment-claim-box>p { display:flex;align-items:flex-start;gap:7px;margin:0 0 10px;font-size:10.5px;line-height:1.4;color:var(--u-amber); }
+.plat-payment-claim-box button { width:100%; }
+.plat-payment-claim-done { display:flex;align-items:center;justify-content:center;gap:6px;margin:14px 0;padding:10px;border-radius:13px;background:var(--u-green-soft);color:var(--u-green);font-size:10.5px;font-weight:700; }
 
 @media (max-width: 370px) {
   .plat-shops-head { align-items:flex-start; }
