@@ -3,142 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- 6-band: Telegram WebView index.html'ning O'ZINI ba'zan uzoq vaqt
-       keshlab qo'yadi — shunda pastdagi ?v= raqamlarini oshirish ham
-       yordam bermaydi, chunki WebView yangi index.html'ni umuman qayta
-       so'ramaydi. Bu meta teglar entry-document'ni keshlashni butunlay
-       o'chiradi (child fayllar — JS/CSS — o'zining ?v= versiyalanishi
-       bilan hali ham to'g'ri keshlanaveradi, faqat shu bitta sahifa emas). -->
+  <!-- 6-band: Telegram WebView index.html'ning O'ZINI keshlab qo'yishi
+       mumkin — shunda child fayllar ?v= raqami oshirilsa ham eski nusxa
+       ko'rinaveradi (WebView yangi index.html'ni umuman qayta so'ramaydi).
+       Bu entry-document'ning keshlanishini butunlay o'chiradi. -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>UStorE - Telegram Mini App & ERP</title>
-  <!-- Tashqi manbalarga oldindan ulanish — sahifa ochilishini biroz tezlashtiradi -->
+  <title>UStorE Boshqaruv Paneli</title>
   <link rel="preconnect" href="https://telegram.org">
-  <link rel="preconnect" href="https://unpkg.com">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=79">
+  <link rel="stylesheet" href="./platform.css?v=10">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script defer src="https://unpkg.com/lucide@latest"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <!-- PDF kutubxonalari birinchi kirishni to'smasligi uchun faqat eksport
-       bosilganda ustore-shop-app.js orqali yuklanadi. -->
-  <script defer src="./ustore-image-io.js?v=3"></script>
-  <script defer src="./ustore-commerce.js?v=7"></script>
-  <script defer src="./config.public.js?v=1"></script>
-  <script defer src="./ustore-shop-app.js?v=79"></script>
+  <!-- 6-band: reuses the root config.public.js (same Supabase project URL
+       and publishable key) rather than duplicating it — one source of
+       truth for the value that must stay in sync with the deployed
+       Edge Functions. -->
+  <script defer src="../config.public.js?v=1"></script>
+  <script defer src="./platform-app.js?v=14"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 pb-20 font-sans">
-
-  <!-- HEADER -->
-  <header class="ustore-topbar bg-white sticky top-0 z-40 px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center space-x-2 min-w-0">
-      <!-- Logotip TO'LIQ ko'rinadi: balandligi qatorga moslab cheklangan
-           (h-7), eni esa logotipning o'z nisbatiga qarab avtomatik, lekin
-           ADMIN/STORE belgisini surib yubormasligi uchun max-w bilan
-           cheklangan. Avval `w-7 h-7 object-cover` edi — u logotipni
-           kvadratga QIRQIB tashlardi (kengroq logotiplarning chekkalari
-           ko'rinmasdi). Do'kon nomi matni bu yerdan olib tashlandi —
-           logotipning o'zi do'konni bildiradi. -->
-      <img id="header-shop-logo" class="hidden ustore-header-logo" alt="">
-      <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400 shrink-0"></span>
-    </div>
-    <div class="flex items-center space-x-2">
-      <!-- Foydalanuvchi qaytardi: savatcha tugmasi FAQAT admin rejimida
-           yashiriladi (updateHeaderChrome()da), oddiy mijoz uchun header'da
-           ko'rinadi — pastki menyudagi savatcha bilan bir qatorda. -->
-      <button onclick="switchTab('cart')" class="relative p-2 bg-gray-100 rounded-full" id="header-cart-btn" aria-label="Savatcha" title="Savatcha">
-        <i data-lucide="shopping-cart" class="w-5 h-5 text-gray-700"></i>
-        <span id="cart-badge" class="hidden absolute -top-1 -right-1 fc-bg-danger text-white text-[10px] font-bold w-4 h-4 rounded-full items-center justify-center">0</span>
-      </button>
-      <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi (savatchadan keyin). -->
-      <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
-      <button onclick="switchTab('profile')" class="p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
-        <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
-      </button>
-    </div>
-    <!-- 17-band: top/left endi togglePersonMenu() orqali JS'da dinamik
-         o'rnatiladi (personBtn.getBoundingClientRect() asosida) — bu yerdagi
-         klasslar faqat position/z-index/ko'rinish uchun. -->
-    <div id="role-mode-popover" class="hidden fixed z-50 bg-white rounded-xl shadow-lg border overflow-hidden"></div>
-  </header>
-
-  <!-- MAIN CONTAINER -->
-  <main id="app-content" class="p-4 max-w-md mx-auto min-h-screen">
-    <div class="flex flex-col items-center justify-center py-20 text-gray-400">
-      <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-      <p class="text-xs font-bold">Yuklanmoqda...</p>
-    </div>
-  </main>
-
-  <!-- GLOBAL LOADING OVERLAY -->
-  <div id="global-loader" class="hidden fixed inset-0 bg-black/40 z-[999] flex items-center justify-center">
-    <div class="bg-white rounded-2xl px-6 py-5 flex flex-col items-center gap-3 shadow-xl">
-      <div class="w-9 h-9 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      <p id="global-loader-text" class="text-xs font-bold text-gray-700">Yuklanmoqda...</p>
-    </div>
-  </div>
-
-  <!-- NON-BLOCKING ACTION STATUS -->
-  <div id="action-toast" class="hidden" data-state="saving" aria-live="polite"></div>
-
-  <!-- BOTTOM NAVIGATION -->
-  <!-- 7-band: z-50 — #page-container (z-40, "to'liq sahifa" ko'rinishlari:
-       Sozlamalar/Qo'llab-quvvatlash va h.k.) ustidan ko'rinib turishi uchun;
-       avval ikkalasi ham z-40 edi, DOM tartibida keyingisi (page-container)
-       uni to'liq yopib qo'yardi. -->
-  <nav class="ustore-bottom-nav fixed bottom-0 left-0 right-0 bg-white py-2 px-3 flex justify-around items-center z-50">
-    <button onclick="switchTab('home')" class="nav-btn flex flex-col items-center text-gray-500" id="nav-home">
-      <i data-lucide="home" class="w-5 h-5"></i>
-      <span class="text-[10px] mt-1" id="nav-label-home">Bosh sahifa</span>
-    </button>
-    <button onclick="switchTab('categories')" class="nav-btn flex flex-col items-center text-gray-500" id="nav-categories">
-      <i data-lucide="folder" class="w-5 h-5"></i>
-      <span class="text-[10px] mt-1" id="nav-label-categories">Kataloglar</span>
-    </button>
-    <button onclick="switchTab('cart')" class="nav-btn flex flex-col items-center text-gray-500" id="nav-cart">
-      <i data-lucide="shopping-bag" class="w-5 h-5"></i>
-      <span class="text-[10px] mt-1" id="nav-label-cart">Savatcha</span>
-    </button>
-    <button onclick="switchTab('orders')" class="nav-btn flex flex-col items-center text-gray-500" id="nav-orders">
-      <i data-lucide="package" class="w-5 h-5"></i>
-      <span class="text-[10px] mt-1" id="nav-label-orders">Buyurtmalar</span>
-    </button>
-    <button onclick="switchTab('warehouse')" id="nav-warehouse-btn" class="nav-btn hidden flex-col items-center text-gray-500">
-      <i data-lucide="warehouse" class="w-5 h-5"></i>
-      <span class="text-[10px] mt-1" id="nav-label-warehouse">Ombor</span>
-    </button>
-    <button onclick="switchTab('profile')" class="nav-btn flex flex-col items-center text-gray-500" id="nav-profile">
-      <i data-lucide="user" class="w-5 h-5"></i>
-      <span class="text-[10px] mt-1" id="nav-label-profile">Profil</span>
-    </button>
-  </nav>
-
-  <!-- FULL PAGES (page-shell) — POLISH ROUND 1-bosqich: Qo'llab-quvvatlash/Sozlamalar/
-       Dashboard/Ombor-Holat kabi bo'limlar shu yerga renderPageShell() orqali chiqadi.
-       Modal-dan farqi: orqa fon xira (backdrop) emas, to'liq sahifa, bottom-nav'ni qoplaydi. -->
-  <div id="page-container" class="hidden fixed inset-0 z-40 bg-white overflow-y-auto"></div>
-
-  <!-- MODALS CONTAINER -->
-  <div id="modal-container"></div>
-
-  <script>
-    // Boot fail-safe: CDN/runtime/API xatosi sabab asosiy app kodi ishga
-    // tushmay qolsa ham foydalanuvchi cheksiz spinnerda qolmaydi.
-    (() => {
-      let shown = false;
-      const showBootFailure = () => {
-        if (shown || document.body.dataset.appReady === 'true') return;
-        shown = true;
-        const root = document.getElementById('app-content');
-        if (!root) return;
-        root.innerHTML = '<div class="fc-boot-error"><strong>Ilovani ochib bo‘lmadi</strong><p>Internetni tekshiring va qayta urinib ko‘ring.</p><button type="button" onclick="location.reload()">Qayta urinish</button></div>';
-      };
-      window.addEventListener('error', () => setTimeout(showBootFailure, 0));
-      window.addEventListener('unhandledrejection', () => setTimeout(showBootFailure, 0));
-      setTimeout(showBootFailure, 15000);
-    })();
-  </script>
-
+<body>
+  <div id="app"></div>
 </body>
 </html>
