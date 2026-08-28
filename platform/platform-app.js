@@ -319,6 +319,7 @@
     if (tab === 'shops' && isAdminMode) reloadAdminShops();
     if (tab === 'requests') loadRequests();
     if (tab === 'tariffs' && isAdminMode) loadAdminTariffs();
+    if (tab === 'profile' && isAdminMode) loadAdminSettings();
     if (tab === 'dashboard') { loadDashboardSummary(); loadAnalytics(); }
   }
 
@@ -519,6 +520,9 @@
     if (p === 'MY_SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderMyShopDetailsBody(), { onBack: "switchTab('shops')" });
     if (p === 'SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderShopDetailsBody(), { onBack: "switchTab('shops')" });
     if (p === 'REQUEST_DETAILS') return pageShell("So'rov tafsilotlari", renderRequestDetailsBody(), { onBack: "switchTab('requests')" });
+    if (p === 'ADMIN_PAYMENT_SETTINGS') return pageShell("To'lov sozlamalari", renderAdminPaymentSettingsBody(), { onBack: "switchTab('profile')" });
+    if (p === 'ADMIN_NOTIFICATION_SETTINGS') return pageShell("Avtomatik xabarlar", renderAdminNotificationSettingsBody(), { onBack: "switchTab('profile')" });
+    if (p === 'ADMIN_NOTIFICATION_GROUP') return pageShell(notificationGroupTitle(), renderAdminNotificationGroupBody(), { onBack: "openPage('ADMIN_NOTIFICATION_SETTINGS')" });
     if (p === 'TERMS') return pageShell("Foydalanish shartlari", renderTermsBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'PRIVACY') return pageShell("Maxfiylik siyosati", renderPrivacyBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'ABOUT') return pageShell("UStorE haqida", renderAboutBody(), { onBack: "closePage()" });
@@ -1053,7 +1057,7 @@
     const periodLabel = isAnnual ? 'Yillik · 12 oy (2 oy bepul)' : 'Oylik · 30 kun';
     const flowLabel = flowKind === 'NEW_SHOP' ? "Yangi do'kon" : flowUpgradeAction === 'EXTEND' ? 'Obunani uzaytirish' : "Tarifni o'zgartirish";
     const currentTariff = shop ? (shop.tariffName || 'Tarifsiz') : null;
-    const noPaymentCard = !paymentInfo.cardNumber;
+    const noPaymentCard = !paymentInfo.cardNumber || paymentInfo.isActive === false;
     return `
       <div class="plat-payment-period"><div class="plat-payment-period-label"><b>Obuna davri</b><small>Oylik yoki yillik variantni tanlang.</small></div>${renderBillingToggle()}</div>
       <section class="plat-payment-summary plat-tariff-tone-${tariffTone(tariff)}">
@@ -1188,7 +1192,7 @@
     // 5-band: checkbox native disabled EMAS (button.plat-btn-dimmed shunchaki
     // vizual) — shu sabab bosilganda aniq nima yetishmayotganini aytish kerak.
     if (!consentAccepted) { alert("Davom etish uchun Foydalanish shartlari va Maxfiylik siyosatiga rozilik bildiring."); return; }
-    if (!paymentInfo?.cardNumber) { alert("To'lov rekvizitlari hali kiritilmagan. Iltimos, keyinroq qayta urinib ko'ring."); return; }
+    if ((!paymentInfo?.cardNumber || paymentInfo?.isActive === false) && !platformPaymentMethods.length) { alert("Faol to'lov usuli mavjud emas. Iltimos, keyinroq qayta urinib ko'ring."); return; }
     // 2026-08-28: chek endi ixtiyoriy — biriktirilmagan bo'lsa ham so'rov
     // yuborilishi mumkin, mijoz keyin REQUEST_SENT sahifasida "To'ladim"
     // bosadi.
@@ -1741,6 +1745,7 @@
   }
 
   function renderProfileTab() {
+    if (isAdminMode) return renderAdminProfileTab();
     const user = tg?.initDataUnsafe?.user || {};
     const activeSubs = myShops.filter((s)=>s.status==='ACTIVE').length;
     const expiryDays = myShops.map((s)=>daysUntil(s.subscriptionExpiresAt)).filter((d)=>d!==null&&d>=0).sort((a,b)=>a-b);
@@ -1750,13 +1755,37 @@
       <div class="plat-tab-head"><div><h1>Profil</h1><p>Telegram akkauntingiz va UStorE ma'lumotlari</p></div></div>
       <section class="plat-profile-hero">${user.photo_url?`<img src="${escapeHtml(user.photo_url)}" class="plat-profile-photo">`:`<div class="plat-profile-photo plat-profile-photo-fallback">${escapeHtml(fullName.charAt(0))}</div>`}<div class="plat-profile-main"><h2>${escapeHtml(fullName)}</h2><p>${user.username?'@'+escapeHtml(user.username):'Telegram foydalanuvchi'}</p><small>${pIcon('user',13)} Telegram ID: ${escapeHtml(String(user.id||''))}</small></div></section>
       <div class="plat-profile-stats"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length} ta</b><small>do'kon ulangan</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${activeSubs} ta</b><small>faol obuna</small></div><div><span class="tone-violet">${pIcon('calendar',16)}</span><b>${nearest===null?'—':nearest+' kun'}</b><small>eng yaqin tugash</small></div></div>
-      <h2 class="plat-profile-section-title">Hisob va sozlamalar</h2><div class="plat-profile-list"><div><span class="tone-blue">${pIcon('globe',17)}</span><b>Til</b><em>O'zbekcha</em></div><div><span class="tone-violet">${pIcon('bell',17)}</span><b>Bildirishnomalar</b><em>Telegram orqali</em></div><button onclick="switchTab('shops')"><span class="tone-green">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-orange">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button></div>
+      <h2 class="plat-profile-section-title">Hisob</h2><div class="plat-profile-list"><button onclick="switchTab('shops')"><span class="tone-green">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-orange">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button></div>
       <h2 class="plat-profile-section-title">UStorE</h2><div class="plat-profile-list"><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-green">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-violet">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
-      ${isAdminMode ? `<div class="plat-profile-row plat-clickable" onclick="openAdminSupportPage()"><span>Support</span><span>›</span></div>` : ''}
       <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Akkaunt Telegram profilingiz bilan bog'langan</b><small>Alohida login yoki parol talab qilinmaydi.</small></div>${pIcon('check',18)}</div>
-      ${isSuperAdmin?`<button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('lock',22)}</span><div><b>${isAdminMode?'Foydalanuvchi rejimi':'Admin rejimi'}</b><small>${isAdminMode?'Platformaning foydalanuvchi qismiga qaytish':'Platformani boshqarish'}</small></div><em>O'tish →</em></button>`:''}
+      ${isSuperAdmin?`<button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('lock',22)}</span><div><b>Admin rejimi</b><small>Platformani boshqarish</small></div><em>O'tish →</em></button>`:''}
       <div class="plat-version">UStorE · 2026</div>
     `;
+  }
+
+  function renderAdminProfileTab() {
+    const user = tg?.initDataUnsafe?.user || {};
+    const fullName = [user.first_name,user.last_name].filter(Boolean).join(' ') || 'Administrator';
+    const activeMethods = adminPaymentMethods.filter((m)=>m.isActive).length + ((paymentInfoDraft?.isActive && paymentInfoDraft?.cardNumber) ? 1 : 0);
+    const activeTemplates = adminNotificationTemplates.filter((t)=>t.isActive).length;
+    return `
+      <div class="plat-admin-profile-head"><span class="plat-admin-eyebrow">Platforma administratori</span><h1>Profil</h1><p>Akkaunt va UStorE tizim sozlamalarini boshqaring.</p></div>
+      <section class="plat-admin-profile-card">
+        ${user.photo_url?`<img src="${escapeHtml(user.photo_url)}" class="plat-admin-profile-photo">`:`<div class="plat-admin-profile-photo is-fallback">${escapeHtml(fullName.charAt(0))}</div>`}
+        <div class="plat-admin-profile-identity"><span class="plat-admin-role-badge">SUPER ADMIN</span><h2>${escapeHtml(fullName)}</h2><p>${user.username?'@'+escapeHtml(user.username):'Telegram administrator'}</p><small>Telegram ID: ${escapeHtml(String(user.id||''))}</small></div>
+      </section>
+      <div class="plat-admin-settings-intro"><div><span class="plat-admin-eyebrow">Boshqaruv markazi</span><h2>Admin sozlamalari</h2></div><span>${pIcon('gear',19)}</span></div>
+      <div class="plat-admin-settings-list">
+        <button onclick="openAdminPaymentSettings()"><span class="is-blue">${pIcon('wallet',19)}</span><div><b>To'lov sozlamalari</b><small>Karta, Click, Payme va Paynet</small></div><em>${activeMethods} faol ${pIcon('arrowRight',16)}</em></button>
+        <button onclick="openAdminNotificationSettings()"><span class="is-violet">${pIcon('bell',19)}</span><div><b>Avtomatik xabarlar</b><small>Obuna va onboarding eslatmalari</small></div><em>${activeTemplates} faol ${pIcon('arrowRight',16)}</em></button>
+        <button onclick="openAdminIntegrationsInfo()"><span class="is-green">${pIcon('layers',19)}</span><div><b>Integratsiyalar</b><small>BILLZ va to'lov provayderlari holati</small></div><em>${pIcon('arrowRight',16)}</em></button>
+        <button onclick="openAdminSupportPage()"><span class="is-amber">${pIcon('headset',19)}</span><div><b>Support</b><small>Foydalanuvchi murojaatlari</small></div><em>${pIcon('arrowRight',16)}</em></button>
+      </div>
+      <h2 class="plat-profile-section-title">UStorE</h2>
+      <div class="plat-profile-list"><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-green">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-violet">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
+      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Admin akkaunti Telegram bilan tasdiqlangan</b><small>Alohida login yoki parol talab qilinmaydi.</small></div>${pIcon('check',18)}</div>
+      <button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('user',22)}</span><div><b>Foydalanuvchi rejimi</b><small>Platformaning foydalanuvchi qismiga qaytish</small></div><em>O'tish →</em></button>
+      <div class="plat-version">UStorE Admin · 2026</div>`;
   }
   // 2026-08-28: REAL BUG topildi va tuzatildi — bu funksiya onTabEnter('dashboard')
   // va approveRequest()'da chaqirilardi, lekin HECH QACHON e'lon qilinmagan
@@ -2570,50 +2599,72 @@
   // ======================================================================
   // ADMIN: Tariflar CRUD (+ to'lov karta ma'lumoti shu yerda)
   // ======================================================================
-  async function loadAdminTariffs() {
+  async function loadAdminSettings() {
+    if (!isAdminMode) return;
     try {
-      const [tData, pData, mData, nData] = await Promise.all([
-        callPlatformApi('platform_admin_list_tariffs', {}),
+      const [pData, mData, nData] = await Promise.all([
         callPlatformApi('platform_get_payment_info', {}),
         callPlatformApi('platform_admin_list_payment_methods', {}),
         callPlatformApi('platform_admin_list_notification_templates', {}),
       ]);
-      adminTariffs = tData.tariffs || [];
-      if (!paymentInfoDraft) paymentInfoDraft = { cardNumber: pData.cardNumber || '', cardHolder: pData.cardHolder || '' };
+      paymentInfoDraft = { cardNumber: pData.cardNumber || '', cardHolder: pData.cardHolder || '', isActive: pData.isActive !== false };
       adminPaymentMethods = mData.methods || [];
       adminNotificationTemplates = nData.templates || [];
+      if (currentTab === 'profile' || ['ADMIN_PAYMENT_SETTINGS','ADMIN_NOTIFICATION_SETTINGS','ADMIN_NOTIFICATION_GROUP'].includes(activePage)) render();
+    } catch (e) { console.error(e); }
+  }
+  async function loadAdminTariffs() {
+    try {
+      const tData = await callPlatformApi('platform_admin_list_tariffs', {});
+      adminTariffs = tData.tariffs || [];
       if (currentTab === 'tariffs') render();
     } catch (e) { console.error(e); }
   }
   function renderAdminTariffsTab() {
+    const activeCount = adminTariffs.filter((t)=>t.isActive).length;
     return `
-      <div class="plat-tab-head">
-        <h1 class="plat-page-title">Tariflar</h1>
-        <button class="primary plat-small-btn" onclick="openNewTariffDraft()">+ Yangi</button>
-      </div>
+      <div class="plat-admin-list-head is-with-action"><div><span class="plat-admin-eyebrow">Obuna katalogi</span><h1>Tariflar</h1><p>Tariflar, limitlar va foydalanuvchiga ko'rinadigan imkoniyatlarni boshqaring.</p></div><button class="plat-admin-add-btn" onclick="openNewTariffDraft()">${pIcon('plus',17)} Yangi tarif</button></div>
+      <div class="plat-admin-tariff-summary"><div><b>${adminTariffs.length}</b><small>Jami tarif</small></div><div><b>${activeCount}</b><small>Faol</small></div><div><b>${adminTariffs.filter((t)=>t.isPopular).length}</b><small>Ommabop</small></div></div>
       ${tariffDraft ? renderTariffDraftForm() : ''}
-      ${adminTariffs.map(renderAdminTariffRow).join('') || '<p class="empty">Hozircha tarif yo\'q.</p>'}
-      <div class="card">
-        <h2>To'lov karta ma'lumoti</h2>
-        <label for="pi-card-number">Karta raqami</label>
-        <input type="text" id="pi-card-number" value="${escapeHtml(paymentInfoDraft?.cardNumber || '')}" placeholder="8600 0000 0000 0000">
-        <label for="pi-card-holder">Karta egasi</label>
-        <input type="text" id="pi-card-holder" value="${escapeHtml(paymentInfoDraft?.cardHolder || '')}" placeholder="F. I. Sh.">
-        <button class="secondary" onclick="savePaymentInfo()">Saqlash</button>
-      </div>
-      <div class="plat-tab-head">
-        <h2 class="plat-page-title" style="font-size:15px">Click / Payme / Paynet havolalari</h2>
-        <button class="secondary plat-small-btn" onclick="openNewPaymentMethodDraft()">+ Yangi</button>
-      </div>
-      ${paymentMethodDraft ? renderPaymentMethodDraftForm() : ''}
-      ${adminPaymentMethods.length ? adminPaymentMethods.map(renderAdminPaymentMethodRow).join('') : '<p class="empty">Hozircha havola qo\'shilmagan.</p>'}
-      <div class="plat-tab-head">
-        <h2 class="plat-page-title" style="font-size:15px">Telegram bildirishnomalari</h2>
-      </div>
-      ${notificationTemplateDraft ? renderNotificationTemplateDraftForm() : ''}
-      ${adminNotificationTemplates.length ? adminNotificationTemplates.map(renderAdminNotificationTemplateRow).join('') : '<p class="empty">Yuklanmoqda...</p>'}
+      <div class="plat-admin-tariff-list">${adminTariffs.length ? adminTariffs.map(renderAdminTariffRow).join('') : `<div class="plat-admin-empty"><span>${pIcon('diamond',24)}</span><b>Hozircha tarif yo'q</b><small>Yangi tarif yaratish uchun yuqoridagi tugmadan foydalaning.</small></div>`}</div>
     `;
   }
+
+  function openAdminPaymentSettings(){ openPage('ADMIN_PAYMENT_SETTINGS'); loadAdminSettings(); }
+  function openAdminNotificationSettings(){ openPage('ADMIN_NOTIFICATION_SETTINGS'); loadAdminSettings(); }
+  function openAdminIntegrationsInfo(){ alert("Integratsiyalar shop detail orqali boshqariladi. Alohida integratsiyalar markazi keyingi bosqichda kengaytiriladi."); }
+
+  function maskedCardNumber(v) {
+    const d=String(v||'').replace(/\D/g,''); if(!d) return "Karta qo'shilmagan";
+    return `${d.slice(0,4)} •••• •••• ${d.slice(-4)}`;
+  }
+  function shortUrl(v){ try{ const a=document.createElement('a'); a.href=String(v||''); const path=a.pathname||''; return (a.hostname||'') + (path.length>18?path.slice(0,18)+'…':path); }catch(_){ return String(v||'').slice(0,36); } }
+  function paymentMethodIcon(type){ return type==='CLICK'?'C':type==='PAYME'?'P':'PN'; }
+  function renderAdminPaymentSettingsBody(){
+    const cardActive = paymentInfoDraft?.isActive !== false && !!paymentInfoDraft?.cardNumber;
+    return `
+      <div class="plat-settings-page-intro"><span class="plat-admin-eyebrow">Checkout konfiguratsiyasi</span><h2>To'lov usullari</h2><p>Userga faqat faol qilingan to'lov usullari ko'rinadi.</p></div>
+      <section class="plat-settings-section"><div class="plat-settings-section-head"><div><h3>To'lov kartasi</h3><p>Bank kartasi orqali qo'lda tekshiriladigan to'lov.</p></div>${paymentInfoDraft?.cardNumber?`<label class="plat-switch"><input type="checkbox" ${cardActive?'checked':''} onchange="togglePlatformCardActive(this.checked)"><span></span></label>`:''}</div>
+      ${paymentInfoDraft?.cardNumber ? `<div class="plat-payment-method-card is-bank"><span class="plat-method-logo">${pIcon('card',20)}</span><div><b>${maskedCardNumber(paymentInfoDraft.cardNumber)}</b><small>${escapeHtml(paymentInfoDraft.cardHolder||'Karta egasi kiritilmagan')}</small></div><button onclick="editPlatformCard()">Tahrirlash</button></div>` : `<button class="plat-add-setting-card" onclick="editPlatformCard()">${pIcon('plus',18)}<span><b>Karta qo'shish</b><small>Karta raqami va egasini kiriting</small></span></button>`}
+      ${paymentInfoDraft?.editing ? renderPlatformCardEditor() : ''}</section>
+      <section class="plat-settings-section"><div class="plat-settings-section-head"><div><h3>To'lov havolalari</h3><p>Click, Payme va Paynet havolalarini boshqaring.</p></div><button class="plat-section-add" onclick="openNewPaymentMethodDraft()">${pIcon('plus',15)} Qo'shish</button></div>
+      ${paymentMethodDraft ? renderPaymentMethodDraftForm() : ''}<div class="plat-payment-method-list">${adminPaymentMethods.length?adminPaymentMethods.map(renderAdminPaymentMethodRow).join(''):`<div class="plat-admin-empty is-compact"><span>${pIcon('wallet',22)}</span><b>Havola qo'shilmagan</b><small>Click, Payme yoki Paynet havolasini qo'shing.</small></div>`}</div></section>`;
+  }
+  function editPlatformCard(){ paymentInfoDraft = {...(paymentInfoDraft||{cardNumber:'',cardHolder:'',isActive:true}), editing:true}; render(); }
+  function cancelPlatformCardEdit(){ paymentInfoDraft.editing=false; render(); }
+  function renderPlatformCardEditor(){ return `<div class="plat-settings-editor"><div class="plat-settings-editor-head"><b>${paymentInfoDraft.cardNumber?'Kartani tahrirlash':"Karta qo'shish"}</b><button onclick="cancelPlatformCardEdit()">×</button></div><label>Karta raqami<input type="text" id="pi-card-number" inputmode="numeric" value="${escapeHtml(paymentInfoDraft.cardNumber||'')}" placeholder="8600 0000 0000 0000"></label><label>Karta egasi<input type="text" id="pi-card-holder" value="${escapeHtml(paymentInfoDraft.cardHolder||'')}" placeholder="F. I. Sh."></label><label class="plat-toggle-row"><span><b>Faol</b><small>User to'lov oynasida ko'rinadi</small></span><input type="checkbox" id="pi-card-active" ${paymentInfoDraft.isActive!==false?'checked':''}></label><div class="plat-settings-editor-actions"><button class="secondary" onclick="cancelPlatformCardEdit()">Bekor qilish</button><button class="primary" onclick="savePaymentInfo()">Saqlash</button></div></div>`; }
+  async function togglePlatformCardActive(active){ paymentInfoDraft={...(paymentInfoDraft||{}),isActive:active}; try{await callPlatformApi('platform_set_payment_info',{cardNumber:paymentInfoDraft.cardNumber||'',cardHolder:paymentInfoDraft.cardHolder||'',isActive:active}); paymentInfo=null;}catch(e){alert(e.message||String(e)); loadAdminSettings();} }
+
+  let notificationGroupKey = null;
+  const NOTIFICATION_GROUPS = {
+    EXPIRING:{title:'Obuna tugash eslatmalari',subtitle:'Tugashidan 7, 3 va 1 kun oldin',types:['EXPIRY_7D','EXPIRY_3D','EXPIRY_1D'],icon:'calendar',tone:'blue'},
+    FROZEN:{title:"Muzlatilgan do'kon xabarlari",subtitle:"Obuna tugashi va ma'lumot saqlash muddati",types:['FROZEN','GRACE_7D','GRACE_1D'],icon:'lock',tone:'amber'},
+    VISITOR:{title:'Yangi foydalanuvchi eslatmalari',subtitle:"Mini App ochgan, hali obuna olmagan userlar",types:['VISITOR_1D','VISITOR_3D','VISITOR_7D'],icon:'user',tone:'violet'},
+  };
+  function renderAdminNotificationSettingsBody(){ return `<div class="plat-settings-page-intro"><span class="plat-admin-eyebrow">Telegram automation</span><h2>Avtomatik xabarlar</h2><p>Xabarlarni maqsadiga ko'ra guruhlab boshqaring.</p></div><div class="plat-notification-groups">${Object.entries(NOTIFICATION_GROUPS).map(([key,g])=>{const rows=adminNotificationTemplates.filter(t=>g.types.includes(t.type));const on=rows.filter(t=>t.isActive).length;return `<button onclick="openNotificationGroup('${key}')"><span class="is-${g.tone}">${pIcon(g.icon,20)}</span><div><b>${g.title}</b><small>${g.subtitle}</small><em>${on}/${g.types.length} faol</em></div>${pIcon('arrowRight',17)}</button>`}).join('')}</div><div class="plat-settings-note">${pIcon('info',17)}<span>Xabar matni, statusi va test yuborish har bir guruh ichida boshqariladi.</span></div>`; }
+  function openNotificationGroup(key){ if(!NOTIFICATION_GROUPS[key])return; notificationGroupKey=key; openPage('ADMIN_NOTIFICATION_GROUP'); }
+  function notificationGroupTitle(){ return NOTIFICATION_GROUPS[notificationGroupKey]?.title || 'Xabarlar'; }
+  function renderAdminNotificationGroupBody(){ const g=NOTIFICATION_GROUPS[notificationGroupKey]; if(!g)return ''; const rows=adminNotificationTemplates.filter(t=>g.types.includes(t.type)); return `<div class="plat-settings-page-intro is-compact"><span class="plat-admin-eyebrow">Telegram xabarlari</span><h2>${escapeHtml(g.title)}</h2><p>${escapeHtml(g.subtitle)}</p></div>${notificationTemplateDraft?renderNotificationTemplateDraftForm():''}<div class="plat-notification-template-list">${rows.map(renderAdminNotificationTemplateRow).join('')}</div>`; }
   const NOTIFICATION_TEMPLATE_LABELS = {
     EXPIRY_7D: "Obuna tugashiga 7 kun qoldi",
     EXPIRY_3D: "Obuna tugashiga 3 kun qoldi",
@@ -2628,15 +2679,10 @@
     VISITOR_7D: "Mini-App ochdi, obuna bo'lmadi — 7 kundan keyin (oxirgi)",
   };
   function renderAdminNotificationTemplateRow(t) {
-    return `
-      <div class="card plat-tariff-row">
-        <div>
-          <b>${escapeHtml(NOTIFICATION_TEMPLATE_LABELS[t.type] || t.type)}</b> ${!t.isActive ? '<span class="muted">— o\'chirilgan</span>' : ''} ${t.imageUrl ? '<span class="muted">🖼</span>' : ''}
-          <p class="muted">${escapeHtml(t.body.length > 90 ? t.body.slice(0, 90) + '…' : t.body)}</p>
-        </div>
-        <button class="secondary plat-small-btn" onclick="openEditNotificationTemplateDraft('${t.type}')">Tahrirlash</button>
-      </div>`;
+    const body = t.body || '';
+    return `<div class="plat-notification-template-card"><span class="plat-template-status ${t.isActive?'is-on':''}">${pIcon(t.isActive?'check':'bell',16)}</span><div><b>${escapeHtml(NOTIFICATION_TEMPLATE_LABELS[t.type] || t.type)}</b><small>${escapeHtml(body.length>88?body.slice(0,88)+'…':body)}</small></div><label class="plat-switch"><input type="checkbox" ${t.isActive?'checked':''} onchange="toggleNotificationTemplateActive('${t.type}',this.checked)"><span></span></label><button onclick="openEditNotificationTemplateDraft('${t.type}')">Tahrirlash</button></div>`;
   }
+  async function toggleNotificationTemplateActive(type,active){ const t=adminNotificationTemplates.find(x=>x.type===type); if(!t)return; try{await callPlatformApi('platform_update_notification_template',{type,body:t.body,imageUrl:t.imageUrl||null,isActive:active});t.isActive=active;render();}catch(e){alert(e.message||String(e));loadAdminSettings();} }
   function openEditNotificationTemplateDraft(type) {
     const t = adminNotificationTemplates.find((x) => x.type === type);
     if (!t) return;
@@ -2646,20 +2692,12 @@
   function cancelNotificationTemplateDraft() { notificationTemplateDraft = null; render(); }
   function renderNotificationTemplateDraftForm() {
     const d = notificationTemplateDraft;
-    return `
-      <div class="card">
-        <h2>${escapeHtml(NOTIFICATION_TEMPLATE_LABELS[d.type] || d.type)}</h2>
-        <label for="ntd-body">Xabar matni</label>
-        <textarea id="ntd-body" rows="4">${escapeHtml(d.body)}</textarea>
-        <p class="muted plat-integrations-hint">Ishlatsa bo'ladigan o'zgaruvchilar: {SHOP_NAME}, {DAYS_LEFT}, {EXPIRY_DATE}, {RETENTION_DAYS_LEFT}</p>
-        <label for="ntd-image">Rasm havolasi (ixtiyoriy, https://...)</label>
-        <input type="text" id="ntd-image" value="${escapeHtml(d.imageUrl)}" placeholder="https://...">
-        <label class="plat-checkbox-row"><input type="checkbox" id="ntd-active" ${d.isActive ? 'checked' : ''}> Faol (yuborishda ishlatiladi)</label>
-        <button class="primary" onclick="saveNotificationTemplateDraft()">Saqlash</button>
-        <button class="secondary" onclick="sendTestNotification('${d.type}')" ${sendingTestNotification ? 'disabled' : ''}>${sendingTestNotification ? '<span class="spinner"></span> Yuborilmoqda...' : "🧪 Sinov xabar yuborish (o'zingizga)"}</button>
-        <button class="secondary" onclick="cancelNotificationTemplateDraft()">Bekor qilish</button>
-      </div>
-    `;
+    return `<div class="plat-settings-editor plat-notification-editor"><div class="plat-settings-editor-head"><div><b>${escapeHtml(NOTIFICATION_TEMPLATE_LABELS[d.type] || d.type)}</b><small>Telegram shabloni</small></div><button onclick="cancelNotificationTemplateDraft()">×</button></div>
+      <label class="plat-form-field"><span>Xabar matni</span><textarea id="ntd-body" rows="5">${escapeHtml(d.body)}</textarea></label>
+      <div class="plat-template-vars"><b>O'zgaruvchilar</b><span>{SHOP_NAME}</span><span>{DAYS_LEFT}</span><span>{EXPIRY_DATE}</span><span>{RETENTION_DAYS_LEFT}</span></div>
+      <label class="plat-form-field"><span>Rasm havolasi <em>ixtiyoriy</em></span><input type="text" id="ntd-image" value="${escapeHtml(d.imageUrl)}" placeholder="https://..."></label>
+      <label class="plat-toggle-row"><span><b>Faol</b><small>Schedule ushbu shablonni yuboradi</small></span><input type="checkbox" id="ntd-active" ${d.isActive?'checked':''}></label>
+      <div class="plat-settings-editor-actions is-three"><button class="secondary" onclick="cancelNotificationTemplateDraft()">Bekor qilish</button><button class="secondary" onclick="sendTestNotification('${d.type}')" ${sendingTestNotification?'disabled':''}>${sendingTestNotification?'Yuborilmoqda…':'Test'}</button><button class="primary" onclick="saveNotificationTemplateDraft()">Saqlash</button></div></div>`;
   }
   // Saqlanmagan tahrirni EMAS, bazadagi HOZIRGI (saqlangan) matnni test
   // qiladi — shu bilan admin chalkashib "hali saqlamagan loyihasi" ni
@@ -2685,19 +2723,13 @@
     try {
       await callPlatformApi('platform_update_notification_template', { type: notificationTemplateDraft.type, body, imageUrl: imageUrlRaw || null, isActive });
       notificationTemplateDraft = null;
-      await loadAdminTariffs();
+      await loadAdminSettings();
     } catch (e) { alert(e.message || String(e)); }
   }
   function renderAdminPaymentMethodRow(m) {
-    return `
-      <div class="card plat-tariff-row">
-        <div>
-          <b>${escapeHtml(m.displayName)}</b> <span class="muted">(${m.methodType})</span> ${!m.isActive ? '<span class="muted">— o\'chirilgan</span>' : ''}
-          <p class="muted">${escapeHtml(m.paymentUrl)}</p>
-        </div>
-        <button class="secondary plat-small-btn" onclick="openEditPaymentMethodDraft('${m.id}')">Tahrirlash</button>
-      </div>`;
+    return `<div class="plat-payment-method-card"><span class="plat-method-logo is-${String(m.methodType).toLowerCase()}">${escapeHtml(paymentMethodIcon(m.methodType))}</span><div><b>${escapeHtml(m.displayName)}</b><small>${escapeHtml(shortUrl(m.paymentUrl))}</small></div><label class="plat-switch" onclick="event.stopPropagation()"><input type="checkbox" ${m.isActive?'checked':''} onchange="togglePaymentMethodActive('${m.id}',this.checked)"><span></span></label><button onclick="openEditPaymentMethodDraft('${m.id}')">Tahrirlash</button></div>`;
   }
+  async function togglePaymentMethodActive(id,active){ const m=adminPaymentMethods.find(x=>x.id===id); if(!m)return; try{await callPlatformApi('platform_upsert_payment_method',{id:m.id,methodType:m.methodType,displayName:m.displayName,paymentUrl:m.paymentUrl,isActive:active,sortOrder:m.sortOrder||0});m.isActive=active;render();}catch(e){alert(e.message||String(e));loadAdminSettings();} }
   function openNewPaymentMethodDraft() { paymentMethodDraft = { id: null, methodType: 'CLICK', displayName: '', paymentUrl: '', isActive: true }; render(); }
   function openEditPaymentMethodDraft(id) {
     const m = adminPaymentMethods.find((x) => x.id === id);
@@ -2708,22 +2740,11 @@
   function cancelPaymentMethodDraft() { paymentMethodDraft = null; render(); }
   function renderPaymentMethodDraftForm() {
     const d = paymentMethodDraft;
-    return `
-      <div class="card">
-        <h2>${d.id ? 'Havolani tahrirlash' : 'Yangi to\'lov havolasi'}</h2>
-        <label for="pmd-type">Turi</label>
-        <select id="pmd-type">
-          ${['CLICK', 'PAYME', 'PAYNET'].map((t) => `<option value="${t}" ${d.methodType === t ? 'selected' : ''}>${t}</option>`).join('')}
-        </select>
-        <label for="pmd-name">Ko'rinadigan nomi</label>
-        <input type="text" id="pmd-name" value="${escapeHtml(d.displayName)}" placeholder="Masalan: Click orqali to'lash">
-        <label for="pmd-url">To'lov havolasi (https://...)</label>
-        <input type="text" id="pmd-url" value="${escapeHtml(d.paymentUrl)}" placeholder="https://my.click.uz/...">
-        <label class="plat-checkbox-row"><input type="checkbox" id="pmd-active" ${d.isActive ? 'checked' : ''}> Faol (mijozlarga ko'rinadi)</label>
-        <button class="primary" onclick="savePaymentMethodDraft()">Saqlash</button>
-        <button class="secondary" onclick="cancelPaymentMethodDraft()">Bekor qilish</button>
-      </div>
-    `;
+    return `<div class="plat-settings-editor plat-method-editor"><div class="plat-settings-editor-head"><b>${d.id?'To\'lov havolasini tahrirlash':"Yangi to'lov havolasi"}</b><button onclick="cancelPaymentMethodDraft()">×</button></div>
+      <div class="plat-form-grid"><label><span>Provayder</span><select id="pmd-type">${['CLICK','PAYME','PAYNET'].map((t)=>`<option value="${t}" ${d.methodType===t?'selected':''}>${t}</option>`).join('')}</select></label><label><span>Ko'rinadigan nom</span><input type="text" id="pmd-name" value="${escapeHtml(d.displayName)}" placeholder="Click orqali to'lash"></label></div>
+      <label class="plat-form-field"><span>To'lov havolasi</span><input type="text" id="pmd-url" value="${escapeHtml(d.paymentUrl)}" placeholder="https://..."></label>
+      <label class="plat-toggle-row"><span><b>Faol</b><small>User to'lov oynasida ko'rinadi</small></span><input type="checkbox" id="pmd-active" ${d.isActive?'checked':''}></label>
+      <div class="plat-settings-editor-actions"><button class="secondary" onclick="cancelPaymentMethodDraft()">Bekor qilish</button><button class="primary" onclick="savePaymentMethodDraft()">Saqlash</button></div></div>`;
   }
   async function savePaymentMethodDraft() {
     const methodType = document.getElementById('pmd-type').value;
@@ -2735,18 +2756,15 @@
     try {
       await callPlatformApi('platform_upsert_payment_method', { id: paymentMethodDraft.id || undefined, methodType, displayName, paymentUrl, isActive });
       paymentMethodDraft = null;
-      await loadAdminTariffs();
+      await loadAdminSettings();
     } catch (e) { alert(e.message || String(e)); }
   }
   function renderAdminTariffRow(t) {
-    return `
-      <div class="card plat-tariff-row">
-        <div>
-          <b>${escapeHtml(t.name)}</b> ${t.isPopular ? '<span class="plat-tariff-badge-sm">Ommabop</span>' : ''} ${!t.isActive ? '<span class="muted">(o\'chirilgan)</span>' : ''}
-          <p class="muted">${money(t.price)}/oy · ${limitLabel(t.productLimit)}</p>
-        </div>
-        <button class="secondary plat-small-btn" onclick="openEditTariffDraft('${t.id}')">Tahrirlash</button>
-      </div>`;
+    const features = Array.isArray(t.features) ? t.features : [];
+    return `<button class="plat-admin-tariff-card ${t.isPopular?'is-popular':''} ${!t.isActive?'is-off':''}" onclick="openEditTariffDraft('${t.id}')">
+      <span class="plat-admin-tariff-icon">${pIcon(t.isPopular?'bolt':'diamond',19)}</span>
+      <span class="plat-admin-tariff-main"><span class="plat-admin-tariff-title"><b>${escapeHtml(t.name)}</b>${t.isPopular?'<em>Ommabop</em>':''}${!t.isActive?'<em class="is-off">O\'chiq</em>':''}</span><strong>${money(t.price)}<small>/oy</small></strong><small>${limitLabel(t.productLimit)} · ${features.length} ta imkoniyat</small></span>
+      <span class="plat-admin-tariff-edit">Tahrirlash ${pIcon('arrowRight',15)}</span></button>`;
   }
   function openNewTariffDraft() { tariffDraft = { id: null, name: '', price: '', productLimit: '', isActive: true, isPopular: false, features: TARIFF_FEATURE_LIST.slice() }; render(); }
   function openEditTariffDraft(id) {
@@ -2761,23 +2779,14 @@
   }
   function renderTariffDraftForm() {
     const d = tariffDraft;
-    return `
-      <div class="card">
-        <h2>${d.id ? 'Tarifni tahrirlash' : 'Yangi tarif'}</h2>
-        <label for="td-name">Nomi</label>
-        <input type="text" id="td-name" value="${escapeHtml(d.name)}">
-        <label for="td-price">Narxi (so'm/oy)</label>
-        <input type="text" id="td-price" inputmode="numeric" value="${escapeHtml(String(d.price))}">
-        <label for="td-limit">Mahsulot limiti (bo'sh = cheksiz)</label>
-        <input type="text" id="td-limit" inputmode="numeric" value="${escapeHtml(String(d.productLimit))}">
-        <label for="td-features">Xususiyatlar ro'yxati (har biri alohida qatorda)</label>
-        <textarea id="td-features" rows="5" placeholder="Telegram e-do'kon&#10;Katalog va mahsulotlar&#10;...">${escapeHtml((d.features || []).join('\n'))}</textarea>
-        <label class="plat-checkbox-row"><input type="checkbox" id="td-active" ${d.isActive ? 'checked' : ''}> Faol</label>
-        <label class="plat-checkbox-row"><input type="checkbox" id="td-popular" ${d.isPopular ? 'checked' : ''}> "Ommabop" belgisi</label>
-        <button class="primary" onclick="saveTariffDraft()">Saqlash</button>
-        <button class="secondary" onclick="cancelTariffDraft()">Bekor qilish</button>
-      </div>
-    `;
+    return `<section class="plat-settings-section plat-tariff-editor">
+      <div class="plat-settings-section-head"><div><span class="plat-admin-eyebrow">${d.id?'Tarif sozlamalari':'Yangi obuna rejasi'}</span><h3>${d.id?escapeHtml(d.name||'Tarifni tahrirlash'):'Yangi tarif yaratish'}</h3><p>User tarif kartasida ko'radigan nom, narx, limit va imkoniyatlarni belgilang.</p></div><button class="plat-editor-close" onclick="cancelTariffDraft()">×</button></div>
+      <div class="plat-form-grid"><label><span>Tarif nomi</span><input type="text" id="td-name" value="${escapeHtml(d.name)}" placeholder="Masalan: Standard"></label><label><span>Oylik narx</span><input type="text" id="td-price" inputmode="numeric" value="${escapeHtml(String(d.price))}" placeholder="79000"></label></div>
+      <label class="plat-form-field"><span>Mahsulot limiti <em>bo'sh = cheksiz</em></span><input type="text" id="td-limit" inputmode="numeric" value="${escapeHtml(String(d.productLimit))}" placeholder="200"></label>
+      <label class="plat-form-field"><span>Tarif imkoniyatlari <em>har qatorga bittadan</em></span><textarea id="td-features" rows="6" placeholder="Telegram e-do'kon&#10;Katalog va mahsulotlar&#10;Ombor nazorati">${escapeHtml((d.features || []).join('\n'))}</textarea></label>
+      <div class="plat-editor-options"><label><span><b>Tarif faol</b><small>Userlarga ko'rinadi</small></span><input type="checkbox" id="td-active" ${d.isActive ? 'checked' : ''}></label><label><span><b>Ommabop</b><small>Tarif kartasida badge chiqadi</small></span><input type="checkbox" id="td-popular" ${d.isPopular ? 'checked' : ''}></label></div>
+      <div class="plat-settings-editor-actions"><button class="secondary" onclick="cancelTariffDraft()">Bekor qilish</button><button class="primary" onclick="saveTariffDraft()">Saqlash</button></div>
+    </section>`;
   }
   function cancelTariffDraft() { tariffDraft = null; render(); }
   async function saveTariffDraft() {
@@ -2797,9 +2806,10 @@
   async function savePaymentInfo() {
     const cardNumber = document.getElementById('pi-card-number').value;
     const cardHolder = document.getElementById('pi-card-holder').value;
+    const isActive = document.getElementById('pi-card-active') ? document.getElementById('pi-card-active').checked : paymentInfoDraft?.isActive !== false;
     try {
-      await callPlatformApi('platform_set_payment_info', { cardNumber, cardHolder });
-      paymentInfoDraft = { cardNumber, cardHolder };
+      await callPlatformApi('platform_set_payment_info', { cardNumber, cardHolder, isActive });
+      paymentInfoDraft = { cardNumber, cardHolder, isActive, editing: false };
       paymentInfo = null; // keyingi to'lov sahifasi qayta yuklasin
       alert('Saqlandi.');
     } catch (e) { alert(e.message || String(e)); }
@@ -2905,4 +2915,13 @@
   window.cancelNotificationTemplateDraft = cancelNotificationTemplateDraft;
   window.saveNotificationTemplateDraft = saveNotificationTemplateDraft;
   window.sendTestNotification = sendTestNotification;
+  window.openAdminPaymentSettings = openAdminPaymentSettings;
+  window.openAdminNotificationSettings = openAdminNotificationSettings;
+  window.openAdminIntegrationsInfo = openAdminIntegrationsInfo;
+  window.editPlatformCard = editPlatformCard;
+  window.cancelPlatformCardEdit = cancelPlatformCardEdit;
+  window.togglePlatformCardActive = togglePlatformCardActive;
+  window.togglePaymentMethodActive = togglePaymentMethodActive;
+  window.openNotificationGroup = openNotificationGroup;
+  window.toggleNotificationTemplateActive = toggleNotificationTemplateActive;
 })();
