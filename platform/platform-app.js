@@ -116,6 +116,11 @@
     plus: '<path d="M12 5v14M5 12h14"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 10v6"/><path d="M12 7h.01"/>',
     chart: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20V7"/>',
+    copy: '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+    upload: '<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 14v5a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-5"/>',
+    file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/>',
+    swap: '<path d="M7 7h12l-3-3"/><path d="m19 7-3 3"/><path d="M17 17H5l3 3"/><path d="m5 17 3-3"/>',
+    send: '<path d="m3 11 18-8-8 18-2-7-8-3z"/><path d="m11 14 4-4"/>',
     wallet: '<path d="M4 7h14a2 2 0 0 1 2 2v10H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12"/><path d="M16 12h5v4h-5a2 2 0 0 1 0-4z"/>',
   };
   function pIcon(name, size) {
@@ -174,6 +179,8 @@
   let flowKind = null;        // 'NEW_SHOP' | 'UPGRADE'
   let flowTariffId = null;
   let flowShopId = null;      // UPGRADE uchun
+  let flowUpgradeAction = null; // 'EXTEND' | 'CHANGE' | null
+  let flowReturnPage = null; // 'SUBSCRIPTION_TARGET' | 'MY_SHOP_DETAILS' | null
   let paymentInfo = null;     // { cardNumber, cardHolder }
   let receiptFile = null;
   let receiptPreviewUrl = null;
@@ -244,6 +251,7 @@
   }
   function switchTab(tab) {
     activePage = null;
+    if (!isAdminMode && tab === 'subscription') resetSubscriptionFlow();
     currentTab = tab;
     render();
     onTabEnter(tab);
@@ -441,12 +449,12 @@
 
   function renderActivePage() {
     const p = activePage;
-    if (p === 'TARIFFS') return pageShell('Tarifni tanlang', renderTariffListBody());
-    if (p === 'SUBSCRIPTION_TYPE') return pageShell('Obuna turi', renderSubscriptionTypeBody(), { onBack: "openPage('TARIFFS')" });
-    if (p === 'SHOP_PICKER') return pageShell("Do'koningizni tanlang", renderShopPickerBody(), { onBack: "openPage('SUBSCRIPTION_TYPE')" });
-    if (p === 'PAYMENT') return pageShell("Obuna uchun to'lov", renderPaymentBody(), { onBack: "openPage('SUBSCRIPTION_TYPE')" });
+    if (p === 'TARIFFS') return pageShell('Tarifni tanlang', renderTariffListBody(), { onBack: flowReturnPage === 'MY_SHOP_DETAILS' && flowShopId ? "openMyShopManage('" + flowShopId + "')" : "switchTab('subscription')" });
+    if (p === 'SUBSCRIPTION_TARGET') return pageShell('Obunani rasmiylashtirish', renderSubscriptionTargetBody(), { onBack: "openPage('TARIFFS')" });
+    if (p === 'PAYMENT') return pageShell("Obuna uchun to'lov", renderPaymentBody(), { onBack: paymentBackAction() });
     if (p === 'REQUEST_SENT') return pageShell("So'rov yuborildi", renderRequestSentBody(), { onBack: 'goHomePage()' });
     if (p === 'CONNECT_SHOP') return pageShell("Yangi do'kon ulash", renderConnectShopBody(), { onBack: "closePage()" });
+    if (p === 'MY_SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderMyShopDetailsBody(), { onBack: "switchTab('shops')" });
     if (p === 'SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderShopDetailsBody(), { onBack: "switchTab('shops')" });
     if (p === 'TERMS') return pageShell("Foydalanish shartlari", renderTermsBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'PRIVACY') return pageShell("Maxfiylik siyosati", renderPrivacyBody(), { onBack: "closeTermsPrivacyPage()" });
@@ -758,12 +766,15 @@
   // compact=false (landing teaser) -> gorizontal carousel; compact=true
   // (TARIFFS to'liq sahifasi) -> vertikal to'liq ro'yxat, ikkalasi ham bir
   // xil kartani (renderOneTariffCard) qayta ishlatadi.
+  function tariffTone(t) {
+    const key = String(t?.name || '').toLowerCase();
+    return key.includes('start') ? 'start' : key.includes('stand') ? 'standard' : key.includes('business') ? 'business' : key.includes('premium') ? 'premium' : 'default';
+  }
   function renderOneTariffCard(t, opts) {
     opts = opts || {};
     const isCurrent = !!(opts.currentTariffId && opts.currentTariffId === t.id);
     const period = tariffBillingPeriod;
-    const key = String(t.name || '').toLowerCase();
-    const tone = key.includes('start') ? 'start' : key.includes('stand') ? 'standard' : key.includes('business') ? 'business' : key.includes('premium') ? 'premium' : 'default';
+    const tone = tariffTone(t);
     const priceHtml = period === 'annual'
       ? `<div class="plat-tariff-price-strike">${money(annualOriginalPrice(t.price))}</div><div class="plat-tariff-price">${money(annualOfferPrice(t.price))}<span>/yil</span></div><div class="plat-tariff-saving">2 oy bepul</div>`
       : `<div class="plat-tariff-price">${money(t.price)}<span>/oy</span></div>`;
@@ -800,70 +811,102 @@
   }
 
   function renderTariffListBody() {
+    const contextText = flowShopId && flowUpgradeAction === 'CHANGE'
+      ? "Do'koningiz uchun yangi tarifni tanlang. Qolgan obuna kunlari saqlanadi."
+      : "Sizga mos tarifni tanlang. Sotib olishdan keyin yangi do'kon yaratish yoki mavjud do'kon obunasini boshqarishni tanlaysiz.";
     return `
-      <p class="muted">Sizga mos tarifni tanlang:</p>
+      <div class="plat-flow-intro"><span>${pIcon('diamond',20)}</span><div><b>Tarifni tanlang</b><p>${contextText}</p></div></div>
       ${renderBillingToggle()}
-      ${renderTariffCards(true)}
+      ${renderTariffCards(true, { ctaLabel: flowShopId && flowUpgradeAction === 'CHANGE' ? "Shu tarifga o'tish" : "Sotib olish" })}
+      <div class="plat-bonus-card plat-bonus-card-pro"><span class="plat-bonus-icon">${pIcon('gift',18)}</span><div><b>Birinchi obunada +7 kun bonus</b><p>Faqat yangi do'konning birinchi obunasida qo'llanadi.</p></div></div>
     `;
   }
-  function startNewShopFlow() {
-    flowKind = 'NEW_SHOP';
+  function resetSubscriptionFlow() {
+    flowKind = null;
     flowShopId = null;
     flowTariffId = null;
+    flowUpgradeAction = null;
+    flowReturnPage = null;
     consentAccepted = false;
+    connectError = null;
+  }
+  function startNewShopFlow() {
+    resetSubscriptionFlow();
     openPage('TARIFFS');
   }
   function startNewShopWithTariff(tariffId) {
-    flowKind = 'NEW_SHOP';
-    flowShopId = null;
+    resetSubscriptionFlow();
     flowTariffId = tariffId;
-    consentAccepted = false;
-    openPage('PAYMENT');
+    openPage('SUBSCRIPTION_TARGET');
   }
   function selectTariffAndContinue(tariffId) {
     flowTariffId = tariffId;
-    if (flowKind === 'NEW_SHOP' || (flowKind === 'UPGRADE' && flowShopId)) { openPage('PAYMENT'); return; }
-    openPage('SUBSCRIPTION_TYPE');
+    consentAccepted = false;
+    if (flowShopId && flowUpgradeAction === 'CHANGE') {
+      flowKind = 'UPGRADE';
+      openPage('PAYMENT');
+      return;
+    }
+    openPage('SUBSCRIPTION_TARGET');
   }
 
-  // ======================================================================
-  // OBUNA TURI (yangi do'kon / mavjud do'kon oshirish)
-  // ======================================================================
-  function renderSubscriptionTypeBody() {
+  // Tarif tanlangandan keyingi BIRTA target sahifa. Eski "Obuna turi" va
+  // alohida shop-picker sahifalari olib tashlandi: kontekst shu sahifada aniq.
+  function renderSubscriptionTargetBody() {
     const tariff = tariffs.find((t) => t.id === flowTariffId);
+    if (!tariff) return `<div class="plat-empty-pro"><span>${pIcon('diamond',28)}</span><h2>Tarif topilmadi</h2><button class="primary" onclick="openPage('TARIFFS')">Tariflarga qaytish</button></div>`;
+    const price = tariffBillingPeriod === 'annual' ? annualOfferPrice(tariff.price) : tariff.price;
+    const periodLabel = tariffBillingPeriod === 'annual' ? 'Yillik · 2 oy bepul' : 'Oylik';
     return `
-      ${tariff ? `<div class="card plat-summary-card"><b>${escapeHtml(tariff.name)}</b> — ${money(tariff.price)}/oy · ${limitLabel(tariff.productLimit)}</div>` : ''}
-      <button class="plat-choice-btn" onclick="chooseNewShop()">🆕 Yangi do'kon ochaman</button>
-      ${myShops.length ? `<button class="plat-choice-btn" onclick="chooseUpgrade()">⬆️ Mavjud do'konim tarifini o'zgartiraman</button>` : `<p class="muted" style="margin-top:10px">Sizda hozircha ulangan do'kon yo'q — faqat yangi do'kon ochish mumkin.</p>`}
+      <section class="plat-target-hero plat-tariff-tone-${tariffTone(tariff)}">
+        <span class="plat-target-icon">${pIcon('diamond',22)}</span>
+        <div><small>Tanlangan tarif</small><h2>${escapeHtml(tariff.name)}</h2><p>${limitLabel(tariff.productLimit)} · ${periodLabel}</p></div>
+        <strong>${money(price)}<small>/${tariffBillingPeriod === 'annual' ? 'yil' : 'oy'}</small></strong>
+      </section>
+      <button class="plat-new-shop-choice" onclick="chooseNewShop()">
+        <span class="plat-new-shop-choice-icon">${pIcon('plus',20)}</span>
+        <div><b>Yangi do'kon yaratish</b><small>Tanlangan tarif bilan yangi UStorE do'konini ochish uchun to'lovga o'ting.</small></div><em>›</em>
+      </button>
+      ${myShops.length ? `
+        <div class="plat-section-heading plat-target-heading"><div><h2>Mavjud do'konlarim</h2><p>Joriy tarifni uzaytiring yoki tanlangan tarifga o'ting.</p></div></div>
+        <div class="plat-target-shop-list">${myShops.map((shop) => {
+          const left = daysUntil(shop.subscriptionExpiresAt);
+          const current = tariffs.find((t) => t.id === shop.tariffId);
+          const sameTariff = shop.tariffId && shop.tariffId === tariff.id;
+          return `<article class="plat-target-shop-card">
+            <span class="plat-shop-avatar">${shopAvatarHtml(shop)}</span>
+            <div class="plat-target-shop-main"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${escapeHtml(shop.tariffName || 'Tarifsiz')} · ${left === null ? 'obuna sanasi yo‘q' : left <= 0 ? 'obuna tugagan' : left + ' kun qoldi'}</small></div>
+            <div class="plat-target-shop-actions">
+              <button class="secondary" onclick="startExtendFor('${shop.id}')" ${shop.tariffId ? '' : 'disabled'}>Uzaytirish</button>
+              <button class="primary" onclick="startChangeWithSelectedTariff('${shop.id}')" ${sameTariff ? 'disabled' : ''}>${sameTariff ? 'Joriy tarif' : "Tarifni o'zgartirish"}</button>
+            </div>
+          </article>`;
+        }).join('')}</div>` : `
+        <div class="plat-target-empty"><span>${pIcon('shop',20)}</span><div><b>Hozircha do'koningiz yo'q</b><p>Yuqoridagi “Yangi do'kon yaratish” orqali davom eting.</p></div></div>`}
     `;
   }
   function chooseNewShop() {
     flowKind = 'NEW_SHOP';
     flowShopId = null;
-    consentAccepted = false; // har bir yangi so'rov o'z alohida roziligini talab qiladi
-    openPage('PAYMENT');
-  }
-  function chooseUpgrade() {
-    flowKind = 'UPGRADE';
+    flowUpgradeAction = null;
+    flowReturnPage = 'SUBSCRIPTION_TARGET';
     consentAccepted = false;
-    openPage('SHOP_PICKER');
-  }
-
-  function renderShopPickerBody() {
-    if (!myShops.length) return '<p class="empty">Sizda ulangan do\'kon topilmadi.</p>';
-    return `<div class="plat-shop-pick-list">${myShops.map((s) => `
-      <button class="plat-shop-pick-row" onclick="pickUpgradeShop('${s.id}')">
-        <div>
-          <div class="name">${escapeHtml(s.botUsername ? '@' + s.botUsername : s.publicCode)}</div>
-          <div class="meta">${escapeHtml(s.tariffName || 'Tarifsiz')} · ${limitLabel(s.productLimit)}</div>
-        </div>
-        <span>›</span>
-      </button>
-    `).join('')}</div>`;
-  }
-  function pickUpgradeShop(shopId) {
-    flowShopId = shopId;
     openPage('PAYMENT');
+  }
+  function startChangeWithSelectedTariff(shopId) {
+    const shop = myShops.find((s) => s.id === shopId);
+    if (!shop || !flowTariffId || shop.tariffId === flowTariffId) return;
+    flowKind = 'UPGRADE';
+    flowShopId = shopId;
+    flowUpgradeAction = 'CHANGE';
+    flowReturnPage = 'SUBSCRIPTION_TARGET';
+    consentAccepted = false;
+    openPage('PAYMENT');
+  }
+  function paymentBackAction() {
+    if (flowReturnPage === 'SUBSCRIPTION_TARGET') return `openPage('SUBSCRIPTION_TARGET')`;
+    if (flowReturnPage === 'MY_SHOP_DETAILS' && flowShopId) return `openMyShopManage('${flowShopId}')`;
+    return `openPage('TARIFFS')`;
   }
 
   // ======================================================================
@@ -876,37 +919,60 @@
   }
   function renderPaymentBody() {
     const tariff = tariffs.find((t) => t.id === flowTariffId);
+    const shop = flowShopId ? myShops.find((s) => s.id === flowShopId) : null;
+    if (!tariff) return `<div class="plat-empty-pro"><h2>Tarif topilmadi</h2><button class="primary" onclick="openPage('TARIFFS')">Tariflarni tanlash</button></div>`;
     if (!paymentInfo) {
       ensurePaymentInfoLoaded().then(() => { if (activePage === 'PAYMENT') rerenderActivePage(); });
-      return '<p class="muted">Yuklanmoqda...</p>';
+      return '<div class="plat-payment-loading"><span class="plat-boot-spinner"></span><b>To‘lov ma’lumotlari yuklanmoqda...</b></div>';
     }
+    const isAnnual = tariffBillingPeriod === 'annual';
+    const totalPrice = isAnnual ? annualOfferPrice(tariff.price) : tariff.price;
+    const periodLabel = isAnnual ? 'Yillik · 12 oy (2 oy bepul)' : 'Oylik · 30 kun';
+    const flowLabel = flowKind === 'NEW_SHOP' ? "Yangi do'kon" : flowUpgradeAction === 'EXTEND' ? 'Obunani uzaytirish' : "Tarifni o'zgartirish";
+    const currentTariff = shop ? (shop.tariffName || 'Tarifsiz') : null;
+    const noPaymentCard = !paymentInfo.cardNumber;
     return `
-      ${tariff ? `<div class="card plat-summary-card"><b>${escapeHtml(tariff.name)}</b><br>To'lov summasi: <b>${money(tariff.price)}</b></div>` : ''}
-      <div class="card">
-        <h2>To'lov kartasi</h2>
-        <div class="plat-card-number-row">
-          <span id="plat-card-number" class="plat-card-number">${escapeHtml(paymentInfo.cardNumber || 'Karta raqami hali kiritilmagan')}</span>
-          ${paymentInfo.cardNumber ? `<button class="plat-copy-btn" onclick="copyPlatformCardNumber()">📋 Nusxalash</button>` : ''}
-        </div>
-        ${paymentInfo.cardHolder ? `<p class="muted">${escapeHtml(paymentInfo.cardHolder)}</p>` : ''}
-      </div>
-      <div class="card">
-        <h2>To'lov chekini yuboring</h2>
+      <div class="plat-payment-period"><div class="plat-payment-period-label"><b>Obuna davri</b><small>Oylik yoki yillik variantni tanlang.</small></div>${renderBillingToggle()}</div>
+      <section class="plat-payment-summary plat-tariff-tone-${tariffTone(tariff)}">
+        <div class="plat-payment-summary-top"><span>${pIcon('diamond',19)}</span><div><small>${flowLabel}</small><h2>${escapeHtml(tariff.name)}</h2><p>${limitLabel(tariff.productLimit)}</p></div><strong>${money(totalPrice)}</strong></div>
+        ${shop ? `<div class="plat-payment-shop-row"><span class="plat-shop-avatar">${shopAvatarHtml(shop)}</span><div><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${flowUpgradeAction === 'EXTEND' ? `Joriy ${escapeHtml(currentTariff)} tarifi uzaytiriladi` : `${escapeHtml(currentTariff)} → ${escapeHtml(tariff.name)}`}</small></div></div>` : `<div class="plat-payment-bonus">${pIcon('gift',16)}<span><b>Birinchi obunada +7 kun bonus</b><small>${isAnnual ? 'Yillik davrga qo‘shimcha 7 kun' : '30 kun + 7 kun = 37 kun'}</small></span></div>`}
+        <div class="plat-payment-summary-line"><span>Davr</span><b>${periodLabel}</b></div>
+      </section>
+
+      <section class="plat-payment-card">
+        <div class="plat-payment-section-title"><span>${pIcon('card',18)}</span><div><b>To'lov rekvizitlari</b><small>To'lovni amalga oshirib, chekni quyida biriktiring.</small></div></div>
+        ${noPaymentCard ? `<div class="plat-payment-unavailable"><span>${pIcon('info',18)}</span><div><b>To'lov rekvizitlari hali mavjud emas</b><p>Administrator karta ma'lumotlarini kiritgach to'lov yuborish mumkin bo'ladi.</p></div></div>` : `<div class="plat-payment-bank-card"><div><small>Karta raqami</small><span id="plat-card-number" class="plat-card-number">${escapeHtml(paymentInfo.cardNumber)}</span>${paymentInfo.cardHolder ? `<small class="plat-card-holder">${escapeHtml(paymentInfo.cardHolder)}</small>` : ''}</div><button class="plat-copy-btn" onclick="copyPlatformCardNumber()">${pIcon('copy',14)} Nusxa olish</button></div>`}
+      </section>
+
+      <section class="plat-payment-card">
+        <div class="plat-payment-section-title"><span>${pIcon('upload',18)}</span><div><b>To'lov chekini biriktiring</b><small>JPG, PNG yoki WEBP · maksimal 6 MB</small></div></div>
         <input type="file" id="plat-receipt-input" class="hidden" onchange="onReceiptPicked(event)">
-        <button class="secondary plat-file-pick" style="margin-top:0" onclick="document.getElementById('plat-receipt-input').click()">${pIcon('plus',16)} Fayldan chek tanlash <small>JPG, PNG, WEBP · max 6 MB</small></button>
-        ${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" class="plat-receipt-preview">` : ''}
+        ${receiptFile ? `<div class="plat-upload-selected">${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" alt="Chek preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(receiptFile.name)}</b><small>${Math.max(1, Math.round(receiptFile.size / 1024))} KB</small></div><button class="secondary" onclick="document.getElementById('plat-receipt-input').click()">Almashtirish</button><button class="plat-upload-remove" onclick="clearReceiptFile()" aria-label="Chekni olib tashlash">×</button></div>` : `<button class="plat-upload-zone" onclick="document.getElementById('plat-receipt-input').click()"><span>${pIcon('upload',22)}</span><div><b>Fayldan chek tanlash</b><small>Qurilma xotirasidan fayl tanlang</small></div></button>`}
         ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
-      </div>
-      <div class="card">
-        <label class="plat-checkbox-row" style="align-items:flex-start">
+      </section>
+
+      <section class="plat-payment-card plat-payment-consent">
+        <label class="plat-checkbox-row">
           <input type="checkbox" id="plat-consent-checkbox" ${consentAccepted ? 'checked' : ''} onchange="setConsentAccepted(this.checked)">
-          <span>Men UStorE <a href="#" onclick="event.preventDefault(); openTermsPage('PAYMENT');" style="color:#1d4ed8">Foydalanish shartlari</a> va <a href="#" onclick="event.preventDefault(); openPrivacyPage('PAYMENT');" style="color:#1d4ed8">Maxfiylik siyosati</a>ni o'qidim, tushundim va ularga roziman.</span>
+          <span>Men UStorE <a href="#" onclick="event.preventDefault(); openTermsPage('PAYMENT');">Foydalanish shartlari</a> va <a href="#" onclick="event.preventDefault(); openPrivacyPage('PAYMENT');">Maxfiylik siyosati</a> bilan tanishdim va roziman.</span>
         </label>
-      </div>
-      <button class="primary ${(!receiptFile || !consentAccepted || submittingRequest) ? 'plat-btn-dimmed' : ''}" onclick="submitSubscriptionRequest()">
-        ${submittingRequest ? '<span class="spinner"></span> Yuborilmoqda...' : "So'rov yuborish"}
+      </section>
+
+      <section class="plat-payment-total">
+        <div><span>Tarif</span><b>${escapeHtml(tariff.name)}</b></div>
+        <div><span>Davr</span><b>${isAnnual ? '12 oy' : (flowKind === 'NEW_SHOP' ? '30 + 7 kun' : '30 kun')}</b></div>
+        <div class="is-total"><span>Jami to'lov</span><strong>${money(totalPrice)}</strong></div>
+      </section>
+      <button class="primary plat-payment-submit ${(!receiptFile || !consentAccepted || noPaymentCard || submittingRequest) ? 'plat-btn-dimmed' : ''}" onclick="submitSubscriptionRequest()">
+        ${submittingRequest ? '<span class="spinner"></span> Yuborilmoqda...' : `${pIcon('send',16)} So'rov yuborish`}
       </button>
     `;
+  }
+  function clearReceiptFile() {
+    receiptFile = null;
+    if (receiptPreviewUrl) { try { URL.revokeObjectURL(receiptPreviewUrl); } catch (_) {} }
+    receiptPreviewUrl = null;
+    rerenderActivePage();
   }
   function setConsentAccepted(checked) { consentAccepted = checked; rerenderActivePage(); }
   function copyPlatformCardNumber() {
@@ -953,6 +1019,7 @@
     // 5-band: checkbox native disabled EMAS (button.plat-btn-dimmed shunchaki
     // vizual) — shu sabab bosilganda aniq nima yetishmayotganini aytish kerak.
     if (!consentAccepted) { alert("Davom etish uchun Foydalanish shartlari va Maxfiylik siyosatiga rozilik bildiring."); return; }
+    if (!paymentInfo?.cardNumber) { alert("To'lov rekvizitlari hali kiritilmagan. Iltimos, keyinroq qayta urinib ko'ring."); return; }
     if (!receiptFile) { alert("Iltimos, to'lov chekini yuklang."); return; }
     submittingRequest = true;
     connectError = null;
@@ -961,6 +1028,7 @@
       const base64 = await fileToBase64(receiptFile);
       const result = await callPlatformApi('platform_submit_subscription_request', {
         kind: flowKind, shopId: flowShopId || undefined, tariffId: flowTariffId,
+        billingPeriod: tariffBillingPeriod, upgradeAction: flowUpgradeAction || undefined,
         requesterUsername: (tg?.initDataUnsafe?.user?.username) || null,
         requesterFirstName: (tg?.initDataUnsafe?.user?.first_name) || null,
         receiptImageUpload: { base64, mimeType: receiptFile.type, fileName: receiptFile.name },
@@ -979,13 +1047,19 @@
     }
   }
   function renderRequestSentBody() {
+    const shop = flowShopId ? myShops.find((s) => s.id === flowShopId) : null;
+    const context = flowKind === 'NEW_SHOP'
+      ? "Tasdiqlangach UStorE administratori yangi do'koningizni ulaydi."
+      : flowUpgradeAction === 'EXTEND'
+        ? "Tasdiqlangach obuna muddati mavjud tugash sanasining ustiga qo'shiladi."
+        : `Tasdiqlangach ${shop ? escapeHtml(shop.shopName || shop.botUsername || 'do‘kon') : 'do‘kon'} uchun yangi tarif faollashadi.`;
     return `
-      <div class="card plat-center">
-        <div style="font-size:40px">✅</div>
-        <h2>So'rov yuborildi</h2>
-        <p class="muted">To'lovingiz tekshirilmoqda. Tasdiqlanganda Telegram orqali xabar beramiz.</p>
-        <div class="status-pill" style="background:#fef3c7;color:#b45309">🟡 Tekshirilmoqda</div>
-        <button class="primary" style="margin-top:16px" onclick="goHomePage()">Bosh sahifaga qaytish</button>
+      <div class="plat-request-success">
+        <span>${pIcon('check',26)}</span><h2>So'rov yuborildi</h2>
+        <p>To'lovingiz tekshirilmoqda. Natija Telegram orqali yuboriladi.</p>
+        <div class="plat-request-status">${pIcon('calendar',15)} Tekshirilmoqda</div>
+        <div class="plat-request-context">${context}</div>
+        <button class="primary" onclick="goHomePage()">Bosh sahifaga qaytish</button>
       </div>`;
   }
 
@@ -1061,72 +1135,92 @@
     return '';
   }
   function renderMyShopsTab() {
-    const activeCount = myShops.filter((shop) => shop.status === 'ACTIVE').length;
-    const expiringCount = myShops.filter((shop) => { const d = daysUntil(shop.subscriptionExpiresAt); return d !== null && d >= 0 && d <= 7; }).length;
-    const noPlanCount = myShops.filter((shop) => !shop.tariffId || !shop.subscriptionExpiresAt).length;
-    if (!myShops.length) return `<div class="plat-empty-pro"><span>${pIcon('shop',30)}</span><h1>Do'konlaringiz shu yerda ko'rinadi</h1><p>Birinchi do'konni yaratish uchun tarifni tanlang.</p><button class="primary" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon yaratish</button></div>`;
+    const activeCount = myShops.filter((s) => s.status === 'ACTIVE').length;
+    const noPlanCount = myShops.filter((s) => !s.tariffId || !s.subscriptionExpiresAt).length;
+    const expiringCount = myShops.filter((s) => { const d = daysUntil(s.subscriptionExpiresAt); return d !== null && d >= 0 && d <= 7; }).length;
+    if (!myShops.length) return `<div class="plat-empty-pro"><span>${pIcon('shop',30)}</span><h1>Hozircha do'kon yo'q</h1><p>Yangi do'kon yaratish uchun tarifni tanlang.</p><button class="primary" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon yaratish</button></div>`;
     const thirdCount = noPlanCount > 0 ? noPlanCount : expiringCount;
     const thirdLabel = noPlanCount > 0 ? 'Tarifsiz' : 'Tez tugaydi';
     return `
-      <div class="plat-tab-head plat-shops-head"><div><h1>Do'konlarim</h1><p>${myShops.length} ta ulangan do'kon</p></div></div>
+      <div class="plat-tab-head plat-shops-head"><div><h1>Do'konlarim</h1><p>${myShops.length} ta ulangan do'kon</p></div><button class="primary plat-new-shop-main" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon</button></div>
       <div class="plat-summary-strip plat-shops-summary"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length}</b><small>Do'kon</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-amber">${pIcon(noPlanCount > 0 ? 'diamond' : 'calendar',16)}</span><b>${thirdCount}</b><small>${thirdLabel}</small></div></div>
-      <button class="primary plat-new-shop-main" onclick="startNewShopFlow()">${pIcon('plus',17)} Yangi do'kon</button>
-      <div class="plat-shop-pro-list">${myShops.map((shop)=>{
-        const left=daysUntil(shop.subscriptionExpiresAt);
-        const limit=shop.productLimit??null;
-        const used=Number(shop.usedProductCount||0);
-        const pct=limit?Math.min(100,Math.round(used/limit*100)):null;
-        const warn=left!==null&&left<=7;
-        const noPlan=!shop.tariffId || !shop.subscriptionExpiresAt;
-        const subscriptionTitle=noPlan?'Tarif tanlanmagan':left===null?'Obuna ma’lumoti yo‘q':left<=0?'Obuna tugagan':`${left} kun qoldi`;
-        const subscriptionMeta=noPlan?'Obuna muddati yo‘q':shop.subscriptionExpiresAt?formatDate(shop.subscriptionExpiresAt)+' gacha':'Obuna sanasi yo‘q';
-        const secondaryAction=noPlan?`<button class="secondary plat-small-btn" onclick="startUpgradeFor('${shop.id}')">${pIcon('diamond',14)} Tarif tanlash</button>`:`<button class="secondary plat-small-btn" onclick="openMyShopManage('${shop.id}')">${pIcon('gear',14)} Obunani boshqarish</button>`;
-        return `
-        <article class="plat-shop-pro-card ${warn?'is-expiring':''}">
-          <div class="plat-shop-pro-head"><span class="plat-shop-avatar plat-shop-avatar-lg">${shopAvatarHtml(shop)}</span><div><h2>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</h2>${shop.botUsername?`<p>@${escapeHtml(shop.botUsername)}</p>`:''}<div class="plat-shop-badges"><span class="status-pill status-${shop.status}">${statusLabel(shop.status)}</span><span class="plan-pill">${escapeHtml(shop.tariffName||'Tarifsiz')}</span></div></div><button class="plat-more-btn" aria-label="Do‘konni boshqarish" onclick="openMyShopManage('${shop.id}')">•••</button></div>
-          <div class="plat-shop-pro-metrics"><div><span>${pIcon('box',16)}</span><b>${used}${limit!==null?` / ${limit}`:''} <small class="metric-unit">mahsulot</small></b>${pct!==null?`<div class="mini-progress"><i style="width:${pct}%"></i></div><small>${pct}% foydalanilgan</small>`:`<small>Jami mahsulotlar</small>`}</div><div class="${warn?'is-warn':''}"><span>${pIcon('calendar',16)}</span><b>${subscriptionTitle}</b><small>${subscriptionMeta}</small>${!noPlan&&left!==null&&left>0?`<div class="mini-progress time"><i style="width:${Math.max(4,Math.min(100,Math.round((30-Math.min(30,left))/30*100)))}%"></i></div>`:''}</div></div>
-          <div class="plat-shop-pro-actions">${shop.botUsername?`<a class="primary plat-small-btn" href="https://t.me/${escapeHtml(shop.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',14)} Do'konni ochish</a>`:`<button class="secondary plat-small-btn" disabled>${pIcon('shop',14)} Bot ulanmoqda</button>`}${secondaryAction}</div>
-        </article>`;
+      <div class="plat-shop-list-simple">${myShops.map((shop) => {
+        const left = daysUntil(shop.subscriptionExpiresAt);
+        const noPlan = !shop.tariffId || !shop.subscriptionExpiresAt;
+        const warn = left !== null && left >= 0 && left <= 7;
+        const expiry = noPlan ? 'Obuna yo‘q' : left === null ? 'Muddat noma’lum' : left <= 0 ? 'Obuna tugagan' : `${left} kun qoldi`;
+        return `<button class="plat-shop-list-card ${warn ? 'is-expiring' : ''}" onclick="openMyShopManage('${shop.id}')">
+          <span class="plat-shop-avatar plat-shop-avatar-lg">${shopAvatarHtml(shop)}</span>
+          <div class="plat-shop-list-main"><div class="plat-shop-list-title"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><span class="status-pill status-${shop.status}">${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<small>@${escapeHtml(shop.botUsername)}</small>` : ''}<div class="plat-shop-list-meta"><span>${pIcon('diamond',13)} ${escapeHtml(shop.tariffName || 'Tarifsiz')}</span><span class="${warn ? 'is-warn' : ''}">${pIcon('calendar',13)} ${expiry}</span></div></div>
+          <span class="plat-shop-list-chevron">›</span>
+        </button>`;
       }).join('')}</div>
-      <div class="plat-shops-info">${pIcon('info',15)}<span>Do'konlarni ochish va obunani boshqarish shu yerdan amalga oshiriladi.</span></div>
+      <div class="plat-shops-info">${pIcon('info',15)}<span>Do'kon kartasini bosing — barcha boshqaruv va obuna amallari detail sahifada.</span></div>
     `;
   }
 
-  // Ehtiyot: platform.js'da admin tarafda AYNAN shu nomdagi
-  // openShopDetails() allaqachon bor (boshqa do'konlarni boshqarish uchun,
-  // adminShops/selectedShopDetails ustida ishlaydi) — nom to'qnashib
-  // ustidan yozib qo'ymasligi uchun user-tarafdagi funksiya ATAYLAB boshqa
-  // nom bilan (openMyShopManage) yozildi.
-  function openMyShopManage(shopId) { dashboardShopId = shopId; switchTab('subscription'); }
+  function openMyShopManage(shopId) {
+    dashboardShopId = shopId;
+    openPage('MY_SHOP_DETAILS');
+  }
+  function renderMyShopDetailsBody() {
+    const shop = myShops.find((s) => s.id === dashboardShopId) || null;
+    if (!shop) return `<div class="plat-empty-pro"><h2>Do'kon topilmadi</h2><button class="primary" onclick="switchTab('shops')">Do'konlarimga qaytish</button></div>`;
+    const left = daysUntil(shop.subscriptionExpiresAt);
+    const limit = shop.productLimit ?? null;
+    const used = Number(shop.usedProductCount || 0);
+    const pct = limit ? Math.min(100, Math.round(used / limit * 100)) : null;
+    const tariff = tariffs.find((t) => t.id === shop.tariffId);
+    const noPlan = !shop.tariffId || !shop.subscriptionExpiresAt;
+    const warn = left !== null && left >= 0 && left <= 7;
+    return `
+      <section class="plat-shop-detail-hero ${warn ? 'is-expiring' : ''}">
+        <span class="plat-shop-avatar plat-shop-detail-avatar">${shopAvatarHtml(shop)}</span>
+        <div><div class="plat-shop-detail-name"><h2>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</h2><span class="status-pill status-${shop.status}">${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<p>@${escapeHtml(shop.botUsername)}</p>` : '<p>Bot ulanmoqda</p>'}<span class="plan-pill">${escapeHtml(shop.tariffName || 'Tarifsiz')}</span></div>
+      </section>
+      <section class="plat-shop-detail-card">
+        <div class="plat-section-heading"><div><h2>Do'kon holati</h2><p>Asosiy ko'rsatkichlar va joriy obuna.</p></div></div>
+        <div class="plat-shop-detail-metrics"><div><span>${pIcon('box',17)}</span><small>Mahsulotlar</small><b>${used}${limit !== null ? ` / ${limit}` : ''}</b>${pct !== null ? `<div class="mini-progress"><i style="width:${pct}%"></i></div><em>${pct}% foydalanilgan</em>` : ''}</div><div class="${warn ? 'is-warn' : ''}"><span>${pIcon('calendar',17)}</span><small>Obuna</small><b>${noPlan ? 'Tarif tanlanmagan' : left === null ? 'Muddat noma’lum' : left <= 0 ? 'Tugagan' : `${left} kun qoldi`}</b><em>${shop.subscriptionExpiresAt ? formatDate(shop.subscriptionExpiresAt) + ' gacha' : 'Obuna sanasi yo‘q'}</em></div></div>
+      </section>
+      <section class="plat-shop-detail-card plat-shop-sub-manage">
+        <div class="plat-section-heading"><div><h2>Obunani boshqarish</h2><p>${noPlan ? "Tarif tanlab do'kon obunasini faollashtiring." : `Joriy tarif: ${escapeHtml(shop.tariffName || '')}${tariff ? ` · ${money(tariff.price)}/oy` : ''}`}</p></div></div>
+        ${noPlan ? `<button class="primary" onclick="startUpgradeFor('${shop.id}')">${pIcon('diamond',16)} Tarif tanlash</button>` : `<div class="plat-shop-detail-actions"><button class="primary" onclick="startExtendFor('${shop.id}')">${pIcon('calendar',16)} Obunani uzaytirish</button><button class="secondary" onclick="startUpgradeFor('${shop.id}')">${pIcon('swap',16)} Tarifni o'zgartirish</button></div><div class="plat-preserve-days-note">${pIcon('check',15)}<span>Istalgan vaqtda uzaytirishingiz mumkin. Qolgan kunlar kuyib ketmaydi — yangi muddat mavjud tugash sanasiga qo'shiladi.</span></div>`}
+      </section>
+      <section class="plat-shop-detail-card">
+        <div class="plat-section-heading"><div><h2>Do'kon boshqaruvi</h2><p>Do'konning o'z boshqaruv paneliga o'ting.</p></div></div>
+        ${shop.botUsername ? `<a class="primary plat-shop-open-main" href="https://t.me/${escapeHtml(shop.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',16)} Do'konni ochish</a>` : `<button class="secondary" disabled>${pIcon('shop',16)} Bot hali ulanmagan</button>`}
+        <div class="plat-shop-detail-info-grid"><div><span>${pIcon('bag',15)}</span><b>Bugungi buyurtmalar</b><strong>${Number(shop.ordersToday || 0)}</strong></div><div><span>${pIcon('chat',15)}</span><b>Jami buyurtmalar</b><strong>${Number(shop.usedOrderCount || 0)}</strong></div></div>
+      </section>
+    `;
+  }
 
   function renderSubscriptionTab() {
-    if (!dashboardShopId || !myShops.some((s) => s.id === dashboardShopId)) dashboardShopId = myShops[0]?.id || null;
-    const s = myShops.find((sh) => sh.id === dashboardShopId) || myShops[0] || null;
-    if (!myShops.length) return `<div class="plat-empty-pro"><span>${pIcon('diamond',30)}</span><h1>Obuna tanlang</h1><p>Do'kon yaratish uchun avval mos tarifni tanlang.</p><button class="primary" onclick="startNewShopFlow()">Tariflarni ko'rish</button></div>`;
-    const activeCount = myShops.filter((s)=>s.status==='ACTIVE').length;
-    const expiringCount = myShops.filter((s)=>{const d=daysUntil(s.subscriptionExpiresAt); return d!==null&&d>=0&&d<=7;}).length;
-    const frozenCount = myShops.filter((s)=>s.status==='FROZEN').length;
-    // Current selected-shop tariff is passed to the shared tariff renderer: currentTariffId: s.tariffId
     return `
-      <div class="plat-tab-head"><div><h1>Obunalar</h1><p>Barcha do'konlaringiz obunasini boshqaring</p></div></div>
-      <div class="plat-summary-strip"><div><span class="tone-violet">${pIcon('shop',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-amber">${pIcon('calendar',16)}</span><b>${expiringCount}</b><small>Tez tugaydi</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${frozenCount}</b><small>Muzlatilgan</small></div></div>
-      <div class="plat-subscription-cards">${myShops.map((s)=>{ const left=daysUntil(s.subscriptionExpiresAt); const limit=s.productLimit??null; const used=Number(s.usedProductCount||0); const pct=limit?Math.min(100,Math.round(used/limit*100)):null; const warn=left!==null&&left<=7; const tariff=tariffs.find((t)=>t.id===s.tariffId); return `<article class="plat-sub-card ${warn?'is-expiring':''}"><div class="plat-sub-card-head"><span class="plat-shop-avatar">${shopAvatarHtml(s)}</span><div><h2>${escapeHtml(s.shopName||s.botUsername||s.publicCode)}</h2>${s.botUsername?`<p>@${escapeHtml(s.botUsername)}</p>`:''}</div><span class="plan-pill">${escapeHtml(s.tariffName||'Tarifsiz')}</span></div><div class="plat-sub-card-grid"><div><b>${tariff?money(tariff.price):'—'}</b><small>Tarif narxi</small></div><div><b>${used}${limit!==null?` / ${limit}`:''}</b><small>Mahsulot limiti</small></div><div class="${warn?'is-warn':'is-ok'}"><b>${left===null?'—':left<=0?'Tugagan':`${left} kun qoldi`}</b><small>Obuna tugashiga</small></div><div><b>${s.subscriptionExpiresAt?formatDate(s.subscriptionExpiresAt):'—'}</b><small>Amal qiladi</small></div></div><div class="plat-sub-progress"><span>Obuna muddati</span><div><i style="width:${left===null?0:Math.max(3,Math.min(100,Math.round((30-Math.min(30,Math.max(0,left)))/30*100)))}%"></i></div></div><div class="plat-sub-card-actions"><button class="primary plat-small-btn" onclick="startExtendFor('${s.id}')">Obunani uzaytirish</button><button class="secondary plat-small-btn" onclick="startUpgradeFor('${s.id}')">Tarifni o'zgartirish</button></div></article>`;}).join('')}</div>
-      <button class="plat-new-shop-inline" onclick="startNewShopFlow()">${pIcon('plus',18)}<span><b>Yangi do'kon yaratish</b><small>Tarif tanlang va yangi do'kon oching</small></span><em>›</em></button>
-      <div class="plat-section-heading"><div><h2>Tariflar</h2><p>Oylik yoki yillik. Yillik obunada 2 oy bepul.</p></div></div>
+      <div class="plat-tab-head"><div><h1>Obuna</h1><p>Do'konlar emas — faqat tariflar va obuna imkoniyatlari.</p></div></div>
       ${renderBillingToggle()}
-      ${renderTariffCards(false, { currentTariffId: s.tariffId })}
-      <div class="plat-bonus-card plat-bonus-card-pro"><span class="plat-bonus-icon">${pIcon('gift',18)}</span><div><b>Birinchi obunada +7 kun bonus</b><p>Faqat yangi do'konning birinchi obunasida.</p></div></div>
+      <div class="plat-subscription-tariff-list">${renderTariffCards(true, { ctaLabel: 'Sotib olish' })}</div>
+      <div class="plat-bonus-card plat-bonus-card-pro"><span class="plat-bonus-icon">${pIcon('gift',18)}</span><div><b>Birinchi obunada +7 kun bonus</b><p>Yangi do'konning birinchi obunasida qo'llanadi.</p></div></div>
     `;
   }
   function setDashboardShop(shopId) { dashboardShopId = shopId; render(); }
-  // "Uzaytirish" ham texnik jihatdan xuddi shu UPGRADE oqimi (joriy tarifni
-  // qayta tanlab, to'lovni takrorlash) — alohida backend action yo'q, mavjud
-  // subscription request flow qayta ishlatiladi (yangi logika o'ylab topilmadi).
-  function startExtendFor(shopId) { startUpgradeFor(shopId); }
+  function startExtendFor(shopId) {
+    const shop = myShops.find((s) => s.id === shopId);
+    if (!shop?.tariffId) { startUpgradeFor(shopId); return; }
+    flowKind = 'UPGRADE';
+    flowShopId = shopId;
+    flowTariffId = shop.tariffId;
+    flowUpgradeAction = 'EXTEND';
+    flowReturnPage = activePage === 'SUBSCRIPTION_TARGET' ? 'SUBSCRIPTION_TARGET' : 'MY_SHOP_DETAILS';
+    consentAccepted = false;
+    openPage('PAYMENT');
+  }
   function startUpgradeFor(shopId) {
     flowKind = 'UPGRADE';
     flowShopId = shopId;
     flowTariffId = null;
+    flowUpgradeAction = 'CHANGE';
+    flowReturnPage = 'MY_SHOP_DETAILS';
+    consentAccepted = false;
     openPage('TARIFFS');
   }
 
@@ -1830,9 +1924,9 @@
       <div class="card">
         <div class="plat-shop-card-head">
           <b>${escapeHtml(r.requesterFirstName || r.requesterTelegramId)}</b>
-          <span class="status-pill">${r.kind === 'NEW_SHOP' ? 'Yangi do\'kon' : 'Tarif oshirish'}</span>
+          <span class="status-pill">${r.kind === 'NEW_SHOP' ? 'Yangi do\'kon' : r.upgradeAction === 'EXTEND' ? 'Obunani uzaytirish' : "Tarifni o'zgartirish"}</span>
         </div>
-        <p class="muted">Tarif: ${escapeHtml(r.tariffName)} — ${money(r.tariffPrice)}</p>
+        <p class="muted">Tarif: ${escapeHtml(r.tariffName)} — ${money(r.tariffPrice)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</p>
         ${r.awaitingBotConnect ? '<div class="notice warn">Bot ulanishi kutilmoqda</div>' : ''}
         ${r.status === 'REJECTED' && r.rejectReason ? `<div class="notice error">Sabab: ${escapeHtml(r.rejectReason)}</div>` : ''}
         <div class="plat-request-actions">
@@ -1985,8 +2079,8 @@
   window.startNewShopFlow = startNewShopFlow;
   window.startNewShopWithTariff = startNewShopWithTariff;
   window.chooseNewShop = chooseNewShop;
-  window.chooseUpgrade = chooseUpgrade;
-  window.pickUpgradeShop = pickUpgradeShop;
+  window.startChangeWithSelectedTariff = startChangeWithSelectedTariff;
+  window.clearReceiptFile = clearReceiptFile;
   window.copyPlatformCardNumber = copyPlatformCardNumber;
   window.onReceiptPicked = onReceiptPicked;
   window.submitSubscriptionRequest = submitSubscriptionRequest;
