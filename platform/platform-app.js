@@ -122,6 +122,10 @@
     swap: '<path d="M7 7h12l-3-3"/><path d="m19 7-3 3"/><path d="M17 17H5l3 3"/><path d="m5 17 3-3"/>',
     send: '<path d="m3 11 18-8-8 18-2-7-8-3z"/><path d="m11 14 4-4"/>',
     wallet: '<path d="M4 7h14a2 2 0 0 1 2 2v10H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12"/><path d="M16 12h5v4h-5a2 2 0 0 1 0-4z"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+    filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    arrowRight: '<path d="M5 12h14"/><path d="m14 7 5 5-5 5"/>',
   };
   function pIcon(name, size) {
     const s = size || 18;
@@ -222,6 +226,10 @@
   // to'liq yuklangan adminShops ustida) — yangi backend so'rov shart emas.
   let adminShopsSearchQuery = '';
   let adminShopsStatusFilter = 'ALL';
+  let adminShopsTariffFilter = 'ALL';
+  let adminShopsDaysFilter = 'ALL';
+  let adminShopsSort = 'NEWEST';
+  let adminShopsFiltersOpen = false;
   let verifyResult = null;
   let verifying = false;
   let connecting = false;
@@ -240,6 +248,7 @@
   let requests = [];
   let requestsLoading = false;
   let rejectingRequestId = null;
+  let selectedRequestId = null;
 
   // Admin: tariflar CRUD
   let adminTariffs = [];
@@ -509,6 +518,7 @@
     if (p === 'CONNECT_SHOP') return pageShell("Yangi do'kon ulash", renderConnectShopBody(), { onBack: "closePage()" });
     if (p === 'MY_SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderMyShopDetailsBody(), { onBack: "switchTab('shops')" });
     if (p === 'SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderShopDetailsBody(), { onBack: "switchTab('shops')" });
+    if (p === 'REQUEST_DETAILS') return pageShell("So'rov tafsilotlari", renderRequestDetailsBody(), { onBack: "switchTab('requests')" });
     if (p === 'TERMS') return pageShell("Foydalanish shartlari", renderTermsBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'PRIVACY') return pageShell("Maxfiylik siyosati", renderPrivacyBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'ABOUT') return pageShell("UStorE haqida", renderAboutBody(), { onBack: "closePage()" });
@@ -1773,7 +1783,12 @@
   // path interpolatsiyasiz — mobil ekranda ishonchli, "rainbow" emas, spec
   // talabiga mos).
   function renderAnalyticsTrendBars(timeline) {
-    if (!timeline || !timeline.length) return '<p class="empty">Bu davrda ma\'lumot yo\'q.</p>';
+    if (!timeline || !timeline.length) return `
+      <div class="plat-admin-empty is-compact">
+        <span>${pIcon('chart', 22)}</span>
+        <b>Bu davrda savdo ma'lumoti yo'q</b>
+        <small>Tasdiqlangan obuna to'lovlari tushgach dinamika shu yerda ko'rinadi.</small>
+      </div>`;
     const max = Math.max(1, ...timeline.map((p) => p.revenue));
     const showEvery = timeline.length > 12 ? Math.ceil(timeline.length / 8) : 1;
     return `
@@ -1791,80 +1806,93 @@
     const periods = [['7d', '7 kun'], ['30d', '30 kun'], ['90d', '90 kun'], ['all', 'Barcha vaqt']];
     const a = analyticsData;
     return `
-      <div class="card plat-analytics-card">
-        <div class="plat-tab-head">
-          <h2>Analitika</h2>
+      <section class="plat-admin-section plat-analytics-card">
+        <div class="plat-admin-section-head">
+          <div><span class="plat-admin-eyebrow">Moliyaviy ko'rsatkichlar</span><h2>Analitika</h2></div>
+          <span class="plat-admin-section-icon">${pIcon('chart', 18)}</span>
         </div>
-        <div class="plat-filter-row is-scroll">
-          ${periods.map(([key, label]) => `<button class="plat-filter-btn ${analyticsPeriod === key ? 'active' : ''}" onclick="setAnalyticsPeriod('${key}')">${label}</button>`).join('')}
+        <div class="plat-admin-period-switch">
+          ${periods.map(([key, label]) => `<button class="${analyticsPeriod === key ? 'active' : ''}" onclick="setAnalyticsPeriod('${key}')">${label}</button>`).join('')}
         </div>
-        ${!a || analyticsLoading ? '<p class="muted">Yuklanmoqda...</p>' : `
+        ${!a || analyticsLoading ? '<div class="plat-admin-skeleton-grid"><i></i><i></i><i></i><i></i></div>' : `
           <div class="plat-analytics-kpi-grid">
-            <div class="plat-analytics-kpi"><b>${a.totalCount}</b><small>Jami obuna to'lovi</small></div>
-            <div class="plat-analytics-kpi"><b>${a.newShopCount}</b><small>Yangi do'kon</small></div>
-            <div class="plat-analytics-kpi"><b>${a.renewalCount}</b><small>Uzaytirish</small></div>
-            <div class="plat-analytics-kpi"><b>${a.planChangeCount}</b><small>Tarif o'zgarishi</small></div>
-            <div class="plat-analytics-kpi is-primary"><b>${money(a.revenue)}</b><small>Daromad</small></div>
-            <div class="plat-analytics-kpi"><b>${a.retentionRate === null ? '—' : a.retentionRate + '%'}</b><small>Retention (30+ kunlik, ${a.retentionCohortSize} ta do'kon)</small></div>
+            <div class="plat-analytics-kpi"><span>${pIcon('inbox',16)}</span><div><b>${a.totalCount}</b><small>Jami obuna to'lovi</small></div></div>
+            <div class="plat-analytics-kpi"><span>${pIcon('shop',16)}</span><div><b>${a.newShopCount}</b><small>Yangi do'kon</small></div></div>
+            <div class="plat-analytics-kpi"><span>${pIcon('clock',16)}</span><div><b>${a.renewalCount}</b><small>Uzaytirish</small></div></div>
+            <div class="plat-analytics-kpi"><span>${pIcon('swap',16)}</span><div><b>${a.planChangeCount}</b><small>Tarif o'zgarishi</small></div></div>
+            <div class="plat-analytics-kpi is-primary"><span>${pIcon('wallet',16)}</span><div><b>${money(a.revenue)}</b><small>Daromad</small></div></div>
+            <div class="plat-analytics-kpi"><span>${pIcon('chart',16)}</span><div><b>${a.retentionRate === null ? '—' : a.retentionRate + '%'}</b><small>Retention · ${a.retentionCohortSize} shop</small></div></div>
           </div>
-          <h3 class="plat-analytics-subtitle">Savdo dinamikasi</h3>
-          ${renderAnalyticsTrendBars(a.salesTimeline)}
-          <h3 class="plat-analytics-subtitle">To'lov davri bo'yicha</h3>
-          <div class="plat-analytics-breakdown-row"><span>Oylik</span><b>${a.byPeriod.MONTHLY.count} ta · ${money(a.byPeriod.MONTHLY.revenue)}</b></div>
-          <div class="plat-analytics-breakdown-row"><span>Yillik</span><b>${a.byPeriod.ANNUAL.count} ta · ${money(a.byPeriod.ANNUAL.revenue)}</b></div>
-          <h3 class="plat-analytics-subtitle">Tarif bo'yicha</h3>
-          ${a.byTariff.length ? a.byTariff.map((t) => `<div class="plat-analytics-breakdown-row"><span>${escapeHtml(t.tariffName)}</span><b>${t.count} ta · ${money(t.revenue)}</b></div>`).join('') : '<p class="empty">Bu davrda ma\'lumot yo\'q.</p>'}
+          <div class="plat-admin-analytics-block">
+            <div class="plat-admin-subhead"><b>Savdo dinamikasi</b><small>Tasdiqlangan to'lovlar</small></div>
+            ${renderAnalyticsTrendBars(a.salesTimeline)}
+          </div>
+          <div class="plat-admin-analytics-block">
+            <div class="plat-admin-subhead"><b>To'lov davri bo'yicha</b><small>Oylik va yillik</small></div>
+            <div class="plat-admin-period-stats">
+              <div><span>Oylik</span><b>${a.byPeriod.MONTHLY.count} ta</b><small>${money(a.byPeriod.MONTHLY.revenue)}</small></div>
+              <div><span>Yillik</span><b>${a.byPeriod.ANNUAL.count} ta</b><small>${money(a.byPeriod.ANNUAL.revenue)}</small></div>
+            </div>
+          </div>
+          <div class="plat-admin-analytics-block">
+            <div class="plat-admin-subhead"><b>Tarif bo'yicha</b><small>So'rovlar va tushum</small></div>
+            ${a.byTariff.length ? `<div class="plat-admin-tariff-breakdown">${a.byTariff.map((t) => `<div><span>${escapeHtml(t.tariffName)}</span><b>${t.count} ta</b><small>${money(t.revenue)}</small></div>`).join('')}</div>` : `<div class="plat-admin-empty is-compact"><span>${pIcon('diamond',20)}</span><b>Bu davrda tarif savdosi yo'q</b></div>`}
+          </div>
         `}
-      </div>
+      </section>
     `;
   }
+
   function renderAdminDashboardTab() {
     const s = dashboardSummary;
-    if (!s) return '<p class="muted">Yuklanmoqda...</p>';
+    if (!s) return `<div class="plat-admin-loading"><span class="spinner"></span><b>Dashboard yuklanmoqda</b><small>Ko'rsatkichlar tayyorlanmoqda...</small></div>`;
     return `
       <div class="plat-admin-dash-head">
-        <h1>UStorE Admin</h1>
-        <p>Platforma, do'konlar va obunalar nazorati</p>
+        <span class="plat-admin-eyebrow">Boshqaruv markazi</span>
+        <h1>Dashboard</h1>
+        <p>Platforma holati, obunalar va asosiy ko'rsatkichlar.</p>
       </div>
       <div class="plat-admin-kpi-grid">
         <button type="button" class="plat-admin-kpi-card is-primary" onclick="switchTab('shops')">
           <span class="plat-admin-kpi-icon">${pIcon('shop', 20)}</span>
-          <b>${s.activeShopsCount}</b><small>Faol do'konlar</small>
-          <em>${s.expiringSoonCount} ta 7 kun ichida tugaydi</em>
+          <span class="plat-admin-kpi-copy"><small>Faol do'konlar</small><b>${s.activeShopsCount}</b><em>${s.expiringSoonCount ? `${s.expiringSoonCount} tasi 7 kun ichida tugaydi` : 'Yaqin muddatda tugaydigan yo‘q'}</em></span>
+          <span class="plat-admin-kpi-go">${pIcon('arrowRight',15)}</span>
         </button>
         <button type="button" class="plat-admin-kpi-card is-warn" onclick="openPage('EXPIRED_SHOPS')">
           <span class="plat-admin-kpi-icon">${pIcon('calendar', 20)}</span>
-          <b>${s.expiredCount}</b><small>Muddati tugagan</small>
-          <em>Muzlatilgan do'konlar</em>
+          <span class="plat-admin-kpi-copy"><small>Muddati tugagan</small><b>${s.expiredCount}</b><em>${s.expiredCount ? 'Muzlatilgan do‘konlar' : 'Muammo yo‘q'}</em></span>
+          <span class="plat-admin-kpi-go">${pIcon('arrowRight',15)}</span>
         </button>
-        <div class="plat-admin-kpi-card">
+        <button type="button" class="plat-admin-kpi-card is-info" onclick="switchTab('requests')">
           <span class="plat-admin-kpi-icon">${pIcon('inbox', 20)}</span>
-          <b>${s.newRequestsCount}</b><small>Yangi obuna so'rovlari</small>
-        </div>
-        <div class="plat-admin-kpi-card">
+          <span class="plat-admin-kpi-copy"><small>Yangi so'rovlar</small><b>${s.newRequestsCount}</b><em>${s.newRequestsCount ? 'Tekshiruv kutmoqda' : 'Yangi so‘rov yo‘q'}</em></span>
+          <span class="plat-admin-kpi-go">${pIcon('arrowRight',15)}</span>
+        </button>
+        <button type="button" class="plat-admin-kpi-card is-neutral" onclick="switchTab('profile')">
           <span class="plat-admin-kpi-icon">${pIcon('user', 20)}</span>
-          <b>${s.totalUsersCount}</b><small>Jami foydalanuvchilar</small>
-        </div>
+          <span class="plat-admin-kpi-copy"><small>Foydalanuvchilar</small><b>${s.totalUsersCount}</b><em>Do'kon egalari</em></span>
+          <span class="plat-admin-kpi-go">${pIcon('arrowRight',15)}</span>
+        </button>
       </div>
-      ${s.newRequestsCount ? `<button class="primary" onclick="switchTab('requests')">📨 ${s.newRequestsCount} ta yangi so'rovni ko'rish</button>` : ''}
       ${renderAnalyticsSection()}
       ${(s.attentionItems || []).length ? `
-        <div class="card">
-          <h2>⚠️ Diqqat talab qiladi</h2>
-          ${s.attentionItems.map((it) => `
-            <div class="plat-mini-row plat-clickable" onclick="switchTab('${it.type === 'NEW_REQUEST' ? 'requests' : 'shops'}')">
-              <span>${escapeHtml(it.label)}</span>
-              <span class="muted">${escapeHtml(it.detail || '')}</span>
-            </div>
-          `).join('')}
-        </div>
+        <section class="plat-admin-section">
+          <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Nazorat</span><h2>Diqqat talab qiladi</h2></div><span class="plat-admin-section-icon is-warn">${pIcon('bell',18)}</span></div>
+          <div class="plat-admin-attention-list">
+            ${s.attentionItems.slice(0,6).map((it) => `
+              <button class="plat-admin-attention-row" onclick="${it.type === 'NEW_REQUEST' ? "switchTab('requests')" : "switchTab('shops')"}">
+                <span class="plat-admin-attention-dot"></span><span><b>${escapeHtml(it.label)}</b><small>${escapeHtml(it.detail || '')}</small></span>${pIcon('arrowRight',15)}
+              </button>
+            `).join('')}
+          </div>
+        </section>
       ` : ''}
-      <div class="card">
-        <h2>So'nggi do'konlar</h2>
-        ${(s.recentShops || []).map((sh) => `
-          <div class="plat-mini-row"><span>${escapeHtml(sh.public_code)}</span><span class="status-pill status-${sh.status}">${statusLabel(sh.status)}</span></div>
-        `).join('') || '<p class="muted">Hozircha do\'kon yo\'q.</p>'}
-      </div>
+      <section class="plat-admin-section">
+        <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">So'nggi faollik</span><h2>Yangi do'konlar</h2></div><button class="plat-admin-text-btn" onclick="switchTab('shops')">Barchasi ${pIcon('arrowRight',14)}</button></div>
+        ${(s.recentShops || []).length ? `<div class="plat-admin-recent-list">${s.recentShops.slice(0,5).map((sh) => `
+          <button onclick="switchTab('shops')"><span class="plat-admin-recent-icon">${pIcon('shop',16)}</span><span><b>${escapeHtml(sh.public_code)}</b><small>Platformaga qo'shilgan do'kon</small></span><span class="status-pill status-${sh.status}">${escapeHtml(adminShopStatusLabel(sh.status))}</span></button>
+        `).join('')}</div>` : `<div class="plat-admin-empty is-compact"><span>${pIcon('shop',20)}</span><b>Hozircha do'kon yo'q</b></div>`}
+      </section>
     `;
   }
 
@@ -1876,48 +1904,112 @@
     adminShops = data.shops || [];
     render();
   }
+  function adminShopStatusLabel(status) {
+    if (status === 'ACTIVE') return 'Faol';
+    if (status === 'FROZEN') return 'Muzlatilgan';
+    if (status === 'PROVISIONING') return 'Sozlanmoqda';
+    if (status === 'TERMINATED') return "O'chirilgan";
+    return status || 'Noma’lum';
+  }
+  function adminShopDaysBucket(s) {
+    const d = daysUntil(s.subscriptionExpiresAt);
+    if (d === null) return 'NONE';
+    if (d <= 3) return '0_3';
+    if (d <= 7) return '4_7';
+    if (d <= 14) return '8_14';
+    if (d <= 30) return '15_30';
+    return '30_PLUS';
+  }
   function filteredAdminShops() {
     const q = adminShopsSearchQuery.trim().toLowerCase();
-    return adminShops.filter((s) => {
+    let list = adminShops.filter((s) => {
       if (adminShopsStatusFilter !== 'ALL' && s.status !== adminShopsStatusFilter) return false;
+      if (adminShopsTariffFilter !== 'ALL' && (s.tariffName || 'Tarifsiz') !== adminShopsTariffFilter) return false;
+      if (adminShopsDaysFilter !== 'ALL' && adminShopDaysBucket(s) !== adminShopsDaysFilter) return false;
       if (!q) return true;
       const haystack = [s.botName, s.botUsername, s.publicCode, s.ownerTelegramId, s.tariffName].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
+    if (adminShopsSort === 'OLDEST') list = list.slice().sort((a,b) => new Date(a.createdAt||0)-new Date(b.createdAt||0));
+    else if (adminShopsSort === 'EXPIRING') list = list.slice().sort((a,b) => (daysUntil(a.subscriptionExpiresAt) ?? 999999) - (daysUntil(b.subscriptionExpiresAt) ?? 999999));
+    else if (adminShopsSort === 'AZ') list = list.slice().sort((a,b) => String(a.botName||a.botUsername||a.publicCode||'').localeCompare(String(b.botName||b.botUsername||b.publicCode||''), 'uz'));
+    else list = list.slice().sort((a,b) => new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    return list;
   }
   function setAdminShopsSearch(value) { adminShopsSearchQuery = value; rerenderActivePage(); }
   function setAdminShopsStatusFilter(status) { adminShopsStatusFilter = status; rerenderActivePage(); }
+  function setAdminShopsTariffFilter(value) { adminShopsTariffFilter = value; rerenderActivePage(); }
+  function setAdminShopsDaysFilter(value) { adminShopsDaysFilter = value; rerenderActivePage(); }
+  function setAdminShopsSort(value) { adminShopsSort = value; rerenderActivePage(); }
+  function toggleAdminShopsFilters() { adminShopsFiltersOpen = !adminShopsFiltersOpen; rerenderActivePage(); }
+  function resetAdminShopFilters() {
+    adminShopsStatusFilter = 'ALL'; adminShopsTariffFilter = 'ALL'; adminShopsDaysFilter = 'ALL'; adminShopsSort = 'NEWEST';
+    rerenderActivePage();
+  }
   function renderAdminShopsTab() {
     const list = filteredAdminShops();
-    const statusOptions = [
-      ['ALL', 'Hammasi'], ['ACTIVE', 'Faol'], ['FROZEN', 'Muzlatilgan'],
-      ['PROVISIONING', 'Sozlanmoqda'], ['TERMINATED', "O'chirilgan"],
-    ];
+    const statusOptions = [['ACTIVE', 'Faol'], ['FROZEN', 'Muzlatilgan'], ['PROVISIONING', 'Sozlanmoqda'], ['TERMINATED', "O'chirilgan"]];
+    const counts = {
+      all: adminShops.length,
+      active: adminShops.filter((s)=>s.status==='ACTIVE').length,
+      frozen: adminShops.filter((s)=>s.status==='FROZEN').length,
+      provisioning: adminShops.filter((s)=>s.status==='PROVISIONING').length,
+    };
+    const tariffNames = Array.from(new Set(adminShops.map((s)=>s.tariffName).filter(Boolean))).sort();
+    const advancedCount = Number(adminShopsTariffFilter !== 'ALL') + Number(adminShopsDaysFilter !== 'ALL') + Number(adminShopsSort !== 'NEWEST') + Number(!['ALL','ACTIVE','FROZEN'].includes(adminShopsStatusFilter));
     return `
-      <div class="plat-tab-head">
-        <h1 class="plat-page-title">Do'konlar</h1>
-        <button class="primary plat-small-btn" onclick="openPage('CONNECT_SHOP')">+ Yangi do'kon</button>
+      <div class="plat-admin-list-head">
+        <span class="plat-admin-eyebrow">Platforma katalogi</span>
+        <h1>Do'konlar</h1>
+        <p>Barcha do'konlar holati va obunalarini bitta joydan boshqaring.</p>
       </div>
-      <input type="text" class="plat-shops-search" placeholder="Nom, @username yoki owner ID bo'yicha qidirish..." value="${escapeHtml(adminShopsSearchQuery)}" oninput="setAdminShopsSearch(this.value)">
-      <div class="plat-filter-row is-scroll">
-        ${statusOptions.map(([key, label]) => `<button class="plat-filter-btn ${adminShopsStatusFilter === key ? 'active' : ''}" onclick="setAdminShopsStatusFilter('${key}')">${label}</button>`).join('')}
+      <div class="plat-admin-summary-strip">
+        <div><b>${counts.all}</b><small>Jami</small></div><div><b>${counts.active}</b><small>Faol</small></div><div><b>${counts.frozen}</b><small>Muzlatilgan</small></div><div><b>${counts.provisioning}</b><small>Sozlanmoqda</small></div>
       </div>
-      <div class="card">
-        ${list.length ? list.map(renderAdminShopRow).join('') : `<p class="empty">${adminShops.length ? "Filtrga mos do'kon topilmadi." : "Hozircha do'kon ulanmagan."}</p>`}
+      <div class="plat-admin-search-row">
+        <label class="plat-admin-search">${pIcon('search',18)}<input type="text" placeholder="Do'kon, @username yoki owner ID" value="${escapeHtml(adminShopsSearchQuery)}" oninput="setAdminShopsSearch(this.value)"></label>
+        <button class="plat-admin-filter-toggle ${adminShopsFiltersOpen || advancedCount ? 'active' : ''}" onclick="toggleAdminShopsFilters()" aria-label="Filtrlar">${pIcon('filter',18)}${advancedCount ? `<i>${advancedCount}</i>` : ''}</button>
+      </div>
+      <div class="plat-admin-quick-tabs">
+        ${[['ALL','Hammasi',counts.all],['ACTIVE','Faol',counts.active],['FROZEN','Muzlatilgan',counts.frozen]].map(([key,label,count])=>`<button class="${adminShopsStatusFilter===key?'active':''}" onclick="setAdminShopsStatusFilter('${key}')"><span>${label}</span><em>${count}</em></button>`).join('')}
+      </div>
+      ${adminShopsFiltersOpen ? `
+        <section class="plat-admin-filter-panel">
+          <div class="plat-admin-filter-panel-head"><div><b>Kengaytirilgan filtr</b><small>Natijani aniqroq saralang</small></div><button onclick="resetAdminShopFilters()">Tozalash</button></div>
+          <div class="plat-admin-filter-grid">
+            <label><span>Holati</span><select onchange="setAdminShopsStatusFilter(this.value)"><option value="ALL" ${adminShopsStatusFilter==='ALL'?'selected':''}>Barchasi</option><option value="ACTIVE" ${adminShopsStatusFilter==='ACTIVE'?'selected':''}>Faol</option><option value="FROZEN" ${adminShopsStatusFilter==='FROZEN'?'selected':''}>Muzlatilgan</option><option value="PROVISIONING" ${adminShopsStatusFilter==='PROVISIONING'?'selected':''}>Sozlanmoqda</option><option value="TERMINATED" ${adminShopsStatusFilter==='TERMINATED'?'selected':''}>O'chirilgan</option></select></label>
+            <label><span>Tarif</span><select onchange="setAdminShopsTariffFilter(this.value)"><option value="ALL">Barcha tariflar</option>${tariffNames.map((name)=>`<option value="${escapeHtml(name)}" ${adminShopsTariffFilter===name?'selected':''}>${escapeHtml(name)}</option>`).join('')}</select></label>
+            <label><span>Qolgan muddat</span><select onchange="setAdminShopsDaysFilter(this.value)"><option value="ALL">Barcha muddatlar</option><option value="0_3" ${adminShopsDaysFilter==='0_3'?'selected':''}>0–3 kun</option><option value="4_7" ${adminShopsDaysFilter==='4_7'?'selected':''}>4–7 kun</option><option value="8_14" ${adminShopsDaysFilter==='8_14'?'selected':''}>8–14 kun</option><option value="15_30" ${adminShopsDaysFilter==='15_30'?'selected':''}>15–30 kun</option><option value="30_PLUS" ${adminShopsDaysFilter==='30_PLUS'?'selected':''}>30+ kun</option><option value="NONE" ${adminShopsDaysFilter==='NONE'?'selected':''}>Muddat yo'q</option></select></label>
+            <label><span>Saralash</span><select onchange="setAdminShopsSort(this.value)"><option value="NEWEST" ${adminShopsSort==='NEWEST'?'selected':''}>Eng yangi</option><option value="OLDEST" ${adminShopsSort==='OLDEST'?'selected':''}>Eng eski</option><option value="EXPIRING" ${adminShopsSort==='EXPIRING'?'selected':''}>Tez tugaydigan</option><option value="AZ" ${adminShopsSort==='AZ'?'selected':''}>A–Z</option></select></label>
+          </div>
+        </section>` : ''}
+      <div class="plat-admin-result-head"><b>${list.length} ta do'kon</b><small>${adminShopsSearchQuery || advancedCount || adminShopsStatusFilter!=='ALL' ? 'Filtrlangan natija' : 'Barcha do‘konlar'}</small></div>
+      <div class="plat-admin-shop-list">
+        ${list.length ? list.map(renderAdminShopRow).join('') : renderAdminShopsEmpty()}
       </div>
     `;
   }
+  function renderAdminShopsEmpty() {
+    const filtered = !!(adminShopsSearchQuery || adminShopsStatusFilter !== 'ALL' || adminShopsTariffFilter !== 'ALL' || adminShopsDaysFilter !== 'ALL');
+    if (filtered) return `<div class="plat-admin-empty" aria-label="Filtrga mos do'kon topilmadi"><span>${pIcon('search',24)}</span><b>Natija topilmadi</b><small>Qidiruv yoki filtrlarni o'zgartirib ko'ring.</small><button onclick="resetAdminShopFilters(); setAdminShopsSearch('')">Filtrlarni tozalash</button></div>`;
+    return `<div class="plat-admin-empty" aria-label="Hozircha do'kon ulanmagan"><span>${pIcon('shop',24)}</span><b>Hozircha do'kon yo'q</b><small>Yangi obuna tasdiqlanib do'kon ulanganda shu yerda ko'rinadi.</small></div>`;
+  }
   function renderAdminShopRow(s) {
     const left = daysUntil(s.subscriptionExpiresAt);
+    const title = s.botName || s.botUsername || s.publicCode || "Nomsiz do'kon";
+    const username = s.botUsername ? '@' + s.botUsername : s.publicCode || 'Bot ulanmagan';
+    const expiryClass = left !== null && left <= 0 ? 'is-danger' : left !== null && left <= 7 ? 'is-warn' : '';
+    const expiryText = left === null ? 'Obuna muddati yo‘q' : left <= 0 ? 'Obuna tugagan' : `${left} kun qoldi`;
     return `
-      <div class="shop-row plat-clickable" onclick="openShopDetails('${s.id}')">
-        <div>
-          <div class="name">${escapeHtml(s.botName || s.botUsername || s.publicCode)}</div>
-          <div class="meta">${s.botUsername ? '@' + escapeHtml(s.botUsername) : "bot yo'q"} · owner ${escapeHtml(s.ownerTelegramId || '-')}</div>
-          <div class="meta">${escapeHtml(s.tariffName || 'Tarifsiz')}${left !== null ? ` · ${left <= 0 ? 'muddati o\'tgan' : left + ' kun qoldi'}` : ''}</div>
-        </div>
-        <span class="status-pill status-${s.status}">${statusLabel(s.status)}</span>
-      </div>`;
+      <button type="button" class="plat-admin-shop-card" onclick="openShopDetails('${s.id}')">
+        <span class="plat-admin-shop-avatar">${pIcon('shop',20)}</span>
+        <span class="plat-admin-shop-main">
+          <span class="plat-admin-shop-title"><b>${escapeHtml(title)}</b><span class="status-pill status-${s.status}">${escapeHtml(adminShopStatusLabel(s.status))}</span></span>
+          <small>${escapeHtml(username)} · owner ${escapeHtml(s.ownerTelegramId || '-')}</small>
+          <span class="plat-admin-shop-meta"><em>${escapeHtml(s.tariffName || 'Tarifsiz')}</em><em class="${expiryClass}">${escapeHtml(expiryText)}</em>${s.subscriptionExpiresAt ? `<em>${formatDate(s.subscriptionExpiresAt)} gacha</em>` : ''}</span>
+        </span>
+        <span class="plat-admin-shop-chevron">${pIcon('arrowRight',17)}</span>
+      </button>`;
   }
   function openShopDetails(shopId) {
     selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
@@ -2339,20 +2431,14 @@
   async function loadRequests() {
     requestsLoading = true;
     try {
-      const data = await callPlatformApi('platform_list_subscription_requests', { status: requestsFilter === 'ALL' ? undefined : requestsFilter });
+      const data = await callPlatformApi('platform_list_subscription_requests', {});
       requests = data.requests || [];
+      if (selectedRequestId && !requests.some((r)=>r.id===selectedRequestId)) selectedRequestId = null;
     } catch (e) { console.error(e); }
     finally { requestsLoading = false; if (currentTab === 'requests') render(); }
   }
   function setRequestsFilter(f) { requestsFilter = f; requestsSubFilter = 'ALL'; loadRequests(); }
   function setRequestsSubFilter(v) { requestsSubFilter = v; render(); }
-  // 2026-08-28: spec 5 ta aniq holat so'raydi (Kutilmoqda/Tekshirilmoqda/
-  // Tasdiqlangan/Rad etilgan/Chek talab qilindi) — lekin bular uchun YANGI
-  // ustun/status QO'SHILMAYDI (loyihaning o'z konvensiyasi: "Bot ulanishi
-  // kutilmoqda" ham xuddi shunday — mavjud maydonlardan DERIVED). Barcha 5
-  // holat status/hasReceipt/paymentClaimedAt/receiptRequestedAt'dan chiqadi.
-  // `key` — pastdagi sub-filtr bilan BITTA manbadan ishlatiladi (badge va
-  // filtr mantiqi hech qachon bir-biridan farqlanib qolmasin uchun).
   function requestDisplayStatus(r) {
     if (r.status === 'APPROVED') return { key: 'APPROVED', label: 'Tasdiqlangan', tone: 'ok' };
     if (r.status === 'REJECTED') return { key: 'REJECTED', label: 'Rad etilgan', tone: 'danger' };
@@ -2360,67 +2446,101 @@
     if (r.receiptRequestedAt) return { key: 'RECEIPT_REQUESTED', label: "Chek talab qilindi", tone: 'warn' };
     return { key: 'PENDING', label: 'Kutilmoqda', tone: 'muted' };
   }
-  const REQUESTS_SUB_FILTERS = [['ALL', 'Barchasi'], ['PENDING', 'Kutilmoqda'], ['RECEIPT_REQUESTED', "Chek so'raldi"], ['REVIEWING', 'Tekshirilmoqda']];
+  const REQUESTS_SUB_FILTERS = [['ALL', 'Barchasi'], ['PENDING', 'Kutilmoqda'], ['REVIEWING', 'Tekshirilmoqda'], ['RECEIPT_REQUESTED', "Chek so'raldi"]];
   function setRequestsSearch(value) { requestsSearchQuery = value; render(); }
   function filteredRequestsForDisplay() {
-    let list = requests;
-    if (requestsFilter === 'NEW' && requestsSubFilter !== 'ALL') {
-      list = list.filter((r) => requestDisplayStatus(r).key === requestsSubFilter);
-    }
+    let list = requests.filter((r) => r.status === requestsFilter);
+    if (requestsFilter === 'NEW' && requestsSubFilter !== 'ALL') list = list.filter((r) => requestDisplayStatus(r).key === requestsSubFilter);
     const q = requestsSearchQuery.trim().toLowerCase();
-    if (q) {
-      list = list.filter((r) => {
-        const haystack = [r.requesterFirstName, r.requesterUsername, r.requesterTelegramId, r.tariffName].filter(Boolean).join(' ').toLowerCase();
-        return haystack.includes(q);
-      });
-    }
+    if (q) list = list.filter((r) => [r.requesterFirstName, r.requesterUsername, r.requesterTelegramId, r.tariffName, r.shopId].filter(Boolean).join(' ').toLowerCase().includes(q));
     return list;
+  }
+  function requestTypeLabel(r) {
+    if (r.kind === 'NEW_SHOP') return "Yangi do'kon";
+    if (r.upgradeAction === 'EXTEND') return 'Obunani uzaytirish';
+    return "Tarifni o'zgartirish";
   }
   function renderAdminRequestsTab() {
     const list = filteredRequestsForDisplay();
+    const open = requests.filter((r)=>r.status==='NEW');
+    const pending = open.filter((r)=>requestDisplayStatus(r).key==='PENDING').length;
+    const reviewing = open.filter((r)=>requestDisplayStatus(r).key==='REVIEWING').length;
+    const receipt = open.filter((r)=>requestDisplayStatus(r).key==='RECEIPT_REQUESTED').length;
+    const approvedToday = requests.filter((r)=>r.status==='APPROVED' && r.reviewedAt && new Date(r.reviewedAt).toDateString()===new Date().toDateString()).length;
     return `
-      <h1 class="plat-page-title">So'rovlar</h1>
-      <input type="text" class="plat-shops-search" placeholder="Ism, @username yoki Telegram ID bo'yicha qidirish..." value="${escapeHtml(requestsSearchQuery)}" oninput="setRequestsSearch(this.value)">
-      <div class="plat-filter-row">
-        ${['NEW', 'APPROVED', 'REJECTED'].map((f) => `
-          <button class="plat-filter-btn ${requestsFilter === f ? 'active' : ''}" onclick="setRequestsFilter('${f}')">${f === 'NEW' ? 'Yangi' : f === 'APPROVED' ? 'Tasdiqlangan' : 'Rad etilgan'}</button>
-        `).join('')}
+      <div class="plat-admin-list-head">
+        <span class="plat-admin-eyebrow">To'lov nazorati</span>
+        <h1>So'rovlar</h1>
+        <p>Obuna va yangi do'kon to'lovlarini tezkor tekshiring.</p>
       </div>
-      ${requestsFilter === 'NEW' ? `
-        <div class="plat-filter-row is-scroll">
-          ${REQUESTS_SUB_FILTERS.map(([key, label]) => `<button class="plat-filter-btn ${requestsSubFilter === key ? 'active' : ''}" onclick="setRequestsSubFilter('${key}')">${label}</button>`).join('')}
-        </div>
-      ` : ''}
-      ${requestsLoading ? '<p class="muted">Yuklanmoqda...</p>' : (list.length ? list.map(renderRequestCard).join('') : '<p class="empty">Bu holatda so\'rov yo\'q.</p>')}
+      <div class="plat-admin-request-stats">
+        <div><span class="is-blue">${pIcon('inbox',17)}</span><b>${open.length}</b><small>Yangi</small></div>
+        <div><span class="is-violet">${pIcon('clock',17)}</span><b>${reviewing}</b><small>Tekshiruvda</small></div>
+        <div><span class="is-amber">${pIcon('file',17)}</span><b>${receipt}</b><small>Chek so'ralgan</small></div>
+        <div><span class="is-green">${pIcon('check',17)}</span><b>${approvedToday}</b><small>Bugun tasdiq</small></div>
+      </div>
+      <label class="plat-admin-search is-wide">${pIcon('search',18)}<input type="text" placeholder="Ism, @username, Telegram ID yoki tarif" value="${escapeHtml(requestsSearchQuery)}" oninput="setRequestsSearch(this.value)"></label>
+      <div class="plat-admin-segment">
+        ${[['NEW','Yangi',open.length],['APPROVED','Tasdiqlangan',requests.filter((r)=>r.status==='APPROVED').length],['REJECTED','Rad etilgan',requests.filter((r)=>r.status==='REJECTED').length]].map(([key,label,count])=>`<button class="${requestsFilter===key?'active':''}" onclick="setRequestsFilter('${key}')"><span>${label}</span><em>${count}</em></button>`).join('')}
+      </div>
+      ${requestsFilter === 'NEW' ? `<div class="plat-admin-request-subfilters">${REQUESTS_SUB_FILTERS.map(([key,label])=>`<button class="${requestsSubFilter===key?'active':''}" onclick="setRequestsSubFilter('${key}')">${label}${key==='PENDING'?` <em>${pending}</em>`:''}</button>`).join('')}</div>` : ''}
+      <div class="plat-admin-result-head"><b>${list.length} ta so'rov</b><small>${requestsFilter==='NEW'?'Faol tekshiruvlar':requestsFilter==='APPROVED'?'Tasdiqlangan tarix':'Rad etilgan tarix'}</small></div>
+      ${requestsLoading ? `<div class="plat-admin-loading"><span class="spinner"></span><b>So'rovlar yuklanmoqda</b></div>` : `<div class="plat-admin-request-list">${list.length ? list.map(renderRequestCard).join('') : renderAdminRequestsEmpty()}</div>`}
     `;
+  }
+  function renderAdminRequestsEmpty() {
+    const search = !!requestsSearchQuery.trim();
+    return `<div class="plat-admin-empty"><span>${pIcon(search?'search':'inbox',24)}</span><b>${search?'Natija topilmadi':requestsFilter==='NEW'?"Hozircha yangi so'rov yo'q":"Bu bo'limda so'rov yo'q"}</b><small>${search?"Qidiruv matnini o'zgartirib ko'ring.":"Yangi to'lov yoki obuna so'rovi kelganda shu yerda ko'rinadi."}</small></div>`;
   }
   function renderRequestCard(r) {
     const ds = requestDisplayStatus(r);
+    const identity = r.requesterUsername ? '@'+r.requesterUsername : 'Telegram ID '+r.requesterTelegramId;
+    const claimed = r.paymentClaimedAt ? `To'ladim: ${formatDateTime(r.paymentClaimedAt)}` : r.receiptRequestedAt ? `Chek so'ralgan: ${formatDateTime(r.receiptRequestedAt)}` : `Yaratildi: ${formatDateTime(r.createdAt)}`;
+    const paymentNotice = !r.hasReceipt ? (r.paymentClaimedAt ? `<div class="plat-admin-request-note is-info">To'lov tasdiqlanishi kutilmoqda · chek biriktirilmagan.</div>` : r.receiptRequestedAt ? `<div class="notice">📎 Chek so'raldi — foydalanuvchi javobi kutilmoqda.</div>` : `<div class="plat-admin-request-note">Chek yo'q · foydalanuvchi hali “To'ladim” demagan.</div>`) : '';
     return `
-      <div class="card">
-        <div class="plat-shop-card-head">
-          <b>${escapeHtml(r.requesterFirstName || r.requesterTelegramId)}</b>
-          <span class="status-pill">${r.kind === 'NEW_SHOP' ? 'Yangi do\'kon' : r.upgradeAction === 'EXTEND' ? 'Obunani uzaytirish' : "Tarifni o'zgartirish"}</span>
-        </div>
-        <div class="plat-request-status-row"><span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span></div>
-        <p class="muted">Tarif: ${escapeHtml(r.tariffName)} — ${money(r.tariffPrice)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</p>
-        ${r.awaitingBotConnect ? '<div class="notice warn">Bot ulanishi kutilmoqda</div>' : ''}
-        ${!r.hasReceipt ? (r.paymentClaimedAt ? `<div class="notice warn">🧾 Chek yo'q — mijoz "To'ladim" degan (${formatDate(r.paymentClaimedAt)}). Tekshirib tasdiqlang yoki chek so'rang.</div>` : r.receiptRequestedAt ? `<div class="notice">📎 Chek so'raldi (${formatDate(r.receiptRequestedAt)}) — mijoz javobini kuting.</div>` : `<div class="notice">Chek yo'q — mijoz hali to'lov qilmagan/da'vo qilmagan.</div>`) : ''}
-        ${r.status === 'REJECTED' && r.rejectReason ? `<div class="notice error">Sabab: ${escapeHtml(r.rejectReason)}</div>` : ''}
-        <div class="plat-request-actions">
-          ${r.hasReceipt ? `<button class="secondary" onclick="viewReceipt('${r.id}')">Chekni ko'rish</button>` : ''}
-          ${r.status === 'NEW' ? `
-            <button class="primary" onclick="approveRequest('${r.id}')">✅ Tasdiqlash</button>
-            <button class="secondary" onclick="openRejectPrompt('${r.id}')">❌ Rad etish</button>
-            ${!r.hasReceipt ? `<button class="secondary" onclick="requestReceiptForRequest('${r.id}')">📎 Chek so'rash</button>` : ''}
-          ` : ''}
-        </div>
-        ${rejectingRequestId === r.id ? `
-          <div class="plat-reject-box">
-            <input type="text" id="reject-reason-${r.id}" placeholder="Rad etish sababi">
-            <button class="secondary" onclick="submitReject('${r.id}')">Yuborish</button>
-          </div>` : ''}
+      <div class="plat-admin-request-card" role="button" tabindex="0" onclick="openRequestDetails('${r.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openRequestDetails('${r.id}');}">
+        <span class="plat-admin-request-top"><span><b>${escapeHtml(r.requesterFirstName || r.requesterTelegramId)}</b><small>${escapeHtml(identity)}</small></span><span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span></span>
+        <span class="plat-admin-request-mid"><span><small>${escapeHtml(requestTypeLabel(r))}</small><b>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</b></span><strong>${money(r.tariffPrice)}</strong></span>
+        ${paymentNotice}
+        <span class="plat-admin-request-foot"><small>${pIcon('clock',13)} ${escapeHtml(claimed)}</small><span class="plat-admin-request-foot-actions">${r.status === 'NEW' && !r.hasReceipt && !r.receiptRequestedAt ? `<button onclick="requestReceiptForRequest('${r.id}')">Chek so'rash</button>` : ''}${pIcon('arrowRight',16)}</span></span>
       </div>`;
+  }
+
+  function formatDateTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+  }
+  function openRequestDetails(requestId) { selectedRequestId = requestId; rejectingRequestId = null; openPage('REQUEST_DETAILS'); }
+  function renderRequestDetailsBody() {
+    const r = requests.find((x)=>x.id===selectedRequestId);
+    if (!r) return `<div class="plat-admin-empty"><span>${pIcon('info',24)}</span><b>So'rov topilmadi</b><small>Ro'yxatga qaytib qayta urinib ko'ring.</small></div>`;
+    const ds = requestDisplayStatus(r);
+    return `
+      <div class="plat-admin-detail-hero">
+        <span class="plat-admin-detail-icon">${pIcon('inbox',22)}</span>
+        <div><span class="plat-admin-eyebrow">${escapeHtml(requestTypeLabel(r))}</span><h2>${escapeHtml(r.requesterFirstName || r.requesterTelegramId)}</h2><p>${r.requesterUsername?'@'+escapeHtml(r.requesterUsername):'Telegram ID: '+escapeHtml(r.requesterTelegramId)}</p></div>
+        <span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span>
+      </div>
+      <section class="plat-admin-section">
+        <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Obuna</span><h2>So'rov ma'lumotlari</h2></div></div>
+        <div class="plat-admin-detail-grid">
+          <div><small>Tarif</small><b>${escapeHtml(r.tariffName)}</b></div><div><small>Davr</small><b>${r.billingPeriod==='ANNUAL'?'Yillik':'Oylik'}</b></div>
+          <div><small>Summa</small><b>${money(r.tariffPrice)}</b></div><div><small>Mahsulot limiti</small><b>${r.tariffProductLimit == null ? 'Cheksiz' : escapeHtml(String(r.tariffProductLimit))}</b></div>
+          <div><small>So'rov yaratildi</small><b>${formatDateTime(r.createdAt)}</b></div><div><small>So'rov ID</small><b class="is-code">${escapeHtml(r.id)}</b></div>
+        </div>
+      </section>
+      <section class="plat-admin-section">
+        <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Verifikatsiya</span><h2>To'lov holati</h2></div></div>
+        <div class="plat-admin-payment-timeline">
+          <div class="${r.paymentClaimedAt?'done':''}"><span>${pIcon('clock',16)}</span><p><b>“To'ladim” tasdig'i</b><small>${r.paymentClaimedAt ? formatDateTime(r.paymentClaimedAt) : 'Hali bosilmagan'}</small></p></div>
+          <div class="${r.hasReceipt?'done':r.receiptRequestedAt?'warn':''}"><span>${pIcon('file',16)}</span><p><b>To'lov cheki</b><small>${r.hasReceipt?'Chek biriktirilgan':r.receiptRequestedAt?`Chek so'ralgan · ${formatDateTime(r.receiptRequestedAt)}`:'Ixtiyoriy · biriktirilmagan'}</small></p>${r.hasReceipt?`<button onclick="event.stopPropagation(); viewReceipt('${r.id}')">Ko'rish</button>`:''}</div>
+          <div class="${r.status==='APPROVED'?'done':r.status==='REJECTED'?'danger':''}"><span>${pIcon('check',16)}</span><p><b>Admin qarori</b><small>${r.status==='NEW'?'Tekshiruv kutilmoqda':`${ds.label} · ${formatDateTime(r.reviewedAt)}`}</small></p></div>
+        </div>
+        ${r.status === 'REJECTED' && r.rejectReason ? `<div class="notice error">Sabab: ${escapeHtml(r.rejectReason)}</div>` : ''}
+      </section>
+      ${r.status === 'NEW' ? `<section class="plat-admin-section"><div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Amallar</span><h2>Qaror</h2></div></div><div class="plat-admin-detail-actions"><button class="primary" onclick="approveRequest('${r.id}')">${pIcon('check',17)} Tasdiqlash</button>${!r.hasReceipt ? `<button class="secondary" onclick="requestReceiptForRequest('${r.id}')">${pIcon('file',17)} Chek so'rash</button>` : ''}<button class="secondary is-danger" onclick="openRejectPrompt('${r.id}')">Rad etish</button></div>${rejectingRequestId === r.id ? `<div class="plat-reject-box"><input type="text" id="reject-reason-${r.id}" placeholder="Rad etish sababi"><button class="secondary" onclick="submitReject('${r.id}')">Yuborish</button></div>` : ''}</section>` : ''}
+    `;
   }
   async function viewReceipt(requestId) {
     try {
@@ -2434,6 +2554,7 @@
     catch (e) { alert(e.message || String(e)); }
   }
   async function requestReceiptForRequest(requestId) {
+    try { window.event?.stopPropagation?.(); } catch (_) {}
     try { await callPlatformApi('platform_request_receipt', { requestId }); await loadRequests(); }
     catch (e) { alert(e.message || String(e)); }
   }
@@ -2726,6 +2847,11 @@
   window.setAnalyticsPeriod = setAnalyticsPeriod;
   window.setAdminShopsSearch = setAdminShopsSearch;
   window.setAdminShopsStatusFilter = setAdminShopsStatusFilter;
+  window.setAdminShopsTariffFilter = setAdminShopsTariffFilter;
+  window.setAdminShopsDaysFilter = setAdminShopsDaysFilter;
+  window.setAdminShopsSort = setAdminShopsSort;
+  window.toggleAdminShopsFilters = toggleAdminShopsFilters;
+  window.resetAdminShopFilters = resetAdminShopFilters;
   window.startUpgradeFor = startUpgradeFor;
   window.startExtendFor = startExtendFor;
   window.setDashboardShop = setDashboardShop;
@@ -2761,6 +2887,7 @@
   window.setRequestsFilter = setRequestsFilter;
   window.setRequestsSubFilter = setRequestsSubFilter;
   window.setRequestsSearch = setRequestsSearch;
+  window.openRequestDetails = openRequestDetails;
   window.viewReceipt = viewReceipt;
   window.approveRequest = approveRequest;
   window.openRejectPrompt = openRejectPrompt;
