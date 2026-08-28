@@ -1009,3 +1009,193 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
 .plat-payment-period-label b { display:block;font-size:11.5px;color:var(--u-text); }
 .plat-payment-period-label small { display:block;margin-top:2px;font-size:9px;color:var(--u-muted); }
 .plat-payment-period .plat-billing-toggle { margin:10px 0 0; }
+
+
+/* ============================================================
+   USER v14 — softer primary actions + professional tariff carousel
+   Scope is USER only; admin mode intentionally unchanged.
+   ============================================================ */
+.plat-user-mode {
+  --u-blue: #5b8def;
+  --u-blue-soft: #f2f6ff;
+  --plat2-primary: #5b8def;
+  --plat2-primary-pressed: #4f7fe0;
+  --plat2-primary-soft: #f2f6ff;
+}
+.plat-user-mode button.primary,
+.plat-user-mode a.primary {
+  background: #5b8def;
+  box-shadow: 0 7px 18px rgba(91,141,239,.17);
+  color: #fff;
+}
+.plat-user-mode button.primary:active,
+.plat-user-mode a.primary:active {
+  background: #4f7fe0;
+  box-shadow: 0 4px 12px rgba(79,127,224,.16);
+}
+.plat-user-mode button.secondary {
+  background: #f9fbff;
+  border-color: #cad9f4;
+  color: #356fd0;
+}
+.plat-user-mode .plat-billing-opt.active {
+  background: #5b8def;
+  box-shadow: 0 5px 14px rgba(91,141,239,.15);
+}
+
+/* Pricing carousel: one complete banner + a visible peek of the next one. */
+.plat-user-mode .plat-tariff-carousel {
+  gap: 12px;
+  margin: 0 -10px;
+  padding: 10px 10px 14px;
+  scroll-padding-left: 10px;
+  overscroll-behavior-x: contain;
+}
+.plat-user-mode .plat-tariff-carousel-item {
+  flex: 0 0 86%;
+  scroll-snap-align: start;
+  min-width: 0;
+}
+.plat-user-mode .plat-tariff-carousel-item .plat-tariff-card {
+  height: 100%;
+}
+.plat-user-mode .plat-carousel-dots {
+  margin: 3px 0 13px;
+  gap: 6px;
+}
+.plat-user-mode .plat-carousel-dots .plat-carousel-dot,
+.plat-user-mode .plat-carousel-dots .plat-carousel-dot:first-child {
+  width: 7px;
+  height: 7px;
+  background: #d7e3f7;
+}
+.plat-user-mode .plat-carousel-dots .plat-carousel-dot.active {
+  width: 20px;
+  background: #5b8def;
+}
+
+/* Premium pricing card hierarchy. */
+.plat-user-mode .plat-tariff-card {
+  min-height: 322px;
+  padding: 17px;
+  border-radius: 20px;
+  box-shadow: 0 9px 24px rgba(30,41,59,.055);
+  cursor: default;
+}
+.plat-user-mode .plat-tariff-card.selected,
+.plat-user-mode .plat-tariff-card.is-current {
+  border-color: #8db2f5;
+  box-shadow: 0 0 0 1px rgba(91,141,239,.26) inset, 0 10px 25px rgba(91,141,239,.10);
+}
+.plat-user-mode .plat-tariff-badge,
+.plat-user-mode .plat-tariff-badge.is-current {
+  top: -10px;
+  right: 14px;
+  padding: 4px 10px;
+  background: #6f9bf0;
+  box-shadow: 0 4px 10px rgba(91,141,239,.16);
+}
+.plat-user-mode .plat-tariff-summary-row {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.plat-user-mode .plat-tariff-head {
+  min-width: 0;
+}
+.plat-user-mode .plat-tariff-symbol {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+.plat-user-mode .plat-tariff-name {
+  font-size: 17px;
+  line-height: 1.1;
+  font-weight: 800;
+}
+.plat-user-mode .plat-tariff-limit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin-top: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f5f7fb;
+  color: #718096;
+  font-size: 10px;
+  font-weight: 700;
+}
+.plat-user-mode .plat-tariff-price-block {
+  min-width: 104px;
+  text-align: right;
+}
+.plat-user-mode .plat-tariff-price-block .plat-tariff-price,
+.plat-user-mode .plat-tariff-price-block .plat-tariff-price-strike {
+  margin-top: 0;
+}
+.plat-user-mode .plat-tariff-price {
+  font-size: 20px;
+  line-height: 1.12;
+  white-space: nowrap;
+  letter-spacing: -.25px;
+}
+.plat-user-mode .plat-tariff-price span {
+  font-size: 10px;
+  margin-left: 2px;
+}
+.plat-user-mode .plat-tariff-price-strike {
+  font-size: 10px;
+}
+.plat-user-mode .plat-tariff-saving {
+  margin-top: 5px;
+  font-size: 9px;
+}
+.plat-user-mode .plat-tariff-divider {
+  height: 1px;
+  margin: 13px 0 12px;
+  background: #edf1f7;
+}
+.plat-user-mode .plat-tariff-features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 9px 10px;
+  min-height: 104px;
+  margin: 0;
+}
+.plat-user-mode .plat-tariff-features li {
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  font-size: 10.8px;
+  line-height: 1.32;
+}
+.plat-user-mode .plat-tariff-features li .p-icon,
+.plat-user-mode .plat-tariff-features li > svg {
+  margin-top: 1px;
+}
+.plat-user-mode .plat-tariff-select,
+.plat-user-mode .plat-tariff-current-btn {
+  min-height: 50px !important;
+  margin-top: 14px !important;
+  border-radius: 16px !important;
+}
+.plat-user-mode .plat-tariff-current-btn {
+  background: #f2f6ff !important;
+  border-color: #c7d8f8 !important;
+  color: #4f7fe0 !important;
+}
+.plat-user-mode .plat-subscription-tariff-list .plat-tariff-card {
+  padding: 17px;
+}
+
+@media (max-width: 374px) {
+  .plat-user-mode .plat-tariff-carousel-item { flex-basis: 89%; }
+  .plat-user-mode .plat-tariff-summary-row { gap: 8px; }
+  .plat-user-mode .plat-tariff-symbol { width: 40px; height: 40px; }
+  .plat-user-mode .plat-tariff-name { font-size: 15.5px; }
+  .plat-user-mode .plat-tariff-price { font-size: 18px; }
+  .plat-user-mode .plat-tariff-price-block { min-width: 94px; }
+  .plat-user-mode .plat-tariff-features { gap: 8px; }
+  .plat-user-mode .plat-tariff-features li { font-size: 10.2px; }
+}

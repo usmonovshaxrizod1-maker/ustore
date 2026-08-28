@@ -352,6 +352,9 @@
   // ---- RENDER ROOT ---------------------------------------------------------
   function render() {
     const app = document.getElementById('app');
+    // USER visual refinements are scoped on <body>; admin styling stays untouched.
+    document.body.classList.toggle('plat-user-mode', !isAdminMode);
+    document.body.classList.toggle('plat-admin-mode', isAdminMode);
     if (accessDenied) {
       app.innerHTML = `<div class="wrap"><header class="top"><h1>UStorE</h1></header><div class="card"><p class="notice error">⛔ Xatolik yuz berdi. Iltimos, botni qayta oching.</p></div></div>`;
       return;
@@ -788,8 +791,11 @@
     return `
       <article class="plat-tariff-card plat-tariff-tone-${tone} ${flowTariffId === t.id ? 'selected' : ''} ${isCurrent ? 'is-current' : ''}">
         ${isCurrent ? '<span class="plat-tariff-badge is-current">Joriy tarif</span>' : t.isPopular ? '<span class="plat-tariff-badge">Ommabop</span>' : ''}
-        <div class="plat-tariff-head"><span class="plat-tariff-symbol">${pIcon(tone === 'premium' ? 'diamond' : tone === 'business' ? 'bag' : tone === 'standard' ? 'bolt' : 'shop', 20)}</span><div><div class="plat-tariff-name">${escapeHtml(t.name)}</div><div class="plat-tariff-limit">${limitLabel(t.productLimit)}</div></div></div>
-        ${priceHtml}
+        <div class="plat-tariff-summary-row">
+          <div class="plat-tariff-head"><span class="plat-tariff-symbol">${pIcon(tone === 'premium' ? 'diamond' : tone === 'business' ? 'bag' : tone === 'standard' ? 'bolt' : 'shop', 20)}</span><div><div class="plat-tariff-name">${escapeHtml(t.name)}</div><div class="plat-tariff-limit">${limitLabel(t.productLimit)}</div></div></div>
+          <div class="plat-tariff-price-block">${priceHtml}</div>
+        </div>
+        <div class="plat-tariff-divider"></div>
         <ul class="plat-tariff-features">
           ${TARIFF_FEATURE_LIST.map((f) => `<li>${pIcon('check', 13)}<span>${f}</span></li>`).join('')}
         </ul>
@@ -805,9 +811,22 @@
     // 4.4-band: 1 to'liq + keyingisining 15-25% qismi ko'rinadigan swipe
     // carousel — CSS scroll-snap orqali (plat-carousel/-item, platform.css).
     return `
-      <div class="plat-carousel plat-tariff-carousel">${tariffs.map((t) => `<div class="plat-carousel-item plat-tariff-carousel-item">${renderOneTariffCard(t, opts)}</div>`).join('')}</div>
-      <div class="plat-carousel-dots">${tariffs.map(() => '<span class="plat-carousel-dot"></span>').join('')}</div>
+      <div class="plat-carousel plat-tariff-carousel" onscroll="syncTariffCarouselDots(this)">${tariffs.map((t) => `<div class="plat-carousel-item plat-tariff-carousel-item">${renderOneTariffCard(t, opts)}</div>`).join('')}</div>
+      <div class="plat-carousel-dots">${tariffs.map((_, i) => `<span class="plat-carousel-dot ${i === 0 ? 'active' : ''}"></span>`).join('')}</div>
     `;
+  }
+  function syncTariffCarouselDots(carousel) {
+    if (!carousel) return;
+    const items = Array.from(carousel.querySelectorAll('.plat-tariff-carousel-item'));
+    const dots = Array.from(carousel.nextElementSibling?.querySelectorAll('.plat-carousel-dot') || []);
+    if (!items.length || !dots.length) return;
+    let activeIndex = 0;
+    let bestDistance = Infinity;
+    items.forEach((item, index) => {
+      const distance = Math.abs(item.offsetLeft - carousel.offsetLeft - carousel.scrollLeft);
+      if (distance < bestDistance) { bestDistance = distance; activeIndex = index; }
+    });
+    dots.forEach((dot, index) => dot.classList.toggle('active', index === activeIndex));
   }
 
   function renderTariffListBody() {
@@ -815,9 +834,9 @@
       ? "Do'koningiz uchun yangi tarifni tanlang. Qolgan obuna kunlari saqlanadi."
       : "Sizga mos tarifni tanlang. Sotib olishdan keyin yangi do'kon yaratish yoki mavjud do'kon obunasini boshqarishni tanlaysiz.";
     return `
-      <div class="plat-flow-intro"><span>${pIcon('diamond',20)}</span><div><b>Tarifni tanlang</b><p>${contextText}</p></div></div>
+      <div class="plat-flow-intro"><span>${pIcon('diamond',20)}</span><div><b>Biznesingizga mos tarif</b><p>${contextText}</p></div></div>
       ${renderBillingToggle()}
-      ${renderTariffCards(true, { ctaLabel: flowShopId && flowUpgradeAction === 'CHANGE' ? "Shu tarifga o'tish" : "Sotib olish" })}
+      ${renderTariffCards(false, { ctaLabel: flowShopId && flowUpgradeAction === 'CHANGE' ? "Shu tarifga o'tish" : "Sotib olish" })}
       <div class="plat-bonus-card plat-bonus-card-pro"><span class="plat-bonus-icon">${pIcon('gift',18)}</span><div><b>Birinchi obunada +7 kun bonus</b><p>Faqat yangi do'konning birinchi obunasida qo'llanadi.</p></div></div>
     `;
   }
@@ -1196,9 +1215,9 @@
 
   function renderSubscriptionTab() {
     return `
-      <div class="plat-tab-head"><div><h1>Obuna</h1><p>Do'konlar emas — faqat tariflar va obuna imkoniyatlari.</p></div></div>
+      <div class="plat-tab-head"><div><h1>Obuna</h1><p>Biznesingizga mos tarifni tanlang. Istalgan vaqtda uzaytirish yoki o'zgartirish mumkin.</p></div></div>
       ${renderBillingToggle()}
-      <div class="plat-subscription-tariff-list">${renderTariffCards(true, { ctaLabel: 'Sotib olish' })}</div>
+      <div class="plat-subscription-tariff-list">${renderTariffCards(false, { ctaLabel: 'Sotib olish' })}</div>
       <div class="plat-bonus-card plat-bonus-card-pro"><span class="plat-bonus-icon">${pIcon('gift',18)}</span><div><b>Birinchi obunada +7 kun bonus</b><p>Yangi do'konning birinchi obunasida qo'llanadi.</p></div></div>
     `;
   }
@@ -2076,6 +2095,7 @@
   window.setConsentAccepted = setConsentAccepted;
   window.selectTariffAndContinue = selectTariffAndContinue;
   window.setTariffBillingPeriod = setTariffBillingPeriod;
+  window.syncTariffCarouselDots = syncTariffCarouselDots;
   window.startNewShopFlow = startNewShopFlow;
   window.startNewShopWithTariff = startNewShopWithTariff;
   window.chooseNewShop = chooseNewShop;
