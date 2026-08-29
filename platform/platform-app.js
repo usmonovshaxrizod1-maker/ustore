@@ -237,6 +237,24 @@
   let requestSentReceiptPreviewUrl = null;
   let attachingRequestReceipt = false;
 
+  // Ariza + payment verification + shop provisioning (USER)
+  let myRequests = [];
+  let myRequestsLoading = false;
+  let selectedMyRequestId = null;
+  let requestHistoryById = Object.create(null);
+  let requestHistoryLoadingId = null;
+  let myRequestReceiptFile = null;
+  let myRequestReceiptPreviewUrl = null;
+  let attachingMyRequestReceipt = false;
+  let newShopName = '';
+  let newShopOwnerTelegramId = '';
+
+  // Admin: tasdiqlangan NEW_SHOP arizasidan provisioning
+  let provisioningRequestId = null;
+  let provisioningSubmitting = false;
+  let provisioningError = null;
+  let provisioningSuccess = null;
+
   // Admin: do'konlar ro'yxati + bot ulash (mavjud funksiya, shu yerga ko'chirildi)
   let adminShops = [];
   // 2026-08-28: Do'konlar tabiga qidiruv/status-filtr — dashboard "Faol
@@ -405,6 +423,7 @@
       const data = await platformBootRequestWithRetry();
       isSuperAdmin = data.isSuperAdmin === true;
       myShops = Array.isArray(data.myShops) ? data.myShops : [];
+      myRequests = Array.isArray(data.myRequests) ? data.myRequests : [];
       tariffs = Array.isArray(data.tariffs) ? data.tariffs : [];
       if (dashboardShopId && !myShops.some((shop) => shop.id === dashboardShopId)) dashboardShopId = null;
       currentTab = isAdminMode ? 'dashboard' : 'home';
@@ -466,7 +485,8 @@
     const showLanding = !isAdminMode && currentTab === 'home' && !myShops.length;
     const showDashboard = !isAdminMode && currentTab === 'home' && myShops.length > 0;
     try {
-      const body = showLanding ? renderLandingHero() : showDashboard ? renderShopDashboard() : renderTabBody();
+      const baseBody = showLanding ? renderLandingHero() : showDashboard ? renderShopDashboard() : renderTabBody();
+      const body = !isAdminMode && currentTab === 'home' ? `${renderUserRequestsHomeTop()}${baseBody}` : baseBody;
       app.innerHTML = `${renderChrome(body)}`;
     } catch (e) {
       console.error('platform render error', { currentTab, activePage, error: e });
@@ -484,7 +504,10 @@
     return `
       <div class="plat-header">
         <div class="plat-header-title">${isAdminMode ? 'UStorE Admin' : 'UStorE'}</div>
-        <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">${pIcon('user', 17)}</button>
+        <div class="plat-header-actions">
+          ${!isAdminMode ? `<button class="plat-header-btn plat-header-request-btn" onclick="openMyRequests()" aria-label="Arizalarim">${pIcon('inbox',17)}${myRequests.filter((r)=>r.status==='NEW').length ? `<em>${Math.min(9,myRequests.filter((r)=>r.status==='NEW').length)}${myRequests.filter((r)=>r.status==='NEW').length>9?'+':''}</em>` : ''}</button>` : ''}
+          <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">${pIcon('user', 17)}</button>
+        </div>
       </div>
       <div id="plat-role-popover" class="hidden plat-role-popover"></div>
       <div class="plat-content">${bodyHtml}</div>
@@ -539,6 +562,9 @@
     if (p === 'MY_SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderMyShopDetailsBody(), { onBack: "switchTab('shops')" });
     if (p === 'SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderShopDetailsBody(), { onBack: "switchTab('shops')" });
     if (p === 'REQUEST_DETAILS') return pageShell("So'rov tafsilotlari", renderRequestDetailsBody(), { onBack: "switchTab('requests')" });
+    if (p === 'MY_REQUESTS') return pageShell("Arizalarim", renderMyRequestsBody(), { onBack: "goHomePage()" });
+    if (p === 'MY_REQUEST_DETAILS') return pageShell("Ariza holati", renderMyRequestDetailsBody(), { onBack: "openMyRequests()" });
+    if (p === 'REQUEST_PROVISION') return pageShell("Do'kon qo'shish", renderRequestProvisioningBody(), { onBack: `openRequestDetails('${provisioningRequestId || selectedRequestId || ''}')` });
     if (p === 'ADMIN_PAYMENT_SETTINGS') return pageShell("To'lov sozlamalari", renderAdminPaymentSettingsBody(), { onBack: "switchTab('profile')" });
     if (p === 'ADMIN_NOTIFICATION_SETTINGS') return pageShell("Avtomatik xabarlar", renderAdminNotificationSettingsBody(), { onBack: "switchTab('profile')" });
     if (p === 'ADMIN_NOTIFICATION_GROUP') return pageShell(notificationGroupTitle(), renderAdminNotificationGroupBody(), { onBack: "openPage('ADMIN_NOTIFICATION_SETTINGS')" });
@@ -926,6 +952,15 @@
       <div class="plat-bonus-card plat-bonus-card-pro"><span class="plat-bonus-icon">${pIcon('gift',18)}</span><div><b>Birinchi obunada +7 kun bonus</b><p>Faqat yangi do'konning birinchi obunasida qo'llanadi.</p></div></div>
     `;
   }
+  function currentTelegramUserId() {
+    const id = tg?.initDataUnsafe?.user?.id;
+    return id === undefined || id === null ? '' : String(id);
+  }
+  function prepareNewShopIdentity() {
+    newShopName = '';
+    newShopOwnerTelegramId = currentTelegramUserId();
+  }
+
   function resetSubscriptionFlow() {
     flowKind = null;
     flowShopId = null;
@@ -945,6 +980,7 @@
   function startNewShopFlow() {
     const origin = currentTab;
     resetSubscriptionFlow();
+    prepareNewShopIdentity();
     flowEntry = 'NEW_SHOP';
     flowKind = 'NEW_SHOP';
     flowOriginTab = origin || 'home';
@@ -954,6 +990,7 @@
   function startNewShopWithTariff(tariffId) {
     const origin = currentTab;
     resetSubscriptionFlow();
+    prepareNewShopIdentity();
     flowEntry = 'NEW_SHOP';
     flowKind = 'NEW_SHOP';
     flowOriginTab = origin || 'home';
@@ -1018,6 +1055,7 @@
     `;
   }
   function chooseNewShop() {
+    prepareNewShopIdentity();
     flowKind = 'NEW_SHOP';
     flowEntry = 'SUBSCRIPTION_CATALOG';
     flowShopId = null;
@@ -1152,6 +1190,50 @@
         </div>
       </div>`;
   }
+  function renderNewShopRequestIdentity() {
+    const detectedId = currentTelegramUserId();
+    const ownerId = newShopOwnerTelegramId || detectedId;
+    if (!newShopOwnerTelegramId && detectedId) newShopOwnerTelegramId = detectedId;
+    const ownerValid = /^\d{5,15}$/.test(ownerId);
+    return `
+      <section class="plat-payment-card plat-new-shop-identity">
+        <div class="plat-payment-section-title"><span>${pIcon('shop',18)}</span><div><b>Yangi do'kon ma'lumotlari</b><small>Owner kim bo'lishini aniq belgilang.</small></div></div>
+        <label class="plat-field-pro"><span>Do'kon nomi</span><input id="plat-new-shop-name" type="text" maxlength="80" value="${escapeHtml(newShopName)}" placeholder="Masalan: FITCORE" oninput="updateNewShopRequestIdentity()"></label>
+        <label class="plat-field-pro"><span>Do'kon egasining Telegram IDsi</span><input id="plat-new-shop-owner" type="text" inputmode="numeric" maxlength="15" value="${escapeHtml(ownerId)}" placeholder="123456789" oninput="updateNewShopRequestIdentity()"></label>
+        ${detectedId ? `<div class="plat-owner-id-hint is-ok">${pIcon('check',14)} <span><b>${escapeHtml(detectedId)}</b> — Bu sizning Telegram ID'ingiz. Fieldni boshqa owner ID'siga o'zgartirish mumkin.</span></div>` : `<div class="plat-owner-id-hint is-warn">${pIcon('info',14)}<span><b>Telegram ID avtomatik aniqlanmadi.</b> ID'ingizni qo'lda kiriting. Agar ID'ingizni bilmasangiz, UStorE botga <b>/id</b> yuboring.</span><button type="button" onclick="detectMyTelegramId()">ID'imni aniqlash</button></div>`}
+        <div id="plat-owner-confirm" class="plat-owner-confirm ${ownerValid ? '' : 'is-invalid'}">${pIcon('user',15)} <span>Do'kon quyidagi Telegram ID egasiga biriktiriladi: <b>${escapeHtml(ownerId || '—')}</b></span></div>
+      </section>`;
+  }
+  function updateNewShopRequestIdentity() {
+    const nameEl = document.getElementById('plat-new-shop-name');
+    const ownerEl = document.getElementById('plat-new-shop-owner');
+    if (nameEl) newShopName = String(nameEl.value || '').trimStart().slice(0,80);
+    if (ownerEl) newShopOwnerTelegramId = String(ownerEl.value || '').replace(/\D/g,'').slice(0,15);
+    if (ownerEl && ownerEl.value !== newShopOwnerTelegramId) ownerEl.value = newShopOwnerTelegramId;
+    const confirmEl = document.getElementById('plat-owner-confirm');
+    const ownerValid = /^\d{5,15}$/.test(newShopOwnerTelegramId);
+    const nameValid = newShopName.trim().length >= 2;
+    if (confirmEl) {
+      confirmEl.classList.toggle('is-invalid', !ownerValid);
+      const b = confirmEl.querySelector('b'); if (b) b.textContent = newShopOwnerTelegramId || '—';
+    }
+    const btn = document.querySelector('.plat-payment-submit');
+    if (btn) {
+      const selectedExternal = selectedPaymentMethodType && selectedPaymentMethodType !== 'CARD';
+      const ready = !!selectedPaymentMethodType && consentAccepted && (!selectedExternal || externalPaymentOpened) && !submittingRequest && ownerValid && nameValid;
+      btn.disabled = !ready;
+      btn.classList.toggle('plat-btn-dimmed', !ready);
+      if (ready) btn.setAttribute('onclick','submitSubscriptionRequest()'); else btn.removeAttribute('onclick');
+    }
+  }
+  function detectMyTelegramId() {
+    const id = currentTelegramUserId();
+    if (!id) { alert("Telegram ID avtomatik aniqlanmadi. UStorE botga /id yuboring va chiqqan raqamni shu yerga kiriting."); return; }
+    newShopOwnerTelegramId = id;
+    const el = document.getElementById('plat-new-shop-owner'); if (el) el.value = id;
+    updateNewShopRequestIdentity();
+  }
+
   function renderPaymentBody() {
     const tariff = tariffs.find((t) => t.id === flowTariffId);
     const shop = flowShopId ? myShops.find((s) => s.id === flowShopId) : null;
@@ -1167,7 +1249,8 @@
     const externalMethods = platformPaymentMethods || [];
     const hasMethods = hasCard || externalMethods.length > 0;
     const selectedExternal = selectedPaymentMethodType && selectedPaymentMethodType !== 'CARD';
-    const readyToConfirm = !!selectedPaymentMethodType && consentAccepted && (!selectedExternal || externalPaymentOpened) && !submittingRequest;
+    const newShopIdentityValid = flowKind !== 'NEW_SHOP' || (newShopName.trim().length >= 2 && /^\d{5,15}$/.test(newShopOwnerTelegramId));
+    const readyToConfirm = !!selectedPaymentMethodType && consentAccepted && (!selectedExternal || externalPaymentOpened) && !submittingRequest && newShopIdentityValid;
     const shopLeft = shop ? daysUntil(shop.subscriptionExpiresAt) : null;
     const currentTariff = shop ? (shop.tariffName || 'Tarifsiz') : null;
 
@@ -1183,6 +1266,7 @@
 
     return `
       ${contextIntro}
+      ${flowKind === 'NEW_SHOP' ? renderNewShopRequestIdentity() : ''}
       <section class="plat-payment-period is-compact"><div class="plat-payment-period-label"><b>Obuna davri</b><small>Oylik yoki yillik variant.</small></div>${renderBillingToggle()}</section>
 
       <section class="plat-checkout-plan plat-tariff-tone-${tariffTone(tariff)}">
@@ -1311,6 +1395,12 @@
   }
   async function submitSubscriptionRequest() {
     if (submittingRequest) return;
+    if (flowKind === 'NEW_SHOP') {
+      newShopName = String(document.getElementById('plat-new-shop-name')?.value || newShopName || '').trim();
+      newShopOwnerTelegramId = String(document.getElementById('plat-new-shop-owner')?.value || newShopOwnerTelegramId || '').replace(/\D/g,'').slice(0,15);
+      if (newShopName.length < 2) { alert("Do'kon nomini kiriting."); return; }
+      if (!/^\d{5,15}$/.test(newShopOwnerTelegramId)) { alert("Do'kon egasining Telegram ID sini to'g'ri kiriting."); return; }
+    }
     if (!selectedPaymentMethodType) { alert("Avval to'lov usulini tanlang."); return; }
     if (!consentAccepted) { alert("Davom etish uchun Foydalanish shartlari va Maxfiylik siyosatiga rozilik bildiring."); return; }
     if (selectedPaymentMethodType !== 'CARD' && !externalPaymentOpened) { alert("Avval tanlangan to'lov usuliga o'tib to'lovni amalga oshiring."); return; }
@@ -1336,6 +1426,8 @@
         paymentMethod: selectedPaymentMethodType,
         paymentMethodId: selectedPaymentMethodId || undefined,
         consentAccepted: true,
+        shopName: flowKind === 'NEW_SHOP' ? newShopName.trim() : undefined,
+        ownerTelegramId: flowKind === 'NEW_SHOP' ? newShopOwnerTelegramId : undefined,
       });
       lastSubmittedRequestId = result.requestId;
       lastSubmittedHadReceipt = !!receiptFile;
@@ -1357,6 +1449,7 @@
       receiptFile = null;
       if (receiptPreviewUrl) { try { URL.revokeObjectURL(receiptPreviewUrl); } catch (_) {} }
       receiptPreviewUrl = null;
+      try { await loadMyRequests(false); } catch (_) {}
       openPage('REQUEST_SENT');
     } catch (e) {
       connectError = e.message || String(e);
@@ -2604,6 +2697,182 @@
   }
 
   // ======================================================================
+  // USER: Arizalarim / ariza holati / chek yuborish
+  // ======================================================================
+  function receiptSourceLabel(source) {
+    if (source === 'PAYMENT_PAGE') return "To'lov oynasi";
+    if (source === 'MY_REQUESTS') return 'Arizalarim';
+    if (source === 'TELEGRAM_BOT') return 'Telegram bot';
+    return '—';
+  }
+  function requestShopName(r) {
+    if (r?.requestedShopName) return r.requestedShopName;
+    const shop = myShops.find((s) => s.id === r?.shopId) || adminShops.find((s) => s.id === r?.shopId);
+    return shop ? (shop.shopName || shop.name || shop.botUsername || "Do'kon") : "Do'kon";
+  }
+  function userRequestDisplayStatus(r) {
+    if (r.status === 'APPROVED') return { key: 'APPROVED', label: 'Tasdiqlandi', tone: 'ok' };
+    if (r.status === 'REJECTED') return { key: 'REJECTED', label: 'Rad etildi', tone: 'danger' };
+    if (r.hasReceipt) return { key: 'RECEIPT_SENT', label: 'Chek yuborildi', tone: 'info' };
+    if (r.receiptRequestedAt) return { key: 'RECEIPT_REQUESTED', label: "Chek so'raldi", tone: 'warn' };
+    if (r.paymentClaimedAt) return { key: 'REVIEWING', label: 'Tekshirilmoqda', tone: 'info' };
+    return { key: 'PENDING', label: 'Kutilmoqda', tone: 'muted' };
+  }
+  async function loadMyRequests(shouldRender = true) {
+    if (myRequestsLoading) return;
+    myRequestsLoading = true;
+    try {
+      const data = await callPlatformApi('platform_list_my_subscription_requests', {});
+      myRequests = Array.isArray(data.requests) ? data.requests : [];
+      if (selectedMyRequestId && !myRequests.some((r) => r.id === selectedMyRequestId)) selectedMyRequestId = null;
+    } catch (e) { console.error('load my requests error', e); }
+    finally {
+      myRequestsLoading = false;
+      if (shouldRender && !isAdminMode && (activePage === 'MY_REQUESTS' || activePage === 'MY_REQUEST_DETAILS' || (!activePage && currentTab === 'home'))) render();
+    }
+  }
+  async function loadRequestHistory(requestId, shouldRender = true) {
+    if (!requestId || requestHistoryLoadingId === requestId) return;
+    requestHistoryLoadingId = requestId;
+    try {
+      const data = await callPlatformApi('platform_get_subscription_request_history', { requestId });
+      requestHistoryById[requestId] = Array.isArray(data.history) ? data.history : [];
+      if (data.request) {
+        const userIdx = myRequests.findIndex((r) => r.id === requestId);
+        if (userIdx >= 0) myRequests[userIdx] = data.request;
+        const adminIdx = requests.findIndex((r) => r.id === requestId);
+        if (adminIdx >= 0) requests[adminIdx] = data.request;
+      }
+    } catch (e) { console.error('request history error', e); }
+    finally {
+      requestHistoryLoadingId = null;
+      if (shouldRender && ['MY_REQUEST_DETAILS','REQUEST_DETAILS'].includes(activePage)) render();
+    }
+  }
+  function openMyRequests() {
+    if (isAdminMode) return;
+    selectedMyRequestId = null;
+    openPage('MY_REQUESTS');
+    loadMyRequests();
+  }
+  function openMyRequestDetails(requestId, autoUpload) {
+    if (isAdminMode) return;
+    selectedMyRequestId = requestId;
+    clearMyRequestReceiptFile(false);
+    openPage('MY_REQUEST_DETAILS');
+    loadRequestHistory(requestId);
+    if (autoUpload) setTimeout(() => document.getElementById('plat-my-request-receipt')?.click(), 120);
+  }
+  function renderMyRequestsBody() {
+    if (myRequestsLoading && !myRequests.length) return `<div class="plat-request-list-loading"><span class="spinner"></span><b>Arizalar yuklanmoqda...</b></div>`;
+    if (!myRequests.length) return `<div class="plat-my-requests-empty"><span>${pIcon('inbox',28)}</span><h2>Hozircha ariza yo'q</h2><p>Yangi do'kon, obuna uzaytirish yoki tarif o'zgartirish so'rovlari shu yerda ko'rinadi.</p></div>`;
+    return `<div class="plat-my-requests-intro"><span class="plat-admin-eyebrow">Ariza markazi</span><h2>Barcha so'rovlaringiz bir joyda</h2><p>Holat, chek so'rovi va yakuniy natijani kuzating.</p></div><div class="plat-my-request-list">${myRequests.map(renderMyRequestCard).join('')}</div>`;
+  }
+  function renderMyRequestCard(r) {
+    const ds = userRequestDisplayStatus(r);
+    const shopName = requestShopName(r);
+    return `<button class="plat-my-request-card" onclick="openMyRequestDetails('${r.id}')">
+      <span class="plat-my-request-card-icon">${pIcon(r.kind === 'NEW_SHOP' ? 'shop' : 'diamond',18)}</span>
+      <span class="plat-my-request-card-main"><span class="plat-my-request-card-top"><b>${escapeHtml(requestTypeLabel(r))}</b><em class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</em></span><strong>${escapeHtml(shopName)}</strong><small>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'} · ${money(r.tariffPrice)}</small><span>${formatDateTime(r.createdAt)}</span></span>
+      <span class="plat-my-request-chevron">${pIcon('arrowRight',16)}</span>
+    </button>`;
+  }
+  function historyEventInfo(h) {
+    const source = h?.metadata?.source ? ` · ${receiptSourceLabel(String(h.metadata.source))}` : '';
+    if (h.eventType === 'REQUEST_SUBMITTED') return { icon: 'send', label: "So'rov yuborildi", note: '' };
+    if (h.eventType === 'PAYMENT_CLAIMED') return { icon: 'clock', label: "To'ladim bosildi", note: '' };
+    if (h.eventType === 'RECEIPT_REQUESTED') return { icon: 'file', label: "Chek so'raldi", note: '' };
+    if (h.eventType === 'RECEIPT_UPLOADED') return { icon: 'upload', label: 'Chek yuborildi', note: source };
+    if (h.eventType === 'PAYMENT_APPROVED') return { icon: 'check', label: "To'lov tasdiqlandi", note: '' };
+    if (h.eventType === 'REQUEST_REJECTED') return { icon: 'info', label: 'Rad etildi', note: h?.metadata?.reason ? ` · ${String(h.metadata.reason)}` : '' };
+    if (h.eventType === 'SHOP_CREATED') return { icon: 'shop', label: "Do'kon yaratildi", note: h?.metadata?.shopName ? ` · ${String(h.metadata.shopName)}` : '' };
+    return { icon: 'clock', label: String(h.eventType || 'Yangilandi').replaceAll('_',' '), note: '' };
+  }
+  function fallbackRequestHistory(r) {
+    const rows = [];
+    if (r.createdAt) rows.push({ eventType:'REQUEST_SUBMITTED', createdAt:r.createdAt, metadata:{} });
+    if (r.paymentClaimedAt) rows.push({ eventType:'PAYMENT_CLAIMED', createdAt:r.paymentClaimedAt, metadata:{} });
+    if (r.receiptRequestedAt) rows.push({ eventType:'RECEIPT_REQUESTED', createdAt:r.receiptRequestedAt, metadata:{} });
+    if (r.receiptUploadedAt) rows.push({ eventType:'RECEIPT_UPLOADED', createdAt:r.receiptUploadedAt, metadata:{source:r.receiptSource} });
+    if (r.reviewedAt && r.status === 'APPROVED') rows.push({ eventType:'PAYMENT_APPROVED', createdAt:r.reviewedAt, metadata:{} });
+    if (r.reviewedAt && r.status === 'REJECTED') rows.push({ eventType:'REQUEST_REJECTED', createdAt:r.reviewedAt, metadata:{reason:r.rejectReason} });
+    if (r.appliedAt) rows.push({ eventType:'SHOP_CREATED', createdAt:r.appliedAt, metadata:{shopName:r.requestedShopName,ownerTelegramId:r.ownerTelegramId} });
+    return rows.sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+  }
+  function renderRequestTimeline(history, r) {
+    const rows = Array.isArray(history) && history.length ? history : fallbackRequestHistory(r);
+    if (!rows.length) return `<p class="muted">Tarix hali shakllanmagan.</p>`;
+    return `<div class="plat-application-timeline">${rows.map((h,idx) => { const info = historyEventInfo(h); return `<div class="plat-application-timeline-row ${idx===rows.length-1?'is-latest':''}"><span class="plat-application-timeline-dot">${pIcon(info.icon,14)}</span><div><b>${escapeHtml(info.label)}</b>${info.note?`<small>${escapeHtml(info.note.replace(/^ · /,''))}</small>`:''}<time>${formatDateTime(h.createdAt)}</time></div></div>`; }).join('')}</div>`;
+  }
+  function renderMyRequestDetailsBody() {
+    const r = myRequests.find((x) => x.id === selectedMyRequestId);
+    if (!r) return `<div class="plat-my-requests-empty"><span>${pIcon('info',26)}</span><h2>Ariza topilmadi</h2><button class="secondary" onclick="openMyRequests()">Arizalarga qaytish</button></div>`;
+    const ds = userRequestDisplayStatus(r);
+    const needsReceipt = r.status === 'NEW' && !!r.receiptRequestedAt && !r.hasReceipt;
+    const history = requestHistoryById[r.id] || [];
+    return `<div class="plat-application-detail-hero"><div><span class="plat-admin-eyebrow">${escapeHtml(requestTypeLabel(r))}</span><h2>${escapeHtml(requestShopName(r))}</h2><p>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</p></div><span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span></div>
+      ${needsReceipt ? `<section class="plat-receipt-attention is-detail"><span class="plat-receipt-attention-icon">${pIcon('file',20)}</span><div><h3>To'lovni tasdiqlash uchun chek kerak</h3><p>To'lovingizni aniqlay olmadik. Tekshiruvni davom ettirish uchun to'lov chekini yuboring.</p></div></section>` : ''}
+      <section class="plat-application-info-grid">
+        <div><small>Ariza ID</small><b class="is-code">${escapeHtml(r.id)}</b></div><div><small>Summa</small><b>${money(r.tariffPrice)}</b></div>
+        <div><small>Yuborildi</small><b>${formatDateTime(r.createdAt)}</b></div><div><small>To'lov usuli</small><b>${r.paymentMethod ? escapeHtml(paymentProviderName(r.paymentMethod)) : '—'}</b></div>
+        ${r.kind === 'NEW_SHOP' ? `<div><small>Owner Telegram ID</small><b>${escapeHtml(r.ownerTelegramId || '—')}</b></div><div><small>Do'kon nomi</small><b>${escapeHtml(r.requestedShopName || '—')}</b></div>` : ''}
+        ${r.hasReceipt ? `<div><small>Chek yuborilgan joy</small><b>${escapeHtml(receiptSourceLabel(r.receiptSource))}</b></div><div><small>Chek vaqti</small><b>${formatDateTime(r.receiptUploadedAt)}</b></div>` : ''}
+      </section>
+      ${needsReceipt ? renderMyRequestReceiptUpload(r) : r.status === 'NEW' && r.hasReceipt ? `<div class="plat-receipt-sent-state"><span>${pIcon('check',18)}</span><div><b>✅ Chek yuborildi</b><small>To'lovingiz tekshirilmoqda.</small></div></div>` : ''}
+      ${r.status === 'REJECTED' && r.rejectReason ? `<div class="notice error">Rad etish sababi: ${escapeHtml(r.rejectReason)}</div>` : ''}
+      ${r.kind === 'NEW_SHOP' && r.shopCreated ? `<div class="plat-shop-created-user"><span>${pIcon('shop',20)}</span><div><b>Do'kon yaratildi</b><small>${escapeHtml(r.requestedShopName || requestShopName(r))} owner Telegram ID ${escapeHtml(r.ownerTelegramId || '—')} ga biriktirildi.</small></div></div>` : ''}
+      <section class="plat-application-timeline-card"><div class="plat-application-section-title"><span>${pIcon('clock',17)}</span><div><b>Ariza tarixi</b><small>Har bir bosqich server vaqti bilan qayd etiladi.</small></div></div>${requestHistoryLoadingId===r.id && !history.length?`<div class="plat-request-list-loading"><span class="spinner"></span></div>`:renderRequestTimeline(history,r)}</section>`;
+  }
+  function renderMyRequestReceiptUpload(r) {
+    return `<section class="plat-my-request-upload"><div class="plat-application-section-title"><span>${pIcon('upload',17)}</span><div><b>Chekni yuborish</b><small>JPG, PNG yoki WebP · 6 MB gacha</small></div></div>
+      <input id="plat-my-request-receipt" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="onMyRequestReceiptPicked(event)">
+      ${myRequestReceiptPreviewUrl ? `<img src="${myRequestReceiptPreviewUrl}" alt="Chek preview" class="plat-my-request-receipt-preview">` : ''}
+      ${myRequestReceiptFile ? `<div class="plat-upload-file-row"><span>${pIcon('file',15)} ${escapeHtml(myRequestReceiptFile.name)}</span><button onclick="clearMyRequestReceiptFile()">Olib tashlash</button></div>` : `<button class="secondary plat-upload-select" onclick="document.getElementById('plat-my-request-receipt').click()">${pIcon('upload',16)} Faylni tanlash</button>`}
+      <button class="primary ${!myRequestReceiptFile || attachingMyRequestReceipt ? 'plat-btn-dimmed' : ''}" ${myRequestReceiptFile && !attachingMyRequestReceipt ? `onclick="attachMyRequestReceipt('${r.id}')"` : 'disabled'}>${attachingMyRequestReceipt?'<span class="spinner"></span> Yuborilmoqda...':"Chekni yuborish"}</button>
+      <p class="plat-upload-bot-note">Yoki UStorE botga chek rasmini yuborishingiz mumkin. Bir nechta ochiq ariza bo'lsa, bot qaysi ariza ekanini tanlatadi.</p></section>`;
+  }
+  function onMyRequestReceiptPicked(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { alert('Faqat JPG, PNG yoki WebP rasm qabul qilinadi.'); return; }
+    if (file.size > 6 * 1024 * 1024) { alert("Rasm hajmi 6MB dan katta bo'lmasin."); return; }
+    clearMyRequestReceiptFile(false);
+    myRequestReceiptFile = file;
+    myRequestReceiptPreviewUrl = URL.createObjectURL(file);
+    render();
+  }
+  function clearMyRequestReceiptFile(shouldRender = true) {
+    myRequestReceiptFile = null;
+    if (myRequestReceiptPreviewUrl) { try { URL.revokeObjectURL(myRequestReceiptPreviewUrl); } catch (_) {} }
+    myRequestReceiptPreviewUrl = null;
+    if (shouldRender) render();
+  }
+  async function attachMyRequestReceipt(requestId) {
+    if (attachingMyRequestReceipt || !myRequestReceiptFile) return;
+    attachingMyRequestReceipt = true; render();
+    try {
+      const upload = { base64: await fileToBase64(myRequestReceiptFile), mimeType: myRequestReceiptFile.type, fileName: myRequestReceiptFile.name };
+      await callPlatformApi('platform_attach_request_receipt', { requestId, receiptImageUpload: upload, source: 'MY_REQUESTS' });
+      clearMyRequestReceiptFile(false);
+      await loadMyRequests(false);
+      await loadRequestHistory(requestId, false);
+      render();
+    } catch (e) { alert(e.message || String(e)); }
+    finally { attachingMyRequestReceipt = false; render(); }
+  }
+  function renderUserRequestsHomeTop() {
+    if (isAdminMode) return '';
+    const needsReceipt = myRequests.find((r) => r.status === 'NEW' && r.receiptRequestedAt && !r.hasReceipt);
+    const receiptSent = myRequests.find((r) => r.status === 'NEW' && r.receiptRequestedAt && r.hasReceipt);
+    const active = needsReceipt || receiptSent;
+    const attention = !active ? '' : needsReceipt
+      ? `<section class="plat-receipt-attention"><span class="plat-receipt-attention-icon">${pIcon('file',20)}</span><div class="plat-receipt-attention-copy"><h3>To'lovni tasdiqlash uchun chek kerak</h3><p><b>${escapeHtml(requestShopName(needsReceipt))}</b> do'koni bo'yicha to'lovingizni aniqlay olmadik. Tekshiruvni davom ettirish uchun chek yuboring.</p><div><button class="primary" onclick="openMyRequestDetails('${needsReceipt.id}',true)">Chekni yuborish</button><button class="secondary" onclick="openMyRequestDetails('${needsReceipt.id}')">Arizani ko'rish</button></div></div></section>`
+      : `<section class="plat-receipt-attention is-sent"><span class="plat-receipt-attention-icon">${pIcon('check',20)}</span><div class="plat-receipt-attention-copy"><h3>✅ Chek yuborildi</h3><p>To'lovingiz tekshirilmoqda.</p><div><button class="secondary" onclick="openMyRequestDetails('${receiptSent.id}')">Arizani ko'rish</button></div></div></section>`;
+    const openCount = myRequests.filter((r) => r.status === 'NEW').length;
+    return `${attention}<button class="plat-my-requests-home-link" onclick="openMyRequests()"><span>${pIcon('inbox',18)}</span><span><b>Arizalarim</b><small>${myRequests.length ? `${myRequests.length} ta ariza · ${openCount} ta faol` : "So'rovlaringiz holatini kuzating"}</small></span>${pIcon('arrowRight',16)}</button>`;
+  }
+
+  // ======================================================================
   // ADMIN: So'rovlar
   // ======================================================================
   async function loadRequests() {
@@ -2618,13 +2887,14 @@
   function setRequestsFilter(f) { requestsFilter = f; requestsSubFilter = 'ALL'; loadRequests(); }
   function setRequestsSubFilter(v) { requestsSubFilter = v; render(); }
   function requestDisplayStatus(r) {
-    if (r.status === 'APPROVED') return { key: 'APPROVED', label: 'Tasdiqlangan', tone: 'ok' };
-    if (r.status === 'REJECTED') return { key: 'REJECTED', label: 'Rad etilgan', tone: 'danger' };
-    if (r.hasReceipt || r.paymentClaimedAt) return { key: 'REVIEWING', label: 'Tekshirilmoqda', tone: 'info' };
-    if (r.receiptRequestedAt) return { key: 'RECEIPT_REQUESTED', label: "Chek talab qilindi", tone: 'warn' };
+    if (r.status === 'APPROVED') return { key: 'APPROVED', label: 'Tasdiqlandi', tone: 'ok' };
+    if (r.status === 'REJECTED') return { key: 'REJECTED', label: 'Rad etildi', tone: 'danger' };
+    if (r.hasReceipt) return { key: 'RECEIPT_SENT', label: 'Chek yuborildi', tone: 'info' };
+    if (r.receiptRequestedAt) return { key: 'RECEIPT_REQUESTED', label: "Chek so'raldi", tone: 'warn' };
+    if (r.paymentClaimedAt) return { key: 'REVIEWING', label: 'Tekshirilmoqda', tone: 'info' };
     return { key: 'PENDING', label: 'Kutilmoqda', tone: 'muted' };
   }
-  const REQUESTS_SUB_FILTERS = [['ALL', 'Barchasi'], ['PENDING', 'Kutilmoqda'], ['REVIEWING', 'Tekshirilmoqda'], ['RECEIPT_REQUESTED', "Chek so'raldi"]];
+  const REQUESTS_SUB_FILTERS = [['ALL', 'Barchasi'], ['PENDING', 'Kutilmoqda'], ['REVIEWING', 'Tekshirilmoqda'], ['RECEIPT_REQUESTED', "Chek so'raldi"], ['RECEIPT_SENT', 'Chek yuborildi']];
   function setRequestsSearch(value) { requestsSearchQuery = value; render(); }
   function filteredRequestsForDisplay() {
     let list = requests.filter((r) => r.status === requestsFilter);
@@ -2642,7 +2912,7 @@
     const list = filteredRequestsForDisplay();
     const open = requests.filter((r)=>r.status==='NEW');
     const pending = open.filter((r)=>requestDisplayStatus(r).key==='PENDING').length;
-    const reviewing = open.filter((r)=>requestDisplayStatus(r).key==='REVIEWING').length;
+    const reviewing = open.filter((r)=>['REVIEWING','RECEIPT_SENT'].includes(requestDisplayStatus(r).key)).length;
     const receipt = open.filter((r)=>requestDisplayStatus(r).key==='RECEIPT_REQUESTED').length;
     const approvedToday = requests.filter((r)=>r.status==='APPROVED' && r.reviewedAt && new Date(r.reviewedAt).toDateString()===new Date().toDateString()).length;
     return `
@@ -2674,7 +2944,13 @@
     const ds = requestDisplayStatus(r);
     const identity = r.requesterUsername ? '@'+r.requesterUsername : 'Telegram ID '+r.requesterTelegramId;
     const claimed = r.paymentClaimedAt ? `To'ladim: ${formatDateTime(r.paymentClaimedAt)}` : r.receiptRequestedAt ? `Chek so'ralgan: ${formatDateTime(r.receiptRequestedAt)}` : `Yaratildi: ${formatDateTime(r.createdAt)}`;
-    const paymentNotice = !r.hasReceipt ? (r.paymentClaimedAt ? `<div class="plat-admin-request-note is-info">To'lov tasdiqlanishi kutilmoqda · chek biriktirilmagan.</div>` : r.receiptRequestedAt ? `<div class="notice">📎 Chek so'raldi — foydalanuvchi javobi kutilmoqda.</div>` : `<div class="plat-admin-request-note">Chek yo'q · foydalanuvchi hali “To'ladim” demagan.</div>`) : '';
+    const paymentNotice = r.hasReceipt
+      ? `<div class="plat-admin-request-note is-info">Chek yuborildi · ${escapeHtml(receiptSourceLabel(r.receiptSource))}</div>`
+      : r.receiptRequestedAt
+        ? `<div class="notice">📎 Chek so'raldi — foydalanuvchi javobi kutilmoqda.</div>`
+        : r.paymentClaimedAt
+          ? `<div class="plat-admin-request-note is-info">To'lov tekshirilmoqda · chek biriktirilmagan.</div>`
+          : `<div class="plat-admin-request-note">Chek yo'q · foydalanuvchi hali “To'ladim” demagan.</div>`;
     return `
       <div class="plat-admin-request-card" role="button" tabindex="0" onclick="openRequestDetails('${r.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openRequestDetails('${r.id}');}">
         <span class="plat-admin-request-top"><span><b>${escapeHtml(r.requesterFirstName || r.requesterTelegramId)}</b><small>${escapeHtml(identity)}</small></span><span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span></span>
@@ -2689,23 +2965,33 @@
     const d = new Date(iso);
     return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
   }
-  function openRequestDetails(requestId) { selectedRequestId = requestId; rejectingRequestId = null; openPage('REQUEST_DETAILS'); }
+  function openRequestDetails(requestId) {
+    selectedRequestId = requestId;
+    rejectingRequestId = null;
+    provisioningError = null;
+    openPage('REQUEST_DETAILS');
+    loadRequestHistory(requestId);
+  }
   function renderRequestDetailsBody() {
     const r = requests.find((x)=>x.id===selectedRequestId);
     if (!r) return `<div class="plat-admin-empty"><span>${pIcon('info',24)}</span><b>So'rov topilmadi</b><small>Ro'yxatga qaytib qayta urinib ko'ring.</small></div>`;
     const ds = requestDisplayStatus(r);
+    const history = requestHistoryById[r.id] || [];
+    const isNewShop = r.kind === 'NEW_SHOP';
+    const requesterIdentity = r.requesterUsername ? '@'+escapeHtml(r.requesterUsername) : 'Telegram ID: '+escapeHtml(r.requestedByUserId || r.requesterTelegramId);
     return `
       <div class="plat-admin-detail-hero">
         <span class="plat-admin-detail-icon">${pIcon('inbox',22)}</span>
-        <div><span class="plat-admin-eyebrow">${escapeHtml(requestTypeLabel(r))}</span><h2>${escapeHtml(r.requesterFirstName || r.requesterTelegramId)}</h2><p>${r.requesterUsername?'@'+escapeHtml(r.requesterUsername):'Telegram ID: '+escapeHtml(r.requesterTelegramId)}</p></div>
+        <div><span class="plat-admin-eyebrow">${escapeHtml(requestTypeLabel(r))}</span><h2>${escapeHtml(isNewShop ? (r.requestedShopName || r.requesterFirstName || 'Yangi do\'kon') : (r.requesterFirstName || r.requesterTelegramId))}</h2><p>${requesterIdentity}</p></div>
         <span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span>
       </div>
       <section class="plat-admin-section">
-        <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Obuna</span><h2>So'rov ma'lumotlari</h2></div></div>
+        <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Ariza</span><h2>So'rov ma'lumotlari</h2></div></div>
         <div class="plat-admin-detail-grid">
+          ${isNewShop ? `<div><small>Do'kon nomi</small><b>${escapeHtml(r.requestedShopName || '—')}</b></div><div><small>Owner Telegram ID</small><b>${escapeHtml(r.ownerTelegramId || '—')}</b></div><div><small>Ariza yuboruvchi</small><b>Telegram ID ${escapeHtml(r.requestedByUserId || r.requesterTelegramId)}</b></div>` : ''}
           <div><small>Tarif</small><b>${escapeHtml(r.tariffName)}</b></div><div><small>Davr</small><b>${r.billingPeriod==='ANNUAL'?'Yillik':'Oylik'}</b></div>
-          <div><small>Summa</small><b>${money(r.tariffPrice)}</b></div><div><small>To'lov usuli</small><b class="plat-admin-payment-method-value">${r.paymentMethod ? `${paymentProviderBadge(r.paymentMethod, true)} ${escapeHtml(paymentProviderName(r.paymentMethod))}` : '—'}</b></div>
-          <div><small>Mahsulot limiti</small><b>${r.tariffProductLimit == null ? 'Cheksiz' : escapeHtml(String(r.tariffProductLimit))}</b></div><div><small>So'rov yaratildi</small><b>${formatDateTime(r.createdAt)}</b></div>
+          <div><small>Summa</small><b>${money(r.tariffPrice)}</b></div><div><small>Obuna muddati</small><b>${escapeHtml(String(r.durationDays || 30))} kun</b></div>
+          <div><small>To'lov usuli</small><b class="plat-admin-payment-method-value">${r.paymentMethod ? `${paymentProviderBadge(r.paymentMethod, true)} ${escapeHtml(paymentProviderName(r.paymentMethod))}` : '—'}</b></div><div><small>So'rov yaratildi</small><b>${formatDateTime(r.createdAt)}</b></div>
           <div><small>So'rov ID</small><b class="is-code">${escapeHtml(r.id)}</b></div><div><small>Tekshirish vaqti</small><b>${r.paymentClaimedAt ? formatDateTime(r.paymentClaimedAt) : 'Hali tasdiqlanmagan'}</b></div>
         </div>
       </section>
@@ -2713,13 +2999,60 @@
         <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Verifikatsiya</span><h2>To'lov holati</h2></div></div>
         <div class="plat-admin-payment-timeline">
           <div class="${r.paymentClaimedAt?'done':''}"><span>${pIcon('clock',16)}</span><p><b>“To'ladim” tasdig'i</b><small>${r.paymentClaimedAt ? formatDateTime(r.paymentClaimedAt) : 'Hali bosilmagan'}</small></p></div>
-          <div class="${r.hasReceipt?'done':r.receiptRequestedAt?'warn':''}"><span>${pIcon('file',16)}</span><p><b>To'lov cheki</b><small>${r.hasReceipt?'Chek biriktirilgan':r.receiptRequestedAt?`Chek so'ralgan · ${formatDateTime(r.receiptRequestedAt)}`:'Ixtiyoriy · biriktirilmagan'}</small></p>${r.hasReceipt?`<button onclick="event.stopPropagation(); viewReceipt('${r.id}')">Ko'rish</button>`:''}</div>
+          <div class="${r.hasReceipt?'done':r.receiptRequestedAt?'warn':''}"><span>${pIcon('file',16)}</span><p><b>To'lov cheki</b><small>${r.hasReceipt?`Chek yuborildi · ${escapeHtml(receiptSourceLabel(r.receiptSource))} · ${formatDateTime(r.receiptUploadedAt)}`:r.receiptRequestedAt?`Chek so'raldi · ${formatDateTime(r.receiptRequestedAt)}`:'Ixtiyoriy · biriktirilmagan'}</small></p>${r.hasReceipt?`<button onclick="event.stopPropagation(); viewReceipt('${r.id}')">Ko'rish</button>`:''}</div>
           <div class="${r.status==='APPROVED'?'done':r.status==='REJECTED'?'danger':''}"><span>${pIcon('check',16)}</span><p><b>Admin qarori</b><small>${r.status==='NEW'?'Tekshiruv kutilmoqda':`${ds.label} · ${formatDateTime(r.reviewedAt)}`}</small></p></div>
         </div>
         ${r.status === 'REJECTED' && r.rejectReason ? `<div class="notice error">Sabab: ${escapeHtml(r.rejectReason)}</div>` : ''}
       </section>
+      ${r.status === 'NEW' && r.receiptRequestedAt && !r.hasReceipt ? `<section class="plat-admin-receipt-wait"><span>${pIcon('file',20)}</span><div><b>To'lovni tasdiqlash uchun chek kerak</b><p>To'lovingizni aniqlay olmadik. Tekshiruvni davom ettirish uchun to'lov chekini yuboring.</p><small>Userga “Chekni yuborish” CTA ko'rsatilmoqda.</small></div></section>` : ''}
       ${r.status === 'NEW' ? `<section class="plat-admin-section"><div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Amallar</span><h2>Qaror</h2></div></div><div class="plat-admin-detail-actions"><button class="primary" onclick="approveRequest('${r.id}')">${pIcon('check',17)} Tasdiqlash</button>${!r.hasReceipt ? `<button class="secondary" onclick="requestReceiptForRequest('${r.id}')">${pIcon('file',17)} Chek so'rash</button>` : ''}<button class="secondary is-danger" onclick="openRejectPrompt('${r.id}')">Rad etish</button></div>${rejectingRequestId === r.id ? `<div class="plat-reject-box"><input type="text" id="reject-reason-${r.id}" placeholder="Rad etish sababi"><button class="secondary" onclick="submitReject('${r.id}')">Yuborish</button></div>` : ''}</section>` : ''}
+      ${isNewShop && r.status === 'APPROVED' && !r.shopCreated ? `<section class="plat-provision-stage"><span class="plat-provision-stage-icon">${pIcon('check',21)}</span><div><span class="plat-admin-eyebrow">Keyingi bosqich</span><h2>✅ To'lov tasdiqlandi</h2><p>To'lov tekshiruvi yakunlandi. Arizadagi ma'lumotlar bilan do'konni yarating.</p><button class="primary" onclick="openRequestProvisioning('${r.id}')">${pIcon('shop',17)} Do'kon qo'shish</button></div></section>` : ''}
+      ${isNewShop && r.shopCreated ? `<section class="plat-provision-stage is-created"><span class="plat-provision-stage-icon">${pIcon('shop',21)}</span><div><span class="plat-admin-eyebrow">Provisioning yakunlandi</span><h2>✅ Do'kon yaratildi</h2><p><b>${escapeHtml(r.requestedShopName || 'Do\'kon')}</b> → Owner: Telegram ID ${escapeHtml(r.ownerTelegramId || '—')}</p>${r.appliedShopId?`<small>Shop ID: ${escapeHtml(r.appliedShopId)}</small>`:''}</div></section>` : ''}
+      <section class="plat-application-timeline-card plat-admin-history"><div class="plat-application-section-title"><span>${pIcon('clock',17)}</span><div><b>Ariza tarixi</b><small>Server vaqtida saqlangan to'liq timeline.</small></div></div>${requestHistoryLoadingId===r.id && !history.length?`<div class="plat-request-list-loading"><span class="spinner"></span></div>`:renderRequestTimeline(history,r)}</section>
     `;
+  }
+  function openRequestProvisioning(requestId) {
+    const r = requests.find((x) => x.id === requestId);
+    if (!r || r.kind !== 'NEW_SHOP' || r.status !== 'APPROVED' || r.shopCreated) return;
+    provisioningRequestId = requestId;
+    provisioningError = null;
+    provisioningSuccess = null;
+    openPage('REQUEST_PROVISION');
+  }
+  function renderRequestProvisioningBody() {
+    const r = requests.find((x) => x.id === provisioningRequestId);
+    if (!r) return `<div class="plat-admin-empty"><span>${pIcon('info',24)}</span><b>Ariza topilmadi</b><small>So'rovlar bo'limiga qayting.</small></div>`;
+    return `<div class="plat-provision-head"><span>${pIcon('shop',24)}</span><div><span class="plat-admin-eyebrow">Tasdiqlangan ariza</span><h2>${escapeHtml(r.requestedShopName || "Yangi do'kon")}</h2><p>Arizadagi ma'lumotlar avtomatik to'ldirildi. Qayta kiritish talab qilinmaydi.</p></div></div>
+      <section class="plat-provision-summary">
+        <div><small>Do'kon nomi</small><b>${escapeHtml(r.requestedShopName || '—')}</b></div><div><small>Owner Telegram ID</small><b>${escapeHtml(r.ownerTelegramId || '—')}</b></div>
+        <div><small>Tarif</small><b>${escapeHtml(r.tariffName)}</b></div><div><small>Davr</small><b>${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</b></div>
+        <div><small>To'langan summa</small><b>${money(r.tariffPrice)}</b></div><div><small>Obuna muddati</small><b>${escapeHtml(String(r.durationDays || 30))} kun</b></div>
+        <div><small>Bonus kunlar</small><b>+7 kun</b></div><div><small>Ariza ID</small><b class="is-code">${escapeHtml(r.id)}</b></div>
+      </section>
+      <section class="plat-provision-token-card"><div class="plat-application-section-title"><span>${pIcon('lock',17)}</span><div><b>Telegram bot tokeni</b><small>Do'kon botini ulash uchun mavjud xavfsiz provisioning tokeni kerak.</small></div></div><label class="plat-field-pro"><span>Bot token</span><input type="password" id="plat-provision-bot-token" autocomplete="off" placeholder="123456789:AA..."></label></section>
+      ${provisioningError ? `<div class="notice error">${escapeHtml(provisioningError)}</div>` : ''}
+      <button class="primary plat-provision-submit ${provisioningSubmitting?'plat-btn-dimmed':''}" ${provisioningSubmitting?'disabled':''} onclick="submitRequestProvisioning()">${provisioningSubmitting?'<span class="spinner"></span> Yaratilmoqda...':`${pIcon('shop',17)} Do'konni yaratish`}</button>`;
+  }
+  async function submitRequestProvisioning() {
+    if (provisioningSubmitting || !provisioningRequestId) return;
+    const token = String(document.getElementById('plat-provision-bot-token')?.value || '').trim();
+    if (!token) { provisioningError = 'Telegram bot tokenini kiriting.'; render(); return; }
+    provisioningSubmitting = true; provisioningError = null; render();
+    try {
+      const result = await callPlatformApi('platform_provision_shop_from_request', { requestId: provisioningRequestId, botToken: token });
+      if (result?.error === 'telegram_config_failed_retry_available') {
+        provisioningError = "Do'kon bazada yaratildi, lekin Telegram sozlamasi yakunlanmadi. Shu token bilan yana bir marta urinib ko'ring.";
+        return;
+      }
+      const requestId = provisioningRequestId;
+      provisioningSuccess = result;
+      await loadRequests();
+      await reloadAdminShops();
+      await loadRequestHistory(requestId, false);
+      provisioningRequestId = null;
+      openRequestDetails(requestId);
+    } catch (e) { provisioningError = e.message || String(e); }
+    finally { provisioningSubmitting = false; render(); }
   }
   async function viewReceipt(requestId) {
     try {
@@ -2729,21 +3062,35 @@
   }
   async function approveRequest(requestId) {
     if (!confirm("So'rovni tasdiqlaysizmi?")) return;
-    try { await callPlatformApi('platform_approve_subscription_request', { requestId }); await loadRequests(); loadDashboardSummary(); }
-    catch (e) { alert(e.message || String(e)); }
+    try {
+      await callPlatformApi('platform_approve_subscription_request', { requestId });
+      await loadRequests();
+      await loadRequestHistory(requestId, false);
+      loadDashboardSummary();
+      render();
+    } catch (e) { alert(e.message || String(e)); }
   }
   async function requestReceiptForRequest(requestId) {
     try { window.event?.stopPropagation?.(); } catch (_) {}
-    try { await callPlatformApi('platform_request_receipt', { requestId }); await loadRequests(); }
-    catch (e) { alert(e.message || String(e)); }
+    try {
+      await callPlatformApi('platform_request_receipt', { requestId });
+      await loadRequests();
+      await loadRequestHistory(requestId, false);
+      render();
+    } catch (e) { alert(e.message || String(e)); }
   }
   function openRejectPrompt(requestId) { rejectingRequestId = requestId; render(); }
   async function submitReject(requestId) {
     const input = document.getElementById(`reject-reason-${requestId}`);
     const reason = (input?.value || '').trim();
     if (!reason) return alert('Sababni kiriting.');
-    try { await callPlatformApi('platform_reject_subscription_request', { requestId, reason }); rejectingRequestId = null; await loadRequests(); }
-    catch (e) { alert(e.message || String(e)); }
+    try {
+      await callPlatformApi('platform_reject_subscription_request', { requestId, reason });
+      rejectingRequestId = null;
+      await loadRequests();
+      await loadRequestHistory(requestId, false);
+      render();
+    } catch (e) { alert(e.message || String(e)); }
   }
 
   // ======================================================================
@@ -3005,6 +3352,15 @@
   window.clearRequestSentReceiptFile = clearRequestSentReceiptFile;
   window.attachReceiptToSentRequest = attachReceiptToSentRequest;
   window.requestReceiptForRequest = requestReceiptForRequest;
+  window.openMyRequests = openMyRequests;
+  window.openMyRequestDetails = openMyRequestDetails;
+  window.onMyRequestReceiptPicked = onMyRequestReceiptPicked;
+  window.clearMyRequestReceiptFile = clearMyRequestReceiptFile;
+  window.attachMyRequestReceipt = attachMyRequestReceipt;
+  window.updateNewShopRequestIdentity = updateNewShopRequestIdentity;
+  window.detectMyTelegramId = detectMyTelegramId;
+  window.openRequestProvisioning = openRequestProvisioning;
+  window.submitRequestProvisioning = submitRequestProvisioning;
   window.setAnalyticsPeriod = setAnalyticsPeriod;
   window.setAdminShopsSearch = setAdminShopsSearch;
   window.setAdminShopsStatusFilter = setAdminShopsStatusFilter;
