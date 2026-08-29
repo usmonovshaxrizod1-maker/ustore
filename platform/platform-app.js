@@ -131,6 +131,20 @@
     const s = size || 18;
     return `<svg class="p-icon" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${PICONS[name] || ''}</svg>`;
   }
+  function paymentProviderName(type) {
+    const key = String(type || '').toUpperCase();
+    if (key === 'CLICK') return 'Click';
+    if (key === 'PAYME') return 'Payme';
+    if (key === 'PAYNET') return 'Paynet';
+    if (key === 'CARD') return 'Karta';
+    return key || "To'lov";
+  }
+  function paymentProviderBadge(type, compact) {
+    const key = String(type || '').toUpperCase();
+    if (key === 'CARD') return `<span class="plat-provider-badge is-card ${compact ? 'is-compact' : ''}">${pIcon('card', compact ? 14 : 17)}</span>`;
+    const mark = key === 'CLICK' ? '<b>C</b><i>•</i>' : key === 'PAYME' ? '<b>P</b><i>m</i>' : '<b>PN</b>';
+    return `<span class="plat-provider-badge is-${key.toLowerCase()} ${compact ? 'is-compact' : ''}" aria-hidden="true">${mark}</span>`;
+  }
 
   function money(v) { return `${Number(v || 0).toLocaleString('uz-UZ').replace(/,/g, ' ')} so'm`; }
   function statusLabel(s) {
@@ -193,9 +207,14 @@
   let flowTariffId = null;
   let flowShopId = null;      // UPGRADE uchun
   let flowUpgradeAction = null; // 'EXTEND' | 'CHANGE' | null
-  let flowReturnPage = null; // 'SUBSCRIPTION_TARGET' | 'MY_SHOP_DETAILS' | null
-  let paymentInfo = null;     // { cardNumber, cardHolder }
+  let flowReturnPage = null; // 'SUBSCRIPTION_TARGET' | 'MY_SHOP_DETAILS' | 'TARIFFS' | null
+  let flowEntry = null; // 'NEW_SHOP' | 'SUBSCRIPTION_CATALOG' | 'SHOP_DETAIL' | null
+  let flowOriginTab = null; // yangi do'kon flowidan ortga qaytish uchun
+  let paymentInfo = null;     // { cardNumber, cardHolder, isActive }
   let platformPaymentMethods = []; // [{ id, methodType, displayName, paymentUrl }] — Click/Payme/Paynet havolalari
+  let selectedPaymentMethodType = null; // 'CARD' | 'CLICK' | 'PAYME' | 'PAYNET'
+  let selectedPaymentMethodId = null;
+  let externalPaymentOpened = false;
   // 2026-08-28: to'lovdan oldin majburiy ogohlantirish (spec) — Click/Payme/
   // Paynet havolasi TASHQARIGA ochilishidan oldin, checkbox belgilanmaguncha
   // "To'lovga o'tish" tugmasi yoqilmaydi. Bitta vaqtda faqat bitta usul
@@ -512,9 +531,9 @@
 
   function renderActivePage() {
     const p = activePage;
-    if (p === 'TARIFFS') return pageShell('Tarifni tanlang', renderTariffListBody(), { onBack: flowReturnPage === 'MY_SHOP_DETAILS' && flowShopId ? "openMyShopManage('" + flowShopId + "')" : "switchTab('subscription')" });
+    if (p === 'TARIFFS') return pageShell('Tarifni tanlang', renderTariffListBody(), { onBack: tariffsBackAction() });
     if (p === 'SUBSCRIPTION_TARGET') return pageShell('Obunani rasmiylashtirish', renderSubscriptionTargetBody(), { onBack: "openPage('TARIFFS')" });
-    if (p === 'PAYMENT') return pageShell("Obuna uchun to'lov", renderPaymentBody(), { onBack: paymentBackAction() });
+    if (p === 'PAYMENT') return pageShell(paymentPageTitle(), renderPaymentBody(), { onBack: paymentBackAction() });
     if (p === 'REQUEST_SENT') return pageShell("So'rov yuborildi", renderRequestSentBody(), { onBack: 'goHomePage()' });
     if (p === 'CONNECT_SHOP') return pageShell("Yangi do'kon ulash", renderConnectShopBody(), { onBack: "closePage()" });
     if (p === 'MY_SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderMyShopDetailsBody(), { onBack: "switchTab('shops')" });
@@ -526,9 +545,10 @@
     if (p === 'TERMS') return pageShell("Foydalanish shartlari", renderTermsBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'PRIVACY') return pageShell("Maxfiylik siyosati", renderPrivacyBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'ABOUT') return pageShell("UStorE haqida", renderAboutBody(), { onBack: "closePage()" });
-    if (p === 'GUIDE_USAGE') return pageShell("UStorE'dan foydalanish", renderGuideUsageBody(), { onBack: "switchTab('help')" });
-    if (p === 'GUIDE_SUBSCRIPTION') return pageShell("To'lov va obuna", renderGuideSubscriptionBody(), { onBack: "switchTab('help')" });
-    if (p === 'GUIDE_SHOP_SETUP') return pageShell("Do'kon sozlash", renderGuideShopSetupBody(), { onBack: "switchTab('help')" });
+    if (p === 'GUIDES') return pageShell("Qo'llanmalar", renderGuidesHubBody(), { onBack: "switchTab('profile')" });
+    if (p === 'GUIDE_USAGE') return pageShell("UStorE'dan foydalanish", renderGuideUsageBody(), { onBack: "openPage('GUIDES')" });
+    if (p === 'GUIDE_SUBSCRIPTION') return pageShell("To'lov va obuna", renderGuideSubscriptionBody(), { onBack: "openPage('GUIDES')" });
+    if (p === 'GUIDE_SHOP_SETUP') return pageShell("Do'kon sozlash", renderGuideShopSetupBody(), { onBack: "openPage('GUIDES')" });
     if (p === 'SUPPORT') return pageShell('Support bilan yozish', renderSupportBody(), { onBack: "switchTab('help')" });
     if (p === 'SUPPORT_THREAD') return pageShell(supportThreadTitle(), renderSupportThreadBody(), { onBack: "openPage('SUPPORT')" });
     if (p === 'BUG_REPORT') return pageShell('Muammo haqida xabar berish', renderBugReportBody(), { onBack: "switchTab('help')" });
@@ -803,7 +823,7 @@
 
       <section class="plat-integrations-strip">
         <div><b>Ekvayring va savdo integratsiyalari</b><small>To'lov va savdo jarayonlari uchun.</small></div>
-        <div class="plat-integration-pills"><span>CLICK</span><span>Payme</span><span>BILLZ</span></div>
+        <div class="plat-integration-pills"><span>${paymentProviderBadge('CLICK', true)} Click</span><span>${paymentProviderBadge('PAYME', true)} Payme</span><span>BILLZ</span></div>
       </section>
 
       <section class="plat-landing-section">
@@ -848,21 +868,20 @@
       : `<div class="plat-tariff-price">${money(t.price)}<span>/oy</span></div>`;
     let selectJs = opts.onSelectJs || `selectTariffAndContinue('${t.id}')`;
     selectJs = selectJs.replace('__TARIFF__', t.id);
-    // Legacy renderer contract kept explicit for regression tooling:
-    // onclick="${opts.onSelectJs || `selectTariffAndContinue('${t.id}')`}">${opts.ctaLabel || "Tarifni tanlash"}</button>
     const ctaHtml = isCurrent
       ? `<button class="secondary plat-small-btn plat-tariff-current-btn" disabled>${pIcon('check', 14)} Joriy tarif</button>`
       : `<button class="primary plat-small-btn plat-tariff-select" onclick="${selectJs}">${opts.ctaLabel || "Tarifni tanlash"}</button>`;
+    const features = (Array.isArray(t.features) && t.features.length ? t.features : TARIFF_FEATURE_LIST).slice(0, 6);
     return `
       <article class="plat-tariff-card plat-tariff-tone-${tone} ${flowTariffId === t.id ? 'selected' : ''} ${isCurrent ? 'is-current' : ''}">
         ${isCurrent ? '<span class="plat-tariff-badge is-current">Joriy tarif</span>' : t.isPopular ? '<span class="plat-tariff-badge">Ommabop</span>' : ''}
-        <div class="plat-tariff-summary-row">
-          <div class="plat-tariff-head"><span class="plat-tariff-symbol">${pIcon(tone === 'premium' ? 'diamond' : tone === 'business' ? 'bag' : tone === 'standard' ? 'bolt' : 'shop', 20)}</span><div><div class="plat-tariff-name">${escapeHtml(t.name)}</div><div class="plat-tariff-limit">${limitLabel(t.productLimit)}</div></div></div>
+        <div class="plat-tariff-title-row">
+          <div class="plat-tariff-title-main"><span class="plat-tariff-symbol">${pIcon(tone === 'premium' ? 'diamond' : tone === 'business' ? 'bag' : tone === 'standard' ? 'bolt' : 'shop', 19)}</span><div><div class="plat-tariff-name">${escapeHtml(t.name)}</div><span class="plat-tariff-limit">${limitLabel(t.productLimit)}</span></div></div>
           <div class="plat-tariff-price-block">${priceHtml}</div>
         </div>
         <div class="plat-tariff-divider"></div>
         <ul class="plat-tariff-features">
-          ${(Array.isArray(t.features) && t.features.length ? t.features : TARIFF_FEATURE_LIST).map((f) => `<li>${pIcon('check', 13)}<span>${escapeHtml(f)}</span></li>`).join('')}
+          ${features.map((f) => `<li>${pIcon('check', 12)}<span title="${escapeHtml(f)}">${escapeHtml(f)}</span></li>`).join('')}
         </ul>
         ${ctaHtml}
       </article>
@@ -896,8 +915,10 @@
 
   function renderTariffListBody() {
     const contextText = flowShopId && flowUpgradeAction === 'CHANGE'
-      ? "Do'koningiz uchun yangi tarifni tanlang. Qolgan obuna kunlari saqlanadi."
-      : "Sizga mos tarifni tanlang. Sotib olishdan keyin yangi do'kon yaratish yoki mavjud do'kon obunasini boshqarishni tanlaysiz.";
+      ? "Do'koningiz uchun yangi tarifni tanlang. Qolgan to'langan qiymat yangi tarifga adolatli konvertatsiya qilinadi."
+      : flowEntry === 'NEW_SHOP'
+        ? "Yangi do'koningiz uchun tarifni tanlang. Tanlaganingizdan keyin to'g'ridan-to'g'ri to'lovga o'tasiz."
+        : "Tarifni tanlang. Keyingi bosqichda yangi do'kon yaratish yoki mavjud do'kon obunasini boshqarishni tanlaysiz.";
     return `
       <div class="plat-flow-intro"><span>${pIcon('diamond',20)}</span><div><b>Biznesingizga mos tarif</b><p>${contextText}</p></div></div>
       ${renderBillingToggle()}
@@ -911,26 +932,53 @@
     flowTariffId = null;
     flowUpgradeAction = null;
     flowReturnPage = null;
+    flowEntry = null;
+    flowOriginTab = null;
+    selectedPaymentMethodType = null;
+    selectedPaymentMethodId = null;
+    externalPaymentOpened = false;
+    pendingExternalPaymentMethodId = null;
+    externalPaymentWarningChecked = false;
     consentAccepted = false;
     connectError = null;
   }
   function startNewShopFlow() {
+    const origin = currentTab;
     resetSubscriptionFlow();
+    flowEntry = 'NEW_SHOP';
+    flowKind = 'NEW_SHOP';
+    flowOriginTab = origin || 'home';
+    flowReturnPage = 'TARIFFS';
     openPage('TARIFFS');
   }
   function startNewShopWithTariff(tariffId) {
+    const origin = currentTab;
     resetSubscriptionFlow();
+    flowEntry = 'NEW_SHOP';
+    flowKind = 'NEW_SHOP';
+    flowOriginTab = origin || 'home';
     flowTariffId = tariffId;
-    openPage('SUBSCRIPTION_TARGET');
+    flowReturnPage = 'TARIFFS';
+    openPage('PAYMENT');
   }
   function selectTariffAndContinue(tariffId) {
     flowTariffId = tariffId;
     consentAccepted = false;
+    selectedPaymentMethodType = null;
+    selectedPaymentMethodId = null;
+    externalPaymentOpened = false;
     if (flowShopId && flowUpgradeAction === 'CHANGE') {
       flowKind = 'UPGRADE';
       openPage('PAYMENT');
       return;
     }
+    if (flowEntry === 'NEW_SHOP') {
+      flowKind = 'NEW_SHOP';
+      flowReturnPage = 'TARIFFS';
+      openPage('PAYMENT');
+      return;
+    }
+    flowEntry = 'SUBSCRIPTION_CATALOG';
     openPage('SUBSCRIPTION_TARGET');
   }
 
@@ -971,9 +1019,13 @@
   }
   function chooseNewShop() {
     flowKind = 'NEW_SHOP';
+    flowEntry = 'SUBSCRIPTION_CATALOG';
     flowShopId = null;
     flowUpgradeAction = null;
     flowReturnPage = 'SUBSCRIPTION_TARGET';
+    selectedPaymentMethodType = null;
+    selectedPaymentMethodId = null;
+    externalPaymentOpened = false;
     consentAccepted = false;
     openPage('PAYMENT');
   }
@@ -981,9 +1033,13 @@
     const shop = myShops.find((s) => s.id === shopId);
     if (!shop || !flowTariffId || shop.tariffId === flowTariffId) return;
     flowKind = 'UPGRADE';
+    flowEntry = 'SUBSCRIPTION_CATALOG';
     flowShopId = shopId;
     flowUpgradeAction = 'CHANGE';
     flowReturnPage = 'SUBSCRIPTION_TARGET';
+    selectedPaymentMethodType = null;
+    selectedPaymentMethodId = null;
+    externalPaymentOpened = false;
     consentAccepted = false;
     openPage('PAYMENT');
   }
@@ -991,6 +1047,11 @@
     if (flowReturnPage === 'SUBSCRIPTION_TARGET') return `openPage('SUBSCRIPTION_TARGET')`;
     if (flowReturnPage === 'MY_SHOP_DETAILS' && flowShopId) return `openMyShopManage('${flowShopId}')`;
     return `openPage('TARIFFS')`;
+  }
+  function tariffsBackAction() {
+    if (flowReturnPage === 'MY_SHOP_DETAILS' && flowShopId) return `openMyShopManage('${flowShopId}')`;
+    if (flowEntry === 'NEW_SHOP' && flowOriginTab) return `switchTab('${flowOriginTab}')`;
+    return `switchTab('subscription')`;
   }
 
   // ======================================================================
@@ -1025,24 +1086,71 @@
     }
     if (activePage === 'PAYMENT') rerenderActivePage();
   }
-  function renderTariffChangePreview(shopId, tariffId, isAnnual) {
-    const key = `${shopId}:${tariffId}:${isAnnual ? 'ANNUAL' : 'MONTHLY'}`;
+  function paymentPageTitle() {
+    if (flowKind === 'NEW_SHOP') return "Yangi do'kon uchun obuna";
+    if (flowUpgradeAction === 'EXTEND') return 'Obunani uzaytirish';
+    if (flowUpgradeAction === 'CHANGE') return "Tarifni o'zgartirish";
+    return "Obuna uchun to'lov";
+  }
+  function renderTariffChangePreview(shop, tariff, isAnnual) {
+    const key = `${shop.id}:${tariff.id}:${isAnnual ? 'ANNUAL' : 'MONTHLY'}`;
     if (tariffChangePreview?.key !== key) {
-      ensureTariffChangePreviewLoaded(shopId, tariffId, isAnnual);
-      return `<div class="plat-tariff-preview is-loading"><span class="spinner"></span> Hisoblanmoqda...</div>`;
+      ensureTariffChangePreviewLoaded(shop.id, tariff.id, isAnnual);
+      return `<div class="plat-change-preview is-loading"><span class="spinner"></span><div><b>Qolgan obuna hisoblanmoqda</b><small>Qiymat yangi tarifga avtomatik konvertatsiya qilinadi.</small></div></div>`;
     }
-    if (tariffChangePreview.loading) return `<div class="plat-tariff-preview is-loading"><span class="spinner"></span> Hisoblanmoqda...</div>`;
+    if (tariffChangePreview.loading) return `<div class="plat-change-preview is-loading"><span class="spinner"></span><div><b>Qolgan obuna hisoblanmoqda</b><small>Qiymat yangi tarifga avtomatik konvertatsiya qilinadi.</small></div></div>`;
     const d = tariffChangePreview.data;
     if (!d) return '';
-    if (d.convertedDays <= 0) {
-      return `<div class="plat-tariff-preview"><p>${pIcon('info', 14)} Yangi muddat: <b>${new Date(d.estimatedExpiresAt).toLocaleDateString('uz-UZ')}</b>gacha.</p></div>`;
-    }
+    const currentDays = Math.max(0, Math.round(Number(d.remainingPaidDays || 0)));
+    const convertedDays = Math.max(0, Number(d.convertedDays || 0));
+    const purchasedDays = Math.max(0, Number(d.durationDays || (isAnnual ? 365 : 30)));
+    const totalDays = convertedDays + purchasedDays;
+    const currentName = shop.tariffName || 'Joriy tarif';
     return `
-      <div class="plat-tariff-preview">
-        <p>${pIcon('info', 14)} Joriy tarifdan qolgan <b>${Math.round(d.remainingPaidDays)} kun</b> (${money(d.remainingValue)}) yangi tarifga <b>+${d.convertedDays} kun</b> qilib qo'shiladi.</p>
-        <p class="muted">Yangi tugash sanasi taxminan: <b>${new Date(d.estimatedExpiresAt).toLocaleDateString('uz-UZ')}</b></p>
-      </div>
-    `;
+      <section class="plat-change-preview">
+        <div class="plat-change-preview-head"><span>${pIcon('swap',18)}</span><div><b>Tarif o'zgarishi</b><small>Qolgan to'langan qiymatingiz kuyib ketmaydi.</small></div></div>
+        <div class="plat-change-plans">
+          <div><small>Hozirgi tarif</small><b>${escapeHtml(currentName)}</b><em>${currentDays} kun pullik muddat qoldi</em></div>
+          <span>${pIcon('arrowRight',18)}</span>
+          <div class="is-new"><small>Yangi tarif</small><b>${escapeHtml(tariff.name)}</b><em>${money(d.paidAmount || (isAnnual ? annualOfferPrice(tariff.price) : tariff.price))}</em></div>
+        </div>
+        <div class="plat-change-calc">
+          <div><small>Qolgan qiymat</small><b>${money(d.remainingValue || 0)}</b></div>
+          <div><small>Yangi tarifdagi ekvivalenti</small><b>${convertedDays ? `+${convertedDays} kun` : '0 kun'}</b></div>
+          <div><small>Sotib olinayotgan davr</small><b>+${purchasedDays} kun</b></div>
+        </div>
+        <div class="plat-change-result"><span>${pIcon('calendar',17)}</span><div><small>Taxminiy yangi muddat</small><b>${totalDays} kun · ${formatDate(d.estimatedExpiresAt)} gacha</b></div></div>
+        <p class="plat-change-note">${pIcon('info',13)} Hisob qolgan obunangizning to'langan qiymati asosida serverda bajariladi.</p>
+      </section>`;
+  }
+  function renderPaymentMethodChoice(m) {
+    const type = String(m.methodType || '').toUpperCase();
+    const selected = selectedPaymentMethodType === type && selectedPaymentMethodId === m.id;
+    return `
+      <button type="button" class="plat-payment-method-choice ${selected ? 'selected' : ''}" onclick="openExternalPaymentWarning('${m.id}')">
+        ${paymentProviderBadge(type)}
+        <span><b>${escapeHtml(m.displayName || paymentProviderName(type))}</b><small>${selected && externalPaymentOpened ? "To'lov oynasi ochildi · qaytgach tasdiqlang" : "To'lov sahifasini ochish"}</small></span>
+        <em>${selected ? pIcon('check',16) : '›'}</em>
+      </button>`;
+  }
+  function renderExternalPaymentWarningModal() {
+    if (!pendingExternalPaymentMethodId) return '';
+    const m = platformPaymentMethods.find((x) => x.id === pendingExternalPaymentMethodId);
+    if (!m) return '';
+    const type = String(m.methodType || '').toUpperCase();
+    return `
+      <div class="plat-payment-modal-backdrop" role="presentation">
+        <div class="plat-payment-modal" role="dialog" aria-modal="true" aria-label="To'lovdan oldin">
+          <div class="plat-payment-modal-mark">${paymentProviderBadge(type)}</div>
+          <h3>Chekni saqlab turing</h3>
+          <p>Do'koningiz sizga taqdim etilgunga qadar to'lov cheki yoki tasdig'ini saqlab qo'yishingizni tavsiya qilamiz. To'lov bo'yicha aniqlik kerak bo'lsa, UStorE administratori sizdan chekni so'rashi mumkin.</p>
+          <label class="plat-payment-modal-check"><input type="checkbox" ${externalPaymentWarningChecked ? 'checked' : ''} onchange="setExternalPaymentWarningChecked(this.checked)"><span>Tanishdim</span></label>
+          <div class="plat-payment-modal-actions">
+            <button type="button" class="secondary" onclick="closeExternalPaymentWarning()">Bekor qilish</button>
+            <button type="button" class="primary ${externalPaymentWarningChecked ? '' : 'plat-btn-dimmed'}" ${externalPaymentWarningChecked ? 'onclick="confirmExternalPaymentOpen()"' : 'disabled'}>Davom etish</button>
+          </div>
+        </div>
+      </div>`;
   }
   function renderPaymentBody() {
     const tariff = tariffs.find((t) => t.id === flowTariffId);
@@ -1050,38 +1158,55 @@
     if (!tariff) return `<div class="plat-empty-pro"><h2>Tarif topilmadi</h2><button class="primary" onclick="openPage('TARIFFS')">Tariflarni tanlash</button></div>`;
     if (!paymentInfo) {
       ensurePaymentInfoLoaded().then(() => { if (activePage === 'PAYMENT') rerenderActivePage(); });
-      return '<div class="plat-payment-loading"><span class="plat-boot-spinner"></span><b>To‘lov ma’lumotlari yuklanmoqda...</b></div>';
+      return '<div class="plat-payment-loading"><span class="plat-boot-spinner"></span><b>To‘lov usullari yuklanmoqda...</b></div>';
     }
     const isAnnual = tariffBillingPeriod === 'annual';
     const totalPrice = isAnnual ? annualOfferPrice(tariff.price) : tariff.price;
     const periodLabel = isAnnual ? 'Yillik · 12 oy (2 oy bepul)' : 'Oylik · 30 kun';
-    const flowLabel = flowKind === 'NEW_SHOP' ? "Yangi do'kon" : flowUpgradeAction === 'EXTEND' ? 'Obunani uzaytirish' : "Tarifni o'zgartirish";
+    const hasCard = !!paymentInfo.cardNumber && paymentInfo.isActive !== false;
+    const externalMethods = platformPaymentMethods || [];
+    const hasMethods = hasCard || externalMethods.length > 0;
+    const selectedExternal = selectedPaymentMethodType && selectedPaymentMethodType !== 'CARD';
+    const readyToConfirm = !!selectedPaymentMethodType && consentAccepted && (!selectedExternal || externalPaymentOpened) && !submittingRequest;
+    const shopLeft = shop ? daysUntil(shop.subscriptionExpiresAt) : null;
     const currentTariff = shop ? (shop.tariffName || 'Tarifsiz') : null;
-    const noPaymentCard = !paymentInfo.cardNumber || paymentInfo.isActive === false;
+
+    const contextIntro = flowKind === 'NEW_SHOP'
+      ? `<div class="plat-checkout-intro"><span>${pIcon('shop',19)}</span><div><b>Yangi do'kon uchun obuna</b><small>Tarif va davrni tekshiring, so'ng to'lov usulini tanlang.</small></div></div>`
+      : flowUpgradeAction === 'EXTEND'
+        ? `<div class="plat-checkout-intro"><span>${pIcon('calendar',19)}</span><div><b>Obunani uzaytirish</b><small>Qolgan muddat saqlanadi, yangi davr amaldagi tugash sanasiga qo'shiladi.</small></div></div>`
+        : `<div class="plat-checkout-intro"><span>${pIcon('swap',19)}</span><div><b>Tarifni o'zgartirish</b><small>Eski tarifdagi qolgan to'langan qiymat yangi tarifga konvertatsiya qilinadi.</small></div></div>`;
+
+    const planContext = flowKind === 'NEW_SHOP'
+      ? `<div class="plat-checkout-bonus">${pIcon('gift',15)}<span><b>Birinchi obunada +7 kun bonus</b><small>${isAnnual ? 'Yillik davrga qo‘shimcha 7 kun' : '30 kun + 7 kun = 37 kun'}</small></span></div>`
+      : `<div class="plat-checkout-shop"><span class="plat-shop-avatar">${shopAvatarHtml(shop)}</span><div><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${flowUpgradeAction === 'EXTEND' ? `${escapeHtml(currentTariff)} · ${shopLeft === null ? 'muddat noma’lum' : shopLeft <= 0 ? 'muddati tugagan' : shopLeft + ' kun qoldi'}` : `${escapeHtml(currentTariff)} → ${escapeHtml(tariff.name)}`}</small></div></div>`;
+
     return `
-      <div class="plat-payment-period"><div class="plat-payment-period-label"><b>Obuna davri</b><small>Oylik yoki yillik variantni tanlang.</small></div>${renderBillingToggle()}</div>
-      <section class="plat-payment-summary plat-tariff-tone-${tariffTone(tariff)}">
-        <div class="plat-payment-summary-top"><span>${pIcon('diamond',19)}</span><div><small>${flowLabel}</small><h2>${escapeHtml(tariff.name)}</h2><p>${limitLabel(tariff.productLimit)}</p></div><strong>${money(totalPrice)}</strong></div>
-        ${shop ? `<div class="plat-payment-shop-row"><span class="plat-shop-avatar">${shopAvatarHtml(shop)}</span><div><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${flowUpgradeAction === 'EXTEND' ? `Joriy ${escapeHtml(currentTariff)} tarifi uzaytiriladi` : `${escapeHtml(currentTariff)} → ${escapeHtml(tariff.name)}`}</small></div></div>` : `<div class="plat-payment-bonus">${pIcon('gift',16)}<span><b>Birinchi obunada +7 kun bonus</b><small>${isAnnual ? 'Yillik davrga qo‘shimcha 7 kun' : '30 kun + 7 kun = 37 kun'}</small></span></div>`}
-        <div class="plat-payment-summary-line"><span>Davr</span><b>${periodLabel}</b></div>
-      </section>
-      ${flowKind === 'UPGRADE' && flowUpgradeAction === 'CHANGE' && shop ? renderTariffChangePreview(shop.id, tariff.id, isAnnual) : ''}
+      ${contextIntro}
+      <section class="plat-payment-period is-compact"><div class="plat-payment-period-label"><b>Obuna davri</b><small>Oylik yoki yillik variant.</small></div>${renderBillingToggle()}</section>
 
-      <section class="plat-payment-card">
-        <div class="plat-payment-section-title"><span>${pIcon('card',18)}</span><div><b>To'lov rekvizitlari</b><small>To'lovni amalga oshirib, chekni quyida biriktiring.</small></div></div>
-        ${noPaymentCard ? `<div class="plat-payment-unavailable"><span>${pIcon('info',18)}</span><div><b>To'lov rekvizitlari hali mavjud emas</b><p>Administrator karta ma'lumotlarini kiritgach to'lov yuborish mumkin bo'ladi.</p></div></div>` : `<div class="plat-payment-bank-card"><div><small>Karta raqami</small><span id="plat-card-number" class="plat-card-number">${escapeHtml(paymentInfo.cardNumber)}</span>${paymentInfo.cardHolder ? `<small class="plat-card-holder">${escapeHtml(paymentInfo.cardHolder)}</small>` : ''}</div><button class="plat-copy-btn" onclick="copyPlatformCardNumber()">${pIcon('copy',14)} Nusxa olish</button></div>`}
-        ${platformPaymentMethods.length ? `
-          <div class="plat-payment-alt-methods">
-            ${platformPaymentMethods.map((m) => renderExternalPaymentMethodRow(m)).join('')}
-          </div>
-        ` : ''}
+      <section class="plat-checkout-plan plat-tariff-tone-${tariffTone(tariff)}">
+        <div class="plat-checkout-plan-top"><span class="plat-tariff-symbol">${pIcon(tariffTone(tariff) === 'premium' ? 'diamond' : tariffTone(tariff) === 'business' ? 'bag' : tariffTone(tariff) === 'standard' ? 'bolt' : 'shop',19)}</span><div><small>Tanlangan tarif</small><h2>${escapeHtml(tariff.name)}</h2><span class="plat-checkout-limit">${limitLabel(tariff.productLimit)}</span></div><strong>${money(totalPrice)}<small>/${isAnnual ? 'yil' : 'oy'}</small></strong></div>
+        ${planContext}
       </section>
 
-      <section class="plat-payment-card">
-        <div class="plat-payment-section-title"><span>${pIcon('upload',18)}</span><div><b>To'lov chekini biriktiring (ixtiyoriy)</b><small>JPG, PNG yoki WEBP · maksimal 6 MB</small></div></div>
+      ${flowKind === 'UPGRADE' && flowUpgradeAction === 'CHANGE' && shop ? renderTariffChangePreview(shop, tariff, isAnnual) : ''}
+
+      <section class="plat-payment-card plat-payment-methods-card">
+        <div class="plat-payment-section-title"><span>${pIcon('wallet',18)}</span><div><b>To'lov usulini tanlang</b><small>Faqat faol usullar ko'rsatiladi.</small></div></div>
+        ${hasMethods ? `<div class="plat-payment-method-grid">
+          ${hasCard ? `<button type="button" class="plat-payment-method-choice ${selectedPaymentMethodType === 'CARD' ? 'selected' : ''}" onclick="selectCardPayment()">${paymentProviderBadge('CARD')}<span><b>Karta orqali</b><small>${selectedPaymentMethodType === 'CARD' ? 'Karta rekvizitlari quyida' : "Karta raqamini ko'rish"}</small></span><em>${selectedPaymentMethodType === 'CARD' ? pIcon('check',16) : '›'}</em></button>` : ''}
+          ${externalMethods.map(renderPaymentMethodChoice).join('')}
+        </div>` : `<div class="plat-payment-empty-methods"><span>${pIcon('wallet',20)}</span><div><b>Hozircha to'lov usuli mavjud emas</b><small>Administrator to'lov usulini faollashtirgach shu yerda ko'rinadi.</small></div></div>`}
+        ${selectedPaymentMethodType === 'CARD' && hasCard ? `<div class="plat-payment-bank-card is-selected"><div><small>Karta raqami</small><span id="plat-card-number" class="plat-card-number">${escapeHtml(paymentInfo.cardNumber)}</span>${paymentInfo.cardHolder ? `<small class="plat-card-holder">${escapeHtml(paymentInfo.cardHolder)}</small>` : ''}</div><button class="plat-copy-btn" onclick="copyPlatformCardNumber()">${pIcon('copy',14)} Nusxa olish</button></div>` : ''}
+        ${selectedExternal && externalPaymentOpened ? `<div class="plat-payment-return-hint">${pIcon('check',15)}<span><b>${escapeHtml(paymentProviderName(selectedPaymentMethodType))} oynasi ochildi.</b><small>To'lovni bajargach UStorE'ga qayting va pastdagi “To'lovni tasdiqlash” tugmasini bosing.</small></span></div>` : ''}
+      </section>
+
+      <section class="plat-payment-card plat-receipt-compact">
+        <div class="plat-payment-section-title"><span>${pIcon('upload',18)}</span><div><b>Chek biriktirish <em>ixtiyoriy</em></b><small>JPG, PNG yoki WEBP · maksimal 6 MB</small></div></div>
         <input type="file" id="plat-receipt-input" class="hidden" onchange="onReceiptPicked(event)">
-        ${receiptFile ? `<div class="plat-upload-selected">${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" alt="Chek preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(receiptFile.name)}</b><small>${Math.max(1, Math.round(receiptFile.size / 1024))} KB</small></div><button class="secondary" onclick="document.getElementById('plat-receipt-input').click()">Almashtirish</button><button class="plat-upload-remove" onclick="clearReceiptFile()" aria-label="Chekni olib tashlash">×</button></div>` : `<button class="plat-upload-zone" onclick="document.getElementById('plat-receipt-input').click()"><span>${pIcon('upload',22)}</span><div><b>Fayldan chek tanlash</b><small>Qurilma xotirasidan fayl tanlang</small></div></button>`}
-        ${!receiptFile ? `<p class="plat-receipt-hint">Chekni hozir topa olmasangiz ham bo'ladi — to'lovni amalga oshirgach keyingi sahifadagi "To'ladim" tugmasini bosing.</p>` : ''}
+        ${receiptFile ? `<div class="plat-upload-selected">${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" alt="Chek preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(receiptFile.name)}</b><small>${Math.max(1, Math.round(receiptFile.size / 1024))} KB</small></div><button class="secondary" onclick="document.getElementById('plat-receipt-input').click()">Almashtirish</button><button class="plat-upload-remove" onclick="clearReceiptFile()" aria-label="Chekni olib tashlash">×</button></div>` : `<button class="plat-upload-zone is-compact" onclick="document.getElementById('plat-receipt-input').click()"><span>${pIcon('upload',20)}</span><div><b>Fayldan chek tanlash</b><small>Chekni hozir yuklash shart emas</small></div></button>`}
+        <p class="plat-receipt-hint">To'lovda aniqlik kerak bo'lsa, administrator chekni keyinroq so'rashi mumkin.</p>
         ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
       </section>
 
@@ -1092,15 +1217,51 @@
         </label>
       </section>
 
-      <section class="plat-payment-total">
+      <section class="plat-payment-total is-professional">
         <div><span>Tarif</span><b>${escapeHtml(tariff.name)}</b></div>
-        <div><span>Davr</span><b>${isAnnual ? '12 oy' : (flowKind === 'NEW_SHOP' ? '30 + 7 kun' : '30 kun')}</b></div>
+        <div><span>Davr</span><b>${isAnnual ? '12 oy' : (flowKind === 'NEW_SHOP' ? '30 kun + 7 kun bonus' : '30 kun')}</b></div>
+        ${selectedPaymentMethodType ? `<div><span>To'lov usuli</span><b class="plat-total-method">${paymentProviderBadge(selectedPaymentMethodType, true)} ${escapeHtml(paymentProviderName(selectedPaymentMethodType))}</b></div>` : ''}
         <div class="is-total"><span>Jami to'lov</span><strong>${money(totalPrice)}</strong></div>
       </section>
-      <button class="primary plat-payment-submit ${(!consentAccepted || noPaymentCard || submittingRequest) ? 'plat-btn-dimmed' : ''}" onclick="submitSubscriptionRequest()">
-        ${submittingRequest ? '<span class="spinner"></span> Yuborilmoqda...' : `${pIcon('send',16)} So'rov yuborish`}
+      <button class="primary plat-payment-submit ${readyToConfirm ? '' : 'plat-btn-dimmed'}" ${readyToConfirm ? 'onclick="submitSubscriptionRequest()"' : 'disabled'}>
+        ${submittingRequest ? '<span class="spinner"></span> Tasdiqlanmoqda...' : selectedPaymentMethodType ? `${pIcon('check',16)} To'lovni tasdiqlash` : `${pIcon('wallet',16)} To'lov usulini tanlang`}
       </button>
+      ${renderExternalPaymentWarningModal()}
     `;
+  }
+  function selectCardPayment() {
+    selectedPaymentMethodType = 'CARD';
+    selectedPaymentMethodId = null;
+    externalPaymentOpened = false;
+    pendingExternalPaymentMethodId = null;
+    externalPaymentWarningChecked = false;
+    rerenderActivePage();
+  }
+  function renderExternalPaymentMethodRow(m) { return renderPaymentMethodChoice(m); }
+  function openExternalPaymentWarning(methodId) {
+    pendingExternalPaymentMethodId = methodId;
+    externalPaymentWarningChecked = false;
+    rerenderActivePage();
+  }
+  function closeExternalPaymentWarning() {
+    pendingExternalPaymentMethodId = null;
+    externalPaymentWarningChecked = false;
+    rerenderActivePage();
+  }
+  function setExternalPaymentWarningChecked(checked) { externalPaymentWarningChecked = checked; rerenderActivePage(); }
+  function confirmExternalPaymentOpen() {
+    const m = platformPaymentMethods.find((x) => x.id === pendingExternalPaymentMethodId);
+    if (!m?.paymentUrl || !externalPaymentWarningChecked) return;
+    selectedPaymentMethodType = String(m.methodType || '').toUpperCase();
+    selectedPaymentMethodId = m.id;
+    externalPaymentOpened = true;
+    pendingExternalPaymentMethodId = null;
+    externalPaymentWarningChecked = false;
+    rerenderActivePage();
+    setTimeout(() => {
+      try { if (tg?.openLink) tg.openLink(m.paymentUrl); else window.open(m.paymentUrl, '_blank'); }
+      catch (_) { window.open(m.paymentUrl, '_blank'); }
+    }, 20);
   }
   function clearReceiptFile() {
     receiptFile = null;
@@ -1129,45 +1290,6 @@
       finish(ok);
     } catch (_) { finish(false); }
   }
-  // 2026-08-28: tashqi Click/Payme/Paynet havolasi ochilishidan OLDIN
-  // majburiy ogohlantirish (spec) — checkbox belgilanmaguncha "To'lovga
-  // o'tish" tugmasi bosib bo'lmaydi. Karta usuliga tegishli emas (u
-  // tashqariga olib chiqmaydi, faqat raqamni nusxalaydi).
-  function renderExternalPaymentMethodRow(m) {
-    if (pendingExternalPaymentMethodId !== m.id) {
-      return `
-        <button type="button" class="plat-payment-alt-method" onclick="openExternalPaymentWarning('${m.id}')">
-          <span>${pIcon('wallet', 16)}</span><b>${escapeHtml(m.displayName)}</b><em>›</em>
-        </button>
-      `;
-    }
-    return `
-      <div class="plat-payment-warning-box">
-        <div class="plat-payment-warning-head"><span>${pIcon('info', 16)}</span><b>${escapeHtml(m.displayName)} orqali to'lash</b></div>
-        <p>Bu — tashqi havola, UStorE avtomatik tasdiqlamaydi. To'lovni amalga oshirgach, administrator keyinroq to'lov isbotini (chek yoki "To'ladim" tasdig'i) so'rashi mumkin. Havolani ochishdan oldin shuni tasdiqlang.</p>
-        <label class="plat-checkbox-row">
-          <input type="checkbox" ${externalPaymentWarningChecked ? 'checked' : ''} onchange="setExternalPaymentWarningChecked(this.checked)">
-          <span>Tushundim, to'lovni davom ettiraman.</span>
-        </label>
-        <div class="plat-payment-warning-actions">
-          <button type="button" class="secondary" onclick="closeExternalPaymentWarning()">Bekor qilish</button>
-          <button type="button" class="primary ${externalPaymentWarningChecked ? '' : 'plat-btn-dimmed'}" ${externalPaymentWarningChecked ? 'onclick="confirmExternalPaymentOpen()"' : 'disabled'}>To'lovga o'tish</button>
-        </div>
-      </div>
-    `;
-  }
-  function openExternalPaymentWarning(methodId) { pendingExternalPaymentMethodId = methodId; externalPaymentWarningChecked = false; rerenderActivePage(); }
-  function closeExternalPaymentWarning() { pendingExternalPaymentMethodId = null; externalPaymentWarningChecked = false; rerenderActivePage(); }
-  function setExternalPaymentWarningChecked(checked) { externalPaymentWarningChecked = checked; rerenderActivePage(); }
-  // Havolaning o'zi hech qachon onclick atributiga qayta joylashtirilmaydi
-  // (admin kiritgan URL'da bo'lishi mumkin bo'lgan qo'shtirnoq/apostrof
-  // JS satrini buzib qo'ymasligi uchun) — pendingExternalPaymentMethodId
-  // orqali ro'yxatdan qayta topiladi.
-  function confirmExternalPaymentOpen() {
-    const m = platformPaymentMethods.find((x) => x.id === pendingExternalPaymentMethodId);
-    if (m?.paymentUrl) { if (tg?.openLink) tg.openLink(m.paymentUrl); else window.open(m.paymentUrl, '_blank'); }
-    closeExternalPaymentWarning();
-  }
   function onReceiptPicked(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
@@ -1189,13 +1311,17 @@
   }
   async function submitSubscriptionRequest() {
     if (submittingRequest) return;
-    // 5-band: checkbox native disabled EMAS (button.plat-btn-dimmed shunchaki
-    // vizual) — shu sabab bosilganda aniq nima yetishmayotganini aytish kerak.
+    if (!selectedPaymentMethodType) { alert("Avval to'lov usulini tanlang."); return; }
     if (!consentAccepted) { alert("Davom etish uchun Foydalanish shartlari va Maxfiylik siyosatiga rozilik bildiring."); return; }
-    if ((!paymentInfo?.cardNumber || paymentInfo?.isActive === false) && !platformPaymentMethods.length) { alert("Faol to'lov usuli mavjud emas. Iltimos, keyinroq qayta urinib ko'ring."); return; }
-    // 2026-08-28: chek endi ixtiyoriy — biriktirilmagan bo'lsa ham so'rov
-    // yuborilishi mumkin, mijoz keyin REQUEST_SENT sahifasida "To'ladim"
-    // bosadi.
+    if (selectedPaymentMethodType !== 'CARD' && !externalPaymentOpened) { alert("Avval tanlangan to'lov usuliga o'tib to'lovni amalga oshiring."); return; }
+    const hasCard = !!paymentInfo?.cardNumber && paymentInfo?.isActive !== false;
+    if (selectedPaymentMethodType === 'CARD' && !hasCard) { alert("Karta orqali to'lov hozir faol emas."); return; }
+    const selectedExternalMethod = selectedPaymentMethodId ? platformPaymentMethods.find((m) => m.id === selectedPaymentMethodId) : null;
+    if (selectedPaymentMethodType !== 'CARD' && (!selectedExternalMethod || String(selectedExternalMethod.methodType).toUpperCase() !== selectedPaymentMethodType)) {
+      alert("Tanlangan to'lov usuli topilmadi. Qayta tanlang.");
+      return;
+    }
+
     submittingRequest = true;
     connectError = null;
     rerenderActivePage();
@@ -1207,11 +1333,27 @@
         requesterUsername: (tg?.initDataUnsafe?.user?.username) || null,
         requesterFirstName: (tg?.initDataUnsafe?.user?.first_name) || null,
         receiptImageUpload,
+        paymentMethod: selectedPaymentMethodType,
+        paymentMethodId: selectedPaymentMethodId || undefined,
         consentAccepted: true,
       });
       lastSubmittedRequestId = result.requestId;
       lastSubmittedHadReceipt = !!receiptFile;
-      paymentClaimConfirmed = false;
+      paymentClaimConfirmed = !!receiptFile;
+
+      // User aynan "To'lovni tasdiqlash"ni bosgan payt server vaqti bilan
+      // payment_claimed_at yozilsin. Chek bo'lsa submitning o'zi allaqachon
+      // server timestamp qo'yadi; cheksiz holatda shu zahoti claim qilamiz.
+      if (!receiptFile) {
+        try {
+          await callPlatformApi('platform_confirm_payment_claim', { requestId: result.requestId });
+          paymentClaimConfirmed = true;
+        } catch (claimErr) {
+          console.error('payment claim confirm error', claimErr);
+          paymentClaimConfirmed = false; // REQUEST_SENT'da qayta urinish chiqadi
+        }
+      }
+
       receiptFile = null;
       if (receiptPreviewUrl) { try { URL.revokeObjectURL(receiptPreviewUrl); } catch (_) {} }
       receiptPreviewUrl = null;
@@ -1223,37 +1365,32 @@
       submittingRequest = false;
     }
   }
+
   function renderRequestSentBody() {
     const shop = flowShopId ? myShops.find((s) => s.id === flowShopId) : null;
     const context = flowKind === 'NEW_SHOP'
-      ? "Tasdiqlangach UStorE administratori yangi do'koningizni ulaydi."
+      ? "To'lov tasdiqlangach UStorE administratori yangi do'koningizni tayyorlaydi."
       : flowUpgradeAction === 'EXTEND'
         ? "Tasdiqlangach obuna muddati mavjud tugash sanasining ustiga qo'shiladi."
         : `Tasdiqlangach ${shop ? escapeHtml(shop.shopName || shop.botUsername || 'do‘kon') : 'do‘kon'} uchun yangi tarif faollashadi.`;
-    // 2026-08-28: chek biriktirilmagan bo'lsa — mijoz to'lovni amalga
-    // oshirgach shu yerdan "To'ladim" bosadi (server vaqti bilan qayd
-    // etiladi, platform_confirm_payment_claim).
-    const needsClaim = !lastSubmittedHadReceipt && !paymentClaimConfirmed;
+    const needsClaimRetry = !paymentClaimConfirmed;
     return `
       <div class="plat-request-success">
-        <span>${pIcon('check',26)}</span><h2>So'rov yuborildi</h2>
-        <p>${needsClaim ? "To'lovni amalga oshirib, pastdagi \"To'ladim\" tugmasini bosing — administrator shundan keyin tekshiradi." : "To'lovingiz tekshirilmoqda. Natija Telegram orqali yuboriladi."}</p>
-        <div class="plat-request-status">${pIcon('calendar',15)} Tekshirilmoqda</div>
-        ${needsClaim ? `
-          <div class="plat-payment-claim-box">
-            <p>${pIcon('info',15)} Chek biriktirilmadi. To'lovni qilgach shu tugmani bosing — vaqt avtomatik qayd etiladi.</p>
-            <button class="primary ${paymentClaimSubmitting ? 'plat-btn-dimmed' : ''}" onclick="confirmPaymentClaim()">${paymentClaimSubmitting ? '<span class="spinner"></span> Yuborilmoqda...' : "✅ To'ladim"}</button>
-            <input type="file" id="plat-request-sent-receipt-input" class="hidden" onchange="onRequestSentReceiptPicked(event)">
-            ${requestSentReceiptFile ? `
-              <div class="plat-upload-selected">${requestSentReceiptPreviewUrl ? `<img src="${requestSentReceiptPreviewUrl}" alt="Chek preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(requestSentReceiptFile.name)}</b><small>${Math.max(1, Math.round(requestSentReceiptFile.size / 1024))} KB</small></div><button class="plat-upload-remove" onclick="clearRequestSentReceiptFile()" aria-label="Chekni olib tashlash">×</button></div>
-              <button class="secondary ${attachingRequestReceipt ? 'plat-btn-dimmed' : ''}" onclick="attachReceiptToSentRequest()">${attachingRequestReceipt ? '<span class="spinner"></span> Yuborilmoqda...' : "📎 Chekni biriktirish"}</button>
-            ` : `<button class="plat-inline-link" onclick="document.getElementById('plat-request-sent-receipt-input').click()">yoki chekni endi biriktiring</button>`}
+        <span>${pIcon('check',26)}</span><h2>To'lov tasdiqlash uchun yuborildi</h2>
+        <p>${needsClaimRetry ? "So'rov yaratildi, lekin vaqtni tasdiqlashda aloqa uzildi. Pastdagi tugmani yana bir marta bosing." : "Ma'lumotingiz qabul qilindi. Administrator to'lovni tekshiradi va natija Telegram orqali yuboriladi."}</p>
+        <div class="plat-request-status">${pIcon('clock',15)} Tekshirilmoqda</div>
+        ${needsClaimRetry ? `
+          <div class="plat-payment-claim-box is-soft">
+            <p>${pIcon('info',15)} To'lovni qilgan bo'lsangiz, vaqtni serverda qayd etish uchun tasdiqlang.</p>
+            <button class="primary ${paymentClaimSubmitting ? 'plat-btn-dimmed' : ''}" onclick="confirmPaymentClaim()">${paymentClaimSubmitting ? '<span class="spinner"></span> Tasdiqlanmoqda...' : `${pIcon('check',15)} To'lovni tasdiqlash`}</button>
           </div>
-        ` : (!lastSubmittedHadReceipt && paymentClaimConfirmed ? `<div class="plat-payment-claim-done">${pIcon('check',15)} To'lov da'vosi qabul qilindi — administrator tekshiradi.</div>` : '')}
+        ` : `<div class="plat-payment-claim-done">${pIcon('check',15)} To'lov vaqti serverda qayd etildi.</div>`}
+        ${!lastSubmittedHadReceipt ? `<div class="plat-request-receipt-note">${pIcon('file',14)}<span>Chek biriktirilmagan — bu majburiy emas. Kerak bo'lsa administrator sizdan keyinroq so'raydi.</span></div>` : ''}
         <div class="plat-request-context">${context}</div>
-        <button class="${needsClaim ? 'secondary' : 'primary'}" onclick="goHomePage()">Bosh sahifaga qaytish</button>
+        <button class="primary" onclick="goHomePage()">Bosh sahifaga qaytish</button>
       </div>`;
   }
+
   async function confirmPaymentClaim() {
     if (paymentClaimSubmitting || !lastSubmittedRequestId) return;
     paymentClaimSubmitting = true;
@@ -1448,19 +1585,27 @@
     const shop = myShops.find((s) => s.id === shopId);
     if (!shop?.tariffId) { startUpgradeFor(shopId); return; }
     flowKind = 'UPGRADE';
+    flowEntry = activePage === 'SUBSCRIPTION_TARGET' ? 'SUBSCRIPTION_CATALOG' : 'SHOP_DETAIL';
     flowShopId = shopId;
     flowTariffId = shop.tariffId;
     flowUpgradeAction = 'EXTEND';
     flowReturnPage = activePage === 'SUBSCRIPTION_TARGET' ? 'SUBSCRIPTION_TARGET' : 'MY_SHOP_DETAILS';
+    selectedPaymentMethodType = null;
+    selectedPaymentMethodId = null;
+    externalPaymentOpened = false;
     consentAccepted = false;
     openPage('PAYMENT');
   }
   function startUpgradeFor(shopId) {
     flowKind = 'UPGRADE';
+    flowEntry = 'SHOP_DETAIL';
     flowShopId = shopId;
     flowTariffId = null;
     flowUpgradeAction = 'CHANGE';
     flowReturnPage = 'MY_SHOP_DETAILS';
+    selectedPaymentMethodType = null;
+    selectedPaymentMethodId = null;
+    externalPaymentOpened = false;
     consentAccepted = false;
     openPage('TARIFFS');
   }
@@ -1479,17 +1624,21 @@
       <div class="plat-help-search">${pIcon('chat',17)}<input type="text" placeholder="Savolingizni yozing..." aria-label="Yordam qidiruvi" oninput="filterHelpItems(this.value)"></div>
       <div class="plat-help-primary-actions"><button class="plat-help-primary-card support" onclick="openSupportPage()"><span>${pIcon('headset',22)}</span><div><b>Qo'llab-quvvatlashga yozish</b><small>Jamoamiz bilan chat orqali bog'laning.</small></div><em>›</em></button><button class="plat-help-primary-card bug" onclick="openPage('BUG_REPORT')"><span>${pIcon('mail',22)}</span><div><b>Muammo haqida xabar berish</b><small>Xatolik yoki muammoni batafsil yuboring.</small></div><em>›</em></button></div>
       <button class="plat-my-tickets-link" onclick="openSupportPage()">${pIcon('inbox',17)}<span><b>Mening murojaatlarim</b><small>${mySupportTickets.length ? mySupportTickets.length + ' ta murojaat' : 'Murojaatlaringiz holatini kuzating'}</small></span><em>›</em></button>
-      <div class="plat-section-heading"><div><h2>Qo'llanmalar</h2><p>Kerakli bo'lim bo'yicha qisqa va aniq yordam.</p></div></div>
-      <div class="plat-help-guide-list">${HELP_NAV_ROWS.map(([icon,tone,title,desc,action])=>`<button onclick="${action}"><span class="plat-help-row-icon ${tone}">${pIcon(icon,19)}</span><div><b>${title}</b><small>${desc}</small></div><em>›</em></button>`).join('')}</div>
-      <div class="plat-section-heading"><div><h2>Ko'p so'raladigan savollar</h2></div><button class="plat-link-btn" onclick="openPage('FAQ_FULL')">Barchasi</button></div>
+      <div class="plat-section-heading"><div><h2>Ko'p so'raladigan savollar</h2><p>Eng ko'p uchraydigan savollarga tez javob.</p></div><button class="plat-link-btn" onclick="openPage('FAQ_FULL')">Barchasi</button></div>
       <div class="card plat-faq-preview">${FAQ_PREVIEW_ITEMS.map((q)=>`<button class="plat-faq-preview-row" onclick="openPage('FAQ_FULL')"><span class="plat-faq-preview-icon">?</span><span>${q}</span><span class="plat-faq-preview-chevron">›</span></button>`).join('')}</div>
     `;
   }
   function filterHelpItems(query) {
     const q = String(query || '').trim().toLocaleLowerCase('uz');
-    document.querySelectorAll('.plat-help-guide-list button, .plat-faq-preview-row').forEach((el) => {
+    document.querySelectorAll('.plat-faq-preview-row').forEach((el) => {
       el.classList.toggle('hidden', !!q && !String(el.textContent || '').toLocaleLowerCase('uz').includes(q));
     });
+  }
+  function renderGuidesHubBody() {
+    return `
+      <div class="plat-guides-hub-head"><span>${pIcon('book',22)}</span><div><h2>Qo'llanmalar</h2><p>UStorE'dan foydalanish, obuna va do'kon sozlash bo'yicha qisqa yo'riqnomalar.</p></div></div>
+      <div class="plat-help-guide-list plat-guides-hub-list">${HELP_NAV_ROWS.map(([icon,tone,title,desc,action])=>`<button onclick="${action}"><span class="plat-help-row-icon ${tone}">${pIcon(icon,19)}</span><div><b>${title}</b><small>${desc}</small></div><em>›</em></button>`).join('')}</div>
+    `;
   }
   function renderFaqFullBody() {
     return `<div class="card plat-faq-card">
@@ -1756,7 +1905,7 @@
       <section class="plat-profile-hero">${user.photo_url?`<img src="${escapeHtml(user.photo_url)}" class="plat-profile-photo">`:`<div class="plat-profile-photo plat-profile-photo-fallback">${escapeHtml(fullName.charAt(0))}</div>`}<div class="plat-profile-main"><h2>${escapeHtml(fullName)}</h2><p>${user.username?'@'+escapeHtml(user.username):'Telegram foydalanuvchi'}</p><small>${pIcon('user',13)} Telegram ID: ${escapeHtml(String(user.id||''))}</small></div></section>
       <div class="plat-profile-stats"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length} ta</b><small>do'kon ulangan</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${activeSubs} ta</b><small>faol obuna</small></div><div><span class="tone-violet">${pIcon('calendar',16)}</span><b>${nearest===null?'—':nearest+' kun'}</b><small>eng yaqin tugash</small></div></div>
       <h2 class="plat-profile-section-title">Hisob</h2><div class="plat-profile-list"><button onclick="switchTab('shops')"><span class="tone-green">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-orange">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button></div>
-      <h2 class="plat-profile-section-title">UStorE</h2><div class="plat-profile-list"><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-green">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-violet">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
+      <h2 class="plat-profile-section-title">UStorE</h2><div class="plat-profile-list"><button onclick="openPage('GUIDES')"><span class="tone-violet">${pIcon('book',17)}</span><b>Qo'llanmalar</b><em>3 ta ›</em></button><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-green">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-violet">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
       <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Akkaunt Telegram profilingiz bilan bog'langan</b><small>Alohida login yoki parol talab qilinmaydi.</small></div>${pIcon('check',18)}</div>
       ${isSuperAdmin?`<button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('lock',22)}</span><div><b>Admin rejimi</b><small>Platformani boshqarish</small></div><em>O'tish →</em></button>`:''}
       <div class="plat-version">UStorE · 2026</div>
@@ -2529,7 +2678,7 @@
     return `
       <div class="plat-admin-request-card" role="button" tabindex="0" onclick="openRequestDetails('${r.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openRequestDetails('${r.id}');}">
         <span class="plat-admin-request-top"><span><b>${escapeHtml(r.requesterFirstName || r.requesterTelegramId)}</b><small>${escapeHtml(identity)}</small></span><span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span></span>
-        <span class="plat-admin-request-mid"><span><small>${escapeHtml(requestTypeLabel(r))}</small><b>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</b></span><strong>${money(r.tariffPrice)}</strong></span>
+        <span class="plat-admin-request-mid"><span><small>${escapeHtml(requestTypeLabel(r))}</small><b>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</b>${r.paymentMethod ? `<em class="plat-request-method">${paymentProviderBadge(r.paymentMethod, true)} ${escapeHtml(paymentProviderName(r.paymentMethod))}</em>` : ''}</span><strong>${money(r.tariffPrice)}</strong></span>
         ${paymentNotice}
         <span class="plat-admin-request-foot"><small>${pIcon('clock',13)} ${escapeHtml(claimed)}</small><span class="plat-admin-request-foot-actions">${r.status === 'NEW' && !r.hasReceipt && !r.receiptRequestedAt ? `<button onclick="requestReceiptForRequest('${r.id}')">Chek so'rash</button>` : ''}${pIcon('arrowRight',16)}</span></span>
       </div>`;
@@ -2555,8 +2704,9 @@
         <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Obuna</span><h2>So'rov ma'lumotlari</h2></div></div>
         <div class="plat-admin-detail-grid">
           <div><small>Tarif</small><b>${escapeHtml(r.tariffName)}</b></div><div><small>Davr</small><b>${r.billingPeriod==='ANNUAL'?'Yillik':'Oylik'}</b></div>
-          <div><small>Summa</small><b>${money(r.tariffPrice)}</b></div><div><small>Mahsulot limiti</small><b>${r.tariffProductLimit == null ? 'Cheksiz' : escapeHtml(String(r.tariffProductLimit))}</b></div>
-          <div><small>So'rov yaratildi</small><b>${formatDateTime(r.createdAt)}</b></div><div><small>So'rov ID</small><b class="is-code">${escapeHtml(r.id)}</b></div>
+          <div><small>Summa</small><b>${money(r.tariffPrice)}</b></div><div><small>To'lov usuli</small><b class="plat-admin-payment-method-value">${r.paymentMethod ? `${paymentProviderBadge(r.paymentMethod, true)} ${escapeHtml(paymentProviderName(r.paymentMethod))}` : '—'}</b></div>
+          <div><small>Mahsulot limiti</small><b>${r.tariffProductLimit == null ? 'Cheksiz' : escapeHtml(String(r.tariffProductLimit))}</b></div><div><small>So'rov yaratildi</small><b>${formatDateTime(r.createdAt)}</b></div>
+          <div><small>So'rov ID</small><b class="is-code">${escapeHtml(r.id)}</b></div><div><small>Tekshirish vaqti</small><b>${r.paymentClaimedAt ? formatDateTime(r.paymentClaimedAt) : 'Hali tasdiqlanmagan'}</b></div>
         </div>
       </section>
       <section class="plat-admin-section">
@@ -2639,7 +2789,7 @@
     return `${d.slice(0,4)} •••• •••• ${d.slice(-4)}`;
   }
   function shortUrl(v){ try{ const a=document.createElement('a'); a.href=String(v||''); const path=a.pathname||''; return (a.hostname||'') + (path.length>18?path.slice(0,18)+'…':path); }catch(_){ return String(v||'').slice(0,36); } }
-  function paymentMethodIcon(type){ return type==='CLICK'?'C':type==='PAYME'?'P':'PN'; }
+  function paymentMethodIcon(type){ return paymentProviderName(type); }
   function renderAdminPaymentSettingsBody(){
     const cardActive = paymentInfoDraft?.isActive !== false && !!paymentInfoDraft?.cardNumber;
     return `
@@ -2727,7 +2877,7 @@
     } catch (e) { alert(e.message || String(e)); }
   }
   function renderAdminPaymentMethodRow(m) {
-    return `<div class="plat-payment-method-card"><span class="plat-method-logo is-${String(m.methodType).toLowerCase()}">${escapeHtml(paymentMethodIcon(m.methodType))}</span><div><b>${escapeHtml(m.displayName)}</b><small>${escapeHtml(shortUrl(m.paymentUrl))}</small></div><label class="plat-switch" onclick="event.stopPropagation()"><input type="checkbox" ${m.isActive?'checked':''} onchange="togglePaymentMethodActive('${m.id}',this.checked)"><span></span></label><button onclick="openEditPaymentMethodDraft('${m.id}')">Tahrirlash</button></div>`;
+    return `<div class="plat-payment-method-card">${paymentProviderBadge(m.methodType)}<div><b>${escapeHtml(m.displayName)}</b><small>${escapeHtml(shortUrl(m.paymentUrl))}</small></div><label class="plat-switch" onclick="event.stopPropagation()"><input type="checkbox" ${m.isActive?'checked':''} onchange="togglePaymentMethodActive('${m.id}',this.checked)"><span></span></label><button onclick="openEditPaymentMethodDraft('${m.id}')">Tahrirlash</button></div>`;
   }
   async function togglePaymentMethodActive(id,active){ const m=adminPaymentMethods.find(x=>x.id===id); if(!m)return; try{await callPlatformApi('platform_upsert_payment_method',{id:m.id,methodType:m.methodType,displayName:m.displayName,paymentUrl:m.paymentUrl,isActive:active,sortOrder:m.sortOrder||0});m.isActive=active;render();}catch(e){alert(e.message||String(e));loadAdminSettings();} }
   function openNewPaymentMethodDraft() { paymentMethodDraft = { id: null, methodType: 'CLICK', displayName: '', paymentUrl: '', isActive: true }; render(); }
@@ -2835,6 +2985,7 @@
   window.closeTermsPrivacyPage = closeTermsPrivacyPage;
   window.setConsentAccepted = setConsentAccepted;
   window.selectTariffAndContinue = selectTariffAndContinue;
+  window.selectCardPayment = selectCardPayment;
   window.setTariffBillingPeriod = setTariffBillingPeriod;
   window.syncTariffCarouselDots = syncTariffCarouselDots;
   window.startNewShopFlow = startNewShopFlow;
