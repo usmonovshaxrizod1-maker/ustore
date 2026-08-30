@@ -1748,3 +1748,100 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
   .plat-receipt-attention-copy>div{grid-template-columns:1fr}.plat-application-info-grid,.plat-provision-summary{grid-template-columns:1fr}
   .plat-my-request-card{grid-template-columns:35px minmax(0,1fr) auto;padding:10px}.plat-my-request-card-icon{width:35px;height:35px}
 }
+
+/* ========================================================================
+   2026-08-30 — Platform polish batch (7 tasks)
+   ======================================================================== */
+
+/* 1) Full-platform render stability: keep browser anchoring predictable. */
+html { overflow-anchor: none; }
+.plat-content, #plat-page-container { overflow-anchor: none; }
+
+/* 4) Tariffs: narrow cards, ONE feature column, infinite swipe carousel. */
+.plat-user-mode .plat-tariff-carousel {
+  gap: 12px;
+  margin-inline: -10px;
+  padding: 9px 10px 14px;
+  scroll-padding-inline: 10px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.plat-user-mode .plat-tariff-carousel::-webkit-scrollbar { display:none; }
+.plat-user-mode .plat-tariff-carousel-item {
+  flex: 0 0 min(78vw, 350px);
+  max-width: 350px;
+  scroll-snap-align: start;
+}
+.plat-user-mode .plat-tariff-carousel-item.is-clone { pointer-events:auto; }
+.plat-user-mode .plat-tariff-card { min-height: 0; }
+.plat-user-mode .plat-tariff-features {
+  display:flex;
+  flex-direction:column;
+  grid-template-columns:none;
+  gap:8px;
+  min-height:0;
+  margin:0;
+}
+.plat-user-mode .plat-tariff-features li {
+  font-size:10.3px;
+  line-height:1.35;
+  align-items:flex-start;
+}
+.plat-user-mode .plat-tariff-features li span {
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+}
+@media(max-width:374px){
+  .plat-user-mode .plat-tariff-carousel-item{flex-basis:min(82vw,330px)}
+}
+
+/* 2) Payment provider artwork — custom uploaded logo or clean wordmark. */
+.plat-provider-badge b { font-size:10px; letter-spacing:-.25px; }
+.plat-provider-badge.is-click b { font-size:9px; letter-spacing:.2px; }
+.plat-provider-badge.is-payme b { font-size:10px; letter-spacing:-.45px; }
+.plat-provider-badge.is-paynet b { font-size:8px; letter-spacing:-.45px; }
+.plat-provider-badge.is-compact b { font-size:7px; }
+.plat-provider-logo {
+  width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;
+  flex:none;border:1px solid #e0e7f0;border-radius:12px;background:#fff;overflow:hidden;
+  box-shadow:0 3px 9px rgba(30,41,59,.045);
+}
+.plat-provider-logo img { width:100%;height:100%;object-fit:contain;padding:4px; }
+.plat-provider-logo.is-compact { width:23px;height:23px;border-radius:7px;box-shadow:none; }
+.plat-provider-logo.is-compact img { padding:2px; }
+.plat-payment-method-card>.plat-provider-logo{width:36px;height:36px;border-radius:11px}
+.plat-payment-method-choice{cursor:pointer}
+
+/* Shared image uploader for payment logos + automatic messages. */
+.plat-media-upload{margin:10px 0;padding:11px;border:1px solid #dfe7f1;border-radius:13px;background:#fff}
+.plat-media-upload-head b{font-size:10px;color:#34465c}.plat-media-upload-head b em{font-style:normal;font-size:8px;color:#8d99a8}
+.plat-media-upload-head small{display:block;margin-top:2px;font-size:8px;line-height:1.4;color:#8d99a8}
+.plat-media-preview{display:flex;align-items:center;gap:10px;margin-top:9px;padding:9px;border:1px solid #e5eaf1;border-radius:12px;background:#f8fafc}
+.plat-media-preview img{width:92px;height:66px;object-fit:contain;border-radius:9px;background:#fff;border:1px solid #e7ebf1}
+.plat-media-preview.is-logo img{width:82px;height:54px}
+.plat-media-preview>div{display:flex;gap:6px;flex-wrap:wrap}.plat-media-preview button{width:auto;min-height:34px;margin:0;padding:7px 9px;font-size:8.5px}
+.plat-media-upload .is-fallback-url{margin-top:10px}
+.plat-settings-save-wide{width:100%;min-height:46px;margin-top:10px}
+
+/* 3) Four-stage payment/application lifecycle. */
+.plat-request-status-stack{display:flex;align-items:flex-end;gap:4px;flex-direction:column;flex:none}
+.plat-request-secondary-pill{display:inline-flex;padding:3px 7px;border-radius:999px;font-size:7.8px;font-weight:800;white-space:nowrap}
+.plat-request-secondary-pill.is-info{background:#e8f1ff;color:#3973c6}.plat-request-secondary-pill.is-warn{background:#fff4d9;color:#a87318}
+.plat-payment-draft-resume{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;margin-bottom:11px;padding:13px;border:1px solid #d8e4f4;border-radius:17px;background:linear-gradient(145deg,#fbfdff,#f3f7fd)}
+.plat-payment-draft-resume>span{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fff;color:#5680bc}
+.plat-payment-draft-resume h3{margin:0;font-size:11.5px;color:#2a3a50}.plat-payment-draft-resume p{margin:4px 0;font-size:8.8px;line-height:1.45;color:#728197}.plat-payment-draft-resume small{display:block;font-size:8px;color:#8a97a8}
+.plat-payment-draft-resume button{margin-top:9px;min-height:40px}
+.plat-admin-payment-wait .plat-admin-request-note{display:flex;align-items:flex-start;gap:7px;line-height:1.5}
+
+/* 6) Frozen / terminated owner attention. */
+.plat-lifecycle-attention{display:grid;grid-template-columns:44px minmax(0,1fr);gap:11px;margin:0 0 12px;padding:14px;border:1px solid #cfdcef;border-radius:18px;background:linear-gradient(145deg,#fbfdff,#f1f6fd);box-shadow:0 8px 24px rgba(52,76,111,.05)}
+.plat-lifecycle-attention.is-terminated{border-color:#edcaca;background:linear-gradient(145deg,#fffdfd,#fff2f2)}
+.plat-lifecycle-attention-icon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:#fff;color:#557eb5;box-shadow:0 2px 8px rgba(46,67,95,.07)}
+.plat-lifecycle-attention.is-terminated .plat-lifecycle-attention-icon{color:#b65454}
+.plat-lifecycle-attention-copy h3{margin:2px 0 4px;font-size:13px;color:#27394f}.plat-lifecycle-attention-copy>p{margin:0 0 6px;font-size:9.2px;color:#596d86}
+.plat-lifecycle-message{font-size:9px;line-height:1.55;color:#6e7d90}.plat-lifecycle-attention-copy>small{display:block;margin-top:6px;font-size:7.8px;color:#96a2b1}
+.plat-lifecycle-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.plat-lifecycle-actions:has(>button:only-child){grid-template-columns:1fr}.plat-lifecycle-actions button{min-height:39px;margin:0;padding:8px;font-size:9px}
+.plat-lifecycle-settings textarea{min-height:80px}.plat-lifecycle-settings+.plat-lifecycle-settings{margin-top:10px}
+@media(max-width:374px){.plat-lifecycle-attention{grid-template-columns:38px minmax(0,1fr);padding:12px}.plat-lifecycle-attention-icon{width:38px;height:38px}.plat-lifecycle-actions{grid-template-columns:1fr}}
