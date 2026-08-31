@@ -500,9 +500,17 @@ select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(
 .plat-grow-banner span { font-size: 22px; flex-shrink: 0; }
 
 .plat-shop-avatar { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--plat2-primary-soft); color: var(--plat2-primary); font-weight: 800; }
-.plat-shop-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+/* Do'kon logotipi endi 4:1 majburiy (Shop App) — kvadrat konteynerda
+   object-fit:cover asosiy qismini KESIB tashlar edi (faqat o'rtadagi tor
+   chiziq ko'rinardi). HAQIQIY logo bo'lganda (.is-logo, shopAvatarClass()
+   orqali) keng to'rtburchakka o'tadi + object-fit:contain — logo TO'LIQ,
+   crop/deformatsiyasiz ko'rinadi. Harf-fallback holatda ESKI kvadrat
+   ko'rinish o'zgarishsiz qoladi (pastda .is-logo bilan cheklangan). */
+.plat-shop-avatar-img { width: 100%; height: 100%; object-fit: contain; padding: 3px; }
+.plat-shop-avatar.is-logo { width: 66px; height: 30px; border-radius: 8px; background: #fff; border: 1px solid var(--plat2-border, #e5eaf1); }
 .plat-shop-avatar-fallback { font-size: 17px; }
 .plat-shop-avatar-lg { width: 52px; height: 52px; border-radius: 14px; }
+.plat-shop-avatar-lg.is-logo { width: 96px; height: 40px; border-radius: 10px; }
 
 .plat-shop-card-v2 { padding: 14px; }
 .plat-shop-card-v2-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
@@ -836,6 +844,7 @@ body { background:var(--u-bg); }
 .plat-dashboard-shop-tabs.is-two { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); overflow: visible; gap: 10px; padding-bottom: 12px; }
 .plat-dashboard-shop-tabs.is-two .plat-dashboard-shop-card { width: 100%; min-width: 0; flex: none; padding: 12px 10px; gap: 8px; }
 .plat-dashboard-shop-tabs.is-two .plat-shop-avatar { width: 46px; height: 46px; border-radius: 13px; }
+.plat-dashboard-shop-tabs.is-two .plat-shop-avatar.is-logo { width: 56px; height: 24px; border-radius: 7px; }
 .plat-dashboard-shop-tabs.is-two .plat-dashboard-shop-copy b { font-size: 12.5px; }
 .plat-dashboard-shop-tabs.is-two .plat-dashboard-shop-copy small { font-size: 10px; }
 .plat-dashboard-shop-tabs.is-two .plat-dashboard-shop-copy em { font-size: 9.5px; line-height: 1.25; }
@@ -869,6 +878,7 @@ body { background:var(--u-bg); }
 .plat-shop-pro-card.is-expiring { border-color: #f1d5a5; }
 .plat-shop-pro-head { gap: 12px; align-items: flex-start; }
 .plat-shop-avatar-lg { width: 64px; height: 64px; border-radius: 17px; }
+.plat-shop-avatar-lg.is-logo { width: 100px; height: 42px; border-radius: 11px; }
 .plat-shop-avatar-lg .plat-shop-avatar-fallback { font-size: 22px; }
 .plat-shop-pro-head h2 { margin-top: 2px; font-size: 20px; line-height: 1.15; letter-spacing: -.2px; }
 .plat-shop-pro-head p { margin-top: 4px; font-size: 12.5px; }
@@ -917,6 +927,7 @@ body { background:var(--u-bg); }
   .plat-shops-summary span { width: 30px; height: 30px; }
   .plat-shops-summary b { font-size: 18px; }
   .plat-shop-avatar-lg { width: 58px; height: 58px; }
+  .plat-shop-avatar-lg.is-logo { width: 84px; height: 36px; }
   .plat-shop-pro-head h2 { font-size: 18px; }
   .plat-shop-pro-actions { grid-template-columns: 1fr 1fr; }
 }
@@ -972,6 +983,7 @@ button.secondary { border-radius: 15px; border-color:#d9e5f5; background:#fbfdff
 .plat-shop-detail-hero { display:flex;align-items:center;gap:13px;padding:16px;margin-bottom:14px;border:1px solid var(--u-border);border-radius:20px;background:#fff;box-shadow:var(--u-shadow); }
 .plat-shop-detail-hero.is-expiring { border-color:#efd4a7;background:linear-gradient(180deg,#fff,#fffdf8); }
 .plat-shop-detail-avatar { width:64px;height:64px;border-radius:17px; }
+.plat-shop-detail-avatar.is-logo { width:100px;height:42px;border-radius:11px; }
 .plat-shop-detail-hero>div { flex:1;min-width:0; }
 .plat-shop-detail-name { display:flex;align-items:center;gap:8px;min-width:0; }
 .plat-shop-detail-name h2 { margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:20px;line-height:1.15;color:var(--u-text); }
@@ -1018,7 +1030,7 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
 .plat-new-shop-choice em { font-size:25px;font-style:normal;color:#8ba0bc; }
 .plat-target-heading { margin-top:18px; }
 .plat-target-shop-list { display:flex;flex-direction:column;gap:10px; }
-.plat-target-shop-card { display:grid;grid-template-columns:44px 1fr;gap:10px;padding:12px;border:1px solid var(--u-border);border-radius:16px;background:#fff; }
+.plat-target-shop-card { display:grid;grid-template-columns:auto 1fr;gap:10px;padding:12px;border:1px solid var(--u-border);border-radius:16px;background:#fff; }
 .plat-target-shop-main { min-width:0; }
 .plat-target-shop-main b { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--u-text); }
 .plat-target-shop-main small { display:block;margin-top:3px;font-size:9.8px;color:var(--u-muted); }

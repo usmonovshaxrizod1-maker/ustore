@@ -548,7 +548,17 @@
         selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
       };
     }
-    const scrollables = Array.from(document.querySelectorAll('.plat-carousel,.plat-admin-request-subfilters,.plat-filter-row,.plat-payment-method-grid'))
+    // .plat-page-body: ROOT-CAUSE FIX — istalgan activePage (Payment/
+    // Requests/Shop Details/Tariflar/Sozlamalar va h.k., ya'ni deyarli
+    // butun ilova) `.plat-page { position: fixed; ... }` ichida
+    // `.plat-page-body { overflow-y: auto }`ning O'ZI orqali scroll qiladi
+    // — window HECH QACHON scroll qilmaydi shu paytda. Oldingi versiya
+    // faqat window.scrollX/Y'ni saqlardi, bu esa page ochiq bo'lganda
+    // doim 0 edi — shuning uchun har bir render() (istalgan tugma bosilishi,
+    // fon-poll) shu haqiqiy scroll konteynerini yangi DOM tuguniga
+    // almashtirib, uni har doim 0'ga qaytarardi ("sahifa tepasiga sakrash"
+    // bug'i, v32 deploy qilingandan keyin ham davom etgan).
+    const scrollables = Array.from(document.querySelectorAll('.plat-page-body,.plat-carousel,.plat-admin-request-subfilters,.plat-filter-row,.plat-payment-method-grid'))
       .map((el, index) => ({ index, left: el.scrollLeft, top: el.scrollTop }));
     return { x: window.scrollX || 0, y: window.scrollY || 0, focus, scrollables };
   }
@@ -570,7 +580,7 @@
   function restorePlatformUiState(snapshot) {
     if (!snapshot) return;
     const apply = () => {
-      const scrollables = Array.from(document.querySelectorAll('.plat-carousel,.plat-admin-request-subfilters,.plat-filter-row,.plat-payment-method-grid'));
+      const scrollables = Array.from(document.querySelectorAll('.plat-page-body,.plat-carousel,.plat-admin-request-subfilters,.plat-filter-row,.plat-payment-method-grid'));
       (snapshot.scrollables || []).forEach((st) => {
         const el = scrollables[st.index];
         if (el) { el.scrollLeft = st.left; el.scrollTop = st.top; }
@@ -1198,7 +1208,7 @@
           const current = tariffs.find((t) => t.id === shop.tariffId);
           const sameTariff = shop.tariffId && shop.tariffId === tariff.id;
           return `<article class="plat-target-shop-card">
-            <span class="plat-shop-avatar">${shopAvatarHtml(shop)}</span>
+            <span class="plat-shop-avatar ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span>
             <div class="plat-target-shop-main"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${escapeHtml(shop.tariffName || 'Tarifsiz')} · ${left === null ? 'obuna sanasi yo‘q' : left <= 0 ? 'obuna tugagan' : left + ' kun qoldi'}</small></div>
             <div class="plat-target-shop-actions">
               <button class="secondary" onclick="startExtendFor('${shop.id}')" ${shop.tariffId ? '' : 'disabled'}>Uzaytirish</button>
@@ -1495,7 +1505,7 @@
 
     const planContext = flowKind === 'NEW_SHOP'
       ? `<div class="plat-checkout-bonus">${pIcon('gift',15)}<span><b>Birinchi obunada +7 kun bonus</b><small>${isAnnual ? 'Yillik davrga qo‘shimcha 7 kun' : '30 kun + 7 kun = 37 kun'}</small></span></div>`
-      : `<div class="plat-checkout-shop"><span class="plat-shop-avatar">${shopAvatarHtml(shop)}</span><div><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${flowUpgradeAction === 'EXTEND' ? `${escapeHtml(currentTariff)} · ${shopLeft === null ? 'muddat noma’lum' : shopLeft <= 0 ? 'muddati tugagan' : shopLeft + ' kun qoldi'}` : `${escapeHtml(currentTariff)} → ${escapeHtml(tariff.name)}`}</small></div></div>`;
+      : `<div class="plat-checkout-shop"><span class="plat-shop-avatar ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span><div><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${flowUpgradeAction === 'EXTEND' ? `${escapeHtml(currentTariff)} · ${shopLeft === null ? 'muddat noma’lum' : shopLeft <= 0 ? 'muddati tugagan' : shopLeft + ' kun qoldi'}` : `${escapeHtml(currentTariff)} → ${escapeHtml(tariff.name)}`}</small></div></div>`;
 
     return `
       ${contextIntro}
@@ -1636,11 +1646,20 @@
     receiptPreviewUrl = URL.createObjectURL(file);
     rerenderActivePage();
   }
+  // ROOT-CAUSE FIX (2026-08-30): reader.onerror = reject used to pass the
+  // raw FileReader `error` EVENT (a ProgressEvent, not an Error) straight
+  // through as the rejection reason — every caller's `catch (e) { alert(e.
+  // message || String(e)); }` then showed the user a literal, meaningless
+  // "[object ProgressEvent]" (ProgressEvent has no .message, so it fell
+  // through to String(e)). Wrapping it in a real Error with a readable
+  // message fixes this for EVERY caller at once (receipt uploads, bug
+  // report attachments, notification template images, payment method
+  // logos — all six call sites share this one helper).
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
-      reader.onerror = reject;
+      reader.onerror = () => reject(new Error("Faylni o'qib bo'lmadi. Qaytadan urinib ko'ring."));
       reader.readAsDataURL(file);
     });
   }
@@ -1819,7 +1838,7 @@
     return `
       <div class="plat-dashboard-head"><div><p class="plat-dashboard-eyebrow">Mening do'konlarim</p><h1>${myShops.length} ta ulangan do'kon</h1></div><button class="plat-icon-button" onclick="switchTab('shops')" aria-label="Do‘konlarim">${pIcon('shop',17)}</button></div>
       <div class="plat-dashboard-shop-tabs ${tabsClass}">
-        ${myShops.map((shop)=>{ const d=daysUntil(shop.subscriptionExpiresAt); const active=shop.id===s.id; const plan=shop.tariffName || 'Tarifsiz'; return `<button class="plat-dashboard-shop-card ${active?'active':''}" onclick="setDashboardShop('${shop.id}')"><span class="plat-shop-avatar">${shopAvatarHtml(shop)}</span><span class="plat-dashboard-shop-copy"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${escapeHtml(plan)}</small><em class="${d!==null&&d<=7?'is-warn':''}">${d===null?'Obuna ma’lumoti yo‘q':d<=0?'Obuna tugagan':`Obunaga ${d} kun qoldi`}</em></span><span class="status-dot ${shop.status==='ACTIVE'?'ok':''}"></span></button>`; }).join('')}
+        ${myShops.map((shop)=>{ const d=daysUntil(shop.subscriptionExpiresAt); const active=shop.id===s.id; const plan=shop.tariffName || 'Tarifsiz'; return `<button class="plat-dashboard-shop-card ${active?'active':''}" onclick="setDashboardShop('${shop.id}')"><span class="plat-shop-avatar ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span><span class="plat-dashboard-shop-copy"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${escapeHtml(plan)}</small><em class="${d!==null&&d<=7?'is-warn':''}">${d===null?'Obuna ma’lumoti yo‘q':d<=0?'Obuna tugagan':`Obunaga ${d} kun qoldi`}</em></span><span class="status-dot ${shop.status==='ACTIVE'?'ok':''}"></span></button>`; }).join('')}
       </div>
 
       <section class="card plat-dashboard-focus">
@@ -1853,6 +1872,12 @@
     const label = (s.shopName || s.botUsername || s.publicCode || '?').trim().charAt(0).toUpperCase();
     return `<span class="plat-shop-avatar-fallback">${escapeHtml(label)}</span>`;
   }
+  // POLISH ROUND (Shop App task 1's follow-on): do'kon logotipi endi 4:1
+  // majburiy — shu sabab HAQIQIY logo bo'lgan kartalarda `.plat-shop-avatar`
+  // kvadratdan kengroq to'rtburchakka o'tishi kerak (CSS'da `.is-logo`
+  // modifikatori), LEKIN logo yo'q (harf-fallback) holatda ESKI kvadrat
+  // ko'rinish TO'LIQ saqlanadi — shu sabab bu ikkalasi ALOHIDA klass.
+  function shopAvatarClass(s) { return s.logoUrl ? 'is-logo' : ''; }
   function shopStatusRowHtml(s) {
     const left = daysUntil(s.subscriptionExpiresAt);
     if (!s.botUsername) return `<div class="plat-shop-status-row is-warn">${pIcon('bolt', 14)}<span>Bot ulanmagan</span></div>`;
@@ -1877,7 +1902,7 @@
         const warn = left !== null && left >= 0 && left <= 7;
         const expiry = noPlan ? 'Obuna yo‘q' : left === null ? 'Muddat noma’lum' : left <= 0 ? 'Obuna tugagan' : `${left} kun qoldi`;
         return `<button class="plat-shop-list-card ${warn ? 'is-expiring' : ''}" onclick="openMyShopManage('${shop.id}')">
-          <span class="plat-shop-avatar plat-shop-avatar-lg">${shopAvatarHtml(shop)}</span>
+          <span class="plat-shop-avatar plat-shop-avatar-lg ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span>
           <div class="plat-shop-list-main"><div class="plat-shop-list-title"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><span class="status-pill status-${shop.status}">${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<small>@${escapeHtml(shop.botUsername)}</small>` : ''}<div class="plat-shop-list-meta"><span>${pIcon('diamond',13)} ${escapeHtml(shop.tariffName || 'Tarifsiz')}</span><span class="${warn ? 'is-warn' : ''}">${pIcon('calendar',13)} ${expiry}</span></div></div>
           <span class="plat-shop-list-chevron">›</span>
         </button>`;
@@ -1902,7 +1927,7 @@
     const warn = left !== null && left >= 0 && left <= 7;
     return `
       <section class="plat-shop-detail-hero ${warn ? 'is-expiring' : ''}">
-        <span class="plat-shop-avatar plat-shop-detail-avatar">${shopAvatarHtml(shop)}</span>
+        <span class="plat-shop-avatar plat-shop-detail-avatar ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span>
         <div><div class="plat-shop-detail-name"><h2>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</h2><span class="status-pill status-${shop.status}">${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<p>@${escapeHtml(shop.botUsername)}</p>` : '<p>Bot ulanmoqda</p>'}<span class="plan-pill">${escapeHtml(shop.tariffName || 'Tarifsiz')}</span></div>
       </section>
       <section class="plat-shop-detail-card">
