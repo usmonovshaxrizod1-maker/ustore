@@ -479,6 +479,26 @@
     // Universal variant modeli: oddiy / faqat o'lcham / faqat rang / o'lcham+rangi.
     function productVariants(p) { return Array.isArray(p?.variants) ? p.variants : []; }
     function hasProductImage(p) { return typeof p?.img === 'string' && p.img.trim().length > 0; }
+    // O'LCHAM STANDARTI (2026-08-31, tasdiqlangan spec): mahsulot va variant
+    // rasmlari uchun bir xil qisqa ko'rsatma — 1:1, tavsiya 1200x1200,
+    // minimal tavsiya 800x800. Faqat KO'RSATMA (soft guidance) — kichikroq
+    // rasm ham yuklanaveradi, hech narsa qattiq rad etilmaydi (spec o'zi ham
+    // "tavsiya"/"minimal tavsiya" deydi, "majburiy" emas). Format cheklovi
+    // (JPG/PNG/WEBP) esa allaqachon validatePickedImageFile()da bor.
+    // FINAL CORRECTION (2026-08-31), item 2/4: agar mahsulotning O'Z rasmi
+    // yo'q bo'lsa, tartibdagi BIRINCHI o'z rasmiga ega variant "canonical"
+    // hisoblanadi — uning HAM rasmi, HAM narxi BIRGA ishlatiladi (rasm bir
+    // variantniki, narx boshqasiniki bo'lib aralashib ketmasligi uchun).
+    // Bu faqat RENDER paytidagi fallback — products.img DB ustuni HECH
+    // QACHON bu bilan qayta yozilmaydi (deterministik, massiv tartibi
+    // bo'yicha — har renderda bir xil natija).
+    function canonicalFallbackVariant(p) {
+      if (hasProductImage(p)) return null;
+      return productVariants(p).find((v) => v.img) || null;
+    }
+    function productImageSizeHintHtml() {
+      return `<p class="text-[9px] text-gray-400 mt-1">${tr('Mahsulot rasmi 1:1 (kvadrat) formatda bo‘lishi kerak.', 'Фото товара должно быть в формате 1:1 (квадрат).')} ${tr('Tavsiya: 1200×1200 px (min. 800×800 px).', 'Рекомендуется: 1200×1200 px (мин. 800×800 px).')}</p>`;
+    }
     function variantLabel(v) {
       return [v?.size, v?.color].filter(Boolean).join(' / ') || 'Asosiy';
     }
@@ -584,12 +604,15 @@
           subRows: [{ level2: row.level2 || '', qty: row.qty || '', img: row.img || '', price: row.price || '', priceOpen: !!(row.price !== '' && row.price !== null && row.price !== undefined), imgUploading: false }],
         };
       } else {
-        // Qulaylik: yangi guruh oldingi guruhning asosiy variantini meros
-        // oladi ("1-ustun bitta yoziladi") — lekin user xohlasa o'zgartira
-        // oladi. Guruh-ichi "+ Qiymat qo'shish" esa ANIQ shu guruhga
-        // (presetLevel1) qulflangan holda ochiladi.
-        const lastLevel1 = variantBuilderRows.length ? variantBuilderRows[variantBuilderRows.length - 1].level1 : '';
-        const level1 = presetLevel1 !== undefined ? presetLevel1 : (lastLevel1 || '');
+        // FINAL CORRECTION (2026-08-31), item 5: avval yangi guruh oldingi
+        // guruhning asosiy variant nomini "qulaylik" sifatida meros olardi
+        // — bu aynan foydalanuvchi tasvirlagan "eski tur nomi yangi formda
+        // qolib ketyapti" bug'i edi ("256 GB avtomatik qolib ketmasin").
+        // Endi TOP-LEVEL "+ Tur qo'shish" tugmasi (presetLevel1 berilmagan)
+        // HAR DOIM mutlaqo bo'sh forma bilan ochiladi. Guruh-ichi
+        // "+ Qiymat qo'shish" esa (presetLevel1 berilgan) ANIQ shu guruhga
+        // qulflangan holda ochilishda davom etadi — bu boshqa, to'g'ri xulq.
+        const level1 = presetLevel1 !== undefined ? presetLevel1 : '';
         variantEntryDraft = { editIndex: null, level1, subRows: [blankVariantSubRow()] };
       }
       renderModalContainer();
@@ -740,6 +763,7 @@
             </div>
             <div class="fc-sheet-body space-y-3">
               <div class="fc-shop-field"><label for="ve-level1">${tr('Asosiy variant', 'Основной вариант')}</label><input type="text" id="ve-level1" class="fc-shop-input" value="${escapeHtml(d.level1)}" placeholder="${tr('masalan: 256 GB', 'напр.: 256 ГБ')}"></div>
+              ${productImageSizeHintHtml()}
               ${d.subRows.map((row, i) => `
                 <div class="fc-variant-subrow">
                   <div class="fc-variant-subrow-head">
@@ -5724,8 +5748,15 @@
       const vars = productVariants(p);
       const variantSizes = [...new Set(vars.map(v => v.size).filter(Boolean))];
       const variantColors = [...new Set(vars.map(v => v.color).filter(Boolean))];
-      const hasDiscount = p.oldPrice && p.oldPrice > p.price;
       const bulkSelecting = canManageProducts() && bulkProductSelectMode;
+      // FINAL CORRECTION, item 2/4: mahsulotning o'z rasmi yo'q bo'lsa,
+      // kartochka rasmsiz qolmasin — birinchi o'z rasmiga ega variant
+      // fallback bo'ladi, VA narx ham AYNAN shu variantniki ko'rsatiladi
+      // (rasm-narx mos kelishi shart, ikkalasi HAR DOIM bitta manbadan).
+      const fallbackVariant = canonicalFallbackVariant(p);
+      const cardImg = p.thumbImg || p.img || fallbackVariant?.img || '';
+      const cardPrice = fallbackVariant ? variantPrice(p, fallbackVariant.size, fallbackVariant.color) : p.price;
+      const hasDiscount = !fallbackVariant && p.oldPrice && p.oldPrice > p.price;
 
       return `
         <div data-product-card-id="${escapeHtml(p.id)}" onclick="handleProductCardClick('${p.id}', event)" onpointerdown="startProductLongPress('${p.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="bg-white rounded-2xl p-3 shadow-sm border ${bulkSelecting && bulkSelectedProductIds.has(String(p.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex flex-col justify-between relative cursor-pointer hover:shadow-md transition-all">
@@ -5733,14 +5764,14 @@
           <div>
             <div class="relative">
               ${productBadgeChipHtml(p)}
-              <div class="w-full h-32 rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
+              <div class="fc-img-square rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
                 <!-- 041: kartochka rasmni ~128px da ko'rsatadi, shuning uchun
                      mavjud bo'lsa kichik nusxa ishlatiladi (~25 KB, asosiy
                      rasm ~157 KB). Eski mahsulotlarda thumbImg yo'q — o'shanda
                      asosiy rasmga qaytadi. Agar kichik nusxa qandaydir sababga
                      ko'ra ochilmasa, onerror avval asosiy rasmni sinaydi va
                      faqat u ham bo'lmasa zaxira belgiga o'tadi. -->
-                <img src="${escapeHtml(p.thumbImg || p.img || FALLBACK_IMG)}" data-full-img="${escapeHtml(p.img || '')}" onerror="retryCardImage(this)" class="w-full h-full object-contain" loading="lazy" decoding="async">
+                <img src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(p.img || '')}" onerror="retryCardImage(this)" class="w-full h-full object-contain" loading="lazy" decoding="async">
               </div>
               ${(canManageProducts() && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-product-visibility-overlay ${p.isVisible === false ? 'is-hidden' : 'is-visible'}" aria-label="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" title="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductVisibility('${p.id}')"><i data-lucide="${p.isVisible === false ? 'eye-off' : 'eye'}" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
@@ -5749,7 +5780,7 @@
             <h4 class="font-bold text-sm text-gray-800 mt-1 leading-tight line-clamp-2">${escapeHtml(productName(p))}</h4>
 
             <div class="fc-product-price-block mt-1">
-              ${hasDiscount ? `<div class="fc-product-price-main-row"><div class="fc-product-current-price fc-text-danger">${money(p.price)}</div><span class="fc-product-discount-badge">-${discountPercent(p)}%</span></div><div class="fc-product-old-price-row"><span class="fc-product-old-price line-through">${money(p.oldPrice)}</span></div>` : `<div class="fc-product-price-main-row"><div class="fc-product-current-price text-blue-600">${money(p.price)}</div></div>`}
+              ${hasDiscount ? `<div class="fc-product-price-main-row"><div class="fc-product-current-price fc-text-danger">${money(cardPrice)}</div><span class="fc-product-discount-badge">-${discountPercent(p)}%</span></div><div class="fc-product-old-price-row"><span class="fc-product-old-price line-through">${money(p.oldPrice)}</span></div>` : `<div class="fc-product-price-main-row"><div class="fc-product-current-price text-blue-600">${money(cardPrice)}</div></div>`}
             </div>
             ${variantSizes.length ? `<p class="text-[9px] text-gray-400 mt-0.5">${tr("O'lcham", "Размер")}: ${variantSizes.map(escapeHtml).join(', ')}</p>` : ''}
             ${variantColors.length ? `<p class="text-[9px] text-gray-400 mt-0.5">${tr("Rang", "Цвет")}: ${variantColors.map(escapeHtml).join(', ')}</p>` : ''}
@@ -14304,6 +14335,7 @@
 
               <div>
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
+                ${productImageSizeHintHtml()}
                 <input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
                 <input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
                 <button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr("Xotiradan yuklash", "Загрузить с устройства")}</button>
@@ -14585,6 +14617,7 @@
 
               ${field === 'img' ? `
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
+                ${productImageSizeHintHtml()}
                 <input id="ef-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
                 <input id="ef-image-input-files" type="file" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
                 <button id="ef-image-button" type="button" onclick="openImagePickerSheet('ef-image-input','ef-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
@@ -15107,12 +15140,12 @@
         const p = selectedProductModal;
         const inCart = cart[p.id];
         const hasDiscount = p.oldPrice && p.oldPrice > p.price;
-        // CORRECTION ROUND, item 14: mijoz single-select bilan variant
-        // tanlaganda, uning narxi+qoldig'i ASOSIY narx joyida (tepada)
-        // birgalikda ko'rinishi kerak — admin ko'rinishida bu joy hamon
-        // mahsulotning o'z bazaviy narxini ko'rsatadi (admin variant
-        // tanlamaydi, shu joydan bazaviy narxni tahrirlaydi).
-        const activeVariant = (!isAdminMode && selectedVariantIndex !== null) ? productVariants(p)[selectedVariantIndex] : null;
+        // FINAL CORRECTION, item 3/8: mijoz variant bosganda (preview),
+        // uning narxi+qoldig'i ASOSIY narx joyida (tepada) birgalikda
+        // ko'rinishi kerak — admin ko'rinishida bu joy hamon mahsulotning
+        // o'z bazaviy narxini ko'rsatadi. activeVariantIndex FAQAT preview
+        // uchun — quantity holatiga (selectedVariantQtys) ta'sir qilmaydi.
+        const activeVariant = (!isAdminMode && activeVariantIndex !== null) ? productVariants(p)[activeVariantIndex] : null;
         const displayPrice = activeVariant ? variantPrice(p, activeVariant.size, activeVariant.color) : p.price;
         const displayHasDiscount = !activeVariant && hasDiscount;
 
@@ -15217,30 +15250,32 @@
                   ${p.stock > 0 ? (
                     productVariants(p).length > 0 ? `
                       <div class="space-y-2">
-                        <p class="text-xs font-bold text-gray-600">${t('choose_variant')}:</p>
+                        <p class="text-xs font-bold text-gray-600">${t('choose_variant')} ${tr('(bir nechtasini tanlash mumkin):','(можно выбрать несколько):')}</p>
                         <div class="grid grid-cols-2 gap-2">
                           ${productVariants(p).map((v, vIdx) => {
-                            const selected = selectedVariantIndex === vIdx;
+                            const active = activeVariantIndex === vIdx;
                             const disabled = !v.qty || Number(v.qty) <= 0;
+                            const k = variantKey(v.size, v.color);
+                            const qty = selectedVariantQtys[k] || 0;
                             return `
-                              <div class="border rounded-xl p-2 ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}">
+                              <div class="border rounded-xl p-2 ${active ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}">
                                 <button ${disabled ? 'disabled' : `onclick="toggleVariantSelect(${vIdx})"`}
-                                  class="w-full px-2 py-1.5 rounded-lg font-bold text-xs ${disabled ? 'bg-gray-100 text-gray-300' : (selected ? 'bg-blue-600 text-white' : 'bg-white text-gray-700')}">
+                                  class="w-full px-2 py-1.5 rounded-lg font-bold text-xs ${disabled ? 'bg-gray-100 text-gray-300' : (active ? 'bg-blue-600 text-white' : 'bg-white text-gray-700')}">
                                   ${escapeHtml(variantLabel(v))}
                                 </button>
                                 <p class="text-[9px] text-center mt-1 text-gray-400">${v.qty} ${tr('ta','шт.')} · ${money(variantPrice(p, v.size, v.color))}</p>
+                                ${!disabled ? `
+                                  <div class="flex items-center justify-center gap-2 mt-1.5">
+                                    <button onclick="setVariantQty(${vIdx}, -1)" class="w-7 h-7 bg-white font-bold rounded-lg shadow text-sm text-blue-600">-</button>
+                                    <span class="font-bold text-sm w-5 text-center">${qty}</span>
+                                    <button onclick="setVariantQty(${vIdx}, 1)" class="w-7 h-7 bg-blue-600 font-bold rounded-lg text-sm text-white">+</button>
+                                  </div>
+                                ` : ''}
                               </div>
                             `;
                           }).join('')}
                         </div>
-                        ${selectedVariantIndex !== null ? `
-                          <div class="flex items-center justify-center gap-3 pt-1">
-                            <button onclick="setVariantQty(${selectedVariantIndex}, -1)" class="w-9 h-9 bg-white font-bold rounded-xl shadow text-base text-blue-600">-</button>
-                            <span class="font-bold text-base w-6 text-center">${selectedVariantQty}</span>
-                            <button onclick="setVariantQty(${selectedVariantIndex}, 1)" class="w-9 h-9 bg-blue-600 font-bold rounded-xl text-base text-white">+</button>
-                          </div>
-                        ` : ''}
-                        <button ${selectedVariantIndex === null ? 'disabled' : ''} onclick="addSelectedVariantsToCart('${p.id}'); openProductDetailModal('${p.id}');" class="w-full bg-blue-600 disabled:opacity-40 text-white font-bold py-3 rounded-2xl text-sm">🛒 ${t('add_to_cart')}</button>
+                        <button ${Object.keys(selectedVariantQtys).length === 0 ? 'disabled' : ''} onclick="addSelectedVariantsToCart('${p.id}'); openProductDetailModal('${p.id}');" class="w-full bg-blue-600 disabled:opacity-40 text-white font-bold py-3 rounded-2xl text-sm">🛒 ${t('add_to_cart')}</button>
                       </div>
                     ` : (
                     inCart ? `
@@ -15535,36 +15570,46 @@
       });
     }
     // MODAL OPENERS & HANDLERS — universal variant tanlash.
-    // CORRECTION ROUND (tasdiqlangan dizayn/mantiq, 2026-08-31): avval
-    // bir nechta variant BIRDANIGA tanlanardi (checkbox-uslub, har birining
-    // o'z soni). Foydalanuvchi bilan aniqlashtirilib, single-select'ga
-    // (radio-uslub) o'tkazildi — bir vaqtda faqat BITTA variant tanlanadi,
-    // uning narxi/qoldig'i alohida, ko'rinarli joyda chiqadi (14-band).
-    let selectedVariantIndex = null; // null = tanlanmagan
-    let selectedVariantQty = 1;
+    // FINAL CORRECTION (tasdiqlangan spec, 2026-08-31), items 7/8/9/10:
+    // avvalgi single-select (radio-uslub, bitta variant) endi HYBRID modelga
+    // almashtirildi — ikkitasi ATAYLAB bir-biridan MUSTAQIL:
+    //   1) activeVariantIndex — FAQAT preview uchun (bosilgan variantning
+    //      rasmi/narxi/qoldig'i tepada ko'rinadi, galereya shu variantga
+    //      sakraydi) — bir vaqtda BITTA.
+    //   2) selectedVariantQtys — HAR bir variant kombinatsiyasining o'z
+    //      soni, MUSTAQIL saqlanadi (masalan Oq=2 VA Qora=1 bir vaqtda,
+    //      "Savatga qo'shish" ikkalasini ham alohida qatr sifatida qo'shadi).
+    // "Bitta active preview borligi quantity'ni bitta variantga cheklamasin"
+    // — bu ikkisini ADASHTIRMASLIK aynan shu bug'ning tuzatilishi edi.
+    let activeVariantIndex = null; // null = hali hech narsa bosilmagan (preview uchun)
+    let selectedVariantQtys = {}; // variantKey -> soni (bir nechtasi bir vaqtda musbat bo'lishi mumkin)
     function toggleVariantSelect(index) {
       const v = productVariants(selectedProductModal)[index];
       if (!v) return;
-      if (selectedVariantIndex === index) { selectedVariantIndex = null; renderModalContainer(); return; }
-      selectedVariantIndex = index;
-      selectedVariantQty = 1;
+      activeVariantIndex = index;
+      const k = variantKey(v.size, v.color);
+      // Birinchi marta bosilganda 1 tadan boshlanadi (eski qulay xulq) —
+      // qayta bosilsa faqat "active" (preview) almashadi, soni tegilmaydi.
+      if (!selectedVariantQtys[k]) selectedVariantQtys[k] = 1;
       renderModalContainer();
       scrollProductGalleryToVariant(v);
     }
     function setVariantQty(index, delta) {
       const v = productVariants(selectedProductModal)[index];
-      if (!v || selectedVariantIndex !== index) return;
-      const next = selectedVariantQty + delta;
-      selectedVariantQty = Math.max(1, Math.min(next, Number(v.qty) || 1));
+      if (!v) return;
+      const k = variantKey(v.size, v.color);
+      const next = (selectedVariantQtys[k] || 0) + delta;
+      if (next <= 0) delete selectedVariantQtys[k];
+      else selectedVariantQtys[k] = Math.min(next, Number(v.qty) || 0);
+      // +/- bosilgan variant ham "active" bo'ladi — foydalanuvchi e'tibori
+      // shu variantda, preview shuni ko'rsatishi tabiiy.
+      activeVariantIndex = index;
       renderModalContainer();
     }
     function addSelectedVariantsToCart(productId) {
-      const vars = productVariants(selectedProductModal);
-      const v = selectedVariantIndex !== null ? vars[selectedVariantIndex] : null;
-      if (!v) return alert(tr("Variantni tanlang!", "Выберите вариант!"));
-      addVariantItemsToCart(productId, { [variantKey(v.size, v.color)]: selectedVariantQty });
-      selectedVariantIndex = null;
-      selectedVariantQty = 1;
+      addVariantItemsToCart(productId, selectedVariantQtys);
+      selectedVariantQtys = {};
+      activeVariantIndex = null;
     }
 
     // Legacy wrappers for old size-only calls.
@@ -15576,8 +15621,8 @@
     function openProductDetailModal(id) {
       activePopupModal = null;
       selectedProductModal = products.find(p => p.id === id);
-      selectedVariantIndex = null;
-      selectedVariantQty = 1;
+      activeVariantIndex = null;
+      selectedVariantQtys = {};
       selectedSizeQtys = {};
       productGalleryIndex = 0;
       renderModalContainer();

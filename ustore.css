@@ -2158,11 +2158,20 @@ input, select, textarea { max-width: 100%; min-width: 0; }
    banner chekkasi ko'rinadi, markazdagisi scale/opacity bilan ajralib turadi. */
 /* POLISH ROUND — mahsulot tafsiloti: asosiy rasm joyi (mahsulot + har
    variantning o'z rasmi) swipe qilinadigan galereyaga aylandi. */
-.fc-product-gallery{display:flex;width:100%;height:12rem;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:1rem;border:1px solid var(--fc-border,#e5e7eb);background:#f9fafb}
+/* O'LCHAM STANDARTI (2026-08-31): fixed height o'rniga aspect-ratio:1/1 —
+   avval 12rem QATTIQ balandlik edi (kenglikka nisbatan proporsional emas,
+   turli ekran kengligida haqiqiy kvadrat bo'lib chiqmasdi). */
+.fc-product-gallery{display:flex;width:100%;aspect-ratio:1/1;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:1rem;border:1px solid var(--fc-border,#e5e7eb);background:#f9fafb}
 .fc-product-gallery::-webkit-scrollbar{display:none}
 .fc-product-gallery-slide{flex:0 0 100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;padding:.5rem}
 .fc-product-gallery-slide img{width:100%;height:100%;object-fit:contain}
 .fc-product-gallery-dots{display:flex;justify-content:center;gap:.32rem;margin-top:.5rem}
+/* O'LCHAM STANDARTI (2026-08-31): kenglikka nisbatan proporsional kvadrat
+   konteyner — Tailwind'ning o'z `aspect-square`i shu loyihaning oldindan
+   kompilyatsiya qilingan CSS to'plamida yo'q, shuning uchun qo'lda. Katalog
+   kartochkasi kabi kengligi flex/grid orqali o'zgaruvchan joylarda
+   ishlatiladi (avval qattiq `h-32` edi — kenglikka mos kelmasdi). */
+.fc-img-square{aspect-ratio:1/1;width:100%;height:auto}
 .fc-gallery-dot{width:.4rem;height:.4rem;border-radius:999px;background:#d1d5db;transition:background .15s ease,width .15s ease}
 .fc-gallery-dot.is-active{background:var(--fc-primary,#2563eb);width:1rem;border-radius:999px}
 .fc-banner-strip{display:flex;gap:.72rem;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:.3rem 10% .45rem;margin:.25rem -.1rem 1rem}
