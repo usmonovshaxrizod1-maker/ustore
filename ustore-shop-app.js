@@ -544,22 +544,53 @@
         }));
     }
     // ============ VARIANT ENTRY — mini-oyna (ustun qo'shish) ============
-    // Har variant ALOHIDA kichik oyna orqali qo'shiladi/tahrirlanadi (1-ustun
-    // majburiy, 2-ustun/rasm/narx ixtiyoriy) — jadval endi faqat O'QISH uchun
-    // (guruhlangan ro'yxat), kiritish esa shu modal orqali.
-    let variantEntryDraft = null; // null=yopiq; {editIndex, level1, level2, qty, img, price}
-    let variantEntryImageUploading = false;
-    function openVariantEntryModal(editIndex) {
+    // TASDIQLANGAN DIZAYN VA MANTIQ TUZATISHI (2026-08-31): mini-oyna endi
+    // BITTA "asosiy variant" (level1, masalan "256 GB") ichida BIR NECHTA
+    // "qo'shimcha variant" (level2, masalan Oq/Qora/Ko'k) qatorini bitta
+    // sessiyada qo'llab-quvvatlaydi — har qatorning o'z soni/rasmi/narxi bor,
+    // narx endi "+ Alohida narx" toggle ortida yashiringan (doim ochiq
+    // turmaydi). "1-ustun"/"2-ustun" texnik nomlari userga ko'rsatilmaydi —
+    // "Asosiy variant"/"Qo'shimcha variant" deyiladi (DB'da hamon size/color).
+    //
+    // Matn maydonlari (level1/level2/soni/narx) HECH QACHON avtomatik qayta
+    // render qilinmaydi (fokus/klaviatura buzilmasligi uchun) — faqat
+    // qator qo'shish/o'chirish, rasm va narx-toggle kabi TUZILISHI
+    // o'zgaruvchi amallarda, va ULAR ham avval joriy DOM qiymatlarini
+    // syncVariantEntryDraftFromDom() orqali holatga o'qib olib, keyin qayta
+    // chizadi — aks holda "+ Yana qiymat qo'shish" bosilganda oldingi
+    // qatorlarga yozilgan matn yo'qolib qolardi.
+    let variantEntryDraft = null; // null=yopiq; {editIndex, level1, subRows:[{level2,qty,img,price,priceOpen,imgUploading}]}
+    function blankVariantSubRow() { return { level2: '', qty: '', img: '', price: '', priceOpen: false, imgUploading: false }; }
+    function syncVariantEntryDraftFromDom() {
+      const d = variantEntryDraft;
+      if (!d) return;
+      const level1El = document.getElementById('ve-level1');
+      if (level1El) d.level1 = level1El.value;
+      d.subRows.forEach((row, i) => {
+        const level2El = document.getElementById(`ve-sub-${i}-level2`);
+        const qtyEl = document.getElementById(`ve-sub-${i}-qty`);
+        const priceEl = document.getElementById(`ve-sub-${i}-price`);
+        if (level2El) row.level2 = level2El.value;
+        if (qtyEl) row.qty = qtyEl.value;
+        if (priceEl) row.price = priceEl.value;
+      });
+    }
+    function openVariantEntryModal(editIndex, presetLevel1) {
       if (editIndex !== null && editIndex !== undefined) {
         const row = variantBuilderRows[editIndex];
         if (!row) return;
-        variantEntryDraft = { editIndex, level1: row.level1 || '', level2: row.level2 || '', qty: row.qty || '', img: row.img || '', price: row.price || '' };
+        variantEntryDraft = {
+          editIndex, level1: row.level1 || '',
+          subRows: [{ level2: row.level2 || '', qty: row.qty || '', img: row.img || '', price: row.price || '', priceOpen: !!(row.price !== '' && row.price !== null && row.price !== undefined), imgUploading: false }],
+        };
       } else {
-        // Qulaylik: yangi qator oldingi guruhning 1-ustunini meros oladi
-        // (foydalanuvchi "1-ustun bitta yoziladi" dedi) — lekin user xohlasa
-        // o'zgartira oladi, saqlanganda har doim ANIQ qiymat yoziladi.
+        // Qulaylik: yangi guruh oldingi guruhning asosiy variantini meros
+        // oladi ("1-ustun bitta yoziladi") — lekin user xohlasa o'zgartira
+        // oladi. Guruh-ichi "+ Qiymat qo'shish" esa ANIQ shu guruhga
+        // (presetLevel1) qulflangan holda ochiladi.
         const lastLevel1 = variantBuilderRows.length ? variantBuilderRows[variantBuilderRows.length - 1].level1 : '';
-        variantEntryDraft = { editIndex: null, level1: lastLevel1 || '', level2: '', qty: '', img: '', price: '' };
+        const level1 = presetLevel1 !== undefined ? presetLevel1 : (lastLevel1 || '');
+        variantEntryDraft = { editIndex: null, level1, subRows: [blankVariantSubRow()] };
       }
       renderModalContainer();
     }
@@ -572,55 +603,86 @@
       variantBuilderRows.splice(idx, 1);
       renderModalContainer();
     }
+    function addVariantEntrySubRow() {
+      syncVariantEntryDraftFromDom();
+      variantEntryDraft.subRows.push(blankVariantSubRow());
+      renderModalContainer();
+    }
+    function removeVariantEntrySubRow(i) {
+      syncVariantEntryDraftFromDom();
+      variantEntryDraft.subRows.splice(i, 1);
+      renderModalContainer();
+    }
+    function toggleVariantEntrySubRowPrice(i) {
+      syncVariantEntryDraftFromDom();
+      variantEntryDraft.subRows[i].priceOpen = !variantEntryDraft.subRows[i].priceOpen;
+      renderModalContainer();
+    }
     function saveVariantEntryDraft() {
       const d = variantEntryDraft;
       if (!d) return;
-      const level1 = String(document.getElementById('ve-level1')?.value || '').trim();
-      const level2 = String(document.getElementById('ve-level2')?.value || '').trim();
-      const qtyRaw = document.getElementById('ve-qty')?.value || '';
-      const priceRaw = document.getElementById('ve-price')?.value || '';
-      if (!level1) return alert(tr("1-ustunni kiriting (masalan: 256 GB).", "Введите 1-ю колонку (например: 256 ГБ)."));
-      const qty = Math.max(0, Number.parseInt(qtyRaw, 10) || 0);
-      const row = { level1, level2, qty: String(qty), img: d.img || '', price: priceRaw !== '' ? String(Math.max(0, Number(priceRaw) || 0)) : '' };
-      if (d.editIndex !== null && d.editIndex !== undefined) variantBuilderRows[d.editIndex] = row;
-      else variantBuilderRows.push(row);
+      syncVariantEntryDraftFromDom();
+      const level1 = String(d.level1 || '').trim();
+      if (!level1) return alert(tr("Asosiy variantni kiriting (masalan: 256 GB).", "Введите основной вариант (например: 256 ГБ)."));
+      if (d.subRows.length > 1) {
+        for (const row of d.subRows) {
+          if (!String(row.level2 || '').trim()) return alert(tr("Bir nechta qo'shimcha variant bo'lsa, har biriga nom kiriting (masalan: Oq, Qora).", "Если добавлено несколько вариантов, укажите название каждого (напр.: Белый, Чёрный)."));
+        }
+      }
+      const finalizedRows = d.subRows.map((row) => ({
+        level1,
+        level2: String(row.level2 || '').trim(),
+        qty: String(Math.max(0, Number.parseInt(row.qty, 10) || 0)),
+        img: row.img || '',
+        price: (row.priceOpen && row.price !== '') ? String(Math.max(0, Number(row.price) || 0)) : '',
+      }));
+      if (d.editIndex !== null && d.editIndex !== undefined) {
+        variantBuilderRows[d.editIndex] = finalizedRows[0];
+        if (finalizedRows.length > 1) variantBuilderRows.push(...finalizedRows.slice(1));
+      } else {
+        variantBuilderRows.push(...finalizedRows);
+      }
       variantEntryDraft = null;
       renderModalContainer();
     }
     // Mavjud umumiy rasm pipeline'i (captureAndPrepareImageV2 +
     // uploadImageSnapshot + upload_product_image, mahsulot/kategoriya/
-    // logotip bilan bir xil) — task 4'dagi bilan bir xil, endi mini-oyna
-    // ichida ishlaydi.
-    function pickVariantEntryImage() {
-      const input = document.getElementById('ve-image-input');
+    // logotip bilan bir xil) — task 4'dagi bilan bir xil, endi har
+    // qo'shimcha variant qatori o'z rasm-picker'iga ega (indeks bo'yicha).
+    function pickVariantEntrySubRowImage(i) {
+      syncVariantEntryDraftFromDom();
+      const input = document.getElementById(`ve-sub-${i}-image-input`);
       if (input) { input.value = ''; input.click(); }
     }
-    async function onVariantEntryImagePicked(event) {
+    async function onVariantEntrySubRowImagePicked(event, i) {
       const file = event.target.files?.[0];
       event.target.value = '';
-      if (!file || !variantEntryDraft) return;
+      if (!file || !variantEntryDraft || !variantEntryDraft.subRows[i]) return;
       try { validatePickedImageFile(file); }
       catch (e) { return alert(pickedImageErrorMessage(e, file)); }
-      variantEntryImageUploading = true;
+      variantEntryDraft.subRows[i].imgUploading = true;
       renderModalContainer();
       try {
         const prepared = await captureAndPrepareImageV2(file, TARGET_PRODUCT_IMAGE_BYTES, 800, 0.75);
         const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, null, true);
-        if (variantEntryDraft) variantEntryDraft.img = url;
+        if (variantEntryDraft && variantEntryDraft.subRows[i]) variantEntryDraft.subRows[i].img = url;
       } catch (e) {
         console.error('[variant-image:UPLOAD_FAILED]', e);
         alert(tr("Rasmni yuklab bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось загрузить фото. Попробуйте снова."));
       } finally {
-        variantEntryImageUploading = false;
+        if (variantEntryDraft && variantEntryDraft.subRows[i]) variantEntryDraft.subRows[i].imgUploading = false;
         renderModalContainer();
       }
     }
-    function removeVariantEntryImage() {
-      if (variantEntryDraft) variantEntryDraft.img = '';
+    function removeVariantEntrySubRowImage(i) {
+      syncVariantEntryDraftFromDom();
+      if (variantEntryDraft.subRows[i]) variantEntryDraft.subRows[i].img = '';
       renderModalContainer();
     }
-    // Guruhlangan (1-ustun bo'yicha) faqat-o'qish ro'yxati — misol:
-    // "256 GB" sarlavha, ostida "Oq · 5 ta [tahrirlash][o'chirish]".
+    // Guruhlangan (asosiy variant bo'yicha), yig'iladigan (collapsible,
+    // native <details>) faqat-o'qish ro'yxati — har guruh sarlavhasida
+    // "N ta variant" + "Umumiy qoldiq: X ta", ostida har qator, va guruhga
+    // ANIQ qulflangan "+ Qiymat qo'shish" tugmasi.
     function renderVariantSummaryHtml() {
       if (!variantBuilderRows.length) {
         return `<p class="text-[10px] text-gray-400 italic">${tr("Hali variant qo'shilmagan.", "Варианты ещё не добавлены.")}</p>`;
@@ -632,56 +694,83 @@
         if (!byLevel1.has(key)) { const g = { level1: key, rows: [] }; byLevel1.set(key, g); groups.push(g); }
         byLevel1.get(key).rows.push({ ...row, idx });
       });
-      return groups.map((g) => `
-        <div class="fc-variant-group">
-          <p class="fc-variant-group-title">${escapeHtml(g.level1)}</p>
-          ${g.rows.map((row) => `
-            <div class="fc-variant-summary-row">
-              <span class="fc-variant-summary-thumb">${row.img ? `<img src="${escapeHtml(row.img)}" alt="">` : `<i data-lucide="image" class="w-3.5 h-3.5"></i>`}</span>
-              <div class="fc-variant-summary-copy">
-                <b>${row.level2 ? escapeHtml(row.level2) : tr('Asosiy', 'Основной')}</b>
-                <small>${row.qty || 0} ${tr('ta', 'шт.')}${row.price !== '' ? ` · ${money(Number(row.price))}` : ''}</small>
-              </div>
-              <div class="fc-variant-summary-actions">
-                <button type="button" onclick="openVariantEntryModal(${row.idx})" class="fc-variant-summary-btn" aria-label="${tr('Tahrirlash', 'Изменить')}">${ICON_EDIT}</button>
-                <button type="button" onclick="deleteVariantBuilderRow(${row.idx})" class="fc-variant-summary-btn is-danger" aria-label="${tr("O'chirish", 'Удалить')}">${ICON_TRASH}</button>
-              </div>
+      return groups.map((g) => {
+        const totalQty = g.rows.reduce((sum, row) => sum + (Number.parseInt(row.qty, 10) || 0), 0);
+        return `
+        <details class="fc-variant-group" open>
+          <summary class="fc-variant-group-head">
+            <div class="fc-variant-group-head-copy">
+              <p class="fc-variant-group-title">${escapeHtml(g.level1)}</p>
+              <small class="fc-variant-group-meta">${g.rows.length} ${tr('ta variant', 'вариант(ов)')} · ${tr('Umumiy qoldiq', 'Общий остаток')}: ${totalQty} ${tr('ta', 'шт.')}</small>
             </div>
-          `).join('')}
-        </div>
-      `).join('');
+            <i data-lucide="chevron-down" class="w-4 h-4 fc-variant-group-chevron"></i>
+          </summary>
+          <div class="fc-variant-group-body">
+            ${g.rows.map((row) => `
+              <div class="fc-variant-summary-row">
+                <span class="fc-variant-summary-thumb">${row.img ? `<img src="${escapeHtml(row.img)}" alt="">` : `<i data-lucide="image" class="w-3.5 h-3.5"></i>`}</span>
+                <div class="fc-variant-summary-copy">
+                  <b>${row.level2 ? escapeHtml(row.level2) : tr('Asosiy', 'Основной')}</b>
+                  <small>${row.qty || 0} ${tr('ta', 'шт.')}${row.price !== '' ? ` · ${money(Number(row.price))}` : ''}</small>
+                </div>
+                <div class="fc-variant-summary-actions">
+                  <button type="button" onclick="openVariantEntryModal(${row.idx})" class="fc-variant-summary-btn" aria-label="${tr('Tahrirlash', 'Изменить')}">${ICON_EDIT}</button>
+                  <button type="button" onclick="deleteVariantBuilderRow(${row.idx})" class="fc-variant-summary-btn is-danger" aria-label="${tr("O'chirish", 'Удалить')}">${ICON_TRASH}</button>
+                </div>
+              </div>
+            `).join('')}
+            <button type="button" onclick="openVariantEntryModal(null, ${JSON.stringify(g.level1)})" class="fc-variant-group-addbtn"><span class="fc-variant-add-column-plus">+</span> ${tr('Qiymat qo‘shish', 'Добавить значение')}</button>
+          </div>
+        </details>
+      `;
+      }).join('');
     }
     function renderVariantEntryModalHtml() {
       const d = variantEntryDraft;
       if (!d) return '';
       const isEdit = d.editIndex !== null && d.editIndex !== undefined;
+      const anyUploading = d.subRows.some((r) => r.imgUploading);
       return `
         <div class="fc-sheet-overlay fc-variant-entry-overlay" onclick="if(event.target===this) closeVariantEntryModal();">
           <div class="fc-sheet fc-variant-entry-sheet" onclick="event.stopPropagation()">
             <div class="fc-sheet-handle"></div>
             <div class="fc-sheet-header">
-              <div class="fc-sheet-title">${isEdit ? tr('Variantni tahrirlash', 'Изменить вариант') : tr("Variant qo'shish", 'Добавить вариант')}</div>
+              <div class="fc-sheet-title">${isEdit ? tr('Variantni tahrirlash', 'Изменить вариант') : tr('Variant qo‘shish', 'Добавить вариант')}</div>
               <button type="button" onclick="closeVariantEntryModal()" class="fc-btn fc-btn-icon" aria-label="${tr('Yopish', 'Закрыть')}">×</button>
             </div>
             <div class="fc-sheet-body space-y-3">
-              <div class="fc-variant-entry-cols">
-                <div class="fc-shop-field"><label for="ve-level1">${tr('1-ustun', '1-я колонка')}</label><input type="text" id="ve-level1" class="fc-shop-input" value="${escapeHtml(d.level1)}" placeholder="${tr('masalan: 256 GB', 'напр.: 256 ГБ')}"></div>
-                <div class="fc-shop-field"><label for="ve-level2">${tr('2-ustun', '2-я колонка')} <em>${tr('ixtiyoriy', 'необязательно')}</em></label><input type="text" id="ve-level2" class="fc-shop-input" value="${escapeHtml(d.level2)}" placeholder="${tr('masalan: Oq', 'напр.: Белый')}"></div>
-              </div>
-              <div class="fc-shop-field"><label for="ve-qty">${tr('Soni', 'Количество')}</label><input type="number" min="0" id="ve-qty" class="fc-shop-input" value="${escapeHtml(String(d.qty))}" placeholder="0"></div>
-              <div class="fc-variant-entry-image">
-                <span class="fc-variant-summary-thumb is-lg">${variantEntryImageUploading ? `<span class="fc-spinner"></span>` : (d.img ? `<img src="${escapeHtml(d.img)}" alt="">` : `<i data-lucide="image" class="w-4 h-4"></i>`)}</span>
-                <div class="fc-variant-entry-image-actions">
-                  <button type="button" onclick="pickVariantEntryImage()" class="fc-variant-row-img-btn" ${variantEntryImageUploading ? 'disabled' : ''}>${d.img ? tr('Almashtirish', 'Заменить') : tr('Rasm qo‘shish', 'Добавить фото')} <em>${tr('ixtiyoriy', 'необязательно')}</em></button>
-                  ${d.img ? `<button type="button" onclick="removeVariantEntryImage()" class="fc-variant-row-img-btn is-danger">${tr("O'chirish", 'Удалить')}</button>` : ''}
+              <div class="fc-shop-field"><label for="ve-level1">${tr('Asosiy variant', 'Основной вариант')}</label><input type="text" id="ve-level1" class="fc-shop-input" value="${escapeHtml(d.level1)}" placeholder="${tr('masalan: 256 GB', 'напр.: 256 ГБ')}"></div>
+              ${d.subRows.map((row, i) => `
+                <div class="fc-variant-subrow">
+                  <div class="fc-variant-subrow-head">
+                    <b>${tr('Qo‘shimcha variant', 'Доп. вариант')} ${d.subRows.length > 1 ? `#${i + 1}` : ''}</b>
+                    ${d.subRows.length > 1 ? `<button type="button" onclick="removeVariantEntrySubRow(${i})" class="fc-variant-subrow-remove" aria-label="${tr("O'chirish", 'Удалить')}">×</button>` : ''}
+                  </div>
+                  <div class="fc-variant-entry-cols">
+                    <div class="fc-shop-field"><label for="ve-sub-${i}-level2">${tr('Nomi', 'Название')} <em>${tr('ixtiyoriy', 'необязательно')}</em></label><input type="text" id="ve-sub-${i}-level2" class="fc-shop-input" value="${escapeHtml(row.level2)}" placeholder="${tr('masalan: Oq', 'напр.: Белый')}"></div>
+                    <div class="fc-shop-field"><label for="ve-sub-${i}-qty">${tr('Soni', 'Количество')}</label><input type="number" min="0" id="ve-sub-${i}-qty" class="fc-shop-input" value="${escapeHtml(String(row.qty))}" placeholder="0"></div>
+                  </div>
+                  <div class="fc-variant-entry-image">
+                    <span class="fc-variant-summary-thumb is-lg">${row.imgUploading ? `<span class="fc-spinner"></span>` : (row.img ? `<img src="${escapeHtml(row.img)}" alt="">` : `<i data-lucide="image" class="w-4 h-4"></i>`)}</span>
+                    <div class="fc-variant-entry-image-actions">
+                      <button type="button" onclick="pickVariantEntrySubRowImage(${i})" class="fc-variant-row-img-btn" ${row.imgUploading ? 'disabled' : ''}>${row.img ? tr('Almashtirish', 'Заменить') : tr('Rasm qo‘shish', 'Добавить фото')} <em>${tr('ixtiyoriy', 'необязательно')}</em></button>
+                      ${row.img ? `<button type="button" onclick="removeVariantEntrySubRowImage(${i})" class="fc-variant-row-img-btn is-danger">${tr("O'chirish", 'Удалить')}</button>` : ''}
+                    </div>
+                    <input type="file" id="ve-sub-${i}-image-input" class="hidden" onchange="onVariantEntrySubRowImagePicked(event, ${i})">
+                  </div>
+                  ${row.priceOpen ? `
+                    <div class="fc-variant-price-open-row">
+                      <div class="fc-shop-field"><label for="ve-sub-${i}-price">${tr('Alohida narx', 'Отдельная цена')} <em>${tr("bo'sh bo'lsa mahsulot narxi ishlatiladi", 'иначе используется цена товара')}</em></label><input type="number" min="0" id="ve-sub-${i}-price" class="fc-shop-input" value="${escapeHtml(String(row.price))}" placeholder="${tr('mahsulot narxi', 'цена товара')}"></div>
+                      <button type="button" onclick="toggleVariantEntrySubRowPrice(${i})" class="fc-variant-subrow-remove" aria-label="${tr('Bekor qilish', 'Отмена')}">×</button>
+                    </div>
+                  ` : `<button type="button" onclick="toggleVariantEntrySubRowPrice(${i})" class="fc-variant-price-toggle">+ ${tr('Alohida narx', 'Отдельная цена')}</button>`}
                 </div>
-                <input type="file" id="ve-image-input" class="hidden" onchange="onVariantEntryImagePicked(event)">
-              </div>
-              <div class="fc-shop-field"><label for="ve-price">${tr('Narx', 'Цена')} <em>${tr("ixtiyoriy — bo'sh bo'lsa mahsulot narxi ishlatiladi", 'необязательно — иначе используется цена товара')}</em></label><input type="number" min="0" id="ve-price" class="fc-shop-input" value="${escapeHtml(String(d.price))}" placeholder="${tr('mahsulot narxi', 'цена товара')}"></div>
+              `).join('')}
+              <button type="button" onclick="addVariantEntrySubRow()" class="fc-variant-add-subrow-btn"><span class="fc-variant-add-column-plus">+</span> ${tr('Yana qiymat qo‘shish', 'Добавить ещё значение')}</button>
             </div>
             <div class="fc-sheet-footer fc-variant-entry-actions">
               <button type="button" onclick="closeVariantEntryModal()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
-              <button type="button" onclick="saveVariantEntryDraft()" class="fc-btn fc-btn-primary" ${variantEntryImageUploading ? 'disabled' : ''}>${tr('Saqlash', 'Сохранить')}</button>
+              <button type="button" onclick="saveVariantEntryDraft()" class="fc-btn fc-btn-primary" ${anyUploading ? 'disabled' : ''}>${tr('Saqlash', 'Сохранить')}</button>
             </div>
           </div>
         </div>
@@ -1257,6 +1346,32 @@
       tempImageExistingUrl = null;
       tempImageSelectionVersion += 1;
       return snap;
+    }
+    // CORRECTION ROUND (2026-08-31): ADD_PROD modali ichida variant
+    // mini-oynasining har amali (qator qo'shish/o'chirish, rasm, narx-toggle)
+    // renderModalContainer()ni qayta chaqiradi — bu esa BUTUN modal
+    // innerHTML'ini almashtiradi. Avval m-prod-name/price/oldprice/stock/
+    // desc maydonlari HECH QANDAY draft'ga bog'lanmagan edi (value="" bilan
+    // hardcode) — ya'ni admin nomni yozib, keyin variant qo'shsa, yozgan
+    // nomi YO'QOLIB QOLARDI (real bug, faqat variant-oyna ko'p re-render
+    // qiladigan bo'lgach xavfli bo'lib qoldi). Endi renderModalContainer()
+    // har chaqirilishida (pastda) joriy DOM qiymatlari shu draft'ga
+    // sinxronlanadi, va shablon shu draft'dan value="..." o'qiydi.
+    let productFormDraft = { name: '', price: '', oldPrice: '', stock: '', desc: '', imageUrl: '' };
+    function resetProductFormDraft() { productFormDraft = { name: '', price: '', oldPrice: '', stock: '', desc: '', imageUrl: '' }; }
+    function syncProductFormDraftFromDom() {
+      const nameEl = document.getElementById('m-prod-name');
+      const priceEl = document.getElementById('m-prod-price');
+      const oldPriceEl = document.getElementById('m-prod-oldprice');
+      const stockEl = document.getElementById('m-prod-stock');
+      const descEl = document.getElementById('m-prod-desc');
+      const urlEl = document.getElementById('m-prod-image-url');
+      if (nameEl) productFormDraft.name = nameEl.value;
+      if (priceEl) productFormDraft.price = priceEl.value;
+      if (oldPriceEl) productFormDraft.oldPrice = oldPriceEl.value;
+      if (stockEl && !stockEl.readOnly) productFormDraft.stock = stockEl.value;
+      if (descEl) productFormDraft.desc = descEl.value;
+      if (urlEl) productFormDraft.imageUrl = urlEl.value;
     }
     function releaseImageSnapshot(snap) {
       if (snap?.preview && String(snap.preview).startsWith('blob:')) {
@@ -13909,6 +14024,15 @@
     function renderModalContainer() {
       const container = document.getElementById('modal-container');
       installModalEscapeHandlers();
+      // CORRECTION ROUND (2026-08-31): ADD_PROD ochiq bo'lganda, HAR safar
+      // (variant mini-oynasi sabab bo'lgan ham) shu funksiya butun modal
+      // innerHTML'ini almashtirishdan OLDIN, joriy DOM qiymatlari
+      // productFormDraft'ga sinxronlanadi — aks holda admin yozgan
+      // nom/narx/tavsif variant tuzatishlari paytida yo'qolib qolardi.
+      // (Mavjud isCatalogEditorModalOpen() qayta ishlatiladi — u ADD_PROD/
+      // EDIT_PROD_FIELD'ni tekshiradi; EDIT_PROD_FIELD'da m-prod-* id'lari
+      // yo'q, shuning uchun sync funksiyasi shunchaki hech narsa qilmaydi.)
+      if (isCatalogEditorModalOpen()) syncProductFormDraftFromDom();
 
       // REGISTRATION MODAL
       if (activePopupModal === 'REGISTRATION') {
@@ -14125,6 +14249,17 @@
       }
 
       if (activePopupModal === 'ADD_PROD') {
+        // CORRECTION ROUND (2026-08-31), item 8/9: variant qatorlarining
+        // BARCHASIDA alohida narx ko'rsatilgan bo'lsa, mahsulotning o'z
+        // "Sotuv narxi"si endi majburiy emas (0 sifatida yuboriladi —
+        // backend buni qabul qiladi, u baribir hech qachon fallback
+        // sifatida ishlatilmaydi, chunki har variant o'z narxini bosib
+        // ketadi). Variant bo'lsa "Ombor qoldig'i" endi qo'lda kiritilmaydi
+        // — variantlar yig'indisidan o'qish-only avtomatik hisoblanadi
+        // (backend allaqachon shunday hisoblardi, faqat UI buni ko'rsatmasdi).
+        const allVariantsHavePrice = variantBuilderRows.length > 0 && variantBuilderRows.every((r) => r.price !== '' && r.price !== null && r.price !== undefined);
+        const variantsTotalQty = variantBuilderRows.reduce((sum, r) => sum + (Math.max(0, Number.parseInt(r.qty, 10) || 0)), 0);
+        const previewSrc = tempImagePreviewUrl || tempImageUrl || tempImageExistingUrl || '';
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
@@ -14132,40 +14267,49 @@
 
               <div>
                 <label class="font-bold text-gray-600">${tr("Tovar nomi *", "Название товара *")}</label>
-                <input type="text" id="m-prod-name" placeholder="${tr('Masalan: Whey Protein','Например: Whey Protein')}" class="w-full mt-1 p-2 border rounded-xl">
+                <input type="text" id="m-prod-name" value="${escapeHtml(productFormDraft.name)}" placeholder="${tr('Masalan: Whey Protein','Например: Whey Protein')}" class="w-full mt-1 p-2 border rounded-xl">
               </div>
 
               <div class="grid grid-cols-2 gap-2">
                 <div>
-                  <label class="font-bold text-gray-600">${tr("Sotuv narxi *", "Цена продажи *")}</label>
-                  <input type="number" id="m-prod-price" placeholder="400000" class="w-full mt-1 p-2 border rounded-xl">
+                  <label class="font-bold text-gray-600">${allVariantsHavePrice ? tr('Sotuv narxi', 'Цена продажи') : tr('Sotuv narxi *', 'Цена продажи *')}</label>
+                  <input type="number" id="m-prod-price" value="${escapeHtml(productFormDraft.price)}" placeholder="${allVariantsHavePrice ? tr('barcha variantda narx bor', 'цена есть у всех вариантов') : '400000'}" class="w-full mt-1 p-2 border rounded-xl">
+                  ${allVariantsHavePrice ? `<p class="text-[9px] text-gray-400 mt-0.5">${tr('Ixtiyoriy — barcha variantlarda alohida narx ko‘rsatilgan.', 'Необязательно — цена указана у всех вариантов.')}</p>` : ''}
                 </div>
                 <div>
                   <label class="font-bold text-gray-600">${tr("Eski narxi (Chegirma)", "Старая цена (скидка)")}</label>
-                  <input type="number" id="m-prod-oldprice" placeholder="480000" class="w-full mt-1 p-2 border rounded-xl">
+                  <input type="number" id="m-prod-oldprice" value="${escapeHtml(productFormDraft.oldPrice)}" placeholder="480000" class="w-full mt-1 p-2 border rounded-xl">
                 </div>
               </div>
 
-              <div>
-                <label class="font-bold text-gray-600">${tr("Ombor qoldig'i (Soni) *", "Остаток на складе *")}</label>
-                <input type="number" id="m-prod-stock" placeholder="15" class="w-full mt-1 p-2 border rounded-xl">
-              </div>
+              ${variantBuilderRows.length > 0 ? `
+                <div>
+                  <label class="font-bold text-gray-600">${tr("Umumiy ombor qoldig'i", "Общий остаток на складе")}</label>
+                  <input type="number" id="m-prod-stock" value="${variantsTotalQty}" readonly class="w-full mt-1 p-2 border rounded-xl bg-gray-50 text-gray-500">
+                  <p class="text-[9px] text-gray-400 mt-0.5">${tr("Variantlar yig'indisidan avtomatik hisoblanadi.", "Считается автоматически по сумме вариантов.")}</p>
+                </div>
+              ` : `
+                <div>
+                  <label class="font-bold text-gray-600">${tr("Ombor qoldig'i (Soni) *", "Остаток на складе *")}</label>
+                  <input type="number" id="m-prod-stock" value="${escapeHtml(productFormDraft.stock)}" placeholder="15" class="w-full mt-1 p-2 border rounded-xl">
+                </div>
+              `}
 
               <div>${renderVariantBuilderHtml()}</div>
 
               <div>
                 <label class="font-bold text-gray-600">${tr("Izoh / Tavsif", "Описание")}</label>
-                <textarea id="m-prod-desc" rows="2" placeholder="${tr('Tovar haqida ma\'lumot','Описание товара')}" class="w-full mt-1 p-2 border rounded-xl"></textarea>
+                <textarea id="m-prod-desc" rows="2" placeholder="${tr('Tovar haqida ma\'lumot','Описание товара')}" class="w-full mt-1 p-2 border rounded-xl">${escapeHtml(productFormDraft.desc)}</textarea>
               </div>
 
               <div>
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
                 <input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
                 <input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
-                <button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr("Xotiradan yuklash", "Загрузить с устройства")}</button>
-                <input id="m-prod-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-prod-prev', 'm-prod-image-url-error', 'm-prod-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
+                <button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr("Xotiradan yuklash", "Загрузить с устройства")}</button>
+                <input id="m-prod-image-url" type="url" inputmode="url" value="${escapeHtml(productFormDraft.imageUrl)}" oninput="onImageUrlInput(this.value, 'm-prod-prev', 'm-prod-image-url-error', 'm-prod-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="m-prod-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
-                <img id="m-prod-prev" src="" class="w-24 h-24 object-cover rounded-xl mt-2 hidden border">
+                <img id="m-prod-prev" src="${escapeHtml(previewSrc)}" class="w-24 h-24 object-contain bg-gray-50 rounded-xl mt-2 p-0.5 ${previewSrc ? '' : 'hidden'} border">
               </div>
 
               <div class="flex space-x-2 pt-2">
@@ -14192,7 +14336,7 @@
                 <input id="m-cat-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
                 <input id="m-cat-image-input-files" type="file" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
                 <div class="flex items-center gap-3 mt-1 flex-wrap">
-                  <img id="m-cat-prev" src="" class="w-16 h-16 object-cover rounded-xl hidden border">
+                  <img id="m-cat-prev" src="" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 hidden border">
                   <button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-btn fc-btn-secondary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
                 </div>
                 <input id="m-cat-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-cat-prev', 'm-cat-image-url-error', 'm-cat-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
@@ -14963,6 +15107,14 @@
         const p = selectedProductModal;
         const inCart = cart[p.id];
         const hasDiscount = p.oldPrice && p.oldPrice > p.price;
+        // CORRECTION ROUND, item 14: mijoz single-select bilan variant
+        // tanlaganda, uning narxi+qoldig'i ASOSIY narx joyida (tepada)
+        // birgalikda ko'rinishi kerak — admin ko'rinishida bu joy hamon
+        // mahsulotning o'z bazaviy narxini ko'rsatadi (admin variant
+        // tanlamaydi, shu joydan bazaviy narxni tahrirlaydi).
+        const activeVariant = (!isAdminMode && selectedVariantIndex !== null) ? productVariants(p)[selectedVariantIndex] : null;
+        const displayPrice = activeVariant ? variantPrice(p, activeVariant.size, activeVariant.color) : p.price;
+        const displayHasDiscount = !activeVariant && hasDiscount;
 
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="selectedProductModal=null; render();">
@@ -15008,14 +15160,15 @@
                 <!-- PRICE WITH EDIT -->
                 <div class="flex justify-between items-center pt-1">
                   <div>
-                    ${hasDiscount ? `
+                    ${displayHasDiscount ? `
                       <div class="flex items-center space-x-2">
                         <span class="text-xs text-gray-400 line-through font-bold">${money(p.oldPrice)}</span>
-                        <span class="text-base fc-text-danger font-black">${money(p.price)}</span>
+                        <span class="text-base fc-text-danger font-black">${money(displayPrice)}</span>
                       </div>
                     ` : `
-                      <p class="text-base font-black text-blue-600">${money(p.price)}</p>
+                      <p class="text-base font-black text-blue-600">${money(displayPrice)}</p>
                     `}
+                    ${activeVariant ? `<p class="text-[11px] font-bold text-gray-500 mt-0.5">${escapeHtml(variantLabel(activeVariant))} · ${tr('Qoldiq', 'Остаток')}: ${activeVariant.qty} ${tr('ta', 'шт.')}</p>` : ''}
                   </div>
                   ${canManageProducts() ? `<button onclick="openEditFieldModal('${p.id}', 'price')" class="text-xs p-1 bg-blue-50 text-blue-600 rounded-lg font-bold">${ICON_EDIT}</button>` : ''}
                 </div>
@@ -15064,12 +15217,10 @@
                   ${p.stock > 0 ? (
                     productVariants(p).length > 0 ? `
                       <div class="space-y-2">
-                        <p class="text-xs font-bold text-gray-600">${t('choose_variant')} ${tr('(bir nechtasini tanlash mumkin):','(можно выбрать несколько):')}</p>
+                        <p class="text-xs font-bold text-gray-600">${t('choose_variant')}:</p>
                         <div class="grid grid-cols-2 gap-2">
                           ${productVariants(p).map((v, vIdx) => {
-                            const k = variantKey(v.size, v.color);
-                            const selected = !!selectedVariantQtys[k];
-                            const qty = selectedVariantQtys[k] || 0;
+                            const selected = selectedVariantIndex === vIdx;
                             const disabled = !v.qty || Number(v.qty) <= 0;
                             return `
                               <div class="border rounded-xl p-2 ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}">
@@ -15077,19 +15228,19 @@
                                   class="w-full px-2 py-1.5 rounded-lg font-bold text-xs ${disabled ? 'bg-gray-100 text-gray-300' : (selected ? 'bg-blue-600 text-white' : 'bg-white text-gray-700')}">
                                   ${escapeHtml(variantLabel(v))}
                                 </button>
-                                <p class="text-[9px] text-center mt-1 text-gray-400">${v.qty} ${tr('ta','шт.')}${(v.price !== undefined && v.price !== null) ? ` · ${money(v.price)}` : ''}</p>
-                                ${selected ? `
-                                  <div class="flex items-center justify-center gap-2 mt-1.5">
-                                    <button onclick="setVariantQty(${vIdx}, -1)" class="w-7 h-7 bg-white font-bold rounded-lg shadow text-sm text-blue-600">-</button>
-                                    <span class="font-bold text-sm w-5 text-center">${qty}</span>
-                                    <button onclick="setVariantQty(${vIdx}, 1)" class="w-7 h-7 bg-blue-600 font-bold rounded-lg text-sm text-white">+</button>
-                                  </div>
-                                ` : ''}
+                                <p class="text-[9px] text-center mt-1 text-gray-400">${v.qty} ${tr('ta','шт.')} · ${money(variantPrice(p, v.size, v.color))}</p>
                               </div>
                             `;
                           }).join('')}
                         </div>
-                        <button onclick="addSelectedVariantsToCart('${p.id}'); openProductDetailModal('${p.id}');" class="w-full bg-blue-600 text-white font-bold py-3 rounded-2xl text-sm">🛒 ${t('add_to_cart')}</button>
+                        ${selectedVariantIndex !== null ? `
+                          <div class="flex items-center justify-center gap-3 pt-1">
+                            <button onclick="setVariantQty(${selectedVariantIndex}, -1)" class="w-9 h-9 bg-white font-bold rounded-xl shadow text-base text-blue-600">-</button>
+                            <span class="font-bold text-base w-6 text-center">${selectedVariantQty}</span>
+                            <button onclick="setVariantQty(${selectedVariantIndex}, 1)" class="w-9 h-9 bg-blue-600 font-bold rounded-xl text-base text-white">+</button>
+                          </div>
+                        ` : ''}
+                        <button ${selectedVariantIndex === null ? 'disabled' : ''} onclick="addSelectedVariantsToCart('${p.id}'); openProductDetailModal('${p.id}');" class="w-full bg-blue-600 disabled:opacity-40 text-white font-bold py-3 rounded-2xl text-sm">🛒 ${t('add_to_cart')}</button>
                       </div>
                     ` : (
                     inCart ? `
@@ -15384,28 +15535,36 @@
       });
     }
     // MODAL OPENERS & HANDLERS — universal variant tanlash.
-    let selectedVariantQtys = {};
+    // CORRECTION ROUND (tasdiqlangan dizayn/mantiq, 2026-08-31): avval
+    // bir nechta variant BIRDANIGA tanlanardi (checkbox-uslub, har birining
+    // o'z soni). Foydalanuvchi bilan aniqlashtirilib, single-select'ga
+    // (radio-uslub) o'tkazildi — bir vaqtda faqat BITTA variant tanlanadi,
+    // uning narxi/qoldig'i alohida, ko'rinarli joyda chiqadi (14-band).
+    let selectedVariantIndex = null; // null = tanlanmagan
+    let selectedVariantQty = 1;
     function toggleVariantSelect(index) {
       const v = productVariants(selectedProductModal)[index];
       if (!v) return;
-      const k = variantKey(v.size, v.color);
-      if (selectedVariantQtys[k]) delete selectedVariantQtys[k];
-      else selectedVariantQtys[k] = 1;
+      if (selectedVariantIndex === index) { selectedVariantIndex = null; renderModalContainer(); return; }
+      selectedVariantIndex = index;
+      selectedVariantQty = 1;
       renderModalContainer();
       scrollProductGalleryToVariant(v);
     }
     function setVariantQty(index, delta) {
       const v = productVariants(selectedProductModal)[index];
-      if (!v) return;
-      const k = variantKey(v.size, v.color);
-      const next = (selectedVariantQtys[k] || 0) + delta;
-      if (next <= 0) delete selectedVariantQtys[k];
-      else selectedVariantQtys[k] = Math.min(next, Number(v.qty) || 0);
+      if (!v || selectedVariantIndex !== index) return;
+      const next = selectedVariantQty + delta;
+      selectedVariantQty = Math.max(1, Math.min(next, Number(v.qty) || 1));
       renderModalContainer();
     }
     function addSelectedVariantsToCart(productId) {
-      addVariantItemsToCart(productId, selectedVariantQtys);
-      selectedVariantQtys = {};
+      const vars = productVariants(selectedProductModal);
+      const v = selectedVariantIndex !== null ? vars[selectedVariantIndex] : null;
+      if (!v) return alert(tr("Variantni tanlang!", "Выберите вариант!"));
+      addVariantItemsToCart(productId, { [variantKey(v.size, v.color)]: selectedVariantQty });
+      selectedVariantIndex = null;
+      selectedVariantQty = 1;
     }
 
     // Legacy wrappers for old size-only calls.
@@ -15417,7 +15576,8 @@
     function openProductDetailModal(id) {
       activePopupModal = null;
       selectedProductModal = products.find(p => p.id === id);
-      selectedVariantQtys = {};
+      selectedVariantIndex = null;
+      selectedVariantQty = 1;
       selectedSizeQtys = {};
       productGalleryIndex = 0;
       renderModalContainer();
@@ -15750,10 +15910,17 @@
       const stock = stockVal === '' ? NaN : parseInt(stockVal, 10);
       const variants = finalizeVariantBuilderRows();
       const desc = document.getElementById('m-prod-desc').value.trim();
-      if (!name || isNaN(price) || (variants.length === 0 && isNaN(stock))) {
+      // CORRECTION ROUND (2026-08-31), item 8: agar BARCHA variantlarda
+      // alohida narx ko'rsatilgan bo'lsa, mahsulotning o'z narxi endi
+      // majburiy emas — u hech qachon fallback sifatida ishlatilmaydi
+      // (variantPrice() har doim variant narxini topadi), shuning uchun 0
+      // yuborish xavfsiz (backend price>=0 ni qabul qiladi).
+      const allVariantsHavePrice = variants.length > 0 && variants.every((v) => v.price !== null && v.price !== undefined);
+      if (!name || (isNaN(price) && !allVariantsHavePrice) || (variants.length === 0 && isNaN(stock))) {
         return alert(tr("Iltimos, barcha majburiy maydonlarni to'ldiring!", "Заполните все обязательные поля!"));
       }
-      const oldPrice = (!isNaN(oldPriceVal) && oldPriceVal > price) ? oldPriceVal : null;
+      const finalPrice = isNaN(price) ? 0 : price;
+      const oldPrice = (!isNaN(oldPriceVal) && oldPriceVal > finalPrice) ? oldPriceVal : null;
       const imageSnap = takeTempImageSnapshot();
       const categoryId = adminCatParentId;
 
@@ -15764,7 +15931,7 @@
         const localImageWasSelected = !!(imageSnap?.file || imageSnap?.preparing);
         const imagePayload = await productImagePayloadFromSnapshot(imageSnap, localImageWasSelected);
         const result = await callApi('add_product', {
-          name, price, oldPrice,
+          name, price: finalPrice, oldPrice,
           stock: isNaN(stock) ? 0 : stock,
           variants: variants.length > 0 ? variants : null,
           desc, categoryId, img: imagePayload.img, thumbImg: imagePayload.thumbImg, imageUpload: imagePayload.imageUpload
@@ -15964,7 +16131,14 @@
     function openAddProductModal() {
       if (!canManageProducts()) return;
       initializeTempImageEditor(null);
-      variantBuilderRows = [{ level1: '', level2: '', qty: '' }];
+      resetProductFormDraft();
+      // CORRECTION ROUND (2026-08-31): avval bitta BO'SH placeholder qator
+      // ({level1:'',level2:'',qty:''}) bilan boshlanardi — bu aynan
+      // foydalanuvchi tasvirlagan soxta "Asosiy / 0 ta / 0 so'm" kartaning
+      // ildizi edi (bo'sh massiv o'rniga bitta bo'sh qator = summary ro'yxati
+      // bo'sh nomli guruh ko'rsatardi). Endi haqiqatan bo'sh — variant
+      // qo'shilmaguncha "Hali variant qo'shilmagan" bo'sh holat ko'rinadi.
+      variantBuilderRows = [];
       activePopupModal = 'ADD_PROD';
       render();
     }
