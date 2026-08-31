@@ -1574,15 +1574,33 @@ body { background: var(--ustore-page-bg) !important; color: var(--ustore-text) !
    utility (justify-end, max-w-[80%], opacity-70, va h.k.) bu build'da yo'q
    ekanligi aniqlandi (xuddi .inline-flex kabi), shuning uchun bu ehtiyoj
    uchun mustaqil, ishonchli custom classlar yozildi. */
-.ustore-msg-row { display: flex; margin-bottom: 8px; }
-.ustore-msg-row.mine { justify-content: flex-end; }
-.ustore-msg-bubble { max-width: 80%; border-radius: 14px; padding: 8px 10px; font-size: 12px; }
-.ustore-msg-bubble.mine { background: #2563eb; color: #fff; }
-.ustore-msg-bubble.theirs { background: #f1f5f9; color: #1e293b; }
-.ustore-msg-time { font-size: 9px; opacity: .7; margin-top: 4px; }
-.ustore-msg-reply-quote { border-left: 2px solid rgba(0,0,0,.2); padding-left: 6px; margin-bottom: 4px; font-size: 10px; opacity: .8; }
-.ustore-msg-reply-btn { font-size: 9px; opacity: .7; margin-top: 4px; cursor: pointer; text-decoration: underline; display: inline-block; }
-.ustore-reply-bar { background: #eef2ff; border-left: 3px solid #6366f1; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; font-size: 10px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+/* POLISH ROUND (task 5-6): Support chat — Shop App'ning umumiy dizayn
+   tizimi (fc-* o'zgaruvchilar) asosida to'liq qayta uslublandi. */
+.fc-chat-thread-wrap { position: relative; }
+.fc-chat-thread-list { max-height: 55vh; overflow-y: auto; padding: .2rem .1rem; scroll-behavior: smooth; }
+.fc-chat-new-indicator { position: sticky; bottom: .4rem; left: 50%; transform: translateX(-50%); display: block; margin: 0 auto; padding: .35rem .85rem; border-radius: 999px; background: var(--fc-primary); color: #fff; font-size: .62rem; font-weight: 800; box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+.fc-chat-system-note { text-align: center; font-size: .62rem; color: var(--fc-muted); background: var(--ustore-card-bg-muted, #f8fafc); border-radius: .7rem; padding: .5rem .75rem; margin: .5rem auto; max-width: 90%; }
+.fc-chat-row { display: flex; margin-bottom: .5rem; }
+.fc-chat-row.is-mine { justify-content: flex-end; }
+.fc-chat-bubble { max-width: 82%; border-radius: 1.05rem; padding: .55rem .7rem; font-size: .72rem; line-height: 1.4; }
+.fc-chat-bubble.is-mine { background: var(--fc-primary); color: #fff; border-bottom-right-radius: .3rem; }
+.fc-chat-bubble.is-theirs { background: var(--ustore-card-bg-muted, #f1f5f9); color: var(--ustore-text, #1e293b); border-bottom-left-radius: .3rem; }
+.fc-chat-bubble.is-failed { background: var(--fc-danger); color: #fff; opacity: .9; }
+.fc-chat-text { overflow-wrap: anywhere; }
+.fc-chat-meta { display: flex; align-items: center; gap: .3rem; margin-top: .25rem; }
+.fc-chat-time { font-size: .56rem; opacity: .75; }
+.fc-chat-ticks { font-size: .62rem; opacity: .75; letter-spacing: -.05em; }
+.fc-chat-ticks.is-read { opacity: 1; color: #93c5fd; }
+.fc-chat-bubble.is-mine .fc-chat-ticks.is-read { color: #bfdbfe; }
+.fc-chat-reply-quote { border-left: 2px solid rgba(255,255,255,.4); padding-left: .4rem; margin-bottom: .25rem; font-size: .6rem; opacity: .85; }
+.fc-chat-bubble.is-theirs .fc-chat-reply-quote { border-left-color: rgba(0,0,0,.15); }
+.fc-chat-reply-btn { font-size: .56rem; opacity: .8; margin-top: .2rem; cursor: pointer; text-decoration: underline; display: inline-block; }
+.fc-chat-retry-btn { display: block; margin-top: .3rem; font-size: .6rem; font-weight: 800; text-decoration: underline; color: #fff; }
+.fc-chat-reply-bar { background: var(--ustore-card-bg-muted, #eef2ff); border-left: 3px solid var(--fc-primary); border-radius: .55rem; padding: .4rem .55rem; margin-bottom: .4rem; font-size: .62rem; display: flex; align-items: center; justify-content: space-between; gap: .4rem; }
+.fc-chat-composer { display: flex; align-items: flex-end; gap: .45rem; padding: .3rem; border: 1px solid var(--fc-border); border-radius: 1.1rem; background: var(--ustore-input-bg, #fff); }
+.fc-chat-composer-input { flex: 1; min-width: 0; resize: none; max-height: 6rem; border: none; outline: none; background: transparent; padding: .45rem .5rem; font-size: .75rem; line-height: 1.4; color: var(--ustore-text, #1e293b); }
+.fc-chat-send-btn { flex-shrink: 0; width: 2.15rem; height: 2.15rem; border-radius: 50%; background: var(--fc-primary); color: #fff; display: flex; align-items: center; justify-content: center; }
+.fc-chat-send-btn:disabled { opacity: .5; }
 
 /* 20-band: `.inline-flex` bu build'da UMUMAN compile qilinmagan edi (Tailwind
    JIT faqat foydalanilgan classlarni chiqaradi, lekin bu build'ga kirmay
@@ -1727,6 +1745,14 @@ body { background: var(--ustore-page-bg) !important; color: var(--ustore-text) !
 /* Universal 2-ustunli variant konstruktori (tovar qo'shish/tahrirlash) — Tailwind
    arbitrary-value grid-cols precompiled build'da mavjud emas, shuning uchun oddiy CSS grid. */
 .fc-variant-row { display: grid; grid-template-columns: 1fr 1fr 4.5rem auto; gap: .375rem; align-items: center; }
+/* POLISH ROUND (task 4): har variant qatoriga alohida rasm. */
+.fc-variant-row-wrap { display: flex; flex-direction: column; gap: .3rem; padding-bottom: .35rem; border-bottom: 1px dashed #eef2f7; }
+.fc-variant-row-wrap:last-child { border-bottom: 0; padding-bottom: 0; }
+.fc-variant-row-image { display: flex; align-items: center; gap: .4rem; }
+.fc-variant-row-thumb { flex-shrink: 0; width: 1.85rem; height: 1.85rem; border-radius: .5rem; border: 1px solid var(--fc-border); background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; color: #94a3b8; }
+.fc-variant-row-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.fc-variant-row-img-btn { font-size: .6rem; font-weight: 800; color: var(--fc-primary, #2563eb); padding: .2rem .1rem; }
+.fc-variant-row-img-btn.is-danger { color: var(--fc-danger, #dc2626); }
 
 /* Bo'sh holat (empty state) — Sevimlilar/Buyurtmalar/Trash/Support kabi ro'yxatlar uchun umumiy */
 .fc-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; padding: 2.5rem 1rem; color: var(--fc-muted); text-align: center; }
@@ -1847,23 +1873,59 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .fc-shop-social-input > span { display: flex; align-items: center; padding: 0 .7rem; color: var(--fc-muted); font-size: .75rem; font-weight: 700; border-right: 1px solid var(--fc-border); background: var(--fc-muted-bg); }
 .fc-shop-social-input > input { flex: 1; min-width: 0; min-height: 2.625rem; padding: .625rem .75rem; background: transparent; color: var(--color-gray-900); font-size: .8125rem; outline: none; }
 .fc-shop-logo-editor { display: flex; gap: .75rem; align-items: center; margin-bottom: .8rem; padding: .75rem; border: 1px solid #e5eaf1; border-radius: .875rem; background: #fbfdff; }
-.fc-shop-logo-preview { width: 4.5rem; height: 4.5rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--fc-border); border-radius: .9rem; background: #fff; }
-.fc-shop-logo-image { width: 100%; height: 100%; object-fit: contain; padding: .35rem; }
+/* POLISH ROUND (logo 4:1): do'kon logotipi endi majburiy 4:1 — eski
+   kvadrat konteynerlar bunday rasmni deyarli ko'rinmas darajada
+   kichraytirar edi. Ikkalasi ham keng-past to'rtburchakka o'zgartirildi
+   (object-fit:contain saqlanadi — eski, hali crop qilinmagan kvadrat
+   logolar ham deformatsiyasiz, faqat markazda kichikroq ko'rinadi). */
+.fc-shop-logo-preview { width: 7.5rem; height: 1.9rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--fc-border); border-radius: .6rem; background: #fff; }
+.fc-shop-logo-image { width: 100%; height: 100%; object-fit: contain; padding: .2rem; }
 .fc-shop-logo-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #94a3b8; background: linear-gradient(145deg, #f8fafc, #eef2f7); }
 .fc-shop-logo-copy { min-width: 0; flex: 1; }
 .fc-shop-logo-title { color: var(--color-gray-900); font-size: .75rem; font-weight: 800; }
 .fc-shop-logo-status { margin-top: .1rem; color: var(--fc-muted); font-size: .625rem; }
+.fc-shop-logo-hint { margin-top: .15rem; color: #94a3b8; font-size: .58rem; line-height: 1.35; }
 .fc-shop-logo-actions { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .55rem; }
-.fc-shop-public-logo{width:2.75rem;height:2.75rem;flex:0 0 2.75rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--ustore-border,#e2e8f0);border-radius:.85rem;background:#fff;overflow:hidden}.fc-shop-public-logo img{width:100%;height:100%;object-fit:contain;padding:.2rem}.fc-shop-public-logo.is-empty{background:#f8fafc;color:#94a3b8}
+.fc-shop-public-logo{width:4.75rem;height:1.7rem;flex:0 0 4.75rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--ustore-border,#e2e8f0);border-radius:.6rem;background:#fff;overflow:hidden}.fc-shop-public-logo img{width:100%;height:100%;object-fit:contain;padding:.15rem}.fc-shop-public-logo.is-empty{width:2.75rem;flex-basis:2.75rem;border-radius:.85rem;background:#f8fafc;color:#94a3b8}
 .fc-featured-tree{border:1px solid var(--ustore-border,#e2e8f0);border-radius:1rem;background:var(--ustore-card-bg,#fff);padding:.45rem}.fc-featured-tree-node{position:relative}.fc-featured-tree-line{min-height:3rem;display:grid;grid-template-columns:2rem minmax(0,1fr) auto;gap:.55rem;align-items:center;padding:.4rem;border-bottom:1px solid #eef2f7}.fc-featured-tree-folder{width:2rem;height:2rem;border-radius:.65rem;display:flex;align-items:center;justify-content:center;background:#eff6ff;color:#2563eb}.fc-featured-tree-name{font-size:.68rem;font-weight:850;color:var(--ustore-text,#334155)}.fc-featured-tree-children{margin-left:1rem;padding-left:.55rem;border-left:1.5px solid #dbeafe}.fc-featured-tree-products{margin:.25rem 0 .45rem 2.55rem;padding:.4rem;border-radius:.7rem;background:#f8fafc;display:flex;flex-direction:column;gap:.3rem}.fc-featured-tree-products>small,.fc-featured-tree-products>p{font-size:.52rem;color:#94a3b8}.fc-featured-tree-products label{display:grid;grid-template-columns:auto 1.75rem minmax(0,1fr);gap:.4rem;align-items:center;font-size:.6rem;color:#475569}.fc-featured-tree-products img{width:1.75rem;height:1.75rem;object-fit:contain;border-radius:.45rem;background:#fff}
 .fc-shop-logo-action { min-height: 2.25rem; padding: 0 .7rem; font-size: .6875rem; }
+.fc-logo-crop-frame { width: 100%; border-radius: .9rem; overflow: hidden; border: 1px solid var(--fc-border); background: repeating-conic-gradient(#f1f5f9 0% 25%, #fff 0% 50%) 50% / 16px 16px; touch-action: none; }
+.fc-logo-crop-canvas { width: 100%; height: auto; aspect-ratio: 4 / 1; display: block; cursor: grab; touch-action: none; }
+.fc-logo-crop-canvas:active { cursor: grabbing; }
+
+/* "Nomdan logo yaratish" — CSS orqali live render qilinadigan wordmark
+   (rasterizatsiya yo'q). .fc-wordmark ikkala kontekstda ham (header,
+   generator preview/preset kartalar) ishlatiladi. */
+.fc-wordmark { display: inline-flex; align-items: center; gap: .4rem; max-width: 100%; overflow: hidden; }
+.fc-wordmark-text { color: var(--color-gray-900); font-size: 1.05rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fc-wordmark-badge { flex-shrink: 0; width: 1.6rem; height: 1.6rem; border-radius: .5rem; background: var(--fc-primary, #2563eb); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: .8rem; }
+.ustore-header-wordmark .fc-wordmark-text { font-size: .8rem; color: #172033; }
+.ustore-header-wordmark .fc-wordmark-badge { width: 1.3rem; height: 1.3rem; font-size: .65rem; border-radius: .4rem; }
+.fc-wordmark-preset-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem; }
+.fc-wordmark-preset-card { display: flex; flex-direction: column; align-items: center; gap: .35rem; padding: .7rem .4rem; border: 1.5px solid var(--fc-border); border-radius: .85rem; background: #fbfdff; }
+.fc-wordmark-preset-card.is-selected { border-color: var(--fc-primary, #2563eb); background: #eff6ff; box-shadow: 0 0 0 2px rgba(37,99,235,.12); }
+.fc-wordmark-preset-card .fc-wordmark-text { font-size: .82rem; }
+.fc-wordmark-preset-card small { color: var(--fc-muted); font-size: .58rem; font-weight: 700; }
+.fc-wordmark-header-mock { display: flex; align-items: center; padding: .65rem .8rem; border-radius: .85rem; background: #0f172a; }
+.fc-wordmark-header-mock .fc-wordmark-text { color: #fff; }
+.fc-wordmark-header-mock .fc-wordmark-badge { background: #fff; color: #0f172a; }
+
+/* POLISH ROUND (task 3): Click/Payme/Uzum — "To'lov parametrlari"dagi
+   professional integratsiya kartalari. */
+.fc-acquiring-integration-list { display: flex; flex-direction: column; gap: .5rem; }
+.fc-acquiring-integration-card { display: flex; align-items: center; gap: .65rem; width: 100%; padding: .7rem .8rem; border: 1px solid var(--fc-border); border-radius: .9rem; background: #fbfdff; text-align: left; }
+.fc-acquiring-integration-icon { flex-shrink: 0; width: 2.25rem; height: 2.25rem; border-radius: .75rem; background: #eff6ff; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; }
+.fc-acquiring-integration-copy { flex: 1; min-width: 0; }
+.fc-acquiring-integration-copy b { display: block; font-size: .75rem; color: var(--color-gray-900); }
+.fc-acquiring-integration-copy small { color: var(--fc-muted); font-size: .6rem; }
+.fc-acquiring-integration-chevron { color: var(--fc-muted); font-size: .95rem; }
 .fc-shop-info-note { display: flex; align-items: flex-start; gap: .45rem; padding: .7rem .75rem; border-radius: .75rem; background: #eff6ff; color: #475569; font-size: .65rem; line-height: 1.45; }
 .fc-shop-info-note svg { flex-shrink: 0; margin-top: .05rem; color: var(--fc-primary); }
 .fc-shop-info-footer { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: .5rem; background: rgba(255,255,255,.98); }
 .fc-shop-info-footer .fc-btn { width: 100%; }
 @media (max-width: 360px) {
-  .fc-shop-logo-editor { align-items: flex-start; }
-  .fc-shop-logo-preview { width: 4rem; height: 4rem; }
+  .fc-shop-logo-editor { align-items: flex-start; flex-direction: column; }
+  .fc-shop-logo-preview { width: 100%; height: 3.4rem; }
   .fc-shop-logo-actions { flex-direction: column; }
   .fc-shop-logo-action { width: 100%; }
 }

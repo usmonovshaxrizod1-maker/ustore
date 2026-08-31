@@ -512,8 +512,8 @@
     function hydrateVariantBuilderFromProduct(p) {
       const vars = productVariants(p);
       variantBuilderRows = vars.length
-        ? vars.map(v => ({ level1: v.size || '', level2: v.color || '', qty: String(v.qty ?? 0) }))
-        : [{ level1: '', level2: '', qty: '' }];
+        ? vars.map(v => ({ level1: v.size || '', level2: v.color || '', qty: String(v.qty ?? 0), img: v.img || '' }))
+        : [{ level1: '', level2: '', qty: '', img: '' }];
     }
     function readVariantBuilderRowsFromDom() {
       const rowEls = document.querySelectorAll('#vb-rows .vb-row');
@@ -521,11 +521,12 @@
         level1: el.querySelector('.vb-level1')?.value || '',
         level2: el.querySelector('.vb-level2')?.value || '',
         qty: el.querySelector('.vb-qty')?.value || '',
+        img: el.querySelector('.vb-img')?.value || '',
       }));
     }
     function variantBuilderInsertRow(idx) {
       const rows = readVariantBuilderRowsFromDom();
-      rows.splice(idx + 1, 0, { level1: '', level2: '', qty: '' });
+      rows.splice(idx + 1, 0, { level1: '', level2: '', qty: '', img: '' });
       variantBuilderRows = rows;
       const container = document.getElementById('vb-rows');
       if (!container) return;
@@ -543,6 +544,7 @@
     }
     // Har ustun MUSTAQIL yuqoridan-pastga meros oladi (bo'sh katak = yuqoridagi
     // eng yaqin qiymat). Soni hech qachon meros olinmaydi — har qatorning o'zi.
+    // img HAM meros olinmaydi — har variantning o'z rasmi (task 4).
     function resolveVariantBuilderRows(rawRows) {
       let last1 = null, last2 = null;
       const out = [];
@@ -554,25 +556,33 @@
         const qty = Math.max(0, Number.parseInt(row.qty, 10) || 0);
         const size = last1 || null;
         const color = last2 || null;
-        if (size || color) out.push({ size, color, qty });
+        if (size || color) out.push({ size, color, qty, img: row.img ? String(row.img) : null });
       }
       return out;
     }
     function renderVariantBuilderRowsHtml(rows) {
       return rows.map((row, i) => `
-        <div class="vb-row fc-variant-row" data-idx="${i}">
-          <input type="text" class="vb-level1 p-2 border rounded-lg text-xs" value="${escapeHtml(row.level1)}" placeholder="${tr('1-ustun', '1-я колонка')}">
-          <input type="text" class="vb-level2 p-2 border rounded-lg text-xs" value="${escapeHtml(row.level2)}" placeholder="${tr('2-ustun', '2-я колонка')}">
-          <input type="number" min="0" class="vb-qty p-2 border rounded-lg text-xs" value="${escapeHtml(row.qty)}" placeholder="0">
-          <div class="flex gap-1">
-            <button type="button" onclick="variantBuilderInsertRow(${i})" class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 font-bold text-sm" aria-label="${tr("Qator qo'shish", "Добавить строку")}">+</button>
-            <button type="button" onclick="variantBuilderRemoveRow(${i})" ${rows.length <= 1 ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 font-bold text-sm disabled:opacity-30" aria-label="${tr("Qatorni o'chirish", "Удалить строку")}">−</button>
+        <div class="vb-row fc-variant-row-wrap" data-idx="${i}">
+          <div class="fc-variant-row">
+            <input type="text" class="vb-level1 p-2 border rounded-lg text-xs" value="${escapeHtml(row.level1)}" placeholder="${tr('1-ustun', '1-я колонка')}">
+            <input type="text" class="vb-level2 p-2 border rounded-lg text-xs" value="${escapeHtml(row.level2)}" placeholder="${tr('2-ustun', '2-я колонка')}">
+            <input type="number" min="0" class="vb-qty p-2 border rounded-lg text-xs" value="${escapeHtml(row.qty)}" placeholder="0">
+            <div class="flex gap-1">
+              <button type="button" onclick="variantBuilderInsertRow(${i})" class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 font-bold text-sm" aria-label="${tr("Qator qo'shish", "Добавить строку")}">+</button>
+              <button type="button" onclick="variantBuilderRemoveRow(${i})" ${rows.length <= 1 ? 'disabled' : ''} class="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-100 font-bold text-sm disabled:opacity-30" aria-label="${tr("Qatorni o'chirish", "Удалить строку")}">−</button>
+            </div>
+          </div>
+          <div class="fc-variant-row-image">
+            <input type="hidden" class="vb-img" value="${escapeHtml(row.img || '')}">
+            <span class="fc-variant-row-thumb" id="vb-thumb-${i}">${row.img ? `<img src="${escapeHtml(row.img)}" alt="">` : `<i data-lucide="image" class="w-3.5 h-3.5"></i>`}</span>
+            <button type="button" onclick="pickVariantRowImage(${i})" class="fc-variant-row-img-btn">${row.img ? tr('Almashtirish', 'Заменить') : tr('Rasm qo‘shish', 'Добавить фото')}</button>
+            ${row.img ? `<button type="button" onclick="removeVariantRowImage(${i})" class="fc-variant-row-img-btn is-danger">${tr("O'chirish", 'Удалить')}</button>` : ''}
           </div>
         </div>
       `).join('');
     }
     function renderVariantBuilderHtml() {
-      const rows = variantBuilderRows.length ? variantBuilderRows : [{ level1: '', level2: '', qty: '' }];
+      const rows = variantBuilderRows.length ? variantBuilderRows : [{ level1: '', level2: '', qty: '', img: '' }];
       return `
         <div class="space-y-2">
           <label class="font-bold text-gray-600">${tr('Variantlar (ixtiyoriy)', 'Варианты (необязательно)')}</label>
@@ -584,8 +594,72 @@
           </div>
           <div id="vb-rows" class="space-y-1.5">${renderVariantBuilderRowsHtml(rows)}</div>
           <p class="text-[9px] text-gray-400">${tr("Katak bo'sh qoldirilsa, shu ustunda yuqoridagi eng yaqin qiymat olinadi. Masalan: 48/Qizil/5, keyingi qatorda 1-ustun bo'sh + Sariq/8 → natija 48/Sariq/8.", "Если ячейка пуста, берётся ближайшее значение сверху в этой колонке. Например: 48/Красный/5, затем пусто + Жёлтый/8 → результат 48/Жёлтый/8.")}</p>
+          <p class="text-[9px] text-gray-400">${tr("Har variantga alohida rasm ixtiyoriy — qo'shilmasa mahsulotning asosiy rasmi ko'rsatiladi.", "Отдельное фото для каждого варианта необязательно — без него используется основное фото товара.")}</p>
+          <input type="file" id="vb-image-input" accept="image/*" class="hidden" onchange="onVariantImagePicked(event)">
         </div>
       `;
+    }
+    // ---- Variant rasm yuklash (task 4) — mavjud umumiy rasm pipeline'i
+    // (captureAndPrepareImageV2 + uploadImageSnapshot + upload_product_image,
+    // mahsulot/kategoriya/logotip bilan bir xil) qayta ishlatiladi. Bitta
+    // umumiy fayl input — qaysi qator ekanligi variantImagePickRowIndex'da
+    // eslab qolinadi.
+    let variantImagePickRowIndex = null;
+    function pickVariantRowImage(idx) {
+      variantImagePickRowIndex = idx;
+      const input = document.getElementById('vb-image-input');
+      if (input) { input.value = ''; input.click(); }
+    }
+    async function onVariantImagePicked(event) {
+      const file = event.target.files?.[0];
+      const idx = variantImagePickRowIndex;
+      event.target.value = '';
+      if (!file || idx === null) return;
+      try { validatePickedImageFile(file); }
+      catch (e) { return alert(pickedImageErrorMessage(e, file)); }
+      const thumb = document.getElementById(`vb-thumb-${idx}`);
+      if (thumb) thumb.innerHTML = `<span class="fc-spinner" style="width:.9rem;height:.9rem"></span>`;
+      try {
+        // Xuddi mahsulot/kategoriya rasmi bilan bir xil o'lcham/sifat
+        // (800px/0.75) — variant rasmi ham oddiy mahsulot fotosi.
+        const prepared = await captureAndPrepareImageV2(file, TARGET_PRODUCT_IMAGE_BYTES, 800, 0.75);
+        const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, null, true);
+        const row = document.querySelector(`.vb-row[data-idx="${idx}"]`);
+        const hiddenInput = row?.querySelector('.vb-img');
+        if (hiddenInput) hiddenInput.value = url;
+        if (thumb) thumb.innerHTML = `<img src="${escapeHtml(url)}" alt="">`;
+        const removeBtn = row?.querySelector('.fc-variant-row-img-btn.is-danger');
+        const addBtn = row?.querySelector('.fc-variant-row-img-btn:not(.is-danger)');
+        if (addBtn) addBtn.textContent = tr('Almashtirish', 'Заменить');
+        if (!removeBtn && row) {
+          const wrap = row.querySelector('.fc-variant-row-image');
+          if (wrap) {
+            const btn = document.createElement('button');
+            btn.type = 'button'; btn.className = 'fc-variant-row-img-btn is-danger';
+            btn.textContent = tr("O'chirish", 'Удалить');
+            btn.onclick = () => removeVariantRowImage(idx);
+            wrap.appendChild(btn);
+          }
+        }
+      } catch (e) {
+        console.error('[variant-image:UPLOAD_FAILED]', e);
+        if (thumb) thumb.innerHTML = `<i data-lucide="image" class="w-3.5 h-3.5"></i>`;
+        alert(tr("Rasmni yuklab bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось загрузить фото. Попробуйте снова."));
+      } finally {
+        safeCreateIcons();
+      }
+    }
+    function removeVariantRowImage(idx) {
+      const row = document.querySelector(`.vb-row[data-idx="${idx}"]`);
+      const hiddenInput = row?.querySelector('.vb-img');
+      if (hiddenInput) hiddenInput.value = '';
+      const thumb = document.getElementById(`vb-thumb-${idx}`);
+      if (thumb) thumb.innerHTML = `<i data-lucide="image" class="w-3.5 h-3.5"></i>`;
+      const addBtn = row?.querySelector('.fc-variant-row-img-btn:not(.is-danger)');
+      if (addBtn) addBtn.textContent = tr('Rasm qo‘shish', 'Добавить фото');
+      const removeBtn = row?.querySelector('.fc-variant-row-img-btn.is-danger');
+      if (removeBtn) removeBtn.remove();
+      safeCreateIcons();
     }
 
     // Legacy audit, 1-band: ba'zi tovar tavsiflarida (masalan Billz import
@@ -740,6 +814,13 @@
     let supportSendingMessage = false; // 41-band: ikki marta yuborishni oldini olish
     let adminSupportSelectedUser = null; // admin: Support -> User bosqichi
     let adminSupportSelectedTicketId = null; // admin: User -> Chat bosqichi
+    // POLISH ROUND (task 6): ochiq thread paytida ISHLOVCHI qisqa poll —
+    // staffAccessTimer bilan bir xil lifecycle (faqat kerak paytda ishlaydi,
+    // sahifadan chiqilganda to'xtaydi). Realtime ATAYLAB ishlatilmaydi (loyihada
+    // hech qayerda anon-key/RLS ishonch chegarasi yo'q, backend service_role
+    // orqali ishlaydi).
+    let supportThreadPollTimer = null;
+    let supportThreadHasUnseenBelow = false;
     // MUHIM: localStorage'dan o'qilgan HAR QANDAY JSON shu yordamchi orqali
     // o'qiladi. Avval bu qatorlar xom `JSON.parse(...)` edi — bu esa ilovani
     // butunlay va DOIMIY o'ldiradigan bug edi: agar telefondagi saqlangan
@@ -891,6 +972,13 @@
     let selectedUserModal = null;
     let usersSummary = [];
     let shopLogoUrl = null;
+    // POLISH ROUND (task 2, wordmark): 'IMAGE' (mavjud xulq, shopLogoUrl
+    // ishlatiladi) yoki 'WORDMARK' (shopLogoWordmark={presetId,text}dan
+    // CSS orqali LIVE render qilinadi, rasterizatsiya YO'Q).
+    let shopLogoType = 'IMAGE';
+    let shopLogoWordmark = null;
+    let wordmarkDraftText = '';
+    let wordmarkDraftPresetId = null;
     let botUsername = null; // 1.10: "Telegramda ko'rish" uchun — hardcode emas, boot() javobidan
     let shopContact = { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
     let shopLowStockThreshold = 5;
@@ -1018,6 +1106,26 @@
     // faqat SHOP_INFO pastidagi "Saqlash" bosilganda bajariladi.
     let shopLogoDraft = null; // { kind:'file', file, previewUrl } | { kind:'url', url }
     let shopLogoPreparing = false; // gallery/files tanlangach preview tayyor bo'lguncha spinner
+    // Logo 4:1 majburiy crop bosqichi (fayl tanlangandan keyin, compress/
+    // upload'dan OLDIN). bitmap — createImageBitmap natijasi (canvas'ga
+    // chizish uchun); scale/offsetX/offsetY — foydalanuvchi pan/zoom holati
+    // (canvas ichki koordinatalarida); pointers — aktiv barmoqlar (pinch-zoom
+    // uchun, pointerId->{x,y}); editingInsideShopInfo — crop tugagach qaysi
+    // davom etish yo'liga (draft-only vs darhol-upload) qaytish kerakligini
+    // eslab qoladi.
+    const LOGO_CROP_RATIO = 4 / 1;
+    const LOGO_CROP_CANVAS_W = 960, LOGO_CROP_CANVAS_H = 240; // 4:1, 1200x300 tavsiyaga proporsional
+    let logoCropFile = null;
+    let logoCropBitmap = null;
+    let logoCropScale = 1;
+    let logoCropMinScale = 1;
+    let logoCropOffsetX = 0;
+    let logoCropOffsetY = 0;
+    let logoCropEditingInsideShopInfo = false;
+    let logoCropPointers = new Map();
+    let logoCropPinchStartDist = 0;
+    let logoCropPinchStartScale = 1;
+    let logoCropDragStart = null; // {x,y,offsetX,offsetY}
     let editingFieldData = null;
     // Universal 2-ustunli variant konstruktori (Add + Edit bir xil komponent).
     // Har qator: {level1, level2, qty} — level1->size, level2->color (mavjud
@@ -1768,7 +1876,10 @@
         supportMessages = [];
       } finally {
         supportMessagesLoading = false;
-        if (!isCatalogEditorModalOpen()) render();
+        if (!isCatalogEditorModalOpen()) {
+          render();
+          requestAnimationFrame(scrollSupportThreadToBottom);
+        }
       }
     }
     // 5-band: usersSummary allaqachon boshqa joyda (Mijozlar tab) yuklangan
@@ -1805,7 +1916,7 @@
     // yozish ko'rinishi qoladi.
     function resolveActiveSupportTicket() {
       const active = supportTickets.find(t => t.status !== 'CLOSED' && (t.orderId || null) === supportTicketOrderId && (t.ticketType || 'SUPPORT') === supportTicketType);
-      if (active) { openSupportTicketId = active.id; loadSupportMessages(active.id); }
+      if (active) { openSupportTicketId = active.id; loadSupportMessages(active.id); startSupportThreadPoll(active.id); }
       else render();
     }
     function openMySupportChat(ticketId) {
@@ -1813,41 +1924,86 @@
       supportReplyTarget = null;
       render();
       loadSupportMessages(ticketId);
+      startSupportThreadPoll(ticketId);
     }
     function backToMySupportList() {
       openSupportTicketId = null;
       supportReplyTarget = null;
+      stopSupportThreadPoll();
       render();
     }
     async function submitSupportComposer() {
       if (supportSendingMessage) return;
       const textareaId = openSupportTicketId ? 'sup-chat-message' : 'sup-message';
-      const body = document.getElementById(textareaId)?.value.trim() || '';
+      const textarea = document.getElementById(textareaId);
+      const body = textarea?.value.trim() || '';
       if (!body) return alert(tr("Murojaat matnini yozing.", "Напишите текст обращения."));
-      supportSendingMessage = true;
-      render();
-      showActionToast(tr("⏳ Yuborilmoqda...", "⏳ Отправка..."), 'saving');
-      try {
-        if (openSupportTicketId) {
-          const data = await callApi('send_support_message', { ticketId: openSupportTicketId, body, replyToMessageId: supportReplyTarget?.id || null });
-          supportMessages = [...supportMessages, data.message];
-          const idx = supportTickets.findIndex(t => t.id === openSupportTicketId);
-          if (idx >= 0) supportTickets[idx] = { ...supportTickets[idx], ...data.ticket, lastMessage: { sender: data.message.sender, body: data.message.body, createdAt: data.message.createdAt } };
-        } else {
+      if (!openSupportTicketId) {
+        // Hali ochiq thread yo'q (birinchi xabar) — optimistik ko'rsatish
+        // shart emas, yangi ticket/thread shu zahoti to'liq render bilan paydo bo'ladi.
+        supportSendingMessage = true;
+        render();
+        showActionToast(tr("⏳ Yuborilmoqda...", "⏳ Отправка..."), 'saving');
+        try {
           const data = await callApi('create_support_ticket', { message: body, orderId: supportTicketOrderId, ticketType: supportTicketType });
           supportTickets = [{ ...data.ticket, lastMessage: { sender: data.message.sender, body: data.message.body, createdAt: data.message.createdAt }, messageCount: 1 }, ...supportTickets];
           openSupportTicketId = data.ticket.id;
           supportMessages = [data.message];
+          startSupportThreadPoll(data.ticket.id);
+          showActionToast(tr("✅ Yuborildi", "✅ Отправлено"), 'success', 1500);
+        } catch (e) {
+          console.error(e);
+          showActionToast(tr("❌ Yuborilmadi", "❌ Не отправлено"), 'error', 2000);
+          alert(tr("Xatolik: ", "Ошибка: ") + (e.message || e));
+        } finally {
+          supportSendingMessage = false;
+          render();
         }
-        supportReplyTarget = null;
-        showActionToast(tr("✅ Yuborildi", "✅ Отправлено"), 'success', 1500);
+        return;
+      }
+      // POLISH ROUND (task 6, optimistik yuborish): xabar darhol "Yuborilmoqda..."
+      // bubble sifatida ko'rinadi (render() emas — faqat thread patch, scroll
+      // yo'qolmasin), server javob bergach real xabar bilan almashtiriladi.
+      const ticketId = openSupportTicketId;
+      const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const replyToId = supportReplyTarget?.id || null;
+      supportSendingMessage = true;
+      supportMessages = [...supportMessages, { id: tempId, ticketId, sender: 'USER', body, createdAt: new Date().toISOString(), replyToMessageId: replyToId, readAt: null, pending: true }];
+      supportReplyTarget = null;
+      if (textarea) textarea.value = '';
+      patchSupportThread({ forceBottom: true });
+      try {
+        const data = await callApi('send_support_message', { ticketId, body, replyToMessageId: replyToId });
+        supportMessages = supportMessages.map((m) => (m.id === tempId ? data.message : m));
+        const idx = supportTickets.findIndex(t => t.id === ticketId);
+        if (idx >= 0) supportTickets[idx] = { ...supportTickets[idx], ...data.ticket, lastMessage: { sender: data.message.sender, body: data.message.body, createdAt: data.message.createdAt } };
       } catch (e) {
         console.error(e);
-        showActionToast(tr("❌ Yuborilmadi", "❌ Не отправлено"), 'error', 2000);
-        alert(tr("Xatolik: ", "Ошибка: ") + (e.message || e));
+        supportMessages = supportMessages.map((m) => (m.id === tempId ? { ...m, pending: false, failed: true } : m));
       } finally {
         supportSendingMessage = false;
-        render();
+        patchSupportThread({ forceBottom: true });
+      }
+    }
+    // Muvaffaqiyatsiz optimistik xabarni qayta yuboradi (o'sha tempId'ning
+    // o'zida — yangi bubble yaratilmaydi, faqat holati "pending"ga qaytadi).
+    async function retrySupportMessage(tempId) {
+      const m = supportMessages.find((x) => x.id === tempId);
+      if (!m || !m.failed) return;
+      supportMessages = supportMessages.map((x) => (x.id === tempId ? { ...x, pending: true, failed: false } : x));
+      patchSupportThread({ forceBottom: true });
+      try {
+        const data = await callApi('send_support_message', { ticketId: m.ticketId, body: m.body, replyToMessageId: m.replyToMessageId || null });
+        supportMessages = supportMessages.map((x) => (x.id === tempId ? data.message : x));
+        const isAdminSender = data.message.sender === 'ADMIN';
+        const list = isAdminSender ? adminSupportTickets : supportTickets;
+        const idx = list.findIndex((t) => t.id === m.ticketId);
+        if (idx >= 0) list[idx] = { ...list[idx], ...data.ticket, lastMessage: { sender: data.message.sender, body: data.message.body, createdAt: data.message.createdAt } };
+      } catch (e) {
+        console.error(e);
+        supportMessages = supportMessages.map((x) => (x.id === tempId ? { ...x, pending: false, failed: true } : x));
+      } finally {
+        patchSupportThread({ forceBottom: true });
       }
     }
     // 7-band: FAQAT mijoz o'zi murojaatni tugatadi.
@@ -1858,6 +2014,7 @@
         const data = await callApi('close_support_ticket', { ticketId });
         const idx = supportTickets.findIndex(t => t.id === ticketId);
         if (idx >= 0) supportTickets[idx] = { ...supportTickets[idx], ...data.ticket };
+        stopSupportThreadPoll(); // yopilgan ticketda yangi xabar kelmaydi
         render();
         showActionToast(tr("✅ Tugallandi", "✅ Завершено"), 'success', 1500);
       } catch (e) {
@@ -1898,11 +2055,13 @@
     function backToAdminSupportUsers() {
       adminSupportSelectedUser = null;
       adminSupportSelectedTicketId = null;
+      stopSupportThreadPoll();
       render();
     }
     function backToAdminSupportUserTickets() {
       adminSupportSelectedTicketId = null;
       supportReplyTarget = null;
+      stopSupportThreadPoll();
       render();
     }
     function openAdminSupportChat(ticketId) {
@@ -1910,29 +2069,34 @@
       supportReplyTarget = null;
       render();
       loadSupportMessages(ticketId);
+      startSupportThreadPoll(ticketId);
     }
     async function submitAdminSupportReply() {
       if (supportSendingMessage) return;
       const ticketId = adminSupportSelectedTicketId;
-      const body = document.getElementById('sup-admin-message')?.value.trim() || '';
+      const textarea = document.getElementById('sup-admin-message');
+      const body = textarea?.value.trim() || '';
       if (!body) return alert(tr("Javob matnini yozing.", "Напишите текст ответа."));
+      // POLISH ROUND (task 6, optimistik yuborish) — submitSupportComposer()
+      // bilan bir xil naqsh, admin tomon uchun.
+      const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const replyToId = supportReplyTarget?.id || null;
       supportSendingMessage = true;
-      render();
-      showActionToast(tr("⏳ Yuborilmoqda...", "⏳ Отправка..."), 'saving');
+      supportMessages = [...supportMessages, { id: tempId, ticketId, sender: 'ADMIN', body, createdAt: new Date().toISOString(), replyToMessageId: replyToId, readAt: null, pending: true }];
+      supportReplyTarget = null;
+      if (textarea) textarea.value = '';
+      patchSupportThread({ forceBottom: true });
       try {
-        const data = await callApi('send_support_message', { ticketId, body, replyToMessageId: supportReplyTarget?.id || null });
-        supportMessages = [...supportMessages, data.message];
+        const data = await callApi('send_support_message', { ticketId, body, replyToMessageId: replyToId });
+        supportMessages = supportMessages.map((m) => (m.id === tempId ? data.message : m));
         const idx = adminSupportTickets.findIndex(t => t.id === ticketId);
         if (idx >= 0) adminSupportTickets[idx] = { ...adminSupportTickets[idx], ...data.ticket, lastMessage: { sender: data.message.sender, body: data.message.body, createdAt: data.message.createdAt } };
-        supportReplyTarget = null;
-        showActionToast(tr("✅ Javob yuborildi", "✅ Ответ отправлен"), 'success', 1500);
       } catch (e) {
         console.error(e);
-        showActionToast(tr("❌ Yuborilmadi", "❌ Не отправлено"), 'error', 2000);
-        alert(tr("Xatolik: ", "Ошибка: ") + (e.message || e));
+        supportMessages = supportMessages.map((m) => (m.id === tempId ? { ...m, pending: false, failed: true } : m));
       } finally {
         supportSendingMessage = false;
-        render();
+        patchSupportThread({ forceBottom: true });
       }
     }
     function setSupportReplyTarget(id) {
@@ -1949,18 +2113,32 @@
     // ko'rinishlari shu bitta funksiyani ishlatadi (ikkinchi tizim yo'q).
     // viewerIsAdmin — hozirgi ko'ruvchi kim ekaniga qarab o'z xabarlari
     // o'ngga (mine/blue), boshqa tomonniki chapga (theirs/gray) chiqadi.
+    // POLISH ROUND (task 5-6): Shop App'ning umumiy .fc-* dizayn tizimidan
+    // (fc-card/fc-btn uslubidagi radius/spacing/rang o'zgaruvchilari)
+    // foydalanadi — eski .ustore-msg-* qattiq hex ranglar butunlay olib
+    // tashlandi. sender==='SYSTEM' (task 7, avto-yopish yozuvi) markazda,
+    // bubble'siz, neytral eslatma sifatida chiqadi.
     function renderSupportThreadHtml(messages, viewerIsAdmin) {
       const byId = new Map(messages.map(m => [m.id, m]));
       return messages.map(m => {
+        if (m.sender === 'SYSTEM') {
+          return `<div class="fc-chat-system-note">${escapeHtml(m.body)}</div>`;
+        }
         const mine = viewerIsAdmin ? m.sender === 'ADMIN' : m.sender === 'USER';
         const parent = m.replyToMessageId ? byId.get(m.replyToMessageId) : null;
+        const isPending = !!m.pending;
+        const isFailed = !!m.failed;
         return `
-          <div class="ustore-msg-row ${mine ? 'mine' : ''}">
-            <div class="ustore-msg-bubble ${mine ? 'mine' : 'theirs'}">
-              ${parent ? `<div class="ustore-msg-reply-quote">${escapeHtml(parent.body.slice(0, 80))}</div>` : ''}
-              <div>${escapeHtml(m.body)}</div>
-              <div class="ustore-msg-time">${new Date(m.createdAt).toLocaleString()}</div>
-              <span class="ustore-msg-reply-btn" onclick="setSupportReplyTarget(${m.id})">↩ ${tr('Javob','Ответ')}</span>
+          <div class="fc-chat-row ${mine ? 'is-mine' : ''}">
+            <div class="fc-chat-bubble ${mine ? 'is-mine' : 'is-theirs'} ${isFailed ? 'is-failed' : ''}">
+              ${parent ? `<div class="fc-chat-reply-quote">${escapeHtml(parent.body.slice(0, 80))}</div>` : ''}
+              <div class="fc-chat-text">${escapeHtml(m.body)}</div>
+              <div class="fc-chat-meta">
+                <span class="fc-chat-time">${isPending ? tr('Yuborilmoqda...', 'Отправка...') : isFailed ? tr('Yuborilmadi', 'Не отправлено') : new Date(m.createdAt).toLocaleString()}</span>
+                ${mine && !isPending && !isFailed ? `<span class="fc-chat-ticks ${m.readAt ? 'is-read' : ''}">${m.readAt ? '✓✓' : '✓'}</span>` : ''}
+              </div>
+              ${isFailed ? `<button type="button" class="fc-chat-retry-btn" onclick="retrySupportMessage('${m.id}')">${tr('Qayta yuborish', 'Отправить снова')}</button>` : ''}
+              ${(!isPending && !isFailed) ? `<span class="fc-chat-reply-btn" onclick="setSupportReplyTarget(${m.id})">↩ ${tr('Javob','Ответ')}</span>` : ''}
             </div>
           </div>`;
       }).join('');
@@ -1968,15 +2146,74 @@
     function renderSupportReplyBarHtml() {
       if (!supportReplyTarget) return '';
       return `
-        <div class="ustore-reply-bar">
+        <div class="fc-chat-reply-bar">
           <span>↩ ${tr('Javob','Ответ')}: ${escapeHtml(String(supportReplyTarget.body || '').slice(0, 60))}</span>
           <button onclick="clearSupportReplyTarget()" class="font-bold">✕</button>
         </div>`;
     }
 
+    // ---- Task 5-6: targeted thread patching (no full page re-render — so
+    // a background poll/optimistic-send never yanks scroll away from a user
+    // reading older messages), + the dedicated short poll itself. ----
+    function currentSupportViewerIsAdmin() { return isAdminMode && isUserAnAdmin; }
+    function currentOpenSupportTicketId() { return currentSupportViewerIsAdmin() ? adminSupportSelectedTicketId : openSupportTicketId; }
+    // Patches ONLY the message-list DOM node in place. Auto-scrolls to the
+    // new bottom ONLY if the reader was already near the bottom (or this is
+    // their own just-sent message) — otherwise leaves their scroll position
+    // untouched and shows a small "Yangi xabarlar" indicator instead.
+    function patchSupportThread(opts) {
+      const el = document.getElementById('support-thread-list');
+      if (!el) return; // thread list not currently on screen — nothing to patch
+      const forceBottom = !!(opts && opts.forceBottom);
+      const wasNearBottom = forceBottom || (el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+      el.innerHTML = renderSupportThreadHtml(supportMessages, currentSupportViewerIsAdmin());
+      safeCreateIcons();
+      if (wasNearBottom) {
+        el.scrollTop = el.scrollHeight;
+        supportThreadHasUnseenBelow = false;
+      } else if (opts && opts.newIncoming) {
+        supportThreadHasUnseenBelow = true;
+      }
+      const indicator = document.getElementById('support-new-messages-indicator');
+      if (indicator) indicator.classList.toggle('hidden', !supportThreadHasUnseenBelow);
+    }
+    function scrollSupportThreadToBottom() {
+      const el = document.getElementById('support-thread-list');
+      if (el) el.scrollTop = el.scrollHeight;
+      supportThreadHasUnseenBelow = false;
+      const indicator = document.getElementById('support-new-messages-indicator');
+      if (indicator) indicator.classList.add('hidden');
+    }
+    function stopSupportThreadPoll() {
+      if (supportThreadPollTimer) { clearInterval(supportThreadPollTimer); supportThreadPollTimer = null; }
+    }
+    function startSupportThreadPoll(ticketId) {
+      stopSupportThreadPoll();
+      supportThreadPollTimer = setInterval(async () => {
+        if (document.visibilityState !== 'visible') return;
+        if (currentOpenSupportTicketId() !== ticketId) { stopSupportThreadPoll(); return; }
+        try {
+          const data = await callApi('get_support_messages', { ticketId });
+          const incoming = data.messages || [];
+          // Not-yet-confirmed optimistic entries (pending/failed) must
+          // survive a poll tick — they don't exist server-side yet.
+          const stillLocal = supportMessages.filter(m => m.pending || m.failed);
+          const merged = [...incoming, ...stillLocal];
+          const sameShape = merged.length === supportMessages.length
+            && merged.every((m, i) => m.id === supportMessages[i]?.id && m.readAt === supportMessages[i]?.readAt);
+          if (!sameShape) {
+            const hadNewFromOther = incoming.length > supportMessages.filter((m) => !m.pending && !m.failed).length;
+            supportMessages = merged;
+            patchSupportThread({ newIncoming: hadNewFromOther });
+          }
+        } catch (e) { console.warn('[support:POLL_FAILED]', e); }
+      }, 4000);
+    }
+
     function switchTab(tab) {
       currentTab = tab;
       activePage = null; // istalgan bottom-nav tugmasi bosilsa ochiq page (Support va h.k.) yopiladi
+      stopSupportThreadPoll(); // task 6: ochiq bo'lgan support thread poll'i bottom-nav bosilganda ham to'xtashi kerak
       // 32-36-band: Support/Profile navigatsiya bugi — istalgan ochiq MODAL ham
       // (activePopupModal) bottom-nav bosilganda albatta yopiladi. Eski tizimda
       // Support modal edi va switchTab uni tozalamas edi, shuning uchun Profilga
@@ -2794,9 +3031,16 @@
       // shopDisplayName() O'CHIRILMADI — u ilovaning boshqa ko'p joyida
       // (buyurtma tasdig'i, xabarlar, sozlamalar) ishlatiladi.
       const logoEl = document.getElementById('header-shop-logo');
-      if (logoEl) {
-        if (shopLogoUrl) { logoEl.src = shopLogoUrl; logoEl.classList.remove('hidden'); }
-        else { logoEl.classList.add('hidden'); logoEl.removeAttribute('src'); }
+      const wordmarkEl = document.getElementById('header-shop-logo-wordmark');
+      if (shopLogoType === 'WORDMARK' && shopLogoWordmark?.text) {
+        if (logoEl) { logoEl.classList.add('hidden'); logoEl.removeAttribute('src'); }
+        if (wordmarkEl) { wordmarkEl.innerHTML = renderWordmarkHtml(shopLogoWordmark.presetId, shopLogoWordmark.text, {}); wordmarkEl.classList.remove('hidden'); }
+      } else {
+        if (wordmarkEl) { wordmarkEl.classList.add('hidden'); wordmarkEl.innerHTML = ''; }
+        if (logoEl) {
+          if (shopLogoUrl) { logoEl.src = shopLogoUrl; logoEl.classList.remove('hidden'); }
+          else { logoEl.classList.add('hidden'); logoEl.removeAttribute('src'); }
+        }
       }
     }
 
@@ -3063,6 +3307,7 @@
 
     function closePage() {
       activePage = null;
+      stopSupportThreadPoll(); // task 6: any open support thread's poll must not keep running off-screen
       render();
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('text-blue-600', 'font-bold'));
       const activeNav = document.getElementById(`nav-${currentTab}`);
@@ -3072,6 +3317,7 @@
     function goHomePage() {
       activePage = null;
       currentTab = 'home';
+      stopSupportThreadPoll();
       render();
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('text-blue-600', 'font-bold'));
       const activeNav = document.getElementById('nav-home');
@@ -4000,16 +4246,19 @@
               <h3 class="font-bold text-sm text-gray-900">💬 ${openTicket.orderId ? `#${openTicket.orderId}` : tr('Murojaat', 'Обращение')}</h3>
               <span class="fc-badge ${openTicket.status === 'CLOSED' ? 'fc-badge-muted' : (openTicket.status === 'OPEN' ? 'fc-badge-warning' : 'fc-badge-success')}">${openTicket.status === 'CLOSED' ? tr('Tugallangan', 'Завершено') : (openTicket.status === 'OPEN' ? tr('Yangi', 'Новое') : tr('Javob berilgan', 'Отвечено'))}</span>
             </div>
-            <div>
-              ${supportMessagesLoading ? `<p class="text-center text-gray-400 py-2">${tr('Yuklanmoqda...', 'Загрузка...')}</p>` : renderSupportThreadHtml(supportMessages, false)}
+            <div class="fc-chat-thread-wrap">
+              <div id="support-thread-list" class="fc-chat-thread-list">
+                ${supportMessagesLoading ? `<p class="text-center text-gray-400 py-2">${tr('Yuklanmoqda...', 'Загрузка...')}</p>` : renderSupportThreadHtml(supportMessages, false)}
+              </div>
+              <button type="button" id="support-new-messages-indicator" class="fc-chat-new-indicator hidden" onclick="scrollSupportThreadToBottom()">${tr('Yangi xabarlar ↓', 'Новые сообщения ↓')}</button>
             </div>
             ${openTicket.status !== 'CLOSED' ? `
               ${renderSupportReplyBarHtml()}
-              <textarea id="sup-chat-message" rows="2" placeholder="${tr('Xabar yozing...', 'Напишите сообщение...')}" class="w-full p-2.5 border rounded-xl"></textarea>
-              <div class="flex gap-2">
-                <button onclick="submitSupportComposer()" ${supportSendingMessage ? 'disabled' : ''} class="fc-btn fc-btn-primary flex-1">${supportSendingMessage ? tr('Yuborilmoqda...', 'Отправка...') : '✅ ' + tr('Yuborish', 'Отправить')}</button>
-                <button onclick="closeSupportTicket(${openTicket.id})" class="fc-btn fc-btn-secondary">${tr('Tugatish', 'Завершить')}</button>
+              <div class="fc-chat-composer">
+                <textarea id="sup-chat-message" rows="1" placeholder="${tr('Xabar yozing...', 'Напишите сообщение...')}" class="fc-chat-composer-input" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitSupportComposer();}"></textarea>
+                <button onclick="submitSupportComposer()" ${supportSendingMessage ? 'disabled' : ''} class="fc-chat-send-btn" aria-label="${tr('Yuborish', 'Отправить')}"><i data-lucide="send" class="w-4 h-4"></i></button>
               </div>
+              <button onclick="closeSupportTicket(${openTicket.id})" class="fc-btn fc-btn-secondary w-full">${tr('Tugatish', 'Завершить')}</button>
             ` : `<p class="text-center text-gray-400 py-2">${tr('Bu murojaat tugallangan.', 'Это обращение завершено.')}</p>`}
           ` : `
             ${supportTicketOrderId ? `<p class="text-[10px] text-gray-500">${tr('Buyurtma', 'Заказ')} #${supportTicketOrderId} ${tr('bo‘yicha murojaat', 'по этому заказу')}</p>` : ''}
@@ -4065,13 +4314,18 @@
                 <h3 class="font-bold text-sm text-gray-900">${openTicket.orderId ? `#${openTicket.orderId} · ` : ''}${escapeHtml(supportUserCardInfo(openTicket.tgId).name)}</h3>
                 <span class="fc-badge ${openTicket.status === 'CLOSED' ? 'fc-badge-muted' : (openTicket.status === 'OPEN' ? 'fc-badge-warning' : 'fc-badge-success')}">${openTicket.status === 'CLOSED' ? tr('Tugallangan', 'Завершено') : (openTicket.status === 'OPEN' ? tr('Yangi', 'Новое') : tr('Javob berilgan', 'Отвечено'))}</span>
               </div>
-              <div>
-                ${supportMessagesLoading ? `<p class="text-center text-gray-400 py-2">${tr('Yuklanmoqda...', 'Загрузка...')}</p>` : renderSupportThreadHtml(supportMessages, true)}
+              <div class="fc-chat-thread-wrap">
+                <div id="support-thread-list" class="fc-chat-thread-list">
+                  ${supportMessagesLoading ? `<p class="text-center text-gray-400 py-2">${tr('Yuklanmoqda...', 'Загрузка...')}</p>` : renderSupportThreadHtml(supportMessages, true)}
+                </div>
+                <button type="button" id="support-new-messages-indicator" class="fc-chat-new-indicator hidden" onclick="scrollSupportThreadToBottom()">${tr('Yangi xabarlar ↓', 'Новые сообщения ↓')}</button>
               </div>
               ${openTicket.status !== 'CLOSED' ? `
                 ${renderSupportReplyBarHtml()}
-                <textarea id="sup-admin-message" rows="2" placeholder="${tr('Javob yozing...', 'Напишите ответ...')}" class="w-full p-2.5 border rounded-xl"></textarea>
-                <button onclick="submitAdminSupportReply()" ${supportSendingMessage ? 'disabled' : ''} class="fc-btn fc-btn-primary w-full">${supportSendingMessage ? tr('Yuborilmoqda...', 'Отправка...') : '✅ ' + tr('Yuborish', 'Отправить')}</button>
+                <div class="fc-chat-composer">
+                  <textarea id="sup-admin-message" rows="1" placeholder="${tr('Javob yozing...', 'Напишите ответ...')}" class="fc-chat-composer-input" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submitAdminSupportReply();}"></textarea>
+                  <button onclick="submitAdminSupportReply()" ${supportSendingMessage ? 'disabled' : ''} class="fc-chat-send-btn" aria-label="${tr('Yuborish', 'Отправить')}"><i data-lucide="send" class="w-4 h-4"></i></button>
+                </div>
               ` : `<p class="text-center text-gray-400 py-2">${tr('Mijoz bu murojaatni tugatgan.', 'Клиент завершил это обращение.')}</p>`}
             </div>
           ` : adminSupportSelectedUser ? `
@@ -4242,15 +4496,6 @@
           ${billzAccessGranted ? `
             <button type="button" onclick="openBillzSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">🔳 Billz</span><span>›</span></button>
           ` : ''}
-          ${clickAccessGranted ? `
-            <button type="button" onclick="openClickSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">💳 Click</span><span>›</span></button>
-          ` : ''}
-          ${paymeAccessGranted ? `
-            <button type="button" onclick="openPaymeSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">💳 Payme</span><span>›</span></button>
-          ` : ''}
-          ${uzumAccessGranted ? `
-            <button type="button" onclick="openUzumSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">💳 Uzum</span><span>›</span></button>
-          ` : ''}
         </div>
       `;
       renderPageShell(container, tr("Do'kon sozlamalari", 'Настройки магазина'), body);
@@ -4398,6 +4643,7 @@
       const body = `
         <div class="space-y-3 text-xs">
           <div id="fulfillment-panel">${renderFulfillmentPaymentsPanel()}</div>
+          ${renderOnlineAcquiringIntegrationsHtml()}
           <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
             <button onclick="saveFulfillmentSettings()" class="bg-blue-600 text-white font-black py-3 rounded-xl">✅ ${tr('Saqlash','Сохранить')}</button>
             <button onclick="closeFulfillmentSettingsPage()" class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl">${tr('Bekor qilish','Отмена')}</button>
@@ -4405,6 +4651,34 @@
         </div>
       `;
       renderPageShell(container, tr("To'lov parametrlari", "Параметры оплаты"), body, { onBack: 'closeFulfillmentSettingsPage()' });
+    }
+
+    // POLISH ROUND (task 3): Click/Payme/Uzum onlayn ekvayring sozlamalari
+    // "Do'kon sozlamalari"dan shu yerga ko'chirildi — backend/webhook/
+    // kredensial mantig'i (openClickSettings() va h.k., click_connect/
+    // payme_connect/uzum_connect actionlari) BUTUNLAY o'zgarishsiz, faqat
+    // kirish nuqtasi (tugma) qaysi sahifada ekanligi o'zgardi.
+    function renderOnlineAcquiringIntegrationsHtml() {
+      const rows = [
+        clickAccessGranted ? { icon: '💳', name: 'Click', onclick: 'openClickSettings()' } : null,
+        paymeAccessGranted ? { icon: '💳', name: 'Payme', onclick: 'openPaymeSettings()' } : null,
+        uzumAccessGranted ? { icon: '💳', name: 'Uzum', onclick: 'openUzumSettings()' } : null,
+      ].filter(Boolean);
+      if (!rows.length) return '';
+      return `
+        <div class="fc-card space-y-1.5">
+          <p class="font-bold text-gray-600 mb-0.5">${tr('Onlayn ekvayring', 'Онлайн-эквайринг')}</p>
+          <div class="fc-acquiring-integration-list">
+            ${rows.map((r) => `
+              <button type="button" onclick="${r.onclick}" class="fc-acquiring-integration-card">
+                <span class="fc-acquiring-integration-icon">${r.icon}</span>
+                <span class="fc-acquiring-integration-copy"><b>${r.name}</b><small>${tr('Sozlash / ulash', 'Настроить / подключить')}</small></span>
+                <span class="fc-acquiring-integration-chevron">›</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
     }
 
     // 1. HOME TAB
@@ -12438,17 +12712,24 @@
       render();
     }
 
-    async function saveShopLogoFromPicker(event) {
+    // POLISH ROUND (logo 4:1): fayl tanlangach endi to'g'ridan-to'g'ri
+    // compress/upload qilinmaydi — avval MAJBURIY 4:1 crop bosqichi
+    // (openLogoCropStep) ochiladi. Compress/upload/draft-saqlash mantig'i
+    // (pastdagi processCroppedLogoFile) O'ZGARISHSIZ qoladi, faqat endi
+    // "tanlangan original file" o'rniga "crop qilingan file" bilan
+    // chaqiriladi.
+    function saveShopLogoFromPicker(event) {
       const file = event.target.files?.[0];
+      event.target.value = '';
       if (!file) return;
       const editingInsideShopInfo = activePopupModal === 'SHOP_INFO';
       imageIO.logStage('FILE_SELECTED', { mime: file.type, size: file.size });
       try { validatePickedImageFile(file); }
-      catch (e) {
-        event.target.value = '';
-        return alert(pickedImageErrorMessage(e, file));
-      }
+      catch (e) { return alert(pickedImageErrorMessage(e, file)); }
+      openLogoCropStep(file, editingInsideShopInfo);
+    }
 
+    async function processCroppedLogoFile(file, editingInsideShopInfo) {
       if (editingInsideShopInfo) setShopInfoLogoPreparing(true);
       let prepared;
       try {
@@ -12461,7 +12742,6 @@
           shopLogoPreparing = false;
           updateShopInfoLogoPreview(shopInfoLogoPreviewUrl());
         }
-        event.target.value = '';
         return alert(tr("Logotip faylini o'qib bo'lmadi. Qaytadan tanlab ko'ring.", "Не удалось прочитать файл логотипа. Попробуйте выбрать заново."));
       }
 
@@ -12473,7 +12753,6 @@
         shopLogoPreparing = false;
         updateShopInfoLogoPreview(previewUrl);
         showActionToast(tr('Logo tanlandi — Saqlashni bosing', 'Логотип выбран — нажмите Сохранить'), 'success', 1500);
-        event.target.value = '';
         return;
       }
 
@@ -12497,7 +12776,277 @@
         alert(tr("❌ Logotipni saqlab bo'lmadi: ", "❌ Не удалось сохранить логотип: ") + (e.message || e));
       } finally {
         URL.revokeObjectURL(localPreview);
-        event.target.value = '';
+      }
+    }
+
+    // ============ LOGO 4:1 CROP ============
+    // Majburiy 4:1 crop — fayl tanlangandan keyin, compress/upload'dan OLDIN.
+    // Canvas'ga chizilgan rasm har doim butun 4:1 freymni "cover" qiladi
+    // (bo'sh joy/deformatsiya yo'q) — pan (drag) va zoom (wheel/pinch) shu
+    // cover holatini saqlagan holda ishlaydi.
+    async function openLogoCropStep(file, editingInsideShopInfo) {
+      logoCropFile = file;
+      logoCropEditingInsideShopInfo = editingInsideShopInfo;
+      activePopupModal = 'LOGO_CROP';
+      render();
+      try {
+        logoCropBitmap = await createImageBitmap(file);
+      } catch (e) {
+        // Ba'zi eski WebView'larda createImageBitmap ishlamasligi mumkin —
+        // <img> orqali fallback (captureAndPrepareImageV2'dagi bilan bir xil
+        // ehtiyotkorlik darajasi).
+        try {
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('read_failed'));
+            reader.readAsDataURL(file);
+          });
+          const img = new Image();
+          await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error('decode_failed')); img.src = dataUrl; });
+          logoCropBitmap = img;
+        } catch (e2) {
+          console.error('[logo-crop:DECODE_FAILED]', e2);
+          activePopupModal = editingInsideShopInfo ? 'SHOP_INFO' : null;
+          logoCropFile = null;
+          render();
+          return alert(tr("Rasmni o'qib bo'lmadi. Boshqa rasm tanlab ko'ring.", "Не удалось прочитать изображение. Попробуйте выбрать другое."));
+        }
+      }
+      resetLogoCropTransform();
+      drawLogoCropCanvas();
+    }
+
+    function logoCropImageSize() {
+      const bm = logoCropBitmap;
+      return { w: bm?.width || bm?.naturalWidth || 1, h: bm?.height || bm?.naturalHeight || 1 };
+    }
+
+    function resetLogoCropTransform() {
+      const { w, h } = logoCropImageSize();
+      // "cover" — rasm ikkala o'lchamda ham freymni to'liq qoplashi uchun
+      // eng kichik scale (bo'sh joy qolmasin, deformatsiya bo'lmasin).
+      const cover = Math.max(LOGO_CROP_CANVAS_W / w, LOGO_CROP_CANVAS_H / h);
+      logoCropMinScale = cover;
+      logoCropScale = cover;
+      logoCropOffsetX = (LOGO_CROP_CANVAS_W - w * cover) / 2;
+      logoCropOffsetY = (LOGO_CROP_CANVAS_H - h * cover) / 2;
+    }
+
+    function clampLogoCropOffset() {
+      const { w, h } = logoCropImageSize();
+      const scaledW = w * logoCropScale, scaledH = h * logoCropScale;
+      const minX = LOGO_CROP_CANVAS_W - scaledW, maxX = 0;
+      const minY = LOGO_CROP_CANVAS_H - scaledH, maxY = 0;
+      logoCropOffsetX = Math.min(maxX, Math.max(minX, logoCropOffsetX));
+      logoCropOffsetY = Math.min(maxY, Math.max(minY, logoCropOffsetY));
+    }
+
+    function drawLogoCropCanvas() {
+      const canvas = document.getElementById('logo-crop-canvas');
+      if (!canvas || !logoCropBitmap) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, LOGO_CROP_CANVAS_W, LOGO_CROP_CANVAS_H);
+      const { w, h } = logoCropImageSize();
+      ctx.drawImage(logoCropBitmap, logoCropOffsetX, logoCropOffsetY, w * logoCropScale, h * logoCropScale);
+    }
+
+    function logoCropCanvasPoint(clientX, clientY) {
+      const canvas = document.getElementById('logo-crop-canvas');
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left) * (LOGO_CROP_CANVAS_W / rect.width),
+        y: (clientY - rect.top) * (LOGO_CROP_CANVAS_H / rect.height),
+      };
+    }
+
+    function onLogoCropPointerDown(event) {
+      const canvas = document.getElementById('logo-crop-canvas');
+      canvas?.setPointerCapture?.(event.pointerId);
+      logoCropPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (logoCropPointers.size === 1) {
+        logoCropDragStart = { x: event.clientX, y: event.clientY, offsetX: logoCropOffsetX, offsetY: logoCropOffsetY };
+      } else if (logoCropPointers.size === 2) {
+        const pts = Array.from(logoCropPointers.values());
+        logoCropPinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+        logoCropPinchStartScale = logoCropScale;
+        logoCropDragStart = null;
+      }
+    }
+    function onLogoCropPointerMove(event) {
+      if (!logoCropPointers.has(event.pointerId)) return;
+      logoCropPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (logoCropPointers.size === 2) {
+        const pts = Array.from(logoCropPointers.values());
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+        const nextScale = Math.min(logoCropMinScale * 4, Math.max(logoCropMinScale, logoCropPinchStartScale * (dist / logoCropPinchStartDist)));
+        applyLogoCropScale(nextScale);
+      } else if (logoCropPointers.size === 1 && logoCropDragStart) {
+        const canvas = document.getElementById('logo-crop-canvas');
+        const rect = canvas?.getBoundingClientRect();
+        const scaleX = rect ? (LOGO_CROP_CANVAS_W / rect.width) : 1;
+        const scaleY = rect ? (LOGO_CROP_CANVAS_H / rect.height) : 1;
+        logoCropOffsetX = logoCropDragStart.offsetX + (event.clientX - logoCropDragStart.x) * scaleX;
+        logoCropOffsetY = logoCropDragStart.offsetY + (event.clientY - logoCropDragStart.y) * scaleY;
+        clampLogoCropOffset();
+      } else return;
+      drawLogoCropCanvas();
+    }
+    function onLogoCropPointerUp(event) {
+      logoCropPointers.delete(event.pointerId);
+      if (logoCropPointers.size < 2) logoCropPinchStartDist = 0;
+      if (logoCropPointers.size === 1) {
+        const remaining = Array.from(logoCropPointers.entries())[0];
+        logoCropDragStart = { x: remaining[1].x, y: remaining[1].y, offsetX: logoCropOffsetX, offsetY: logoCropOffsetY };
+      } else {
+        logoCropDragStart = null;
+      }
+    }
+    // Desktop sichqoncha g'ildiragi bilan zoom.
+    function onLogoCropWheel(event) {
+      event.preventDefault();
+      const delta = event.deltaY < 0 ? 1.08 : 1 / 1.08;
+      applyLogoCropScale(logoCropScale * delta);
+      drawLogoCropCanvas();
+    }
+    function applyLogoCropScale(nextScale) {
+      const clamped = Math.min(logoCropMinScale * 4, Math.max(logoCropMinScale, nextScale));
+      // Markazga nisbatan zoom — freym markazidagi rasm nuqtasi joyida qolsin.
+      const cx = LOGO_CROP_CANVAS_W / 2, cy = LOGO_CROP_CANVAS_H / 2;
+      const imgX = (cx - logoCropOffsetX) / logoCropScale;
+      const imgY = (cy - logoCropOffsetY) / logoCropScale;
+      logoCropScale = clamped;
+      logoCropOffsetX = cx - imgX * logoCropScale;
+      logoCropOffsetY = cy - imgY * logoCropScale;
+      clampLogoCropOffset();
+    }
+
+    function recropLogo() {
+      resetLogoCropTransform();
+      drawLogoCropCanvas();
+    }
+    function pickDifferentLogoImage() {
+      const editingInsideShopInfo = logoCropEditingInsideShopInfo;
+      closeLogoCropStep(editingInsideShopInfo);
+      // Mavjud fayl-tanlash oqimini qayta ishlatamiz.
+      openImagePickerSheet('shop-logo-input', 'shop-logo-input-files');
+    }
+    function closeLogoCropStep(returnToShopInfo) {
+      logoCropFile = null;
+      logoCropBitmap = null;
+      logoCropPointers.clear();
+      logoCropDragStart = null;
+      activePopupModal = returnToShopInfo ? 'SHOP_INFO' : null;
+      render();
+    }
+    function cancelLogoCrop() {
+      closeLogoCropStep(logoCropEditingInsideShopInfo);
+    }
+    async function confirmLogoCrop() {
+      const canvas = document.getElementById('logo-crop-canvas');
+      if (!canvas || !logoCropFile) return;
+      const editingInsideShopInfo = logoCropEditingInsideShopInfo;
+      const originalFile = logoCropFile;
+      const mimeType = originalFile.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, mimeType, 0.92));
+      closeLogoCropStep(editingInsideShopInfo);
+      if (!blob) return alert(tr("Rasmni tayyorlab bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось подготовить изображение. Попробуйте снова."));
+      const ext = mimeType === 'image/png' ? 'png' : 'jpg';
+      const croppedFile = new File([blob], `logo-4x1.${ext}`, { type: mimeType });
+      await processCroppedLogoFile(croppedFile, editingInsideShopInfo);
+    }
+
+    // ============ "NOMDAN LOGO YARATISH" (WORDMARK) ============
+    // Yangi shrift fayli ULANMAYDI — loyihada allaqachon bor ikkita oila
+    // (ui-sans-serif/system-ui va ui-monospace) ning og'irlik/harf oralig'i/
+    // registr kombinatsiyasi orqali farqlanadigan 6 ta professional variant.
+    // Har variant CSS bilan LIVE render qilinadi — hech qanday rasm
+    // yaratilmaydi/yuklanmaydi, faqat {presetId, text} saqlanadi.
+    const WORDMARK_PRESETS = [
+      { id: 'bold-tight', label: () => tr('Qalin, ixcham', 'Жирный, плотный'), family: 'sans', weight: 900, spacing: '-0.02em', transform: 'uppercase', style: 'normal' },
+      { id: 'light-wide', label: () => tr('Yengil, keng', 'Лёгкий, широкий'), family: 'sans', weight: 500, spacing: '0.2em', transform: 'uppercase', style: 'normal' },
+      { id: 'mono-spaced', label: () => tr('Monospace, keng', 'Моно, широкий'), family: 'mono', weight: 700, spacing: '0.14em', transform: 'uppercase', style: 'normal' },
+      { id: 'mono-lower', label: () => tr('Monospace, kichik harf', 'Моно, строчные'), family: 'mono', weight: 600, spacing: '-0.01em', transform: 'lowercase', style: 'normal' },
+      { id: 'sans-italic', label: () => tr('Qiyshiq, yumshoq', 'Курсив, мягкий'), family: 'sans', weight: 700, spacing: '0em', transform: 'none', style: 'italic' },
+      { id: 'monogram-badge', label: () => tr('Belgi + nom', 'Значок + название'), family: 'sans', weight: 800, spacing: '0.01em', transform: 'none', style: 'normal', monogram: true },
+    ];
+    function wordmarkPresetById(id) { return WORDMARK_PRESETS.find((p) => p.id === id) || WORDMARK_PRESETS[0]; }
+    function wordmarkFontFamily(family) {
+      return family === 'mono' ? 'var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, monospace)' : 'var(--default-font-family, ui-sans-serif, system-ui, sans-serif)';
+    }
+    function renderWordmarkHtml(presetId, text, opts) {
+      const p = wordmarkPresetById(presetId);
+      const safeText = escapeHtml(text || '');
+      const cls = (opts && opts.className) || '';
+      const textStyle = `font-family:${wordmarkFontFamily(p.family)};font-weight:${p.weight};letter-spacing:${p.spacing};text-transform:${p.transform};font-style:${p.style};`;
+      if (p.monogram) {
+        const initial = escapeHtml(String(text || '?').trim().charAt(0).toUpperCase() || '?');
+        return `<span class="fc-wordmark ${cls}"><span class="fc-wordmark-badge">${initial}</span><span class="fc-wordmark-text" style="${textStyle}">${safeText}</span></span>`;
+      }
+      return `<span class="fc-wordmark ${cls}"><span class="fc-wordmark-text" style="${textStyle}">${safeText}</span></span>`;
+    }
+    function currentShopNameForWordmark() {
+      return String((shopInfoDraft || shopContact)?.name || shopContact?.name || '').trim();
+    }
+    function openWordmarkGenerator() {
+      // shopInfoUrl'ga o'tishdagi bilan bir xil naqsh — hali saqlanmagan
+      // forma qiymatlari (masalan yangi kiritilgan do'kon nomi) draftga
+      // olinadi, orqaga qaytganda yo'qolmasin.
+      if (activePopupModal === 'SHOP_INFO') shopInfoDraft = readShopContactFormValues();
+      wordmarkDraftText = currentShopNameForWordmark() || (shopLogoWordmark?.text || '');
+      wordmarkDraftPresetId = shopLogoWordmark?.presetId || WORDMARK_PRESETS[0].id;
+      activePopupModal = 'WORDMARK_GENERATOR';
+      render();
+    }
+    function closeWordmarkGenerator() {
+      activePopupModal = shopInfoDraft ? 'SHOP_INFO' : null;
+      render();
+    }
+    function setWordmarkDraftText(value) {
+      wordmarkDraftText = String(value || '').slice(0, 40);
+      rerenderWordmarkPreview();
+    }
+    function selectWordmarkPreset(presetId) {
+      wordmarkDraftPresetId = presetId;
+      rerenderWordmarkPreview();
+    }
+    function rerenderWordmarkPreview() {
+      const el = document.getElementById('wordmark-header-preview');
+      if (el) el.innerHTML = renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, {});
+      document.querySelectorAll('.fc-wordmark-preset-card').forEach((card) => {
+        card.classList.toggle('is-selected', card.dataset.presetId === wordmarkDraftPresetId);
+      });
+      document.querySelectorAll('.fc-wordmark-slot').forEach((slot) => {
+        slot.innerHTML = renderWordmarkHtml(slot.dataset.presetSlot, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' });
+      });
+    }
+    async function saveWordmarkLogo() {
+      const text = wordmarkDraftText.trim();
+      if (!text) return alert(tr("Do'kon nomini kiriting.", "Введите название магазина."));
+      try {
+        await callApi('set_shop_logo', { logoType: 'WORDMARK', wordmark: { presetId: wordmarkDraftPresetId, text } });
+        shopLogoType = 'WORDMARK';
+        shopLogoWordmark = { presetId: wordmarkDraftPresetId, text };
+        activePopupModal = shopInfoDraft ? 'SHOP_INFO' : null;
+        render();
+        showActionToast(tr('✅ Logo saqlandi', '✅ Логотип сохранён'), 'success', 1400);
+      } catch (e) {
+        console.error(e);
+        alert(tr("❌ Logotipni saqlab bo'lmadi: ", "❌ Не удалось сохранить логотип: ") + (e.message || e));
+      }
+    }
+    // Rasm-logoga qaytish — mavjud logo_url saqlanib qolgani uchun (backend
+    // WORDMARK tanlanganda logo_url'ni o'chirmaydi) shunchaki logoType'ni
+    // qaytarish kifoya, qayta yuklash shart emas.
+    async function switchLogoBackToImage() {
+      try {
+        await callApi('set_shop_logo', { logoType: 'IMAGE', logoUrl: shopLogoUrl });
+        shopLogoType = 'IMAGE';
+        render();
+        showActionToast(tr('✅ Rasm-logo faollashtirildi', '✅ Логотип-изображение активирован'), 'success', 1400);
+      } catch (e) {
+        console.error(e);
+        alert(tr("❌ Amalga oshmadi: ", "❌ Не удалось: ") + (e.message || e));
       }
     }
 
@@ -13335,15 +13884,19 @@
 
                   <div class="fc-shop-logo-editor">
                     <div id="shop-info-logo-preview" class="fc-shop-logo-preview">
-                      ${logoPreview ? `<img src="${escapeHtml(logoPreview)}" alt="${tr("Do'kon logotipi", 'Логотип магазина')}" class="fc-shop-logo-image">` : `<div class="fc-shop-logo-placeholder"><i data-lucide="image" class="w-6 h-6"></i></div>`}
+                      ${(shopLogoType === 'WORDMARK' && !shopLogoDraft && shopLogoWordmark?.text) ? renderWordmarkHtml(shopLogoWordmark.presetId, shopLogoWordmark.text, {})
+                        : logoPreview ? `<img src="${escapeHtml(logoPreview)}" alt="${tr("Do'kon logotipi", 'Логотип магазина')}" class="fc-shop-logo-image">` : `<div class="fc-shop-logo-placeholder"><i data-lucide="image" class="w-6 h-6"></i></div>`}
                     </div>
                     <div class="fc-shop-logo-copy">
                       <p class="fc-shop-logo-title">${tr('Do‘kon logotipi', 'Логотип магазина')}</p>
-                      <p id="shop-info-logo-status" class="fc-shop-logo-status">${shopLogoDraft ? tr('Yangi logo tanlandi — Saqlashni bosing', 'Новый логотип выбран — нажмите Сохранить') : (logoPreview ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен'))}</p>
+                      <p id="shop-info-logo-status" class="fc-shop-logo-status">${shopLogoDraft ? tr('Yangi logo tanlandi — Saqlashni bosing', 'Новый логотип выбран — нажмите Сохранить') : (shopLogoType === 'WORDMARK' ? tr('Nomdan yaratilgan logo faol', 'Активен логотип из названия') : (logoPreview ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен')))}</p>
+                      <p class="fc-shop-logo-hint">${tr('Logo 4:1 formatda bo‘lishi kerak. Tavsiya etilgan o‘lcham: 1200 × 300 px.', 'Логотип должен быть в формате 4:1. Рекомендуемый размер: 1200 × 300 px.')}</p>
                       <div class="fc-shop-logo-actions">
                         <input id="shop-logo-input" type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
                         <input id="shop-logo-input-files" type="file" class="hidden" onchange="saveShopLogoFromPicker(event)">
+                        ${(shopLogoType === 'WORDMARK' && shopLogoUrl) ? `<button type="button" onclick="switchLogoBackToImage()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="image" class="w-4 h-4"></i>${tr('Yuklangan rasmga qaytish', 'Вернуться к загруженному изображению')}</button>` : ''}
                         <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary fc-shop-logo-action"><i data-lucide="image-plus" class="w-4 h-4"></i><span id="shop-info-logo-button-label">${tr('Xotiradan yuklash', 'Загрузить с устройства')}</span></button>
+                        <button type="button" onclick="openWordmarkGenerator()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="type" class="w-4 h-4"></i>${tr('Nomdan logo yaratish', 'Создать логотип из названия')}</button>
                       </div>
                     </div>
                   </div>
@@ -14069,6 +14622,69 @@
         return;
       }
 
+      if (activePopupModal === 'LOGO_CROP') {
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Logotipni moslang (4:1)', 'Настройте логотип (4:1)')}</h3>
+              <p class="text-[10px] text-gray-500 -mt-1">${tr("Rasmni surish uchun bosib torting, kattalashtirish uchun barmoqlaringizni siljiting yoki sichqoncha g'ildiragidan foydalaning.", "Перетаскивайте изображение пальцем, для увеличения используйте жест щипка или колесо мыши.")}</p>
+              <div class="fc-logo-crop-frame">
+                <canvas id="logo-crop-canvas" width="${LOGO_CROP_CANVAS_W}" height="${LOGO_CROP_CANVAS_H}" class="fc-logo-crop-canvas"
+                  onpointerdown="onLogoCropPointerDown(event)" onpointermove="onLogoCropPointerMove(event)"
+                  onpointerup="onLogoCropPointerUp(event)" onpointercancel="onLogoCropPointerUp(event)"
+                  onwheel="onLogoCropWheel(event)"></canvas>
+              </div>
+              <div class="flex items-center gap-2 flex-wrap justify-center">
+                <button type="button" onclick="recropLogo()" class="fc-btn fc-btn-secondary"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr('Qayta joylash', 'Заново')}</button>
+                <button type="button" onclick="pickDifferentLogoImage()" class="fc-btn fc-btn-secondary"><i data-lucide="image" class="w-4 h-4"></i>${tr('Boshqa rasm', 'Другое фото')}</button>
+              </div>
+              <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="confirmLogoCrop()" class="fc-btn fc-btn-primary">${tr('Tasdiqlash', 'Подтвердить')}</button>
+                <button onclick="cancelLogoCrop()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
+              </div>
+            </div>
+          </div>
+        `;
+        requestAnimationFrame(() => drawLogoCropCanvas());
+        return;
+      }
+
+      if (activePopupModal === 'WORDMARK_GENERATOR') {
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeWordmarkGenerator();">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs max-h-[88vh] overflow-y-auto" onclick="event.stopPropagation()">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Nomdan logo yaratish', 'Создать логотип из названия')}</h3>
+              <div class="fc-shop-field">
+                <label for="wm-name-input">${tr("Do'kon nomi", "Название магазина")}</label>
+                <input type="text" id="wm-name-input" value="${escapeHtml(wordmarkDraftText)}" maxlength="40" oninput="setWordmarkDraftText(this.value)" class="fc-shop-input" placeholder="${tr("Do'kon nomi", "Название магазина")}">
+              </div>
+              <div>
+                <p class="fc-shop-logo-title mb-1.5">${tr('Uslubni tanlang', 'Выберите стиль')}</p>
+                <div class="fc-wordmark-preset-grid">
+                  ${WORDMARK_PRESETS.map((p) => `
+                    <button type="button" class="fc-wordmark-preset-card ${p.id === wordmarkDraftPresetId ? 'is-selected' : ''}" data-preset-id="${p.id}" onclick="selectWordmarkPreset('${p.id}')">
+                      <span class="fc-wordmark-slot" data-preset-slot="${p.id}">${renderWordmarkHtml(p.id, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' })}</span>
+                      <small>${p.label()}</small>
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+              <div>
+                <p class="fc-shop-logo-title mb-1.5">${tr("Header'da qanday ko'rinishi", "Как будет выглядеть в шапке")}</p>
+                <div class="fc-wordmark-header-mock">
+                  <span id="wordmark-header-preview">${renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, {})}</span>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="saveWordmarkLogo()" class="fc-btn fc-btn-primary">${tr('Saqlash', 'Сохранить')}</button>
+                <button onclick="closeWordmarkGenerator()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
+              </div>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
       if (activePopupModal === 'BLOCK_USER') {
         const u = selectedUserModal;
         container.innerHTML = `
@@ -14272,7 +14888,7 @@
             <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl" onclick="event.stopPropagation()">
               <div class="relative">
                 <div class="w-full h-48 rounded-2xl border bg-gray-50 overflow-hidden flex items-center justify-center p-2">
-                  <img src="${escapeHtml(p.img || FALLBACK_IMG.replace('150','300'))}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-full h-full object-contain">
+                  <img src="${escapeHtml(selectedVariantHeroImage(p) || p.img || FALLBACK_IMG.replace('150','300'))}" data-fallback="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src=this.dataset.fallback;" class="w-full h-full object-contain">
                 </div>
                 ${canManageProducts() ? `
                   <button onclick="openEditFieldModal('${p.id}', 'img')" class="absolute bottom-2 right-2 bg-blue-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center space-x-1 shadow">
@@ -14366,6 +14982,7 @@
                             const disabled = !v.qty || Number(v.qty) <= 0;
                             return `
                               <div class="border rounded-xl p-2 ${selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}">
+                                ${v.img ? `<img src="${escapeHtml(v.img)}" alt="" class="w-full h-12 object-cover rounded-lg mb-1" onerror="this.remove()">` : ''}
                                 <button ${disabled ? 'disabled' : `onclick="toggleVariantSelect(${vIdx})"`}
                                   class="w-full px-2 py-1.5 rounded-lg font-bold text-xs ${disabled ? 'bg-gray-100 text-gray-300' : (selected ? 'bg-blue-600 text-white' : 'bg-white text-gray-700')}">
                                   ${escapeHtml(variantLabel(v))}
@@ -14618,6 +15235,18 @@
       container.innerHTML = '';
     }
 
+    // POLISH ROUND (task 4): variant tanlash UI ko'p-tanlovli (bir nechta
+    // variant birdan tanlanishi mumkin) — shu sabab "asosiy rasm" faqat
+    // AYNAN BITTA variant tanlangandagina o'sha variantning o'z rasmiga
+    // (yoki rasmi bo'lmasa mahsulotning asosiy rasmiga) almashadi; hech
+    // narsa yoki bir nechtasi tanlangan bo'lsa mahsulotning o'z rasmi
+    // ko'rsatiladi (noaniq holatda eng xavfsiz/tushunarli natija).
+    function selectedVariantHeroImage(p) {
+      const keys = Object.keys(selectedVariantQtys);
+      if (keys.length !== 1) return null;
+      const v = productVariants(p).find((x) => variantKey(x.size, x.color) === keys[0]);
+      return v?.img || null;
+    }
     // MODAL OPENERS & HANDLERS — universal variant tanlash.
     let selectedVariantQtys = {};
     function toggleVariantSelect(index) {
@@ -16331,9 +16960,11 @@
           isWarned: !!bootData.isWarned, warnReason: bootData.warnReason || null,
         };
         shopLogoUrl = bootData.logoUrl || null;
+        shopLogoType = bootData.logoType === 'WORDMARK' ? 'WORDMARK' : 'IMAGE';
+        shopLogoWordmark = bootData.logoWordmark || null;
         botUsername = bootData.botUsername || null;
         shopContact = bootData.shopContact || { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
-        try { localStorage.setItem(BOOT_BRAND_CACHE_KEY, JSON.stringify({ name: shopContact.name || cachedShopName, logoUrl: bootData.logoUrl || null })); } catch (_) {}
+        try { localStorage.setItem(BOOT_BRAND_CACHE_KEY, JSON.stringify({ name: shopContact.name || cachedShopName, logoUrl: bootData.logoUrl || null, logoType: shopLogoType, logoWordmark: shopLogoWordmark })); } catch (_) {}
         shopLowStockThreshold = Number.isFinite(Number(bootData.lowStockThreshold)) ? Number(bootData.lowStockThreshold) : 5;
         billzAccessGranted = bootData.billzAccessGranted === true;
         clickAccessGranted = bootData.clickAccessGranted === true;
