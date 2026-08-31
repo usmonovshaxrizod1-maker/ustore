@@ -171,6 +171,12 @@ select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(
 .plat-nav-label { font-size: 10px; font-weight: 600; }
 
 .plat-page { position: fixed; top: var(--plat-header-h); right: 0; bottom: 0; left: 0; background: #eef5ff; z-index: 10; display: flex; flex-direction: column; animation: platSlideIn 0.2s ease; }
+/* ROOT-CAUSE FIX (scroll-jump follow-up): a same-page data-refresh render
+   still fully recreates this element (render() always replaces #app's
+   innerHTML) — without this, the slide-in animation replayed on every such
+   refresh, visible as a "flash/reload" once scroll position itself stopped
+   jumping. Applied only when the render was NOT a genuine navigation. */
+.plat-page.no-anim { animation: none; }
 @keyframes platSlideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 .plat-page-header {
   display: flex; align-items: center; gap: 10px; padding: 14px 12px;
@@ -1701,9 +1707,16 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
 .plat-change-calc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}.plat-change-calc>div{padding:8px;border-radius:11px;background:#f6f8fb;text-align:center}.plat-change-calc small{display:block;font-size:7.8px;line-height:1.25;color:#7e8da1}.plat-change-calc b{display:block;margin-top:3px;font-size:9.5px;color:#25344a}
 .plat-change-result{display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 10px;border-radius:12px;background:#eef7f2;border:1px solid #d3eadc;color:#35815b}.plat-change-result>span{flex:none}.plat-change-result small{display:block;font-size:8px;color:#668b76}.plat-change-result b{display:block;margin-top:2px;font-size:10.5px;color:#285b42}.plat-change-note{display:flex;align-items:flex-start;gap:5px;margin:7px 1px 0;font-size:8.3px;line-height:1.35;color:#8692a3}
 
-.plat-payment-methods-card{padding-bottom:13px}.plat-payment-method-grid{display:flex;flex-direction:column;gap:7px}
+.plat-payment-methods-card{padding-bottom:13px}
+/* 2026-08-31: endi ARALASH tarkib — haqiqiy logo bo'lgan usullar (is-logo-only,
+   kichik/kvadratsimon) yonma-yon (wrap) bo'lib joylashadi, matn-fallback
+   usullar (rasm yo'q) esa o'z alohida to'liq-kenglikdagi qatorida qoladi. */
+.plat-payment-method-grid{display:flex;flex-flow:row wrap;gap:8px}
 .plat-payment-method-choice{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:9px;padding:10px 11px;border:1px solid #e3e9f1;border-radius:14px;background:#fff;text-align:left;color:#223148;transition:.16s ease}
 .plat-payment-method-choice:active{transform:scale(.99)}.plat-payment-method-choice.selected{border-color:#a9c5f3;background:#f7faff;box-shadow:0 0 0 1px rgba(91,141,239,.08) inset}.plat-payment-method-choice>span:nth-child(2){min-width:0}.plat-payment-method-choice b{display:block;font-size:11.2px;color:#223148}.plat-payment-method-choice small{display:block;margin-top:2px;font-size:8.7px;color:#8390a2}.plat-payment-method-choice>em{font-style:normal;color:#6e89b0;display:flex}
+.plat-payment-method-choice.is-logo-only{width:auto;flex:0 0 auto;display:inline-flex;position:relative;padding:8px;grid-template-columns:none}
+.plat-payment-method-choice.is-logo-only .plat-provider-logo{width:64px;height:44px;border-radius:11px}
+.plat-payment-method-check{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--u-blue,#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(37,99,235,.35)}
 .plat-payment-bank-card.is-selected{margin-top:8px}.plat-payment-return-hint{display:flex;gap:8px;align-items:flex-start;margin-top:8px;padding:9px 10px;border-radius:12px;background:#eef8f3;border:1px solid #d5eadf;color:#35815b}.plat-payment-return-hint>svg{flex:none;margin-top:1px}.plat-payment-return-hint b{display:block;font-size:9.7px;color:#315e47}.plat-payment-return-hint small{display:block;margin-top:2px;font-size:8.4px;line-height:1.35;color:#668777}
 .plat-payment-empty-methods{display:flex;align-items:flex-start;gap:9px;padding:11px;border-radius:13px;background:#f7f9fc;border:1px solid #e7ecf2;color:#718096}.plat-payment-empty-methods>span{flex:none}.plat-payment-empty-methods b{display:block;font-size:10.5px;color:#49596e}.plat-payment-empty-methods small{display:block;margin-top:2px;font-size:8.7px;line-height:1.35}
 .plat-receipt-compact .plat-payment-section-title em{font-style:normal;margin-left:4px;padding:2px 6px;border-radius:999px;background:#eef7f2;color:#428264;font-size:8px}.plat-upload-zone.is-compact{padding:12px}.plat-upload-zone.is-compact>span{width:34px;height:34px}.plat-receipt-compact .plat-receipt-hint{margin-top:7px}

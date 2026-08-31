@@ -201,6 +201,19 @@
   let dashboardShopId = null;
   let currentTab = 'home'; // user: home|shops|subscription|help|profile ; admin: dashboard|shops|requests|tariffs|profile
   let activePage = null;
+  // ROOT-CAUSE FIX (2026-08-31, scroll-jump follow-up): `.plat-page` has a
+  // slide-in CSS animation meant for GENUINE navigation (opening a page).
+  // But renderNow() always fully replaces #app's innerHTML — including
+  // .plat-page itself — on EVERY render(), so a same-page data refresh
+  // (e.g. loadAdminSettings() finishing right after openPage() already
+  // opened the page) recreates a brand-new .plat-page node too, replaying
+  // the slide-in animation from scratch. Before the .plat-page-body scroll
+  // fix this read as "jumps to top"; now that scroll stays put it instead
+  // reads as a visible flash/"reload". Genuine navigation calls
+  // (openPage/closePage/goHomePage) already pass {preserve:false} — reusing
+  // that exact signal lets pageShell() suppress the animation on every
+  // OTHER render (a same-page refresh), without touching call sites.
+  let suppressPageOpenAnimation = false;
 
   // 5-band: Foydalanish shartlari/Maxfiylik siyosati versiyalari — backend
   // (platform-api/index.ts)dagi TERMS_VERSION/PRIVACY_VERSION bilan QO'LDA
@@ -398,7 +411,7 @@
   function pageShell(title, bodyHtml, opts) {
     const backAction = (opts && opts.onBack) || 'closePage()';
     return `
-      <div class="plat-page">
+      <div class="plat-page ${suppressPageOpenAnimation ? 'no-anim' : ''}">
         <div class="plat-page-header">
           <button class="plat-page-header-btn" onclick="${backAction}" aria-label="Orqaga">${pIcon('back', 17)}</button>
           <div class="plat-page-header-title">${escapeHtml(title)}</div>
@@ -601,6 +614,11 @@
     const opts = options || {};
     const preserve = opts.preserve !== false && !loading;
     const snapshot = preserve ? capturePlatformUiState() : null;
+    // preserve===true means this is NOT an explicit navigation (openPage/
+    // closePage/goHomePage already pass preserve:false) — it's some other
+    // render (data finished loading, a poll, a click) on the SAME page, so
+    // the slide-in animation must not replay.
+    suppressPageOpenAnimation = preserve;
     renderNow();
     try { initTariffCarousels(); } catch (_) {}
     if (snapshot) restorePlatformUiState(snapshot);
@@ -1400,6 +1418,20 @@
   function renderPaymentMethodChoice(m) {
     const type = String(m.methodType || '').toUpperCase();
     const selected = selectedPaymentMethodType === type && selectedPaymentMethodId === m.id;
+    // 2026-08-31: admin-yuklagan HAQIQIY logo bo'lsa, mijoz endi FAQAT logoni
+    // ko'radi (nom/subtitle matni yo'q) — bir nechta usul yonma-yon (wrap
+    // bo'lmasdan) turishi uchun. Logo bosilganda xatti-harakat ESKICHA
+    // (openExternalPaymentWarning -> ogohlantirish -> havola) — faqat
+    // ko'rinishi o'zgardi. Logo hali yuklanmagan (matn-belgi fallback)
+    // usullar ESKI, to'liq matnli qatorda qoladi — chunki ularda rasm yo'q,
+    // faqat matn identifikatsiya qiladi.
+    if (m.logoUrl) {
+      return `
+        <button type="button" class="plat-payment-method-choice is-logo-only ${selected ? 'selected' : ''}" onclick="openExternalPaymentWarning('${m.id}')" aria-label="${escapeHtml(m.displayName || paymentProviderName(type))}">
+          ${paymentMethodVisual(m)}
+          ${selected ? `<em class="plat-payment-method-check">${pIcon('check',13)}</em>` : ''}
+        </button>`;
+    }
     return `
       <button type="button" class="plat-payment-method-choice ${selected ? 'selected' : ''}" onclick="openExternalPaymentWarning('${m.id}')">
         ${paymentMethodVisual(m)}
@@ -3120,7 +3152,7 @@
 
   function renderMyRequestReceiptUpload(r) {
     return `<section class="plat-my-request-upload"><div class="plat-application-section-title"><span>${pIcon('upload',17)}</span><div><b>Chekni yuborish</b><small>JPG, PNG yoki WebP · 6 MB gacha</small></div></div>
-      <input id="plat-my-request-receipt" type="file" accept="image/jpeg,image/png,image/webp" hidden onchange="onMyRequestReceiptPicked(event)">
+      <input id="plat-my-request-receipt" type="file" hidden onchange="onMyRequestReceiptPicked(event)">
       ${myRequestReceiptPreviewUrl ? `<img src="${myRequestReceiptPreviewUrl}" alt="Chek preview" class="plat-my-request-receipt-preview">` : ''}
       ${myRequestReceiptFile ? `<div class="plat-upload-file-row"><span>${pIcon('file',15)} ${escapeHtml(myRequestReceiptFile.name)}</span><button onclick="clearMyRequestReceiptFile()">Olib tashlash</button></div>` : `<button class="secondary plat-upload-select" onclick="document.getElementById('plat-my-request-receipt').click()">${pIcon('upload',16)} Faylni tanlash</button>`}
       <button class="primary ${!myRequestReceiptFile || attachingMyRequestReceipt ? 'plat-btn-dimmed' : ''}" ${myRequestReceiptFile && !attachingMyRequestReceipt ? `onclick="attachMyRequestReceipt('${r.id}')"` : 'disabled'}>${attachingMyRequestReceipt?'<span class="spinner"></span> Yuborilmoqda...':"Chekni yuborish"}</button>
@@ -3602,7 +3634,7 @@
       <div class="plat-template-vars"><b>O'zgaruvchilar</b><span>{SHOP_NAME}</span><span>{DAYS_LEFT}</span><span>{EXPIRY_DATE}</span><span>{RETENTION_DAYS_LEFT}</span><span>{REASON}</span><span>{ACTION}</span><span>{SUPPORT_CONTACT}</span></div>
       <div class="plat-media-upload">
         <div class="plat-media-upload-head"><div><b>Rasm <em>ixtiyoriy</em></b><small>Qurilma xotirasidan JPG, PNG yoki WebP · 3 MB gacha</small></div></div>
-        <input type="file" id="ntd-image-file" accept="image/jpeg,image/png,image/webp" hidden onchange="onNotificationTemplateImagePicked(event)">
+        <input type="file" id="ntd-image-file" hidden onchange="onNotificationTemplateImagePicked(event)">
         ${preview ? `<div class="plat-media-preview"><img src="${escapeHtml(preview)}" alt="Xabar rasmi"><div><button class="secondary" onclick="document.getElementById('ntd-image-file').click()">Almashtirish</button><button class="secondary is-danger" onclick="clearNotificationTemplateImage()">Olib tashlash</button></div></div>` : `<button class="plat-upload-zone is-compact" onclick="document.getElementById('ntd-image-file').click()">${pIcon('upload',18)}<div><b>Qurilmadan rasm yuklash</b><small>Galereya yoki kompyuter xotirasi</small></div></button>`}
         <label class="plat-form-field is-fallback-url"><span>Yoki rasm URL <em>fallback</em></span><input type="text" id="ntd-image" value="${escapeHtml(d.imageUrl)}" placeholder="https://..."></label>
       </div>
@@ -3700,7 +3732,7 @@
       <div class="plat-form-grid"><label><span>Provayder</span><select id="pmd-type">${['CLICK','PAYME','PAYNET'].map((t)=>`<option value="${t}" ${d.methodType===t?'selected':''}>${t}</option>`).join('')}</select></label><label><span>Ko'rinadigan nom</span><input type="text" id="pmd-name" value="${escapeHtml(d.displayName)}" placeholder="Click orqali to'lash"></label></div>
       <label class="plat-form-field"><span>To'lov havolasi</span><input type="text" id="pmd-url" value="${escapeHtml(d.paymentUrl)}" placeholder="https://..."></label>
       <div class="plat-media-upload"><div class="plat-media-upload-head"><div><b>To'lov tizimi logosi</b><small>Rasm bo'lsa user aynan shu logoni ko'radi va karta/logo bosilganda yuqoridagi havola ochiladi.</small></div></div>
-        <input type="file" id="pmd-logo-file" accept="image/jpeg,image/png,image/webp" hidden onchange="onPaymentMethodLogoPicked(event)">
+        <input type="file" id="pmd-logo-file" hidden onchange="onPaymentMethodLogoPicked(event)">
         ${preview ? `<div class="plat-media-preview is-logo"><img src="${escapeHtml(preview)}" alt="Logo"><div><button class="secondary" onclick="document.getElementById('pmd-logo-file').click()">Almashtirish</button><button class="secondary is-danger" onclick="clearPaymentMethodLogo()">Olib tashlash</button></div></div>` : `<button class="plat-upload-zone is-compact" onclick="document.getElementById('pmd-logo-file').click()">${pIcon('upload',18)}<div><b>Qurilmadan logo yuklash</b><small>Yuklanmasa Click / Payme / Paynet wordmark ishlatiladi</small></div></button>`}
       </div>
       <label class="plat-toggle-row"><span><b>Faol</b><small>User to'lov oynasida ko'rinadi</small></span><input type="checkbox" id="pmd-active" ${d.isActive?'checked':''}></label>
