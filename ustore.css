@@ -1789,12 +1789,43 @@ body { background: var(--ustore-page-bg) !important; color: var(--ustore-text) !
 .fc-variant-price-open-row .fc-variant-subrow-remove { margin-top: 1.1rem; }
 .fc-variant-group-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; cursor: pointer; list-style: none; }
 .fc-variant-group-head::-webkit-details-marker { display: none; }
-.fc-variant-group-head-copy { min-width: 0; }
+.fc-variant-group-head-copy { min-width: 0; flex: 1; }
 .fc-variant-group-meta { display: block; margin-top: .1rem; font-size: .56rem; font-weight: 700; color: var(--fc-muted, #8390a2); }
 .fc-variant-group-chevron { flex-shrink: 0; color: var(--fc-muted, #8390a2); transition: transform .15s ease; }
-.fc-variant-group[open] .fc-variant-group-chevron { transform: rotate(180deg); }
+.fc-variant-group[open] .fc-variant-group-chevron,
+.fc-variant-group-chevron.is-open { transform: rotate(180deg); }
 .fc-variant-group-body { margin-top: .5rem; }
+
+/* BITTA SAHIFADA TUGATISH (ikkinchi tuzatish round, 2026-08-31): rang/
+   o'lcham endi mini-oyna emas, shu sahifaning o'zida inline tahrirlanadi.
+   Rang kartasi endi JS-boshqaruvli div (native <details> emas, chunki
+   ichida rang nomi input + rasm picker + o'lcham qatorlar bor — bularning
+   barchasi ichki bosishlarni chevron-toggle bilan aralashtirmasligi kerak). */
+.fc-variant-subhead { font-size: .62rem; font-weight: 800; color: var(--fc-muted, #8390a2); text-transform: uppercase; letter-spacing: .02em; margin: .7rem 0 .3rem; }
+.fc-variant-row-edit { border: 1px solid #eef2f7; border-radius: .75rem; padding: .6rem; background: #fff; }
+.fc-variant-row-edit + .fc-variant-row-edit,
+.fc-variant-row-edit + .fc-variant-summary-row,
+.fc-variant-summary-row + .fc-variant-row-edit { margin-top: .5rem; }
+.fc-variant-row-edit-actions { display: flex; justify-content: flex-end; gap: .4rem; margin-top: .5rem; }
+.fc-variant-row-check-btn { width: 2rem; height: 2rem; border-radius: .6rem; display: flex; align-items: center; justify-content: center; }
+.fc-variant-row-check-btn.is-confirm { background: var(--fc-primary, #2563eb); color: #fff; }
+.fc-variant-row-check-btn.is-cancel { background: #f1f5f9; color: #64748b; }
+.fc-variant-inline-error { font-size: .6rem; font-weight: 800; color: var(--fc-danger, #dc2626); margin-top: .3rem; }
 .fc-variant-group-addbtn { width: 100%; margin-top: .4rem; display: flex; align-items: center; justify-content: center; gap: .3rem; padding: .4rem; border-radius: .65rem; background: #eff6ff; color: var(--fc-primary, #2563eb); font-size: .6rem; font-weight: 800; }
+.fc-variant-empty-state { text-align: center; padding: 1.2rem .8rem; border: 1px dashed #cbd5e1; border-radius: .9rem; background: #f8fafc; }
+.fc-variant-empty-state p { font-size: .68rem; color: var(--fc-muted, #8390a2); font-weight: 700; margin-bottom: .6rem; }
+
+/* VARIATIV TOVAR QAYTA QURISH (Uzum Market uslubi, 2026-08-31): mijoz
+   tomonidagi Rang→O'lcham tanlash qatorlari. Rang — kichik kvadrat rasm
+   tugmasi (yonma-yon); O'lcham — chip (pill). Ikkalasi ham active/disabled
+   holatini aniq ko'rsatadi. */
+.fc-color-swatch { width: 2.75rem; height: 2.75rem; border-radius: .75rem; border: 2px solid var(--fc-border, #e5e7eb); overflow: hidden; padding: 0; background: #f8fafc; flex-shrink: 0; transition: border-color .15s ease, transform .1s ease; }
+.fc-color-swatch img { width: 100%; height: 100%; object-fit: cover; }
+.fc-color-swatch-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: .58rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
+.fc-color-swatch.is-active { border-color: var(--fc-primary, #2563eb); transform: scale(1.04); box-shadow: 0 0 0 2px color-mix(in srgb, var(--fc-primary, #2563eb) 20%, transparent); }
+.fc-size-chip { padding: .45rem .9rem; border-radius: .7rem; border: 1.5px solid var(--fc-border, #e5e7eb); background: #fff; color: #334155; font-size: .68rem; font-weight: 800; }
+.fc-size-chip.is-active { border-color: var(--fc-primary, #2563eb); background: var(--fc-primary, #2563eb); color: #fff; }
+.fc-size-chip.is-disabled { color: #cbd5e1; border-color: #eef2f7; background: #f8fafc; text-decoration: line-through; }
 
 /* Bo'sh holat (empty state) — Sevimlilar/Buyurtmalar/Trash/Support kabi ro'yxatlar uchun umumiy */
 .fc-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; padding: 2.5rem 1rem; color: var(--fc-muted); text-align: center; }
