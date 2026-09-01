@@ -1982,6 +1982,9 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .fc-wordmark-header-mock { display: flex; align-items: center; padding: .65rem .8rem; border-radius: .85rem; background: #0f172a; }
 .fc-wordmark-header-mock .fc-wordmark-text { color: #fff; }
 .fc-wordmark-header-mock .fc-wordmark-badge { background: #fff; color: #0f172a; }
+/* 4 TA YANGI TOPSHIRIQ, 3-topshiriq: qisqa nom belgi/so'z hisoblagichi. */
+.fc-wordmark-counter { margin-top: .3rem; font-size: .62rem; font-weight: 700; color: var(--fc-muted); font-variant-numeric: tabular-nums; }
+.fc-wordmark-counter.is-over { color: var(--fc-danger, #dc2626); }
 
 /* POLISH ROUND (task 3): Click/Payme/Uzum — "To'lov parametrlari"dagi
    professional integratsiya kartalari. */

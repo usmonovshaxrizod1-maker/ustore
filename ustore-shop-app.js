@@ -517,6 +517,20 @@
       const vPrice = v && v.price !== undefined && v.price !== null ? Number(v.price) : null;
       return (vPrice !== null && Number.isFinite(vPrice)) ? vPrice : Number(p?.price) || 0;
     }
+    // 4 TA YANGI TOPSHIRIQ (2026-09-01), item 1.4: rasm uchun 4-bosqichli
+    // fallback zanjiri — "1. O'lcham/variant rasmi -> 2. Rang rasmi ->
+    // 3. Mahsulotning asosiy rasmi -> 4. no-image fallback". `v.img`ning
+    // o'zi allaqachon 1+2-bosqichlarni birlashtirgan holda saqlanadi
+    // (finalizeVariantBuilderRows saqlash mantig'i: o'lchamning o'z rasmi bo'lsa o'sha,
+    // aks holda rangning rasmi) — shu funksiya faqat qolgan 3+4-bosqichni
+    // qo'shadi. Variantsiz (oddiy) tovar/topilmagan kombinatsiya uchun ham
+    // xavfsiz ishlaydi.
+    function variantDisplayImage(p, size, color) {
+      const v = productVariants(p).find(x => (x.size || null) === (size || null) && (x.color || null) === (color || null));
+      if (v?.img) return v.img;
+      if (hasProductImage(p)) return p.img;
+      return FALLBACK_IMG;
+    }
 
     // O'lchamlarni "40,2/42,4/44,8" matnidan [{size,qty}] ro'yxatiga o'giradi.
     // Agar ranglar bilan variant kiritilsa, Excel/import parseri alohida universal formatga aylantiradi.
@@ -553,7 +567,7 @@
     // oladi — shuning uchun HAR bir amal funksiyasi o'zi alohida sync
     // chaqirishi shart emas.
     function blankColorDraft() { return { name: '', img: '', imgUploading: false, expanded: true, error: '' }; }
-    function blankVariantRow(colorIndex) { return { colorIndex, size: '', price: '', oldPrice: '', qty: 0, sku: null, billzProductId: null, editing: true, isNew: true, error: '' }; }
+    function blankVariantRow(colorIndex) { return { colorIndex, size: '', price: '', oldPrice: '', qty: 0, img: '', imgUploading: false, sku: null, billzProductId: null, editing: true, isNew: true, error: '' }; }
     function syncVariantBuilderFromDom() {
       productColorDrafts.forEach((c, ci) => {
         const nameEl = document.getElementById(`vc-${ci}-name`);
@@ -585,16 +599,27 @@
         colorIndexByName.set(v.color, productColorDrafts.length);
         productColorDrafts.push({ name: v.color, img: v.img || '', imgUploading: false, expanded: false, error: '' });
       });
-      variantBuilderRows = vars.filter((v) => v.color).map((v) => ({
-        colorIndex: colorIndexByName.get(v.color),
-        size: v.size || '',
-        price: (v.price !== undefined && v.price !== null) ? Number(v.price) : '',
-        oldPrice: (v.oldPrice !== undefined && v.oldPrice !== null) ? Number(v.oldPrice) : '',
-        qty: v.qty ?? 0,
-        sku: v.sku || null,
-        billzProductId: v.billzProductId || null,
-        editing: false, isNew: false, error: '',
-      }));
+      variantBuilderRows = vars.filter((v) => v.color).map((v) => {
+        // 4 TA YANGI TOPSHIRIQ, item 1.4: DB'da har qatorning `img`i bor,
+        // lekin eski saqlash usulida bu doim "rang rasmi"ning aynan nusxasi
+        // edi (o'z-alohida o'lcham rasmi tushunchasi yo'q edi). Shu sabab
+        // bu yerda faqat rang rasmidan FARQ QILGAN qiymat "o'ziga xos
+        // o'lcham rasmi" (explicit override) deb hisoblanadi — aks holda
+        // (mos kelsa) bo'sh qoldiriladi, ya'ni "rang rasmidan meros olingan".
+        const colorImg = productColorDrafts[colorIndexByName.get(v.color)]?.img || '';
+        return {
+          colorIndex: colorIndexByName.get(v.color),
+          size: v.size || '',
+          price: (v.price !== undefined && v.price !== null) ? Number(v.price) : '',
+          oldPrice: (v.oldPrice !== undefined && v.oldPrice !== null) ? Number(v.oldPrice) : '',
+          qty: v.qty ?? 0,
+          img: (v.img && v.img !== colorImg) ? v.img : '',
+          imgUploading: false,
+          sku: v.sku || null,
+          billzProductId: v.billzProductId || null,
+          editing: false, isNew: false, error: '',
+        };
+      });
     }
     function finalizeVariantBuilderRows() {
       return variantBuilderRows
@@ -607,7 +632,9 @@
             qty: Math.max(0, Number.parseInt(r.qty, 10) || 0),
             price: (r.price !== '' && r.price !== null && r.price !== undefined) ? Math.max(0, Number(r.price) || 0) : null,
             oldPrice: (r.oldPrice !== '' && r.oldPrice !== null && r.oldPrice !== undefined) ? Math.max(0, Number(r.oldPrice) || 0) : null,
-            img: color ? (color.img || null) : null,
+            // item 1.4: o'lchamning O'Z rasmi bo'lsa o'shani, aks holda
+            // rangning rasmini meros oladi (eski xatti-harakat saqlanadi).
+            img: r.img || (color ? (color.img || null) : null),
             sku: r.sku || null,
             billzProductId: r.billzProductId || null,
           };
@@ -682,6 +709,44 @@
       renderModalContainer();
     }
 
+    // item 1.4 (4 TA YANGI TOPSHIRIQ, 2026-09-01): har bir O'LCHAM qatori
+    // ham (ixtiyoriy ravishda) o'zining alohida rasmini olishi mumkin —
+    // rangning rasmidan farq qilsa, u ustuvor bo'ladi (fallback zanjiri:
+    // o'lcham rasmi -> rang rasmi -> mahsulot rasmi -> placeholder).
+    // Yuqoridagi pickColorImage/onColorImagePicked/removeColorImage bilan
+    // AYNAN bir xil naqsh, faqat rang darajasi o'rniga qator darajasida.
+    function pickSizeRowImage(idx) {
+      syncVariantBuilderFromDom();
+      const input = document.getElementById(`vr-${idx}-image-input`);
+      if (input) { input.value = ''; input.click(); }
+    }
+    async function onSizeRowImagePicked(event, idx) {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (!file || !variantBuilderRows[idx]) return;
+      try { validatePickedImageFile(file); }
+      catch (e) { return alert(pickedImageErrorMessage(e, file)); }
+      syncVariantBuilderFromDom();
+      variantBuilderRows[idx].imgUploading = true;
+      renderModalContainer();
+      try {
+        const prepared = await captureAndPrepareImageV2(file, TARGET_PRODUCT_IMAGE_BYTES, 800, 0.75);
+        const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, null, true);
+        if (variantBuilderRows[idx]) variantBuilderRows[idx].img = url;
+      } catch (e) {
+        console.error('[size-row-image:UPLOAD_FAILED]', e);
+        alert(tr("Rasmni yuklab bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось загрузить фото. Попробуйте снова."));
+      } finally {
+        if (variantBuilderRows[idx]) variantBuilderRows[idx].imgUploading = false;
+        renderModalContainer();
+      }
+    }
+    function removeSizeRowImage(idx) {
+      syncVariantBuilderFromDom();
+      if (variantBuilderRows[idx]) variantBuilderRows[idx].img = '';
+      renderModalContainer();
+    }
+
     // ---------- O'LCHAM (child) — inline qator (ketma-ket, modal'siz) ----------
     function addSizeRow(colorIndex) {
       syncVariantBuilderFromDom();
@@ -717,14 +782,17 @@
       if (!row) return;
       const sizeName = String(row.size || '').trim();
       if (!sizeName) { row.error = tr("O'lcham nomini kiriting.", 'Введите размер.'); renderModalContainer(); return; }
-      const priceNum = Number(row.price);
-      // Item 8: narx har bir rang+o'lcham kombinatsiyasiga majburiy —
-      // variativ tovarning o'z bazaviy narxi yo'q, fallback qiladigan joy yo'q.
-      if (row.price === '' || !Number.isFinite(priceNum) || priceNum < 0) { row.error = tr('Narxni kiriting.', 'Введите цену.'); renderModalContainer(); return; }
+      // 4 TA YANGI TOPSHIRIQ (2026-09-01), item 1.5: narx endi HAR bir
+      // rang+o'lcham kombinatsiyasiga MAJBURIY EMAS — bo'sh qoldirilsa,
+      // mahsulotning o'z "Asosiy narx (fallback)" maydoni ishlatiladi
+      // (variantPrice() da allaqachon shu fallback mavjud). Faqat KIRITILGAN
+      // narx MANFIY bo'lmasligi tekshiriladi.
+      const priceNum = row.price === '' ? null : Number(row.price);
+      if (row.price !== '' && (!Number.isFinite(priceNum) || priceNum < 0)) { row.error = tr("Narx noto'g'ri.", 'Некорректная цена.'); renderModalContainer(); return; }
       const dup = variantBuilderRows.some((r, i) => i !== idx && r.colorIndex === row.colorIndex && !r.editing && r.size === sizeName);
       if (dup) { row.error = tr("Bu rangda shu o'lcham allaqachon bor.", 'Этот размер уже есть у этого цвета.'); renderModalContainer(); return; }
       row.size = sizeName;
-      row.price = priceNum;
+      row.price = priceNum === null ? '' : priceNum;
       row.oldPrice = row.oldPrice !== '' ? Math.max(0, Number(row.oldPrice) || 0) : '';
       row.qty = Math.max(0, Number.parseInt(row.qty, 10) || 0);
       row.editing = false; row.isNew = false; row.error = ''; delete row._backup;
@@ -769,8 +837,8 @@
               <div class="fc-variant-entry-image">
                 <span class="fc-variant-summary-thumb is-lg">${c.imgUploading ? `<span class="fc-spinner"></span>` : (c.img ? `<img src="${escapeHtml(c.img)}" alt="">` : `<i data-lucide="image" class="w-4 h-4"></i>`)}</span>
                 <div class="fc-variant-entry-image-actions">
-                  <button type="button" onclick="pickColorImage(${ci})" class="fc-variant-row-img-btn" ${c.imgUploading ? 'disabled' : ''}>${c.img ? tr('Almashtirish', 'Заменить') : tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
-                  ${c.img ? `<button type="button" onclick="removeColorImage(${ci})" class="fc-variant-row-img-btn is-danger">${tr("O'chirish", 'Удалить')}</button>` : ''}
+                  <button type="button" onclick="pickColorImage(${ci})" class="fc-variant-row-img-btn fc-btn-icon" ${c.imgUploading ? 'disabled' : ''} aria-label="${c.img ? tr('Almashtirish', 'Заменить') : tr('Xotiradan yuklash', 'Загрузить с устройства')}" title="${c.img ? tr('Almashtirish', 'Заменить') : tr('Xotiradan yuklash', 'Загрузить с устройства')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
+                  ${c.img ? `<button type="button" onclick="removeColorImage(${ci})" class="fc-variant-row-img-btn fc-btn-icon is-danger" aria-label="${tr("O'chirish", 'Удалить')}" title="${tr("O'chirish", 'Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
                 </div>
                 <input type="file" id="vc-${ci}-image-input" class="hidden" onchange="onColorImagePicked(event, ${ci})">
               </div>
@@ -789,8 +857,19 @@
                     </div>
                   </div>
                   <div class="fc-variant-entry-cols">
-                    <div class="fc-shop-field"><label for="vr-${row.idx}-price">${tr('Narx', 'Цена')}</label><input type="number" min="0" id="vr-${row.idx}-price" class="fc-shop-input" value="${escapeHtml(String(row.price))}" placeholder="0"></div>
+                    <div class="fc-shop-field"><label for="vr-${row.idx}-price">${tr('Narx', 'Цена')} <em>${tr('ixtiyoriy', 'необязательно')}</em></label><input type="number" min="0" id="vr-${row.idx}-price" class="fc-shop-input" value="${escapeHtml(String(row.price))}" placeholder="${tr('Asosiy narx', 'Базовая цена')}"></div>
                     <div class="fc-shop-field"><label for="vr-${row.idx}-oldprice">${tr('Eski narx', 'Старая цена')} <em>${tr('ixtiyoriy', 'необязательно')}</em></label><input type="number" min="0" id="vr-${row.idx}-oldprice" class="fc-shop-input" value="${escapeHtml(String(row.oldPrice))}" placeholder="99000"></div>
+                  </div>
+                  <div class="fc-shop-field">
+                    <label>${tr("O'lcham rasmi", 'Фото размера')} <em>${tr('ixtiyoriy — bo‘sh bo‘lsa rang rasmi ishlatiladi', 'необязательно — иначе используется фото цвета')}</em></label>
+                    <div class="fc-variant-entry-image">
+                      <span class="fc-variant-summary-thumb">${row.imgUploading ? `<span class="fc-spinner"></span>` : (row.img ? `<img src="${escapeHtml(row.img)}" alt="">` : `<i data-lucide="image" class="w-4 h-4"></i>`)}</span>
+                      <div class="fc-variant-entry-image-actions">
+                        <button type="button" onclick="pickSizeRowImage(${row.idx})" class="fc-variant-row-img-btn fc-btn-icon" ${row.imgUploading ? 'disabled' : ''} aria-label="${row.img ? tr('Almashtirish', 'Заменить') : tr('Xotiradan yuklash', 'Загрузить с устройства')}" title="${row.img ? tr('Almashtirish', 'Заменить') : tr('Xotiradan yuklash', 'Загрузить с устройства')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
+                        ${row.img ? `<button type="button" onclick="removeSizeRowImage(${row.idx})" class="fc-variant-row-img-btn fc-btn-icon is-danger" aria-label="${tr("O'chirish", 'Удалить')}" title="${tr("O'chirish", 'Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}
+                      </div>
+                      <input type="file" id="vr-${row.idx}-image-input" class="hidden" onchange="onSizeRowImagePicked(event, ${row.idx})">
+                    </div>
                   </div>
                   ${row.error ? `<p class="fc-variant-inline-error">${escapeHtml(row.error)}</p>` : ''}
                   <div class="fc-variant-row-edit-actions">
@@ -2899,7 +2978,7 @@
       tempImageUrl = raw || null;
       const preview = document.getElementById(previewId);
       const pickerButton = buttonId ? document.getElementById(buttonId) : null;
-      if (pickerButton) pickerButton.textContent = `🖼 ${tr('Xotiradan yuklash', 'Загрузить с устройства')}`;
+      if (pickerButton) { const lbl = tr('Xotiradan yuklash', 'Загрузить с устройства'); pickerButton.setAttribute('aria-label', lbl); pickerButton.title = lbl; }
 
       if (!raw) {
         setImageUrlError(errorId, '');
@@ -2964,7 +3043,7 @@
         }
       }
       const pickerButton = buttonId ? document.getElementById(buttonId) : null;
-      if (pickerButton) pickerButton.textContent = `🖼 ${tr('Rasmni almashtirish', 'Заменить фото')}`;
+      if (pickerButton) { const lbl = tr('Rasmni almashtirish', 'Заменить фото'); pickerButton.setAttribute('aria-label', lbl); pickerButton.title = lbl; }
 
       // 1000px -> 800px, sifat 0.8 -> 0.75. Bayt CHEGARASI (maxBytes) ataylab
       // O'ZGARTIRILMADI — uni pasaytirish rasmni yuklab bo'lmaslik xavfini
@@ -6115,8 +6194,9 @@
         const size = itemData.size || null, color = itemData.color || null;
         // Variant o'z narxini belgilagan bo'lsa shuni ishlatadi (fallback —
         // mahsulotning asosiy narxi) — `place_order` RPC hisoblagan haqiqiy
-        // summaga mos kelishi uchun.
-        return { ...p, key, qty: itemData.qty, size, color, price: variantPrice(p, size, color) };
+        // summaga mos kelishi uchun. item 1.4: rasm ham xuddi shunday — o'z
+        // rasmi bo'lgan variant ustuvor, aks holda mahsulotning rasmi.
+        return { ...p, key, qty: itemData.qty, size, color, price: variantPrice(p, size, color), img: variantDisplayImage(p, size, color) };
       }).filter(Boolean);
       const bundleItems = Object.entries(bundleCart).map(([bundleId, b]) => ({ bundleId, ...b }));
 
@@ -9328,7 +9408,7 @@
           <div class="fc-qr-provider-body">
             <div class="fc-qr-image-row">
               ${preview}
-              <div class="min-w-0 flex-1"><input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary fc-qr-upload-btn" ${loading ? 'disabled' : ''}><i data-lucide="folder-open" class="w-3.5 h-3.5"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button><p>${tr('QR rasm yuklang — to‘lov ma’lumoti avtomatik o‘qiladi.', 'Загрузите QR — платёжные данные распознаются автоматически.')}</p></div>
+              <div class="min-w-0 flex-1"><input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary fc-btn-icon fc-qr-upload-btn" ${loading ? 'disabled' : ''} aria-label="${tr('Xotiradan yuklash', 'Загрузить с устройства')}" title="${tr('Xotiradan yuklash', 'Загрузить с устройства')}"><i data-lucide="folder-open" class="w-3.5 h-3.5"></i></button><p>${tr('QR rasm yuklang — to‘lov ma’lumoti avtomatik o‘qiladi.', 'Загрузите QR — платёжные данные распознаются автоматически.')}</p></div>
             </div>
             ${decode?.status === 'success' ? `<div class="fc-qr-verified fc-qr-read-ok"><i data-lucide="scan-line" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR muvaffaqiyatli o'qildi", 'QR успешно распознан'))}</div>` : ''}
             ${decode?.status === 'error' ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR kodni o'qib bo'lmadi", 'Не удалось распознать QR'))}</div>` : ''}
@@ -9905,7 +9985,7 @@
               <p class="text-[10px] text-gray-400">${tr('Tavsiya etilgan o\'lcham: 1200 × 400 px (3:1)', 'Рекомендуемый размер: 1200 × 400 px (3:1)')}</p>
               <input id="banner-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', '', '')" class="hidden">
               <input id="banner-image-input-files" type="file" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', '', '')" class="hidden">
-              <button id="banner-image-button" type="button" onclick="openImagePickerSheet('banner-image-input','banner-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}</button>
+              <button id="banner-image-button" type="button" onclick="openImagePickerSheet('banner-image-input','banner-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon mt-1" aria-label="${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}" title="${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
               <img id="banner-image-prev" src="${escapeHtml(previewSrc)}" style="aspect-ratio:3/1" class="w-full object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
             </div>
 
@@ -10325,7 +10405,7 @@
               <label class="font-bold text-gray-600 text-xs">${tr('Muqova rasmi (ixtiyoriy)', 'Обложка (необязательно)')}</label>
               <input id="bundle-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'bundle-image-prev', 'bundle-image-button', '', '')" class="hidden">
               <input id="bundle-image-input-files" type="file" onchange="onImagePicked(event, 'bundle-image-prev', 'bundle-image-button', '', '')" class="hidden">
-              <button id="bundle-image-button" type="button" onclick="openImagePickerSheet('bundle-image-input','bundle-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr('Rasm tanlash (ixtiyoriy)', 'Выбрать фото (необязательно)')}</button>
+              <button id="bundle-image-button" type="button" onclick="openImagePickerSheet('bundle-image-input','bundle-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon mt-1" aria-label="${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr('Rasm tanlash (ixtiyoriy)', 'Выбрать фото (необязательно)')}" title="${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr('Rasm tanlash (ixtiyoriy)', 'Выбрать фото (необязательно)')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
               <img id="bundle-image-prev" src="${escapeHtml(previewSrc)}" class="w-full h-28 object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
             </div>
             <div class="fc-form-section-title">${tr('Mahsulotlar', 'Товары')}</div>
@@ -12904,8 +12984,12 @@
       if (status) status.textContent = shopLogoDraft
         ? tr('Yangi logo tanlandi — Saqlashni bosing', 'Новый логотип выбран — нажмите Сохранить')
         : (url ? tr('Logo o‘rnatilgan', 'Логотип установлен') : tr('Logo hali qo‘shilmagan', 'Логотип ещё не добавлен'));
-      const buttonLabel = document.getElementById('shop-info-logo-button-label');
-      if (buttonLabel) buttonLabel.textContent = tr('Xotiradan yuklash', 'Загрузить с устройства');
+      const logoButton = document.getElementById('shop-info-logo-button');
+      if (logoButton) {
+        const lbl = url ? tr('Rasmni almashtirish', 'Заменить фото') : tr('Xotiradan yuklash', 'Загрузить с устройства');
+        logoButton.setAttribute('aria-label', lbl);
+        logoButton.title = lbl;
+      }
       document.querySelectorAll('.fc-shop-logo-action').forEach(btn => { btn.disabled = false; });
       const saveBtn = document.getElementById('shop-info-save-btn');
       if (saveBtn) saveBtn.disabled = false;
@@ -13237,12 +13321,30 @@
     function currentShopNameForWordmark() {
       return String((shopInfoDraft || shopContact)?.name || shopContact?.name || '').trim();
     }
+    // 4 TA YANGI TOPSHIRIQ (2026-09-01), 3-topshiriq: "Do'kon nomidan logo
+    // yaratish" endi RASMIY do'kon nomi maydonidan (sc-name, cheksiz uzun
+    // bo'lishi mumkin) MUSTAQIL, alohida "qisqa nom" (wordmarkDraftText)
+    // ustida ishlaydi — bu maydon aslida allaqachon rasmiy nomdan ALOHIDA
+    // state edi (faqat qulaylik uchun rasmiy nom bilan boshlab qo'yilardi),
+    // endi unga aniq LIMIT (standart: 3 so'z, 20 belgi) qo'yiladi. Rasmiy
+    // do'kon nomi (shopInfoDraft/shopContact.name) BU FUNKSIYALAR TOMONIDAN
+    // HECH QACHON o'zgartirilmaydi — faqat bir martalik "boshlang'ich taklif"
+    // sifatida o'qib, darhol shu limitga qisqartirilib olinadi.
+    const WORDMARK_MAX_CHARS = 20;
+    const WORDMARK_MAX_WORDS = 3;
+    function clampWordmarkText(text) {
+      const words = String(text || '').trim().split(/\s+/).filter(Boolean).slice(0, WORDMARK_MAX_WORDS);
+      return words.join(' ').slice(0, WORDMARK_MAX_CHARS);
+    }
+    function wordmarkWordCount(text) {
+      return String(text || '').trim().split(/\s+/).filter(Boolean).length;
+    }
     function openWordmarkGenerator() {
       // shopInfoUrl'ga o'tishdagi bilan bir xil naqsh — hali saqlanmagan
       // forma qiymatlari (masalan yangi kiritilgan do'kon nomi) draftga
       // olinadi, orqaga qaytganda yo'qolmasin.
       if (activePopupModal === 'SHOP_INFO') shopInfoDraft = readShopContactFormValues();
-      wordmarkDraftText = currentShopNameForWordmark() || (shopLogoWordmark?.text || '');
+      wordmarkDraftText = clampWordmarkText(shopLogoWordmark?.text || currentShopNameForWordmark());
       wordmarkDraftPresetId = shopLogoWordmark?.presetId || WORDMARK_PRESETS[0].id;
       activePopupModal = 'WORDMARK_GENERATOR';
       render();
@@ -13251,9 +13353,21 @@
       activePopupModal = shopInfoDraft ? 'SHOP_INFO' : null;
       render();
     }
+    function wordmarkCounterHtml() {
+      const chars = wordmarkDraftText.length;
+      const words = wordmarkWordCount(wordmarkDraftText);
+      const isOver = words > WORDMARK_MAX_WORDS || chars >= WORDMARK_MAX_CHARS;
+      return `<p id="wm-name-counter" class="fc-wordmark-counter ${isOver ? 'is-over' : ''}">${chars}/${WORDMARK_MAX_CHARS} ${tr('belgi', 'симв.')} · ${words}/${WORDMARK_MAX_WORDS} ${tr("so'z", 'слова')}${words > WORDMARK_MAX_WORDS ? ` — ${tr('juda ko‘p so‘z', 'слишком много слов')}` : ''}</p>`;
+    }
     function setWordmarkDraftText(value) {
-      wordmarkDraftText = String(value || '').slice(0, 40);
+      // Belgi limiti (20) — input'ning o'z maxlength'i orqali ham
+      // cheklangan, bu yerda ikkinchi himoya qatlami. So'z limiti (3) esa
+      // yozishni to'xtatmaydi (foydalanuvchi bilan "kurashmaydi") — faqat
+      // hisoblagich qizil rangga o'tadi va saqlashda aniq xato ko'rsatiladi.
+      wordmarkDraftText = String(value || '').slice(0, WORDMARK_MAX_CHARS);
       rerenderWordmarkPreview();
+      const counterEl = document.getElementById('wm-name-counter');
+      if (counterEl) counterEl.outerHTML = wordmarkCounterHtml();
     }
     function selectWordmarkPreset(presetId) {
       wordmarkDraftPresetId = presetId;
@@ -13272,6 +13386,7 @@
     async function saveWordmarkLogo() {
       const text = wordmarkDraftText.trim();
       if (!text) return alert(tr("Do'kon nomini kiriting.", "Введите название магазина."));
+      if (wordmarkWordCount(text) > WORDMARK_MAX_WORDS) return alert(tr(`Qisqa nom ko'pi bilan ${WORDMARK_MAX_WORDS} so'zdan iborat bo'lishi kerak.`, `Короткое название должно быть не длиннее ${WORDMARK_MAX_WORDS} слов.`));
       try {
         await callApi('set_shop_logo', { logoType: 'WORDMARK', wordmark: { presetId: wordmarkDraftPresetId, text } });
         shopLogoType = 'WORDMARK';
@@ -14077,6 +14192,18 @@
     async function saveBulkMoveCategories(){const ids=[...bulkSelectedCategoryIds];if(!ids.length)return;const newParentId=movePickerParentId||null;showActionToast(tr('Ko‘chirilmoqda...','Перемещение...'),'saving');try{for(const id of ids)await callApi('move_category',{categoryId:id,newParentId});await loadCatalog();activePopupModal=null;bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();showActionToast(tr('Kataloglar ko‘chirildi','Каталоги перемещены'),'success',1500);}catch(e){console.error(e);await loadCatalog();activePopupModal=null;bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();alert(tr('Ko‘chirishda xatolik: ','Ошибка перемещения: ')+(e.message||e));}}
 
     function renderModalContainer() {
+      // TASK 1.8 root-cause fix (2026-09-01): ko'plab chaqiruv nuqtalari
+      // (rang/o'lcham inline CRUD, va h.k.) bu funksiyadan keyin
+      // safeCreateIcons()ni chaqirishni unutgan edi — natijada yangi
+      // qo'shilgan <i data-lucide="..."> ikonalar HECH QACHON chizilmay,
+      // "bo'sh oq/ko'k kvadrat" bo'lib ko'rinardi (masalan qty +/- stepper).
+      // Endi bu FUNKSIYANING O'ZI, qaysi branch ishlatilishidan qat'iy
+      // nazar (har birida turlicha erta `return` bor), chiqishdan oldin
+      // HAR DOIM ikonalarni qayta chizadi — chaqiruvchi buni unutgan
+      // taqdirda ham. Mavjud chaqiruv joylaridagi ortiqcha safeCreateIcons()
+      // takroriy chaqiruvlari xavfsiz (idempotent, safeCreateIcons() o'zi
+      // try/catch bilan himoyalangan) — ular ham qoldirilishi mumkin.
+      try {
       const container = document.getElementById('modal-container');
       installModalEscapeHandlers();
       // CORRECTION ROUND (2026-08-31): ADD_PROD/EDIT_PROD_FIELD ochiq
@@ -14154,7 +14281,7 @@
                         <input id="shop-logo-input" type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
                         <input id="shop-logo-input-files" type="file" class="hidden" onchange="saveShopLogoFromPicker(event)">
                         ${(shopLogoType === 'WORDMARK' && shopLogoUrl) ? `<button type="button" onclick="switchLogoBackToImage()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="image" class="w-4 h-4"></i>${tr('Yuklangan rasmga qaytish', 'Вернуться к загруженному изображению')}</button>` : ''}
-                        <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary fc-shop-logo-action"><i data-lucide="image-plus" class="w-4 h-4"></i><span id="shop-info-logo-button-label">${tr('Xotiradan yuklash', 'Загрузить с устройства')}</span></button>
+                        <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" id="shop-info-logo-button" class="fc-btn fc-btn-primary fc-btn-icon fc-shop-logo-action" aria-label="${tr('Xotiradan yuklash', 'Загрузить с устройства')}" title="${tr('Xotiradan yuklash', 'Загрузить с устройства')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                         <button type="button" onclick="openWordmarkGenerator()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="type" class="w-4 h-4"></i>${tr('Nomdan logo yaratish', 'Создать логотип из названия')}</button>
                       </div>
                     </div>
@@ -14321,41 +14448,45 @@
                 <label class="fc-toggle"><input type="checkbox" ${isVariativeProductDraft ? 'checked' : ''} onchange="toggleVariativeProductDraft()"><span class="fc-toggle-track"></span></label>
               </div>
 
-              ${!isVariativeProductDraft ? `
-                <div class="grid grid-cols-2 gap-2">
-                  <div>
-                    <label class="font-bold text-gray-600">${tr("Sotuv narxi *", "Цена продажи *")}</label>
-                    <input type="number" id="m-prod-price" value="${escapeHtml(productFormDraft.price)}" placeholder="400000" class="w-full mt-1 p-2 border rounded-xl">
-                  </div>
-                  <div>
-                    <label class="font-bold text-gray-600">${tr("Eski narxi (Chegirma)", "Старая цена (скидка)")}</label>
-                    <input type="number" id="m-prod-oldprice" value="${escapeHtml(productFormDraft.oldPrice)}" placeholder="480000" class="w-full mt-1 p-2 border rounded-xl">
-                  </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="font-bold text-gray-600">${isVariativeProductDraft ? tr("Asosiy narx (fallback)", "Базовая цена (fallback)") : tr("Sotuv narxi *", "Цена продажи *")}</label>
+                  <input type="number" id="m-prod-price" value="${escapeHtml(productFormDraft.price)}" placeholder="400000" class="w-full mt-1 p-2 border rounded-xl">
                 </div>
+                <div>
+                  <label class="font-bold text-gray-600">${tr("Eski narxi (Chegirma)", "Старая цена (скидка)")}</label>
+                  <input type="number" id="m-prod-oldprice" value="${escapeHtml(productFormDraft.oldPrice)}" placeholder="480000" class="w-full mt-1 p-2 border rounded-xl">
+                </div>
+              </div>
+              ${isVariativeProductDraft ? `
+                <p class="text-[9px] text-gray-400 -mt-1">${tr("Bu narx faqat o'zining narxi kiritilmagan rang+o'lcham kombinatsiyalari uchun zaxira (fallback) sifatida ishlatiladi.", "Эта цена используется только как запасной вариант для комбинаций цвет+размер без своей цены.")}</p>
+              ` : ''}
+              ${!isVariativeProductDraft ? `
                 <div>
                   <label class="font-bold text-gray-600">${tr("Ombor qoldig'i (Soni) *", "Остаток на складе *")}</label>
                   <input type="number" id="m-prod-stock" value="${escapeHtml(productFormDraft.stock)}" placeholder="15" class="w-full mt-1 p-2 border rounded-xl">
                 </div>
-              ` : `
-                <div>${renderVariantBuilderHtml()}</div>
-              `}
+              ` : ''}
 
               <div>
                 <label class="font-bold text-gray-600">${tr("Izoh / Tavsif", "Описание")}</label>
                 <textarea id="m-prod-desc" rows="2" placeholder="${tr('Tovar haqida ma\'lumot','Описание товара')}" class="w-full mt-1 p-2 border rounded-xl">${escapeHtml(productFormDraft.desc)}</textarea>
               </div>
 
-              ${!isVariativeProductDraft ? `
-                <div>
-                  <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
-                  ${productImageSizeHintHtml()}
-                  <input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
-                  <input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
-                  <button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr("Xotiradan yuklash", "Загрузить с устройства")}</button>
-                  <input id="m-prod-image-url" type="url" inputmode="url" value="${escapeHtml(productFormDraft.imageUrl)}" oninput="onImageUrlInput(this.value, 'm-prod-prev', 'm-prod-image-url-error', 'm-prod-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
-                  <p id="m-prod-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
-                  <img id="m-prod-prev" src="${escapeHtml(previewSrc)}" class="w-24 h-24 object-contain bg-gray-50 rounded-xl mt-2 p-0.5 ${previewSrc ? '' : 'hidden'} border">
-                </div>
+              <div>
+                <label class="font-bold text-gray-600">${isVariativeProductDraft ? tr("Asosiy rasm (fallback)", "Основное фото (fallback)") : tr("Tovar rasmi", "Фото товара")}</label>
+                ${productImageSizeHintHtml()}
+                ${isVariativeProductDraft ? `<p class="text-[9px] text-gray-400">${tr("Rang/o'lcham o'z rasmiga ega bo'lmasa, shu rasm ko'rsatiladi.", "Показывается, если у цвета/размера нет своего фото.")}</p>` : ''}
+                <input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
+                <input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event, 'm-prod-prev', 'm-prod-image-button', 'm-prod-image-url', 'm-prod-image-url-error')" class="hidden">
+                <button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon mt-1" aria-label="${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr("Xotiradan yuklash", "Загрузить с устройства")}" title="${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr("Xotiradan yuklash", "Загрузить с устройства")}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
+                <input id="m-prod-image-url" type="url" inputmode="url" value="${escapeHtml(productFormDraft.imageUrl)}" oninput="onImageUrlInput(this.value, 'm-prod-prev', 'm-prod-image-url-error', 'm-prod-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
+                <p id="m-prod-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
+                <img id="m-prod-prev" src="${escapeHtml(previewSrc)}" class="w-24 h-24 object-contain bg-gray-50 rounded-xl mt-2 p-0.5 ${previewSrc ? '' : 'hidden'} border">
+              </div>
+
+              ${isVariativeProductDraft ? `
+                <div>${renderVariantBuilderHtml()}</div>
               ` : ''}
 
               <div class="flex space-x-2 pt-2">
@@ -14383,7 +14514,7 @@
                 <input id="m-cat-image-input-files" type="file" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
                 <div class="flex items-center gap-3 mt-1 flex-wrap">
                   <img id="m-cat-prev" src="" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 hidden border">
-                  <button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-btn fc-btn-secondary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
+                  <button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon" aria-label="${tr('Xotiradan yuklash', 'Загрузить с устройства')}" title="${tr('Xotiradan yuklash', 'Загрузить с устройства')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                 </div>
                 <input id="m-cat-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'm-cat-prev', 'm-cat-image-url-error', 'm-cat-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="m-cat-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
@@ -14414,7 +14545,7 @@
                 <input id="ec-image-input-files" type="file" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
                 <div class="flex items-center gap-3 mt-1 flex-wrap">
                   <img id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border">
-                  <button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-btn fc-btn-secondary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
+                  <button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon" aria-label="${tr('Xotiradan yuklash', 'Загрузить с устройства')}" title="${tr('Xotiradan yuklash', 'Загрузить с устройства')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                 </div>
                 <input id="ec-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'ec-img-prev', 'ec-image-url-error', 'ec-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="ec-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
@@ -14455,7 +14586,7 @@
                 </div>
                 <input id="miq-image-input" type="file" accept="image/*" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
                 <input id="miq-image-input-files" type="file" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
-                <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-btn fc-btn-secondary w-full"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash','Загрузить с устройства')}</button>
+                <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon" aria-label="${tr('Xotiradan yuklash','Загрузить с устройства')}" title="${tr('Xotiradan yuklash','Загрузить с устройства')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                 <input id="miq-image-url" type="url" inputmode="url" oninput="document.getElementById('miq-empty-preview')?.classList.toggle('hidden', !!this.value.trim()); onImageUrlInput(this.value, 'miq-img-prev', 'miq-image-url-error', 'miq-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full p-2.5 border rounded-xl">
                 <p id="miq-image-url-error" class="hidden text-[10px] fc-text-danger"></p>
                 <button onclick="saveMissingImageQueueItem('${p.id}')" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('Saqlanmoqda…','Сохранение…') : tr('Saqlash','Сохранить')}</button>
@@ -14634,7 +14765,7 @@
                 ${productImageSizeHintHtml()}
                 <input id="ef-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
                 <input id="ef-image-input-files" type="file" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
-                <button id="ef-image-button" type="button" onclick="openImagePickerSheet('ef-image-input','ef-image-input-files')" class="fc-btn fc-btn-secondary w-full mt-1"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
+                <button id="ef-image-button" type="button" onclick="openImagePickerSheet('ef-image-input','ef-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon mt-1" aria-label="${tr('Xotiradan yuklash', 'Загрузить с устройства')}" title="${tr('Xotiradan yuklash', 'Загрузить с устройства')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                 <input id="ef-image-url" type="url" inputmode="url" oninput="onImageUrlInput(this.value, 'ef-img-prev', 'ef-image-url-error', 'ef-image-button')" placeholder="${tr('Rasm URL (ixtiyoriy)','URL изображения (необязательно)')}" class="w-full mt-2 p-2 border rounded-xl">
                 <p id="ef-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
                 <img id="ef-img-prev" src="${escapeHtml(hasProductImage(p) ? p.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-24 h-24 object-contain bg-gray-50 rounded-xl p-0.5 mt-2 border ${hasProductImage(p) ? '' : 'hidden'}">
@@ -14865,7 +14996,7 @@
               <input id="shop-logo-input" type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
               <input id="shop-logo-input-files" type="file" class="hidden" onchange="saveShopLogoFromPicker(event)">
               <div class="flex items-center gap-2 flex-wrap justify-center">
-                <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Xotiradan yuklash', 'Загрузить с устройства')}</button>
+                <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-btn fc-btn-primary fc-btn-icon" aria-label="${tr('Xotiradan yuklash', 'Загрузить с устройства')}" title="${tr('Xotiradan yuklash', 'Загрузить с устройства')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                 <button type="button" onclick="activePopupModal='SHOP_LOGO_URL'; render();" class="fc-btn fc-btn-secondary"><i data-lucide="link" class="w-4 h-4"></i>URL</button>
               </div>
               <button onclick="activePopupModal=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
@@ -14925,8 +15056,10 @@
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs max-h-[88vh] overflow-y-auto" onclick="event.stopPropagation()">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Nomdan logo yaratish', 'Создать логотип из названия')}</h3>
               <div class="fc-shop-field">
-                <label for="wm-name-input">${tr("Do'kon nomi", "Название магазина")}</label>
-                <input type="text" id="wm-name-input" value="${escapeHtml(wordmarkDraftText)}" maxlength="40" oninput="setWordmarkDraftText(this.value)" class="fc-shop-input" placeholder="${tr("Do'kon nomi", "Название магазина")}">
+                <label for="wm-name-input">${tr('Logotip uchun qisqa nom', 'Короткое название для логотипа')}</label>
+                <input type="text" id="wm-name-input" value="${escapeHtml(wordmarkDraftText)}" maxlength="${WORDMARK_MAX_CHARS}" oninput="setWordmarkDraftText(this.value)" class="fc-shop-input" placeholder="${tr("Do'kon nomi", "Название магазина")}">
+                ${wordmarkCounterHtml()}
+                <p class="fc-shop-field-help">${tr("Do'konning rasmiy nomiga tegmaydi — faqat logotipda ko'rinadigan qisqa versiya.", 'Не влияет на официальное название магазина — только короткая версия для логотипа.')}</p>
               </div>
               <div>
                 <p class="fc-shop-logo-title mb-1.5">${tr('Uslubni tanlang', 'Выберите стиль')}</p>
@@ -15002,7 +15135,7 @@
           const p = products.find(prod => prod.id === productId);
           if (!p) return null;
           const size = itemData.size || null, color = itemData.color || null;
-          return { ...p, key, qty: itemData.qty, size, color, price: variantPrice(p, size, color) };
+          return { ...p, key, qty: itemData.qty, size, color, price: variantPrice(p, size, color), img: variantDisplayImage(p, size, color) };
         }).filter(Boolean);
 
         container.innerHTML = `
@@ -15274,7 +15407,7 @@
                         <p class="text-xs font-bold text-gray-600">${tr('Rang', 'Цвет')}: <span class="font-normal text-gray-500">${activeColorName ? escapeHtml(activeColorName) : tr('tanlanmagan', 'не выбран')}</span></p>
                         <div class="flex gap-2 flex-wrap">
                           ${colorGroups.map((c) => `
-                            <button onclick="selectColor(${JSON.stringify(c.name)})" class="fc-color-swatch ${c.name === activeColorName ? 'is-active' : ''}" aria-label="${escapeHtml(c.name)}" title="${escapeHtml(c.name)}">
+                            <button onclick="selectColor(${escapeHtml(JSON.stringify(c.name))})" class="fc-color-swatch ${c.name === activeColorName ? 'is-active' : ''}" aria-label="${escapeHtml(c.name)}" title="${escapeHtml(c.name)}">
                               ${c.img ? `<img src="${escapeHtml(c.img)}" alt="">` : `<span class="fc-color-swatch-fallback">${escapeHtml(c.name.slice(0, 2))}</span>`}
                             </button>
                           `).join('')}
@@ -15285,7 +15418,7 @@
                           <div class="flex gap-2 flex-wrap">
                             ${sizesForActiveColor.map((v) => {
                               const disabled = !v.qty || Number(v.qty) <= 0;
-                              return `<button ${disabled ? 'disabled' : `onclick="selectSize(${JSON.stringify(v.size)})"`} class="fc-size-chip ${v.size === activeSizeName ? 'is-active' : ''} ${disabled ? 'is-disabled' : ''}">${escapeHtml(v.size)}</button>`;
+                              return `<button ${disabled ? 'disabled' : `onclick="selectSize(${escapeHtml(JSON.stringify(v.size))})"`} class="fc-size-chip ${v.size === activeSizeName ? 'is-active' : ''} ${disabled ? 'is-disabled' : ''}">${escapeHtml(v.size)}</button>`;
                             }).join('')}
                           </div>
                         ` : ''}
@@ -15539,6 +15672,9 @@
       }
 
       container.innerHTML = '';
+      } finally {
+        safeCreateIcons();
+      }
     }
 
     // VARIATIV TOVAR QAYTA QURISH (Uzum uslubi, 2026-08-31): asosiy rasm
@@ -16000,15 +16136,15 @@
     async function saveProductFromModal() {
       const name = document.getElementById('m-prod-name').value.trim();
       const desc = document.getElementById('m-prod-desc').value.trim();
-      // VARIATIV TOVAR QAYTA QURISH (2026-08-31): "Variativ tovar" ON bo'lsa
-      // m-prod-price/m-prod-oldprice/m-prod-stock/m-prod-image-* maydonlari
-      // DOM'da UMUMAN YO'Q (shablonda ko'rsatilmaydi) — shuning uchun ularni
-      // o'qishga urinish avval TypeError berardi. Endi ikkalasi ANIQ
-      // ajratilgan: variativ bo'lsa narx/qoldiq har rang+o'lchamdan keladi
-      // (finalizeVariantBuilderRows allaqachon buni ta'minlaydi — har
-      // qatorning o'z majburiy narxi bor), mahsulotning o'z rasmi/narxi/
-      // qoldig'i umuman yuborilmaydi (0/null — checkout'da hech qachon
-      // ishlatilmaydi, chunki har o'lcham o'z narxini bosib ketadi).
+      // VARIATIV TOVAR: "Variativ tovar" ON bo'lsa har rang+o'lcham o'z
+      // narxiga ega bo'lishi mumkin (finalizeVariantBuilderRows), LEKIN
+      // 4 TA YANGI TOPSHIRIQ item 1.5 (2026-09-01): narx/eski narx/rasm
+      // ENDI mahsulotning o'zida ham (ixtiyoriy "fallback") kiritiladi —
+      // o'z narxi/rasmi yo'q kombinatsiyalar shundan foydalanadi
+      // (variantPrice()/variantDisplayImage() allaqachon shu fallbackni
+      // qo'llaydi). Qoldiq (`stock`) baribir backendda variantlar
+      // yig'indisidan qayta hisoblanadi (`add_product`dagi finalStock) —
+      // shu sabab bu yerda 0 yuborish xavfsiz.
       let price, oldPrice, stock, variants = null, imageSnap = null;
       if (isVariativeProductDraft) {
         // BITTA SAHIFADA TUGATISH (2026-08-31), item 15: xato aynan qaysi
@@ -16029,7 +16165,12 @@
         if (!variantBuilderRows.some((r) => !r.editing)) return alert(tr("Kamida bitta rang va o'lcham qo'shing.", "Добавьте хотя бы один цвет и размер."));
         if (!name) return alert(tr("Iltimos, barcha majburiy maydonlarni to'ldiring!", "Заполните все обязательные поля!"));
         variants = finalizeVariantBuilderRows();
-        price = 0; oldPrice = null; stock = 0;
+        const fallbackPriceVal = parseFloat(document.getElementById('m-prod-price').value);
+        const fallbackOldPriceVal = parseFloat(document.getElementById('m-prod-oldprice').value);
+        price = (!isNaN(fallbackPriceVal) && fallbackPriceVal >= 0) ? fallbackPriceVal : 0;
+        oldPrice = (!isNaN(fallbackOldPriceVal) && fallbackOldPriceVal > price) ? fallbackOldPriceVal : null;
+        stock = 0;
+        imageSnap = takeTempImageSnapshot();
       } else {
         price = parseFloat(document.getElementById('m-prod-price').value);
         const oldPriceVal = parseFloat(document.getElementById('m-prod-oldprice').value);
