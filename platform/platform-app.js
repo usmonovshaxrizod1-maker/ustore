@@ -126,6 +126,8 @@
     filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     arrowRight: '<path d="M5 12h14"/><path d="m14 7 5 5-5 5"/>',
+    close: '<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
+    trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
   };
   function pIcon(name, size) {
     const s = size || 18;
@@ -1564,7 +1566,7 @@
       <section class="plat-payment-card plat-receipt-compact">
         <div class="plat-payment-section-title"><span>${pIcon('upload',18)}</span><div><b>Chek biriktirish <em>ixtiyoriy</em></b><small>JPG, PNG yoki WEBP · maksimal 6 MB</small></div></div>
         <input type="file" id="plat-receipt-input" class="hidden" onchange="onReceiptPicked(event)">
-        ${receiptFile ? `<div class="plat-upload-selected">${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" alt="Chek preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(receiptFile.name)}</b><small>${Math.max(1, Math.round(receiptFile.size / 1024))} KB</small></div><button class="secondary" onclick="document.getElementById('plat-receipt-input').click()">Almashtirish</button><button class="plat-upload-remove" onclick="clearReceiptFile()" aria-label="Chekni olib tashlash">×</button></div>` : `<button class="plat-upload-zone is-compact" onclick="document.getElementById('plat-receipt-input').click()"><span>${pIcon('upload',20)}</span><div><b>Fayldan chek tanlash</b><small>Chekni hozir yuklash shart emas</small></div></button>`}
+        ${receiptFile ? `<div class="plat-upload-selected">${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" alt="Chek preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(receiptFile.name)}</b><small>${Math.max(1, Math.round(receiptFile.size / 1024))} KB</small></div><button class="secondary" onclick="document.getElementById('plat-receipt-input').click()" aria-label="Almashtirish" title="Almashtirish">${pIcon('upload',14)}</button><button class="plat-upload-remove" onclick="clearReceiptFile()" aria-label="Chekni olib tashlash">×</button></div>` : `<button class="plat-upload-zone is-compact is-icon-only" onclick="document.getElementById('plat-receipt-input').click()" aria-label="Fayldan chek tanlash" title="Fayldan chek tanlash"><span>${pIcon('upload',20)}</span></button>`}
         <p class="plat-receipt-hint">To'lovda aniqlik kerak bo'lsa, administrator chekni keyinroq so'rashi mumkin.</p>
         ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
       </section>
@@ -2208,7 +2210,7 @@
         <label>Muammo mavzusi</label><select id="plat-bugreport-section"><option value="">Tanlang</option><option value="Obuna">To'lov / obuna</option><option value="Do'kon">Do'kon</option><option value="Yordam">Yordam</option><option value="Boshqa">Boshqa</option></select>
         <label>Muammo nomi</label><input type="text" id="plat-bugreport-title" placeholder="Qisqacha nom kiriting">
         <label>Muammo tavsifi</label><textarea id="plat-bugreport-desc" rows="5" maxlength="2000" placeholder="Muammo haqida batafsil yozing..."></textarea>
-        <label>Screenshot / fayl (ixtiyoriy)</label><input type="file" id="plat-bugreport-input" class="hidden" onchange="onBugReportAttachmentPicked(event)"><button class="plat-file-pick" onclick="document.getElementById('plat-bugreport-input').click()">${pIcon('plus',16)} Fayl tanlash <small>JPG, PNG, WEBP · max 6 MB</small></button>
+        <label>Screenshot / fayl (ixtiyoriy) <small class="plat-bug-file-hint">JPG, PNG, WEBP · max 6 MB</small></label><input type="file" id="plat-bugreport-input" class="hidden" onchange="onBugReportAttachmentPicked(event)"><button class="plat-file-pick is-icon-only" onclick="document.getElementById('plat-bugreport-input').click()" aria-label="Fayl tanlash" title="Fayl tanlash">${pIcon('plus',16)}</button>
         ${bugReportAttachmentPreviewUrl?`<img src="${bugReportAttachmentPreviewUrl}" class="plat-receipt-preview">`:''}
         <div class="plat-bug-process"><b>Yuborilgandan keyin</b><div><span>1</span><small>Qabul qilinadi</small><span>2</span><small>Tekshiriladi</small><span>3</span><small>Javob beriladi</small></div></div>
         <button class="primary ${submittingBugReport?'plat-btn-dimmed':''}" onclick="submitBugReport()">${submittingBugReport?'<span class="spinner"></span> Yuborilmoqda...':`${pIcon('mail',15)} Xabar berish`}</button>
@@ -3154,7 +3156,7 @@
     return `<section class="plat-my-request-upload"><div class="plat-application-section-title"><span>${pIcon('upload',17)}</span><div><b>Chekni yuborish</b><small>JPG, PNG yoki WebP · 6 MB gacha</small></div></div>
       <input id="plat-my-request-receipt" type="file" hidden onchange="onMyRequestReceiptPicked(event)">
       ${myRequestReceiptPreviewUrl ? `<img src="${myRequestReceiptPreviewUrl}" alt="Chek preview" class="plat-my-request-receipt-preview">` : ''}
-      ${myRequestReceiptFile ? `<div class="plat-upload-file-row"><span>${pIcon('file',15)} ${escapeHtml(myRequestReceiptFile.name)}</span><button onclick="clearMyRequestReceiptFile()">Olib tashlash</button></div>` : `<button class="secondary plat-upload-select" onclick="document.getElementById('plat-my-request-receipt').click()">${pIcon('upload',16)} Faylni tanlash</button>`}
+      ${myRequestReceiptFile ? `<div class="plat-upload-file-row"><span>${pIcon('file',15)} ${escapeHtml(myRequestReceiptFile.name)}</span><button onclick="clearMyRequestReceiptFile()" aria-label="Olib tashlash" title="Olib tashlash">${pIcon('close',13)}</button></div>` : `<button class="secondary plat-upload-select" onclick="document.getElementById('plat-my-request-receipt').click()" aria-label="Faylni tanlash" title="Faylni tanlash">${pIcon('upload',16)}</button>`}
       <button class="primary ${!myRequestReceiptFile || attachingMyRequestReceipt ? 'plat-btn-dimmed' : ''}" ${myRequestReceiptFile && !attachingMyRequestReceipt ? `onclick="attachMyRequestReceipt('${r.id}')"` : 'disabled'}>${attachingMyRequestReceipt?'<span class="spinner"></span> Yuborilmoqda...':"Chekni yuborish"}</button>
       <p class="plat-upload-bot-note">Yoki UStorE botga chek rasmini yuborishingiz mumkin. Bir nechta ochiq ariza bo'lsa, bot qaysi ariza ekanini tanlatadi.</p></section>`;
   }
@@ -3635,7 +3637,7 @@
       <div class="plat-media-upload">
         <div class="plat-media-upload-head"><div><b>Rasm <em>ixtiyoriy</em></b><small>Qurilma xotirasidan JPG, PNG yoki WebP · 3 MB gacha</small></div></div>
         <input type="file" id="ntd-image-file" hidden onchange="onNotificationTemplateImagePicked(event)">
-        ${preview ? `<div class="plat-media-preview"><img src="${escapeHtml(preview)}" alt="Xabar rasmi"><div><button class="secondary" onclick="document.getElementById('ntd-image-file').click()">Almashtirish</button><button class="secondary is-danger" onclick="clearNotificationTemplateImage()">Olib tashlash</button></div></div>` : `<button class="plat-upload-zone is-compact" onclick="document.getElementById('ntd-image-file').click()">${pIcon('upload',18)}<div><b>Qurilmadan rasm yuklash</b><small>Galereya yoki kompyuter xotirasi</small></div></button>`}
+        ${preview ? `<div class="plat-media-preview"><img src="${escapeHtml(preview)}" alt="Xabar rasmi"><div><button class="secondary" onclick="document.getElementById('ntd-image-file').click()" aria-label="Almashtirish" title="Almashtirish">${pIcon('upload',14)}</button><button class="secondary is-danger" onclick="clearNotificationTemplateImage()" aria-label="Olib tashlash" title="Olib tashlash">${pIcon('trash',14)}</button></div></div>` : `<button class="plat-upload-zone is-compact is-icon-only" onclick="document.getElementById('ntd-image-file').click()" aria-label="Qurilmadan rasm yuklash" title="Qurilmadan rasm yuklash"><span>${pIcon('upload',18)}</span></button>`}
         <label class="plat-form-field is-fallback-url"><span>Yoki rasm URL <em>fallback</em></span><input type="text" id="ntd-image" value="${escapeHtml(d.imageUrl)}" placeholder="https://..."></label>
       </div>
       <label class="plat-toggle-row"><span><b>Faol</b><small>Schedule ushbu shablonni yuboradi</small></span><input type="checkbox" id="ntd-active" ${d.isActive?'checked':''}></label>
@@ -3733,7 +3735,7 @@
       <label class="plat-form-field"><span>To'lov havolasi</span><input type="text" id="pmd-url" value="${escapeHtml(d.paymentUrl)}" placeholder="https://..."></label>
       <div class="plat-media-upload"><div class="plat-media-upload-head"><div><b>To'lov tizimi logosi</b><small>Rasm bo'lsa user aynan shu logoni ko'radi va karta/logo bosilganda yuqoridagi havola ochiladi.</small></div></div>
         <input type="file" id="pmd-logo-file" hidden onchange="onPaymentMethodLogoPicked(event)">
-        ${preview ? `<div class="plat-media-preview is-logo"><img src="${escapeHtml(preview)}" alt="Logo"><div><button class="secondary" onclick="document.getElementById('pmd-logo-file').click()">Almashtirish</button><button class="secondary is-danger" onclick="clearPaymentMethodLogo()">Olib tashlash</button></div></div>` : `<button class="plat-upload-zone is-compact" onclick="document.getElementById('pmd-logo-file').click()">${pIcon('upload',18)}<div><b>Qurilmadan logo yuklash</b><small>Yuklanmasa Click / Payme / Paynet wordmark ishlatiladi</small></div></button>`}
+        ${preview ? `<div class="plat-media-preview is-logo"><img src="${escapeHtml(preview)}" alt="Logo"><div><button class="secondary" onclick="document.getElementById('pmd-logo-file').click()" aria-label="Almashtirish" title="Almashtirish">${pIcon('upload',14)}</button><button class="secondary is-danger" onclick="clearPaymentMethodLogo()" aria-label="Olib tashlash" title="Olib tashlash">${pIcon('trash',14)}</button></div></div>` : `<button class="plat-upload-zone is-compact is-icon-only" onclick="document.getElementById('pmd-logo-file').click()" aria-label="Qurilmadan logo yuklash" title="Qurilmadan logo yuklash — yuklanmasa Click / Payme / Paynet wordmark ishlatiladi"><span>${pIcon('upload',18)}</span></button>`}
       </div>
       <label class="plat-toggle-row"><span><b>Faol</b><small>User to'lov oynasida ko'rinadi</small></span><input type="checkbox" id="pmd-active" ${d.isActive?'checked':''}></label>
       <div class="plat-settings-editor-actions"><button class="secondary" onclick="cancelPaymentMethodDraft()">Bekor qilish</button><button class="primary" onclick="savePaymentMethodDraft()">Saqlash</button></div></div>`;
