@@ -473,7 +473,8 @@
     }
     function productBadgeChipHtml(p) {
       if (!p.badge || !PRODUCT_BADGE_LABELS[p.badge]) return '';
-      return `<span class="fc-product-badge-chip fc-product-badge-${p.badge.toLowerCase()}">${productBadgeLabel(p.badge)}</span>`;
+      const adminClass = (isAdminMode && isUserAnAdmin) ? ' is-admin' : '';
+      return `<span class="fc-product-badge-chip fc-product-badge-${p.badge.toLowerCase()}${adminClass}">${productBadgeLabel(p.badge)}</span>`;
     }
 
     // Universal variant modeli: oddiy / faqat o'lcham / faqat rang / o'lcham+rangi.
@@ -563,7 +564,8 @@
     // kartalar/qatorlar ko'rinishida. Model (backend/DB shakli) o'zgarmadi
     // — faqat admin UX qayta qurildi.
     //
-    // `variantBuilderRows` qatorlari endi `color` (string) emas, `colorIndex`
+    // `variantBuilderRows` qatorlarida rasm yo'q: rasm faqat rang (`productColorDrafts`)ga tegishli.
+    // Qatorlar `color` (string) emas, `colorIndex`
     // (productColorDrafts'dagi indeks) orqali o'z rangiga bog'lanadi — shu
     // bilan rangni nomini o'zgartirish HECH QANDAY qatorni "ko'chirib
     // yurish"ni talab qilmaydi (indeks o'zgarmaydi, faqat nom string'i).
@@ -578,7 +580,7 @@
       return { name: '', img: '', imgUploading: false, error: '', saved: false, isNew: true };
     }
     function blankVariantRow(colorIndex) {
-      return { colorIndex, size: '', price: '', oldPrice: '', qty: 0, img: '', imgUploading: false, sku: null, billzProductId: null, editing: true, isNew: true, error: '' };
+      return { colorIndex, size: '', price: '', oldPrice: '', qty: 0, sku: null, billzProductId: null, editing: true, isNew: true, error: '' };
     }
     function syncVariantBuilderFromDom() {
       productColorDrafts.forEach((c, ci) => {
@@ -621,8 +623,6 @@
           price: (v.price !== undefined && v.price !== null) ? Number(v.price) : '',
           oldPrice: (v.oldPrice !== undefined && v.oldPrice !== null) ? Number(v.oldPrice) : '',
           qty: v.qty ?? 0,
-          img: '',
-          imgUploading: false,
           sku: v.sku || null,
           billzProductId: v.billzProductId || null,
           editing: false, isNew: false, error: '',
@@ -642,7 +642,7 @@
           qty: Math.max(0, Number.parseInt(r.qty, 10) || 0),
           price: Math.max(0, Number(r.price) || 0),
           oldPrice: (r.oldPrice !== '' && r.oldPrice !== null && r.oldPrice !== undefined) ? Math.max(0, Number(r.oldPrice) || 0) : null,
-          img: color ? (color.img || null) : null,
+          img: null, // current UI: image belongs to color only; legacy per-size img is intentionally cleared on save
           sku: r.sku || null,
           billzProductId: r.billzProductId || null,
         };
@@ -783,36 +783,21 @@
       if (productColorDrafts[idx]) productColorDrafts[idx].img = '';
       renderModalContainer();
     }
-    function pickSizeRowImage(idx) {
+    function setColorImageUrl(idx, value) {
       syncVariantBuilderFromDom();
-      const input = document.getElementById(`vr-${idx}-image-input`);
-      if (input) { input.value = ''; input.click(); }
-    }
-    async function onSizeRowImagePicked(event, idx) {
-      const file = event.target.files?.[0];
-      event.target.value = '';
-      if (!file || !variantBuilderRows[idx]) return;
-      try { validatePickedImageFile(file); }
-      catch (e) { return alert(pickedImageErrorMessage(e, file)); }
-      syncVariantBuilderFromDom();
-      variantBuilderRows[idx].imgUploading = true;
-      renderModalContainer();
+      const color = productColorDrafts[idx];
+      if (!color) return;
+      const raw = String(value || '').trim();
+      const errorEl = document.getElementById(`vc-${idx}-image-url-error`);
+      if (!raw) { color.img = ''; if (errorEl) { errorEl.textContent=''; errorEl.classList.add('hidden'); } renderModalContainer(); return; }
       try {
-        const prepared = await captureAndPrepareImageV2(file, TARGET_PRODUCT_IMAGE_BYTES, 800, 0.75);
-        const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, null, true);
-        if (variantBuilderRows[idx]) variantBuilderRows[idx].img = url;
-      } catch (e) {
-        console.error('[size-row-image:UPLOAD_FAILED]', e);
-        alert(tr("Rasmni yuklab bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось загрузить фото. Попробуйте снова."));
-      } finally {
-        if (variantBuilderRows[idx]) variantBuilderRows[idx].imgUploading = false;
+        color.img = validateExternalImageUrl(raw);
+        color.imgUploading = false;
+        if (errorEl) { errorEl.textContent=''; errorEl.classList.add('hidden'); }
         renderModalContainer();
+      } catch (e) {
+        if (errorEl) { errorEl.textContent=e.message || String(e); errorEl.classList.remove('hidden'); }
       }
-    }
-    function removeSizeRowImage(idx) {
-      syncVariantBuilderFromDom();
-      if (variantBuilderRows[idx]) variantBuilderRows[idx].img = '';
-      renderModalContainer();
     }
     function addSizeRow(colorIndex = variantBuilderActiveColorIndex) {
       syncVariantBuilderFromDom();
@@ -867,6 +852,7 @@
         <div class="fc-variant-editor-top"><button type="button" onclick="cancelActiveColorDraft()" class="fc-icon-plain" aria-label="${tr('Orqaga','Назад')}"><i data-lucide="arrow-left" class="w-5 h-5"></i></button><div><b>${tr('Rang va o‘lchamlar','Цвет и размеры')}</b><small>${tr('Bitta rangga tegishli o‘lchamlarni kiriting.','Добавьте размеры для одного цвета.')}</small></div></div>
         <div class="fc-shop-field"><label for="vc-${ci}-name">${tr('Rang nomi *','Название цвета *')}</label><input type="text" id="vc-${ci}-name" class="fc-shop-input" value="${escapeHtml(c.name)}" placeholder="${tr('masalan: Yashil','напр.: Зелёный')}"></div>
         <div class="fc-variant-image-line"><span class="fc-variant-summary-thumb is-lg">${c.imgUploading ? `<span class="fc-spinner"></span>` : (c.img ? `<img src="${escapeHtml(c.img)}" alt="">` : `<i data-lucide="image" class="w-4 h-4"></i>`)}</span><div class="fc-variant-entry-image-actions"><button type="button" onclick="pickColorImage(${ci})" class="fc-image-icon-action" ${c.imgUploading ? 'disabled' : ''} aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button>${c.img ? `<button type="button" onclick="removeColorImage(${ci})" class="fc-image-icon-action is-danger" aria-label="${tr("O'chirish",'Удалить')}" title="${tr("O'chirish",'Удалить')}"><i data-lucide="trash-2" class="w-5 h-5"></i></button>` : ''}<input type="file" id="vc-${ci}-image-input" class="hidden" accept="image/*" onchange="onColorImagePicked(event, ${ci})"></div><small>1:1 · 1200×1200</small></div>
+        <div class="fc-image-url-field"><span>${tr('yoki URL orqali','или по URL')}</span><input type="url" id="vc-${ci}-image-url" value="${escapeHtml(c.img && /^https:\/\//i.test(c.img) ? c.img : '')}" onchange="setColorImageUrl(${ci},this.value)" placeholder="https://..."><p id="vc-${ci}-image-url-error" class="hidden"></p></div>
         ${c.error ? `<p class="fc-variant-inline-error">${escapeHtml(c.error)}</p>` : ''}
         <div class="fc-variant-editor-section-title"><b>${tr("O'lchamlar",'Размеры')}</b></div>
         <div class="fc-variant-size-list">${rows.map((row) => `<div class="fc-variant-size-editor">
@@ -1202,6 +1188,7 @@
     let wordmarkDraftPresetId = null;
     let wordmarkDraftTextColor = '#ffffff';
     let wordmarkDraftBgColor = '#0f172a';
+    let wordmarkStyleMenuOpen = false;
     let botUsername = null; // 1.10: "Telegramda ko'rish" uchun — hardcode emas, boot() javobidan
     let shopContact = { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
     let shopLowStockThreshold = 5;
@@ -1353,7 +1340,7 @@
     // Variativ tovar — Rang+O'lcham modeli (Add + Edit bir xil komponent).
     // productColorDrafts: [{name,img}] — e'lon qilingan ranglar (hali 0
     // o'lchami bo'lsa ham UI'da ko'rinishi uchun, variantBuilderRows'dan
-    // mustaqil). variantBuilderRows: [{color,size,qty,price,oldPrice,img,
+    // mustaqil). variantBuilderRows: [{color,size,qty,price,oldPrice,
     // sku,billzProductId}] — haqiqiy rang+o'lcham kombinatsiyalari (DB
     // `variants` shakliga to'g'ridan-to'g'ri mos: color->parent(Rang),
     // size->child(O'lcham)).
@@ -7540,7 +7527,7 @@
         }
         body = `<div class="fc-orders-calendar-weekdays">${weekDays.map(d=>`<span>${d}</span>`).join('')}</div><div class="fc-orders-calendar-grid">${cells.join('')}</div><p class="fc-orders-calendar-hint">${tr('Bitta kun uchun sanani ikki marta bosing. Oraliq uchun boshlanish va tugash sanasini tanlang.','Для одного дня нажмите дату дважды. Для периода выберите начало и конец.')}</p>`;
       }
-      return `<div class="fc-orders-calendar-card"><div class="fc-orders-calendar-top"><div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>${(ordersCalendarDraftFrom||ordersCalendarDraftTo)?`<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear" aria-label="${tr('Tozalash','Сбросить')}"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>`:''}</div><div class="fc-orders-calendar-monthbar"><button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-left" class="w-4 h-4"></i></button><div class="fc-orders-calendar-period"><button type="button" onclick="setOrdersCalendarPickerMode('months')">${escapeHtml(monthNames[month])}</button><button type="button" onclick="setOrdersCalendarPickerMode('years')">${year}</button></div><button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div>${body}${ordersCalendarDraftFrom?`<div class="fc-orders-calendar-actions"><button type="button" onclick="cancelOrdersCalendarSelection()" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-4 h-4"></i></button><button type="button" onclick="applyOrdersCalendarSelection()" ${ordersCalendarDraftTo?'':'disabled'} class="is-primary" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></div>`:''}</div>`;
+      return `<div class="fc-orders-calendar-card"><div class="fc-orders-calendar-top"><div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>${(ordersCalendarDraftFrom||ordersCalendarDraftTo)?`<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear" aria-label="${tr('Tozalash','Сбросить')}"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>`:''}</div><div class="fc-orders-calendar-scroll"><div class="fc-orders-calendar-monthbar"><button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-left" class="w-4 h-4"></i></button><div class="fc-orders-calendar-period"><button type="button" onclick="setOrdersCalendarPickerMode('months')">${escapeHtml(monthNames[month])}</button><button type="button" onclick="setOrdersCalendarPickerMode('years')">${year}</button></div><button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div>${body}</div>${ordersCalendarDraftFrom?`<div class="fc-orders-calendar-actions"><button type="button" onclick="cancelOrdersCalendarSelection()" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-4 h-4"></i></button><button type="button" onclick="applyOrdersCalendarSelection()" ${ordersCalendarDraftTo?'':'disabled'} class="is-primary" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></div>`:''}</div>`;
     }
 
     function renderOrdersDateFilterHtml() {
@@ -10039,7 +10026,7 @@
       }
       const d = bannerDraft;
       const isEdit = !!d.id;
-      const previewSrc = tempImagePreviewUrl || d.imageUrl || '';
+      const previewSrc = tempImagePreviewUrl || tempImageUrl || d.imageUrl || '';
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeBannerForm();">
         <div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-form fc-mkt-pro-banner-form">
           <div class="fc-sheet-handle"></div>
@@ -10052,10 +10039,10 @@
             <div class="fc-form-section-title">${tr('Banner rasmi', 'Изображение баннера')}</div>
             <div>
               <p class="text-[10px] text-gray-400">${tr('Tavsiya etilgan o\'lcham: 1200 × 400 px (3:1)', 'Рекомендуемый размер: 1200 × 400 px (3:1)')}</p>
-              <input id="banner-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', '', '')" class="hidden">
-              <input id="banner-image-input-files" type="file" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', '', '')" class="hidden">
+              <input id="banner-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', 'banner-image-url', 'banner-image-url-error')" class="hidden">
+              <input id="banner-image-input-files" type="file" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', 'banner-image-url', 'banner-image-url-error')" class="hidden">
               <button id="banner-image-button" type="button" onclick="openImagePickerSheet('banner-image-input','banner-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon mt-1" aria-label="${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}" title="${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
-              <img id="banner-image-prev" src="${escapeHtml(previewSrc)}" style="aspect-ratio:3/1" class="w-full object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
+              <img id="banner-image-prev" src="${escapeHtml(previewSrc)}" style="aspect-ratio:3/1" class="w-full object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border"><div class="fc-image-url-field"><span>${tr('yoki URL orqali','или по URL')}</span><input id="banner-image-url" type="url" value="${escapeHtml(tempImageUrl || d.imageUrl || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'banner-image-prev','banner-image-url-error','banner-image-button')"><p id="banner-image-url-error" class="hidden"></p></div>
             </div>
 
             <div class="fc-form-section-title">${tr('Bog‘lanish / maqsad', 'Связь / назначение')}</div>
@@ -10460,7 +10447,7 @@
       if (!root) { root = document.createElement('div'); root.id = 'fc-bundle-form-root'; document.body.appendChild(root); }
       const d = bundleDraft;
       const isEdit = !!d.id;
-      const previewSrc = tempImagePreviewUrl || d.coverImageUrl || '';
+      const previewSrc = tempImagePreviewUrl || tempImageUrl || d.coverImageUrl || '';
       const regularTotal = d.items.reduce((s, i) => { const p = products.find(pp => pp.id === i.productId); return s + (p ? Number(p.price) * i.qty : 0); }, 0);
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeBundleForm();">
         <div class="fc-sheet fc-mkt-pro-sheet fc-mkt-pro-form fc-mkt-pro-bundle-form">
@@ -10472,10 +10459,10 @@
             <label class="fc-mini-field"><span>${tr('Aksiya haqida', 'Об акции')}</span><textarea id="bundle-f-desc" oninput="bundleDraft.description=this.value" maxlength="300" rows="3">${escapeHtml(d.description)}</textarea></label>
             <div>
               <label class="font-bold text-gray-600 text-xs">${tr('Muqova rasmi (ixtiyoriy)', 'Обложка (необязательно)')}</label>
-              <input id="bundle-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'bundle-image-prev', 'bundle-image-button', '', '')" class="hidden">
-              <input id="bundle-image-input-files" type="file" onchange="onImagePicked(event, 'bundle-image-prev', 'bundle-image-button', '', '')" class="hidden">
+              <input id="bundle-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'bundle-image-prev', 'bundle-image-button', 'bundle-image-url', 'bundle-image-url-error')" class="hidden">
+              <input id="bundle-image-input-files" type="file" onchange="onImagePicked(event, 'bundle-image-prev', 'bundle-image-button', 'bundle-image-url', 'bundle-image-url-error')" class="hidden">
               <button id="bundle-image-button" type="button" onclick="openImagePickerSheet('bundle-image-input','bundle-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon mt-1" aria-label="${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr('Rasm tanlash (ixtiyoriy)', 'Выбрать фото (необязательно)')}" title="${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr('Rasm tanlash (ixtiyoriy)', 'Выбрать фото (необязательно)')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
-              <img id="bundle-image-prev" src="${escapeHtml(previewSrc)}" class="w-full h-28 object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
+              <img id="bundle-image-prev" src="${escapeHtml(previewSrc)}" class="w-full h-28 object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border"><div class="fc-image-url-field"><span>${tr('yoki URL orqali','или по URL')}</span><input id="bundle-image-url" type="url" value="${escapeHtml(tempImageUrl || d.coverImageUrl || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'bundle-image-prev','bundle-image-url-error','bundle-image-button')"><p id="bundle-image-url-error" class="hidden"></p></div>
             </div>
             <div class="fc-form-section-title">${tr('Mahsulotlar', 'Товары')}</div>
             <div class="space-y-1.5">
@@ -12996,7 +12983,6 @@
 
     function shopInfoLogoPreviewUrl() {
       if (shopLogoDraft?.kind === 'file') return shopLogoDraft.previewUrl || '';
-      if (shopLogoDraft?.kind === 'url') return shopLogoDraft.url || '';
       return shopLogoUrl || '';
     }
 
@@ -13014,19 +13000,7 @@
       render();
     }
 
-    // URL orqali logo kiritish eski imkoniyat sifatida saqlanadi. SHOP_INFO'dan
-    // kirilganda formadagi hali saqlanmagan qiymatlar draftga olinadi va orqaga
-    // qaytganda tiklanadi.
-    function openShopLogoUrlFromShopInfo() {
-      shopInfoDraft = readShopContactFormValues();
-      activePopupModal = 'SHOP_LOGO_URL';
-      render();
-    }
-
-    function closeShopLogoUrlModal() {
-      activePopupModal = shopInfoDraft ? 'SHOP_INFO' : null;
-      render();
-    }
+    // Logo xavfsizlik va brend yaxlitligi uchun faqat qurilmadan tanlanadi.
 
     function setShopInfoLogoPreparing(isPreparing) {
       shopLogoPreparing = !!isPreparing;
@@ -13079,8 +13053,6 @@
         showActionToast(tr("⏳ Do'kon ma'lumotlari saqlanmoqda...", '⏳ Данные магазина сохраняются...'), 'saving');
         if (shopLogoDraft?.kind === 'file' && shopLogoDraft.file) {
           nextLogoUrl = await uploadImageSnapshot({ file: shopLogoDraft.file, preparing: Promise.resolve(shopLogoDraft.file), url: null }, shopLogoUrl, true);
-        } else if (shopLogoDraft?.kind === 'url') {
-          nextLogoUrl = shopLogoDraft.url || null;
         }
 
         // Optimistic render QILINMAYDI: ikkala server amali muvaffaqiyatli bo'lgachgina
@@ -13089,7 +13061,11 @@
         if (shopLogoDraft) await callApi('set_shop_logo', { logoUrl: nextLogoUrl });
 
         shopContact = { ...next, startMessage: shopContact.startMessage };
-        if (shopLogoDraft) shopLogoUrl = nextLogoUrl;
+        if (shopLogoDraft) {
+          shopLogoUrl = nextLogoUrl;
+          shopLogoType = 'IMAGE';
+          shopLogoWordmark = null;
+        }
         shopInfoDraft = null;
         clearShopLogoDraft();
         activePopupModal = null;
@@ -13105,10 +13081,8 @@
     // 1.11: boshqa rasm oqimlaridagi (yangi tovar/tahrirlash/Rasmsiz queue)
     // kabi bir xil barqaror pipeline: baytlar avval mustaqil nusxalanadi,
     // vaqtinchalik File obyektiga (upload tugagunicha) keyin ishonilmaydi.
-    // 6-band: header logotipiga bosilganda ochiladigan yagona logotip
-    // boshqaruvi — Galereya + Fayl + URL, uchtasi ham bitta joyda (5-band:
-    // logotip ham boshqa rasm joylari kabi Galereya+Fayl ikkalasiga ega
-    // bo'lishi kerak edi, avval faqat Galereya bor edi).
+    // Logo — faqat qurilmadan (Galereya/Fayl) tanlanadi; URL kiritish ataylab yo'q.
+    // Fayl tanlangach majburiy 4:1 crop oqimi ishlaydi.
     function openShopLogoManager() {
       activePopupModal = 'SHOP_LOGO_MANAGER';
       render();
@@ -13168,6 +13142,8 @@
         const url = await uploadImageSnapshot({ file: prepared, preparing: Promise.resolve(prepared), url: null }, old, true);
         await callApi('set_shop_logo', { logoUrl: url });
         shopLogoUrl = url;
+        shopLogoType = 'IMAGE';
+        shopLogoWordmark = null;
         render();
         showActionToast(tr('✅ Logo saqlandi', '✅ Логотип сохранён'), 'success', 1400);
       } catch (e) {
@@ -13359,18 +13335,26 @@
     }
 
     // ============ "NOMDAN LOGO YARATISH" (WORDMARK) ============
-    // Yangi shrift fayli ULANMAYDI — loyihada allaqachon bor ikkita oila
-    // (ui-sans-serif/system-ui va ui-monospace) ning og'irlik/harf oralig'i/
-    // registr kombinatsiyasi orqali farqlanadigan 6 ta professional variant.
-    // Har variant CSS bilan LIVE render qilinadi — hech qanday rasm
-    // yaratilmaydi/yuklanmaydi, faqat {presetId, text} saqlanadi.
+    // Word'dagi font menyusiga o'xshash tanlov uchun bir-biridan vizual aniq
+    // farqlanadigan professional yo'nalishlar. Tashqi font fayli ulanmaydi:
+    // browser/system font stacklari ishlatiladi, shuning uchun Telegram
+    // WebView'da tez va barqaror render bo'ladi.
     const WORDMARK_PRESETS = [
-      { id: 'bold-tight', label: () => tr('Qalin, ixcham', 'Жирный, плотный'), family: 'sans', weight: 900, spacing: '-0.02em', transform: 'uppercase', style: 'normal' },
-      { id: 'light-wide', label: () => tr('Yengil, keng', 'Лёгкий, широкий'), family: 'sans', weight: 500, spacing: '0.2em', transform: 'uppercase', style: 'normal' },
-      { id: 'mono-spaced', label: () => tr('Monospace, keng', 'Моно, широкий'), family: 'mono', weight: 700, spacing: '0.14em', transform: 'uppercase', style: 'normal' },
-      { id: 'mono-lower', label: () => tr('Monospace, kichik harf', 'Моно, строчные'), family: 'mono', weight: 600, spacing: '-0.01em', transform: 'lowercase', style: 'normal' },
-      { id: 'sans-italic', label: () => tr('Qiyshiq, yumshoq', 'Курсив, мягкий'), family: 'sans', weight: 700, spacing: '0em', transform: 'none', style: 'italic' },
-      { id: 'monogram-badge', label: () => tr('Belgi + nom', 'Значок + название'), family: 'sans', weight: 800, spacing: '0.01em', transform: 'none', style: 'normal', monogram: true },
+      { id: 'geometric-bold', label: () => tr('Geometric Bold', 'Geometric Bold'), family: 'sans', weight: 900, spacing: '-0.035em', transform: 'uppercase', style: 'normal' },
+      { id: 'corporate-clean', label: () => tr('Corporate Clean', 'Corporate Clean'), family: 'sans', weight: 700, spacing: '0.015em', transform: 'none', style: 'normal' },
+      { id: 'elegant-serif', label: () => tr('Elegant Serif', 'Elegant Serif'), family: 'serif', weight: 700, spacing: '0.025em', transform: 'none', style: 'normal' },
+      { id: 'luxury-serif', label: () => tr('Luxury', 'Luxury'), family: 'serif', weight: 500, spacing: '0.16em', transform: 'uppercase', style: 'normal' },
+      { id: 'condensed-sport', label: () => tr('Sport Condensed', 'Sport Condensed'), family: 'condensed', weight: 900, spacing: '-0.015em', transform: 'uppercase', style: 'normal' },
+      { id: 'wide-tech', label: () => tr('Wide Tech', 'Wide Tech'), family: 'wide', weight: 800, spacing: '0.19em', transform: 'uppercase', style: 'normal' },
+      { id: 'mono-tech', label: () => tr('Mono Tech', 'Mono Tech'), family: 'mono', weight: 750, spacing: '0.08em', transform: 'uppercase', style: 'normal' },
+      { id: 'mono-minimal', label: () => tr('Mono Minimal', 'Mono Minimal'), family: 'mono', weight: 500, spacing: '-0.015em', transform: 'lowercase', style: 'normal' },
+      { id: 'dynamic-italic', label: () => tr('Dynamic Italic', 'Dynamic Italic'), family: 'sans', weight: 800, spacing: '-0.01em', transform: 'none', style: 'italic' },
+      { id: 'soft-rounded', label: () => tr('Soft Rounded', 'Soft Rounded'), family: 'rounded', weight: 800, spacing: '0.02em', transform: 'none', style: 'normal' },
+      { id: 'fashion-light', label: () => tr('Fashion Light', 'Fashion Light'), family: 'serif', weight: 400, spacing: '0.22em', transform: 'uppercase', style: 'normal' },
+      { id: 'retro-display', label: () => tr('Retro Display', 'Retro Display'), family: 'display', weight: 800, spacing: '0.035em', transform: 'uppercase', style: 'normal' },
+      { id: 'minimal-upper', label: () => tr('Minimal Uppercase', 'Minimal Uppercase'), family: 'sans', weight: 600, spacing: '0.13em', transform: 'uppercase', style: 'normal' },
+      { id: 'editorial', label: () => tr('Editorial', 'Editorial'), family: 'serif', weight: 600, spacing: '-0.01em', transform: 'none', style: 'italic' },
+      { id: 'monogram-badge', label: () => tr('Belgi + nom', 'Значок + название'), family: 'sans', weight: 850, spacing: '0.01em', transform: 'none', style: 'normal', monogram: true },
     ];
     const WORDMARK_COLOR_PRESETS = [
       { id: 'navy-white', text: '#ffffff', bg: '#0f172a' },
@@ -13381,7 +13365,16 @@
     ];
     function wordmarkPresetById(id) { return WORDMARK_PRESETS.find((p) => p.id === id) || WORDMARK_PRESETS[0]; }
     function wordmarkFontFamily(family) {
-      return family === 'mono' ? 'var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, monospace)' : 'var(--default-font-family, ui-sans-serif, system-ui, sans-serif)';
+      const stacks = {
+        mono: 'var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)',
+        serif: 'Georgia, Cambria, "Times New Roman", Times, serif',
+        condensed: '"Arial Narrow", "Roboto Condensed", Impact, sans-serif',
+        wide: '"Trebuchet MS", Arial, ui-sans-serif, sans-serif',
+        rounded: '"Trebuchet MS", "Arial Rounded MT Bold", ui-sans-serif, sans-serif',
+        display: 'Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif',
+        sans: 'var(--default-font-family, ui-sans-serif, system-ui, sans-serif)',
+      };
+      return stacks[family] || stacks.sans;
     }
     function renderWordmarkHtml(presetId, text, opts) {
       const p = wordmarkPresetById(presetId);
@@ -13424,9 +13417,11 @@
       // olinadi, orqaga qaytganda yo'qolmasin.
       if (activePopupModal === 'SHOP_INFO') shopInfoDraft = readShopContactFormValues();
       wordmarkDraftText = clampWordmarkText(shopLogoWordmark?.text || currentShopNameForWordmark());
-      wordmarkDraftPresetId = shopLogoWordmark?.presetId || WORDMARK_PRESETS[0].id;
+      const storedPresetId = shopLogoWordmark?.presetId;
+      wordmarkDraftPresetId = WORDMARK_PRESETS.some((p) => p.id === storedPresetId) ? storedPresetId : WORDMARK_PRESETS[0].id;
       wordmarkDraftTextColor = shopLogoWordmark?.textColor || '#ffffff';
       wordmarkDraftBgColor = shopLogoWordmark?.backgroundColor || '#0f172a';
+      wordmarkStyleMenuOpen = false;
       activePopupModal = 'WORDMARK_GENERATOR';
       render();
     }
@@ -13450,19 +13445,54 @@
       const counterEl = document.getElementById('wm-name-counter');
       if (counterEl) counterEl.outerHTML = wordmarkCounterHtml();
     }
+    function toggleWordmarkStyleMenu() {
+      const trigger = document.querySelector('.fc-wordmark-style-select');
+      const menu = document.getElementById('wordmark-style-menu');
+      if (!trigger || !menu) return;
+      const opening = menu.classList.contains('is-hidden');
+      wordmarkStyleMenuOpen = opening;
+      trigger.classList.toggle('is-open', opening);
+      trigger.setAttribute('aria-expanded', opening ? 'true' : 'false');
+      if (!opening) { menu.classList.add('is-hidden'); return; }
+
+      // Word font menu kabi viewport ichida suzadi: joy pastda kam bo'lsa
+      // avtomatik yuqoriga ochiladi. Ro'yxatning o'zi scroll bo'ladi.
+      const rect = trigger.getBoundingClientRect();
+      const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const gap = 6, edge = 8;
+      const desired = Math.min(240, Math.max(150, Math.floor(vh * 0.42)));
+      const below = Math.max(0, vh - rect.bottom - edge);
+      const above = Math.max(0, rect.top - edge);
+      const openUp = below < Math.min(180, desired) && above > below;
+      const available = Math.max(120, Math.min(desired, openUp ? above : below));
+      const width = Math.min(rect.width, vw - edge * 2);
+      menu.style.left = `${Math.max(edge, Math.min(rect.left, vw - width - edge))}px`;
+      menu.style.width = `${width}px`;
+      menu.style.maxHeight = `${available}px`;
+      if (openUp) {
+        menu.style.top = 'auto';
+        menu.style.bottom = `${Math.max(edge, vh - rect.top + gap)}px`;
+      } else {
+        menu.style.bottom = 'auto';
+        menu.style.top = `${Math.min(vh - edge - available, rect.bottom + gap)}px`;
+      }
+      menu.classList.remove('is-hidden');
+    }
     function selectWordmarkPreset(presetId) {
+      if (!WORDMARK_PRESETS.some((p) => p.id === presetId)) return;
       wordmarkDraftPresetId = presetId;
-      rerenderWordmarkPreview();
+      wordmarkStyleMenuOpen = false;
+      renderModalContainer();
     }
     function rerenderWordmarkPreview() {
       const el = document.getElementById('wordmark-header-preview');
       if (el) el.innerHTML = renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, { textColor: wordmarkDraftTextColor, bgColor: wordmarkDraftBgColor });
       const mock = document.querySelector('.fc-wordmark-header-mock');
       if (mock) mock.style.background = wordmarkDraftBgColor;
-      document.querySelectorAll('.fc-wordmark-preset-card').forEach((card) => {
-        card.classList.toggle('is-selected', card.dataset.presetId === wordmarkDraftPresetId);
-      });
-      document.querySelectorAll('.fc-wordmark-slot').forEach((slot) => {
+      const selected = document.getElementById('wordmark-style-selected-preview');
+      if (selected) selected.innerHTML = renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' });
+      document.querySelectorAll('.fc-wordmark-style-option-preview').forEach((slot) => {
         slot.innerHTML = renderWordmarkHtml(slot.dataset.presetSlot, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' });
       });
     }
@@ -13526,66 +13556,7 @@
         alert(tr("❌ Logotipni saqlab bo'lmadi: ", "❌ Не удалось сохранить логотип: ") + (e.message || e));
       }
     }
-    // Rasm-logoga qaytish — mavjud logo_url saqlanib qolgani uchun (backend
-    // WORDMARK tanlanganda logo_url'ni o'chirmaydi) shunchaki logoType'ni
-    // qaytarish kifoya, qayta yuklash shart emas.
-    async function switchLogoBackToImage() {
-      try {
-        await callApi('set_shop_logo', { logoType: 'IMAGE', logoUrl: shopLogoUrl });
-        shopLogoType = 'IMAGE';
-        render();
-        showActionToast(tr('✅ Rasm-logo faollashtirildi', '✅ Логотип-изображение активирован'), 'success', 1400);
-      } catch (e) {
-        console.error(e);
-        alert(tr("❌ Amalga oshmadi: ", "❌ Не удалось: ") + (e.message || e));
-      }
-    }
-
-    // 13-band: logotip uchun ham URL orqali qo'shish imkoniyati — fayl
-    // pickeriga parallel, mustaqil yo'l (upload qadamiga hojat yo'q).
-    async function saveShopLogoFromUrl() {
-      const input = document.getElementById('shop-logo-url-input');
-      const errorEl = document.getElementById('shop-logo-url-error');
-      const raw = String(input?.value || '').trim();
-      if (errorEl) { errorEl.classList.add('hidden'); errorEl.textContent = ''; }
-      let validUrl;
-      try { validUrl = validateExternalImageUrl(raw); }
-      catch (e) {
-        if (errorEl) { errorEl.textContent = e.message || String(e); errorEl.classList.remove('hidden'); }
-        return;
-      }
-      if (!validUrl) {
-        if (errorEl) { errorEl.textContent = tr("URL kiriting.", "Введите URL."); errorEl.classList.remove('hidden'); }
-        return;
-      }
-
-      if (shopInfoDraft) {
-        // SHOP_INFO ichidan kelgan bo'lsa URL ham faqat draft. Real saqlash umumiy
-        // Saqlash tugmasigacha kutadi.
-        clearShopLogoDraft();
-        shopLogoDraft = { kind: 'url', url: validUrl };
-        activePopupModal = 'SHOP_INFO';
-        render();
-        showActionToast(tr('Logo tanlandi — Saqlashni bosing', 'Логотип выбран — нажмите Сохранить'), 'success', 1500);
-        return;
-      }
-
-      const old = shopLogoUrl;
-      shopLogoUrl = validUrl;
-      showActionToast(tr("⏳ Logotip saqlanmoqda...", "⏳ Логотип сохраняется..."), 'saving');
-      try {
-        await callApi('set_shop_logo', { logoUrl: validUrl });
-        activePopupModal = null;
-        render();
-        showActionToast(tr("✅ Saqlandi", "✅ Сохранено"), 'success', 1200);
-      } catch (e) {
-        console.error(e);
-        shopLogoUrl = old;
-        render();
-        showActionToast(tr("❌ Saqlanmadi", "❌ Не сохранено"), 'error', 1800);
-        alert(tr("❌ Logotipni saqlab bo'lmadi: ", "❌ Не удалось сохранить логотип: ") + (e.message || e));
-      }
-    }
+    // IMAGE va WORDMARK bir-birini almashtiradi; eski manbaga qaytish actioni yo'q.
 
     async function saveLowStockThreshold() {
       const raw = Number(document.getElementById('low-stock-threshold-input')?.value);
@@ -14407,9 +14378,8 @@
                       <div class="fc-shop-logo-actions">
                         <input id="shop-logo-input" type="file" accept="image/*" class="hidden" onchange="saveShopLogoFromPicker(event)">
                         <input id="shop-logo-input-files" type="file" class="hidden" onchange="saveShopLogoFromPicker(event)">
-                        ${(shopLogoType === 'WORDMARK' && shopLogoUrl) ? `<button type="button" onclick="switchLogoBackToImage()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="image" class="w-4 h-4"></i>${tr('Yuklangan rasmga qaytish', 'Вернуться к загруженному изображению')}</button>` : ''}
-                        <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" id="shop-info-logo-button" class="fc-image-icon-action fc-shop-logo-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
-                        <button type="button" onclick="openWordmarkGenerator()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="type" class="w-4 h-4"></i>${tr('Nomdan logo yaratish', 'Создать логотип из названия')}</button>
+                        <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" id="shop-info-logo-button" class="fc-btn fc-btn-secondary fc-shop-logo-action" aria-label="${tr('Rasm qo‘shish', 'Добавить изображение')}" title="${tr('Rasm qo‘shish', 'Добавить изображение')}"><i data-lucide="image-plus" class="w-4 h-4"></i><span>${tr('Rasm qo‘shish', 'Добавить изображение')}</span></button>
+                        <button type="button" onclick="openWordmarkGenerator()" class="fc-btn fc-btn-secondary fc-shop-logo-action"><i data-lucide="type" class="w-4 h-4"></i><span>${tr('Nomdan logo yaratish', 'Создать из названия')}</span></button>
                       </div>
                     </div>
                   </div>
@@ -14599,7 +14569,7 @@
               <div class="grid grid-cols-2 gap-2"><div><label class="font-bold text-gray-600">${tr('Sotuv narxi *','Цена продажи *')}</label><input type="number" id="m-prod-price" value="${escapeHtml(productFormDraft.price)}" placeholder="400000" class="w-full mt-1 p-2 border rounded-xl"></div><div><label class="font-bold text-gray-600">${tr('Eski narx','Старая цена')}</label><input type="number" id="m-prod-oldprice" value="${escapeHtml(productFormDraft.oldPrice)}" placeholder="480000" class="w-full mt-1 p-2 border rounded-xl"></div></div>
               <div><label class="font-bold text-gray-600">${tr("Ombor qoldig'i (Soni) *",'Остаток на складе *')}</label><input type="number" id="m-prod-stock" value="${escapeHtml(productFormDraft.stock)}" placeholder="15" class="w-full mt-1 p-2 border rounded-xl"></div>
               <div><label class="font-bold text-gray-600">${tr('Izoh / Tavsif','Описание')}</label><textarea id="m-prod-desc" rows="2" placeholder="${tr('Tovar haqida ma’lumot','Описание товара')}" class="w-full mt-1 p-2 border rounded-xl">${escapeHtml(productFormDraft.desc)}</textarea></div>
-              <div><label class="font-bold text-gray-600">${tr('Tovar rasmi','Фото товара')}</label>${productImageSizeHintHtml()}<div class="fc-image-picker-inline">${previewSrc ? `<img id="m-prod-prev" src="${escapeHtml(previewSrc)}" class="fc-image-preview-square">` : `<span class="fc-image-preview-square is-empty"><i data-lucide="image" class="w-5 h-5"></i></span><img id="m-prod-prev" src="" class="fc-image-preview-square hidden">`}<button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button></div><input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"><input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"><input id="m-prod-image-url" type="hidden" value="${escapeHtml(productFormDraft.imageUrl)}"><p id="m-prod-image-url-error" class="hidden"></p></div>
+              <div><label class="font-bold text-gray-600">${tr('Tovar rasmi','Фото товара')}</label>${productImageSizeHintHtml()}<div class="fc-image-picker-inline">${previewSrc ? `<img id="m-prod-prev" src="${escapeHtml(previewSrc)}" class="fc-image-preview-square">` : `<span class="fc-image-preview-square is-empty"><i data-lucide="image" class="w-5 h-5"></i></span><img id="m-prod-prev" src="" class="fc-image-preview-square hidden">`}<button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button></div><input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"><input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"><div class="fc-image-url-field"><span>${tr('yoki URL orqali','или по URL')}</span><input id="m-prod-image-url" type="url" value="${escapeHtml(tempImageUrl || productFormDraft.imageUrl || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'m-prod-prev','m-prod-image-url-error','m-prod-image-button')"><p id="m-prod-image-url-error" class="hidden"></p></div></div>
               <div class="flex space-x-2 pt-2"><button onclick="saveProductFromModal()" class="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl">${tr('Saqlash va omborga kiritish','Сохранить и добавить на склад')}</button><button onclick="cancelProductEditor()" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr('Bekor qilish','Отмена')}</button></div>
             </div>
           </div>`;
@@ -14623,8 +14593,7 @@
                   <img id="m-cat-prev" src="" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 hidden border">
                   <button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                 </div>
-                <input id="m-cat-image-url" type="hidden" value="">
-                <p id="m-cat-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
+                <div class="fc-image-url-field"><span>${tr('yoki URL orqali','или по URL')}</span><input id="m-cat-image-url" type="url" value="" placeholder="https://..." oninput="onImageUrlInput(this.value,'m-cat-prev','m-cat-image-url-error','m-cat-image-button')"><p id="m-cat-image-url-error" class="hidden"></p></div>
               </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveCategoryFromModal()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
@@ -14654,8 +14623,7 @@
                   <img id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border">
                   <button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                 </div>
-                <input id="ec-image-url" type="hidden" value="${escapeHtml(c.img || '')}">
-                <p id="ec-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
+                <div class="fc-image-url-field"><span>${tr('yoki URL orqali','или по URL')}</span><input id="ec-image-url" type="url" value="${escapeHtml(c.img || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'ec-img-prev','ec-image-url-error','ec-image-button')"><p id="ec-image-url-error" class="hidden"></p></div>
               </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveCategoryEdit('${c.id}')" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
@@ -14694,8 +14662,7 @@
                 <input id="miq-image-input" type="file" accept="image/*" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
                 <input id="miq-image-input-files" type="file" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
                 <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-btn fc-btn-secondary fc-btn-icon" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
-                <input id="miq-image-url" type="hidden" value="${escapeHtml(p.img || '')}">
-                <p id="miq-image-url-error" class="hidden text-[10px] fc-text-danger"></p>
+                <div class="fc-image-url-field"><span>${tr('yoki URL orqali','или по URL')}</span><input id="miq-image-url" type="url" value="${escapeHtml(p.img || '')}" placeholder="https://..." oninput="document.getElementById('miq-empty-preview')?.classList.add('hidden');onImageUrlInput(this.value,'miq-img-prev','miq-image-url-error','miq-image-button')"><p id="miq-image-url-error" class="hidden"></p></div>
                 <button onclick="saveMissingImageQueueItem('${p.id}')" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('Saqlanmoqda…','Сохранение…') : tr('Saqlash','Сохранить')}</button>
                 <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
                   <button onclick="moveMissingImageQueue(-1)" ${missingImageQueueSaving || missingImageQueueIndex === 0 ? 'disabled' : ''} class="bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl disabled:opacity-40"><i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i>${tr('Oldingi','Предыдущий')}</button>
@@ -14883,8 +14850,7 @@
                 <input id="ef-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
                 <input id="ef-image-input-files" type="file" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
                 <button id="ef-image-button" type="button" onclick="openImagePickerSheet('ef-image-input','ef-image-input-files')" class="fc-image-icon-action mt-1" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button>
-                <input id="ef-image-url" type="hidden" value="${escapeHtml(p.img || '')}">
-                <p id="ef-image-url-error" class="hidden mt-1 text-[10px] fc-text-danger"></p>
+                <div class="fc-image-url-field"><span>${tr('yoki URL orqali','или по URL')}</span><input id="ef-image-url" type="url" value="${escapeHtml(p.img || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'ef-img-prev','ef-image-url-error','ef-image-button')"><p id="ef-image-url-error" class="hidden"></p></div>
                 <img id="ef-img-prev" src="${escapeHtml(hasProductImage(p) ? p.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-24 h-24 object-contain bg-gray-50 rounded-xl p-0.5 mt-2 border ${hasProductImage(p) ? '' : 'hidden'}">
               ` : ''}
 
@@ -15122,23 +15088,6 @@
         return;
       }
 
-      if (activePopupModal === 'SHOP_LOGO_URL') {
-        container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("Logotip — URL orqali", "Логотип — по URL")}</h3>
-              <input id="shop-logo-url-input" type="url" inputmode="url" placeholder="https://..." value="${escapeHtml((shopLogoUrl && shopLogoUrl.startsWith('http')) ? shopLogoUrl : '')}" class="w-full p-2 border rounded-xl">
-              <p id="shop-logo-url-error" class="hidden text-[10px] fc-text-danger"></p>
-              <div class="flex space-x-2 pt-2">
-                <button onclick="saveShopLogoFromUrl()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
-                <button onclick="closeShopLogoUrlModal()" class="fc-btn fc-btn-secondary">${tr("Bekor qilish", "Отмена")}</button>
-              </div>
-            </div>
-          </div>
-        `;
-        return;
-      }
-
       if (activePopupModal === 'LOGO_CROP') {
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
@@ -15177,15 +15126,19 @@
                 ${wordmarkCounterHtml()}
                 <p class="fc-shop-field-help">${tr("Do'konning rasmiy nomiga tegmaydi — faqat logotipda ko'rinadigan qisqa versiya.", 'Не влияет на официальное название магазина — только короткая версия для логотипа.')}</p>
               </div>
-              <div>
-                <p class="fc-shop-logo-title mb-1.5">${tr('Uslubni tanlang', 'Выберите стиль')}</p>
-                <div class="fc-wordmark-preset-grid">
-                  ${WORDMARK_PRESETS.map((p) => `
-                    <button type="button" class="fc-wordmark-preset-card ${p.id === wordmarkDraftPresetId ? 'is-selected' : ''}" data-preset-id="${p.id}" onclick="selectWordmarkPreset('${p.id}')">
-                      <span class="fc-wordmark-slot" data-preset-slot="${p.id}">${renderWordmarkHtml(p.id, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' })}</span>
-                      <small>${p.label()}</small>
-                    </button>
-                  `).join('')}
+              <div class="fc-wordmark-style-field">
+                <p class="fc-shop-logo-title mb-1.5">${tr('Uslub', 'Стиль')}</p>
+                <button type="button" class="fc-wordmark-style-select" onclick="toggleWordmarkStyleMenu()" aria-expanded="false">
+                  <span id="wordmark-style-selected-preview" class="fc-wordmark-style-selected">${renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' })}</span>
+                  <span class="fc-wordmark-style-selected-label">${escapeHtml(wordmarkPresetById(wordmarkDraftPresetId).label())}</span>
+                  <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                </button>
+                <div id="wordmark-style-menu" class="fc-wordmark-style-menu is-hidden">
+                  ${WORDMARK_PRESETS.map((p) => `<button type="button" class="fc-wordmark-style-option ${p.id === wordmarkDraftPresetId ? 'is-selected' : ''}" onclick="selectWordmarkPreset('${p.id}')">
+                    <span class="fc-wordmark-style-option-preview" data-preset-slot="${p.id}">${renderWordmarkHtml(p.id, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' })}</span>
+                    <small>${p.label()}</small>
+                    ${p.id === wordmarkDraftPresetId ? '<i data-lucide="check" class="w-4 h-4"></i>' : '<span></span>'}
+                  </button>`).join('')}
                 </div>
               </div>
               <div class="fc-wordmark-color-presets">
@@ -15247,8 +15200,25 @@
         const popW = Math.min(330, Math.max(280, vw - 24));
         const a = ordersCalendarAnchorRect || { left: vw - 56, right: vw - 12, top: 180, bottom: 224 };
         const left = Math.max(12, Math.min(vw - popW - 12, a.right - popW));
-        const top = Math.max(82, Math.min((window.innerHeight || 700) - 465, a.bottom + 8));
-        container.innerHTML = `<div class="fc-orders-popover-overlay" onclick="cancelOrdersCalendarSelection()"><div class="fc-orders-popover" style="left:${Math.round(left)}px;top:${Math.round(top)}px;width:${Math.round(popW)}px" onclick="event.stopPropagation()">${renderOrdersCalendarBodyHtml()}</div></div>`;
+        const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 700);
+        const desiredH = 440;
+        const below = Math.max(0, vh - a.bottom - 12);
+        const above = Math.max(0, a.top - 12);
+        const viewportMaxH = Math.max(180, vh - 24);
+        let top, maxH;
+        if (below >= 300) {
+          top = Math.max(12, a.bottom + 8);
+          maxH = Math.min(desiredH, below, viewportMaxH);
+        } else if (above >= 300) {
+          maxH = Math.min(desiredH, above - 8, viewportMaxH);
+          top = Math.max(12, a.top - maxH - 8);
+        } else {
+          // Juda past/baland ankorda ham footer kesilmasin: popover viewport
+          // ichiga ko'chadi, calendar body scroll bo'ladi, actionlar sticky qoladi.
+          top = 12;
+          maxH = viewportMaxH;
+        }
+        container.innerHTML = `<div class="fc-orders-popover-overlay" onclick="cancelOrdersCalendarSelection()"><div class="fc-orders-popover" style="left:${Math.round(left)}px;top:${Math.round(top)}px;width:${Math.round(popW)}px;max-height:${Math.round(maxH)}px" onclick="event.stopPropagation()">${renderOrdersCalendarBodyHtml()}</div></div>`;
         return;
       }
 
@@ -15440,7 +15410,7 @@
                   ${images.length > 1 ? `<div class="fc-product-gallery-dots">${images.map((_, i) => `<span class="fc-gallery-dot ${i === productGalleryIndex ? 'is-active' : ''}"></span>`).join('')}</div>` : ''}
                   `;
                 })()}
-                ${canManageProducts() ? `
+                ${(canManageProducts() && !productVariants(p).length) ? `
                   <button onclick="openEditFieldModal('${p.id}', 'img')" class="absolute bottom-2 right-2 bg-blue-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center space-x-1 shadow">
                     <span class="inline-flex items-center gap-1">${ICON_EDIT} ${tr("Rasmni o'zgartirish", "Изменить фото")}</span>
                   </button>
