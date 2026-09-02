@@ -5075,3 +5075,38 @@ button[onclick*="openImagePickerSheet"]:active{transform:scale(.94)}
 .fc-variant-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.22rem;min-height:5rem;padding:.8rem;border:1px dashed var(--ustore-border,#dbe4ef);border-radius:.85rem;color:var(--ustore-muted-text,#8491a3);text-align:center}
 .fc-variant-empty-state p{font-size:.62rem;font-weight:800;color:var(--ustore-text,#475569);margin:0}
 .fc-variant-empty-state small{font-size:.5rem;line-height:1.35;margin:0}
+
+/* ================= SEP 02 — cart/variant follow-up batch ================= */
+.fc-variant-cart-inline{
+  display:grid;
+  grid-template-columns:minmax(8.2rem,.9fr) minmax(0,1.35fr);
+  gap:.55rem;
+  align-items:center;
+  width:100%;
+}
+.fc-variant-cart-inline .fc-customer-variant-stepper{margin:0!important;max-width:none!important;width:100%}
+.fc-variant-go-cart,.fc-variant-add-cart{
+  min-height:2.7rem;border:0;border-radius:.85rem;background:var(--ustore-primary,#2563eb);color:#fff;
+  font-weight:900;font-size:.72rem;display:flex;align-items:center;justify-content:center;gap:.35rem;padding:.55rem .75rem;
+}
+.fc-variant-add-cart{width:100%}
+.fc-variant-go-cart:active,.fc-variant-add-cart:active{transform:translateY(1px)}
+@media(max-width:350px){
+  .fc-variant-cart-inline{grid-template-columns:minmax(7.4rem,.82fr) minmax(0,1.18fr);gap:.4rem}
+  .fc-variant-go-cart{font-size:.65rem;padding-inline:.5rem}
+}
+.fc-cart-title-row{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+.fc-cart-clear-btn{border:0;background:transparent;color:var(--ustore-danger,#dc2626);display:inline-flex;align-items:center;gap:.3rem;font-size:.62rem;font-weight:800;padding:.3rem .1rem}
+.fc-cart-clear-btn:active{opacity:.65}
+.fc-variant-size-grid.is-single{grid-template-columns:1fr}
+
+/* Wordmark text/background customization. */
+.ustore-header-wordmark{padding:.22rem .42rem;border-radius:.48rem;max-width:min(58vw,15rem);overflow:hidden}
+.fc-wordmark-colors{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;align-items:end}
+.fc-wordmark-color-field{display:flex;align-items:center;justify-content:space-between;gap:.45rem;border:1px solid var(--ustore-border,#e5e7eb);border-radius:.75rem;padding:.48rem .58rem;background:var(--ustore-card-bg,#fff)}
+.fc-wordmark-color-field span{font-size:.58rem;font-weight:800;color:var(--ustore-text,#334155)}
+.fc-wordmark-color-field input[type=color]{width:2rem;height:1.7rem;border:0;background:transparent;padding:0;cursor:pointer}
+.fc-wordmark-reset{grid-column:1/-1;border:0;background:transparent;color:var(--ustore-primary,#2563eb);font-size:.58rem;font-weight:800;text-align:left;padding:.1rem 0}
+.fc-wordmark-color-presets{display:flex;gap:.4rem;flex-wrap:wrap}
+.fc-wordmark-color-presets button{width:2.35rem;height:1.85rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.58rem;display:grid;place-items:center;box-shadow:none;padding:0}
+.fc-wordmark-color-presets button span{font-size:.62rem;font-weight:900;line-height:1}

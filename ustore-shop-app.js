@@ -530,13 +530,14 @@
       return same.find((v) => v.colorImg)?.colorImg || same.find((v) => v.img)?.img || null;
     }
     function variantDisplayImage(p, size, color) {
-      const v = productVariants(p).find(x => (x.size || null) === (size || null) && (x.color || null) === (color || null));
-      if (v?.img) return v.img;
+      // Yangi variativ modelda RASM rangga tegishli. O'lcham faqat
+      // narx/eski narx/qoldiqni belgilaydi. Legacy ma'lumotlarda colorImg
+      // bo'lmasa shu rangdagi birinchi v.img rang rasmi sifatida fallback.
       const colorImg = variantColorImage(p, color);
       if (colorImg) return colorImg;
       if (hasProductImage(p)) return p.img;
-      const fallbackVariant = productVariants(p).find((x) => x.img || x.colorImg);
-      return fallbackVariant?.img || fallbackVariant?.colorImg || FALLBACK_IMG;
+      const fallbackVariant = productVariants(p).find((x) => x.colorImg || x.img);
+      return fallbackVariant?.colorImg || fallbackVariant?.img || FALLBACK_IMG;
     }
 
     // O'lchamlarni "40,2/42,4/44,8" matnidan [{size,qty}] ro'yxatiga o'giradi.
@@ -620,7 +621,7 @@
           price: (v.price !== undefined && v.price !== null) ? Number(v.price) : '',
           oldPrice: (v.oldPrice !== undefined && v.oldPrice !== null) ? Number(v.oldPrice) : '',
           qty: v.qty ?? 0,
-          img: (v.img && v.img !== colorImg) ? v.img : '',
+          img: '',
           imgUploading: false,
           sku: v.sku || null,
           billzProductId: v.billzProductId || null,
@@ -641,7 +642,7 @@
           qty: Math.max(0, Number.parseInt(r.qty, 10) || 0),
           price: Math.max(0, Number(r.price) || 0),
           oldPrice: (r.oldPrice !== '' && r.oldPrice !== null && r.oldPrice !== undefined) ? Math.max(0, Number(r.oldPrice) || 0) : null,
-          img: r.img || (color ? (color.img || null) : null),
+          img: color ? (color.img || null) : null,
           sku: r.sku || null,
           billzProductId: r.billzProductId || null,
         };
@@ -871,7 +872,7 @@
         <div class="fc-variant-size-list">${rows.map((row) => `<div class="fc-variant-size-editor">
           <div class="fc-variant-size-head"><div class="fc-shop-field"><label for="vr-${row.idx}-size">${tr("O'lcham *",'Размер *')}</label><input type="text" id="vr-${row.idx}-size" class="fc-shop-input" value="${escapeHtml(row.size)}" placeholder="XL"></div><button type="button" onclick="deleteSizeRow(${row.idx})" class="fc-icon-plain is-danger" aria-label="${tr("O'chirish",'Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>
           <div class="fc-variant-size-grid"><div class="fc-shop-field"><label>${tr('Qoldiq *','Остаток *')}</label><div class="fc-inline-stepper"><button type="button" onclick="changeSizeRowQty(${row.idx},-1)" aria-label="${tr('Kamaytirish','Уменьшить')}"><i data-lucide="minus" class="w-4 h-4"></i></button><input type="number" min="0" id="vr-${row.idx}-qty" value="${escapeHtml(String(row.qty))}"><button type="button" onclick="changeSizeRowQty(${row.idx},1)" aria-label="${tr('Ko‘paytirish','Увеличить')}"><i data-lucide="plus" class="w-4 h-4"></i></button></div></div><div class="fc-shop-field"><label for="vr-${row.idx}-price">${tr('Narx *','Цена *')}</label><input type="number" min="0" id="vr-${row.idx}-price" class="fc-shop-input" value="${escapeHtml(String(row.price))}" placeholder="29000"></div></div>
-          <div class="fc-variant-size-grid"><div class="fc-shop-field"><label for="vr-${row.idx}-oldprice">${tr('Eski narx','Старая цена')}</label><input type="number" min="0" id="vr-${row.idx}-oldprice" class="fc-shop-input" value="${escapeHtml(String(row.oldPrice))}" placeholder="39000"></div><div class="fc-shop-field"><label>${tr('Rasm','Фото')}</label><div class="fc-variant-image-inline">${row.img ? `<span class="fc-variant-summary-thumb"><img src="${escapeHtml(row.img)}" alt=""></span>` : ''}<button type="button" onclick="pickSizeRowImage(${row.idx})" class="fc-image-icon-action" ${row.imgUploading ? 'disabled' : ''} aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button>${row.img ? `<button type="button" onclick="removeSizeRowImage(${row.idx})" class="fc-image-icon-action is-danger" aria-label="${tr("O'chirish",'Удалить')}" title="${tr("O'chirish",'Удалить')}"><i data-lucide="trash-2" class="w-5 h-5"></i></button>` : ''}<input type="file" id="vr-${row.idx}-image-input" class="hidden" accept="image/*" onchange="onSizeRowImagePicked(event,${row.idx})"></div></div></div>
+          <div class="fc-variant-size-grid is-single"><div class="fc-shop-field"><label for="vr-${row.idx}-oldprice">${tr('Eski narx','Старая цена')}</label><input type="number" min="0" id="vr-${row.idx}-oldprice" class="fc-shop-input" value="${escapeHtml(String(row.oldPrice))}" placeholder="39000"></div></div>
           ${row.error ? `<p class="fc-variant-inline-error">${escapeHtml(row.error)}</p>` : ''}
         </div>`).join('')}</div>
         <button type="button" onclick="addSizeRow(${ci})" class="fc-variant-group-addbtn">+ ${tr("O'lcham qo'shish",'Добавить размер')}</button>
@@ -1199,6 +1200,8 @@
     let shopLogoWordmark = null;
     let wordmarkDraftText = '';
     let wordmarkDraftPresetId = null;
+    let wordmarkDraftTextColor = '#ffffff';
+    let wordmarkDraftBgColor = '#0f172a';
     let botUsername = null; // 1.10: "Telegramda ko'rish" uchun — hardcode emas, boot() javobidan
     let shopContact = { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
     let shopLowStockThreshold = 5;
@@ -3302,9 +3305,9 @@
       const wordmarkEl = document.getElementById('header-shop-logo-wordmark');
       if (shopLogoType === 'WORDMARK' && shopLogoWordmark?.text) {
         if (logoEl) { logoEl.classList.add('hidden'); logoEl.removeAttribute('src'); }
-        if (wordmarkEl) { wordmarkEl.innerHTML = renderWordmarkHtml(shopLogoWordmark.presetId, shopLogoWordmark.text, {}); wordmarkEl.classList.remove('hidden'); }
+        if (wordmarkEl) { wordmarkEl.innerHTML = renderWordmarkHtml(shopLogoWordmark.presetId, shopLogoWordmark.text, { textColor: shopLogoWordmark.textColor || '#172033', bgColor: shopLogoWordmark.backgroundColor || '#ffffff' }); wordmarkEl.style.background = shopLogoWordmark.backgroundColor || 'transparent'; wordmarkEl.classList.remove('hidden'); }
       } else {
-        if (wordmarkEl) { wordmarkEl.classList.add('hidden'); wordmarkEl.innerHTML = ''; }
+        if (wordmarkEl) { wordmarkEl.classList.add('hidden'); wordmarkEl.innerHTML = ''; wordmarkEl.style.background = ''; }
         if (logoEl) {
           if (shopLogoUrl) { logoEl.src = shopLogoUrl; logoEl.classList.remove('hidden'); }
           else { logoEl.classList.add('hidden'); logoEl.removeAttribute('src'); }
@@ -5837,8 +5840,11 @@
       // kartochka rasmsiz qolmasin — birinchi o'z rasmiga ega variant
       // fallback bo'ladi, VA narx ham AYNAN shu variantniki ko'rsatiladi
       // (rasm-narx mos kelishi shart, ikkalasi HAR DOIM bitta manbadan).
-      const fallbackVariant = canonicalFallbackVariant(p);
-      const cardImg = p.thumbImg || p.img || (fallbackVariant ? variantDisplayImage(p, fallbackVariant.size, fallbackVariant.color) : '') || '';
+      const defaultSelection = vars.length ? defaultVariantSelection(p) : null;
+      const fallbackVariant = defaultSelection?.variant || canonicalFallbackVariant(p);
+      const cardImg = vars.length
+        ? (fallbackVariant ? variantDisplayImage(p, fallbackVariant.size, fallbackVariant.color) : (p.thumbImg || p.img || ''))
+        : (p.thumbImg || p.img || '');
       const cardPrice = fallbackVariant ? variantPrice(p, fallbackVariant.size, fallbackVariant.color) : p.price;
       const cardOldPrice = fallbackVariant ? (fallbackVariant.oldPrice ?? null) : p.oldPrice;
       const hasDiscount = !!(cardOldPrice && Number(cardOldPrice) > Number(cardPrice));
@@ -5856,7 +5862,7 @@
                      asosiy rasmga qaytadi. Agar kichik nusxa qandaydir sababga
                      ko'ra ochilmasa, onerror avval asosiy rasmni sinaydi va
                      faqat u ham bo'lmasa zaxira belgiga o'tadi. -->
-                <img src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(p.img || '')}" onerror="retryCardImage(this)" class="w-full h-full object-contain" loading="lazy" decoding="async">
+                <img src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)" class="w-full h-full object-contain" loading="lazy" decoding="async">
               </div>
               ${(canManageProducts() && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-product-visibility-overlay ${p.isVisible === false ? 'is-hidden' : 'is-visible'}" aria-label="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" title="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductVisibility('${p.id}')"><i data-lucide="${p.isVisible === false ? 'eye-off' : 'eye'}" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
@@ -6263,7 +6269,7 @@
 
       container.innerHTML = `
         <div class="space-y-4 pb-64">
-          <h2 class="text-lg font-bold">${t('cart_title')}</h2>
+          <div class="fc-cart-title-row"><h2 class="text-lg font-bold">${t('cart_title')}</h2><button type="button" onclick="clearCartWithConfirm()" class="fc-cart-clear-btn"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('Savatchani tozalash','Очистить корзину')}</span></button></div>
           ${bundleRowsHtml}
           ${items.length ? `<div class="bg-white rounded-2xl p-4 shadow-sm divide-y">
             ${items.map(item => {
@@ -6381,6 +6387,22 @@
       }
     }
 
+    function clearCartWithConfirm() {
+      const hasItems = Object.keys(cart).length > 0 || Object.keys(bundleCart).length > 0;
+      if (!hasItems) return;
+      if (!confirm(tr("Savatchadagi barcha mahsulotlarni o'chirmoqchimisiz?", "Удалить все товары из корзины?"))) return;
+      cart = {};
+      bundleCart = {};
+      localStorage.setItem(scopedKey('cart'), JSON.stringify(cart));
+      saveBundleCart();
+      cartDiscountState = null;
+      cartDiscountPreviewKey = '';
+      cartDiscountLoadingKey = '';
+      updateCartBadge();
+      scheduleCartSnapshotSave();
+      render();
+    }
+
     // 24-band: bitta tovarni to'liq savatchadan olib tashlash (miqdorni
     // birma-bir kamaytirishdan farqli, aniq/tezkor o'chirish).
     function removeCartItem(key) {
@@ -6399,7 +6421,9 @@
       const itemsTotal = Object.entries(cart).reduce((sum, [key, itemData]) => {
         const productId = cartEntryProductId(key, itemData);
         const product = products.find(item => item.id === productId);
-        return sum + (productVisibleInCurrentMode(product) ? product.price * (Number(itemData.qty) || 0) : 0);
+        if (!productVisibleInCurrentMode(product)) return sum;
+        const unitPrice = variantPrice(product, itemData.size || null, itemData.color || null);
+        return sum + unitPrice * (Number(itemData.qty) || 0);
       }, 0);
       const bundlesTotal = Object.values(bundleCart).reduce((sum, b) => sum + (Number(b.bundlePrice) || 0) * (Number(b.qty) || 0), 0);
       return itemsTotal + bundlesTotal;
@@ -13285,6 +13309,13 @@
       { id: 'sans-italic', label: () => tr('Qiyshiq, yumshoq', 'Курсив, мягкий'), family: 'sans', weight: 700, spacing: '0em', transform: 'none', style: 'italic' },
       { id: 'monogram-badge', label: () => tr('Belgi + nom', 'Значок + название'), family: 'sans', weight: 800, spacing: '0.01em', transform: 'none', style: 'normal', monogram: true },
     ];
+    const WORDMARK_COLOR_PRESETS = [
+      { id: 'navy-white', text: '#ffffff', bg: '#0f172a' },
+      { id: 'white-blue', text: '#ffffff', bg: '#2563eb' },
+      { id: 'white-green', text: '#ffffff', bg: '#059669' },
+      { id: 'navy-soft', text: '#172033', bg: '#f8fafc' },
+      { id: 'white-purple', text: '#ffffff', bg: '#7c3aed' },
+    ];
     function wordmarkPresetById(id) { return WORDMARK_PRESETS.find((p) => p.id === id) || WORDMARK_PRESETS[0]; }
     function wordmarkFontFamily(family) {
       return family === 'mono' ? 'var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, monospace)' : 'var(--default-font-family, ui-sans-serif, system-ui, sans-serif)';
@@ -13293,10 +13324,13 @@
       const p = wordmarkPresetById(presetId);
       const safeText = escapeHtml(text || '');
       const cls = (opts && opts.className) || '';
-      const textStyle = `font-family:${wordmarkFontFamily(p.family)};font-weight:${p.weight};letter-spacing:${p.spacing};text-transform:${p.transform};font-style:${p.style};`;
+      const textColor = (opts && opts.textColor) || null;
+      const bgColor = (opts && opts.bgColor) || null;
+      const textStyle = `font-family:${wordmarkFontFamily(p.family)};font-weight:${p.weight};letter-spacing:${p.spacing};text-transform:${p.transform};font-style:${p.style};${textColor ? `color:${escapeHtml(textColor)};` : ''}`;
       if (p.monogram) {
         const initial = escapeHtml(String(text || '?').trim().charAt(0).toUpperCase() || '?');
-        return `<span class="fc-wordmark ${cls}"><span class="fc-wordmark-badge">${initial}</span><span class="fc-wordmark-text" style="${textStyle}">${safeText}</span></span>`;
+        const badgeStyle = `${textColor ? `background:${escapeHtml(textColor)};` : ''}${bgColor ? `color:${escapeHtml(bgColor)};` : ''}`;
+        return `<span class="fc-wordmark ${cls}"><span class="fc-wordmark-badge" style="${badgeStyle}">${initial}</span><span class="fc-wordmark-text" style="${textStyle}">${safeText}</span></span>`;
       }
       return `<span class="fc-wordmark ${cls}"><span class="fc-wordmark-text" style="${textStyle}">${safeText}</span></span>`;
     }
@@ -13328,6 +13362,8 @@
       if (activePopupModal === 'SHOP_INFO') shopInfoDraft = readShopContactFormValues();
       wordmarkDraftText = clampWordmarkText(shopLogoWordmark?.text || currentShopNameForWordmark());
       wordmarkDraftPresetId = shopLogoWordmark?.presetId || WORDMARK_PRESETS[0].id;
+      wordmarkDraftTextColor = shopLogoWordmark?.textColor || '#ffffff';
+      wordmarkDraftBgColor = shopLogoWordmark?.backgroundColor || '#0f172a';
       activePopupModal = 'WORDMARK_GENERATOR';
       render();
     }
@@ -13357,7 +13393,9 @@
     }
     function rerenderWordmarkPreview() {
       const el = document.getElementById('wordmark-header-preview');
-      if (el) el.innerHTML = renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, {});
+      if (el) el.innerHTML = renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, { textColor: wordmarkDraftTextColor, bgColor: wordmarkDraftBgColor });
+      const mock = document.querySelector('.fc-wordmark-header-mock');
+      if (mock) mock.style.background = wordmarkDraftBgColor;
       document.querySelectorAll('.fc-wordmark-preset-card').forEach((card) => {
         card.classList.toggle('is-selected', card.dataset.presetId === wordmarkDraftPresetId);
       });
@@ -13365,14 +13403,56 @@
         slot.innerHTML = renderWordmarkHtml(slot.dataset.presetSlot, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' });
       });
     }
+    function isHexColor(value) { return /^#[0-9a-fA-F]{6}$/.test(String(value || '')); }
+    function applyWordmarkColorPreset(id) {
+      const preset = WORDMARK_COLOR_PRESETS.find((x) => x.id === id);
+      if (!preset) return;
+      wordmarkDraftTextColor = preset.text;
+      wordmarkDraftBgColor = preset.bg;
+      const textInput = document.getElementById('wm-text-color');
+      const bgInput = document.getElementById('wm-bg-color');
+      if (textInput) textInput.value = wordmarkDraftTextColor;
+      if (bgInput) bgInput.value = wordmarkDraftBgColor;
+      rerenderWordmarkPreview();
+    }
+    function setWordmarkColor(kind, value) {
+      const color = isHexColor(value) ? value : (kind === 'text' ? '#ffffff' : '#0f172a');
+      if (kind === 'text') wordmarkDraftTextColor = color;
+      else wordmarkDraftBgColor = color;
+      rerenderWordmarkPreview();
+      const textInput = document.getElementById('wm-text-color');
+      const bgInput = document.getElementById('wm-bg-color');
+      if (textInput) textInput.value = wordmarkDraftTextColor;
+      if (bgInput) bgInput.value = wordmarkDraftBgColor;
+    }
+    function resetWordmarkColors() {
+      wordmarkDraftTextColor = '#ffffff';
+      wordmarkDraftBgColor = '#0f172a';
+      const textInput = document.getElementById('wm-text-color');
+      const bgInput = document.getElementById('wm-bg-color');
+      if (textInput) textInput.value = wordmarkDraftTextColor;
+      if (bgInput) bgInput.value = wordmarkDraftBgColor;
+      rerenderWordmarkPreview();
+    }
+    function wordmarkContrastRatio(fg, bg) {
+      const lum = (hex) => {
+        const vals = [1,3,5].map(i => parseInt(hex.slice(i,i+2),16)/255).map(v => v <= .03928 ? v/12.92 : Math.pow((v+.055)/1.055,2.4));
+        return .2126*vals[0]+.7152*vals[1]+.0722*vals[2];
+      };
+      if (!isHexColor(fg) || !isHexColor(bg)) return 21;
+      const a=lum(fg), b=lum(bg); return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);
+    }
+
     async function saveWordmarkLogo() {
       const text = wordmarkDraftText.trim();
       if (!text) return alert(tr("Do'kon nomini kiriting.", "Введите название магазина."));
       if (wordmarkWordCount(text) > WORDMARK_MAX_WORDS) return alert(tr(`Qisqa nom ko'pi bilan ${WORDMARK_MAX_WORDS} so'zdan iborat bo'lishi kerak.`, `Короткое название должно быть не длиннее ${WORDMARK_MAX_WORDS} слов.`));
+      if (wordmarkContrastRatio(wordmarkDraftTextColor, wordmarkDraftBgColor) < 3 && !confirm(tr('Yozuv va fon kontrasti past. Baribir saqlaysizmi?', 'Низкий контраст текста и фона. Всё равно сохранить?'))) return;
       try {
-        await callApi('set_shop_logo', { logoType: 'WORDMARK', wordmark: { presetId: wordmarkDraftPresetId, text } });
+        const wordmark = { presetId: wordmarkDraftPresetId, text, textColor: wordmarkDraftTextColor, backgroundColor: wordmarkDraftBgColor };
+        await callApi('set_shop_logo', { logoType: 'WORDMARK', wordmark });
         shopLogoType = 'WORDMARK';
-        shopLogoWordmark = { presetId: wordmarkDraftPresetId, text };
+        shopLogoWordmark = wordmark;
         activePopupModal = shopInfoDraft ? 'SHOP_INFO' : null;
         render();
         showActionToast(tr('✅ Logo saqlandi', '✅ Логотип сохранён'), 'success', 1400);
@@ -14437,16 +14517,6 @@
                 </div>
                 <div class="fc-shop-field"><label for="m-prod-name">${tr('Tovar nomi *','Название товара *')}</label><input type="text" id="m-prod-name" value="${escapeHtml(productFormDraft.name)}" class="fc-shop-input" placeholder="${tr('Masalan: Samsung S26 Ultra','Например: Samsung S26 Ultra')}"></div>
                 <div class="fc-shop-field"><label for="m-prod-desc">${tr('Izoh / Tavsif','Описание')}</label><textarea id="m-prod-desc" rows="2" class="fc-shop-input" placeholder="${tr('Tovar haqida ma’lumot','Описание товара')}">${escapeHtml(productFormDraft.desc)}</textarea></div>
-                <div class="fc-shop-field">
-                  <label>${tr('Tovar rasmi','Фото товара')}</label>${productImageSizeHintHtml()}
-                  <div class="fc-image-picker-inline">
-                    ${previewSrc ? `<img id="m-prod-prev" src="${escapeHtml(previewSrc)}" class="fc-image-preview-square">` : `<span id="m-prod-prev-empty" class="fc-image-preview-square is-empty"><i data-lucide="image" class="w-5 h-5"></i></span><img id="m-prod-prev" src="" class="fc-image-preview-square hidden">`}
-                    <button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button>
-                  </div>
-                  <input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden">
-                  <input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden">
-                  <input id="m-prod-image-url" type="hidden" value="${escapeHtml(productFormDraft.imageUrl)}"><p id="m-prod-image-url-error" class="hidden"></p>
-                </div>
                 ${renderVariantBuilderHtml()}
                 <div class="flex space-x-2 pt-2"><button onclick="saveProductFromModal()" class="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl">${tr('Saqlash va omborga kiritish','Сохранить и добавить на склад')}</button><button onclick="cancelProductEditor()" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr('Bekor qilish','Отмена')}</button></div>
               </div>
@@ -15053,10 +15123,18 @@
                   `).join('')}
                 </div>
               </div>
+              <div class="fc-wordmark-color-presets">
+                ${WORDMARK_COLOR_PRESETS.map((c) => `<button type="button" onclick="applyWordmarkColorPreset('${c.id}')" aria-label="${tr('Rang kombinatsiyasi','Цветовая схема')}" style="background:${c.bg}"><span style="color:${c.text}">Aa</span></button>`).join('')}
+              </div>
+              <div class="fc-wordmark-colors">
+                <div class="fc-wordmark-color-field"><span>${tr('Yozuv rangi','Цвет текста')}</span><input id="wm-text-color" type="color" value="${escapeHtml(wordmarkDraftTextColor)}" oninput="setWordmarkColor('text',this.value)"></div>
+                <div class="fc-wordmark-color-field"><span>${tr('Fon rangi','Цвет фона')}</span><input id="wm-bg-color" type="color" value="${escapeHtml(wordmarkDraftBgColor)}" oninput="setWordmarkColor('bg',this.value)"></div>
+                <button type="button" onclick="resetWordmarkColors()" class="fc-wordmark-reset">${tr('Standartga qaytarish','Сбросить')}</button>
+              </div>
               <div>
                 <p class="fc-shop-logo-title mb-1.5">${tr("Header'da qanday ko'rinishi", "Как будет выглядеть в шапке")}</p>
-                <div class="fc-wordmark-header-mock">
-                  <span id="wordmark-header-preview">${renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, {})}</span>
+                <div class="fc-wordmark-header-mock" style="background:${escapeHtml(wordmarkDraftBgColor)}">
+                  <span id="wordmark-header-preview">${renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, { textColor: wordmarkDraftTextColor, bgColor: wordmarkDraftBgColor })}</span>
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-2 pt-1">
@@ -15405,14 +15483,18 @@
                         ` : ''}
 
                         <div class="mt-2">
-                          ${activeVariant ? `
-                            <div class="fc-customer-variant-stepper">
-                              <button type="button" onclick="changeActiveVariantCartQty(-1,event)" aria-label="${tr('Kamaytirish','Уменьшить')}"><i data-lucide="minus" class="w-5 h-5"></i></button>
-                              <b>${cartEntry ? cartEntry.qty : 0}</b>
-                              <button type="button" onclick="changeActiveVariantCartQty(1,event)" aria-label="${tr('Ko‘paytirish','Увеличить')}"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                          ${activeVariant ? (cartEntry ? `
+                            <div class="fc-variant-cart-inline">
+                              <div class="fc-customer-variant-stepper">
+                                <button type="button" onclick="changeActiveVariantCartQty(-1,event)" aria-label="${tr('Kamaytirish','Уменьшить')}"><i data-lucide="minus" class="w-5 h-5"></i></button>
+                                <b>${cartEntry.qty}</b>
+                                <button type="button" onclick="changeActiveVariantCartQty(1,event)" aria-label="${tr('Ko‘paytirish','Увеличить')}"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                              </div>
+                              <button type="button" onclick="goToCartFromProductDetail()" class="fc-variant-go-cart">${tr('Savatga o‘tish','Перейти в корзину')}</button>
                             </div>
-                            ${cartEntry ? `<button onclick="switchTab('cart')" class="w-full mt-2 bg-blue-600 text-white font-bold py-2.5 rounded-2xl text-sm">${tr('Savatchaga o‘tish','Перейти в корзину')}</button>` : `<p class="text-[10px] text-gray-400 text-center mt-1">${tr('Savatga qo‘shish uchun + ni bosing.','Нажмите +, чтобы добавить в корзину.')}</p>`}
-                          ` : `<p class="text-[10px] text-gray-400 text-center py-2">${tr("Avval o'lchamni tanlang.",'Сначала выберите размер.')}</p>`}
+                          ` : `
+                            <button type="button" onclick="addVariantToCart('${p.id}')" class="fc-variant-add-cart"><i data-lucide="shopping-cart" class="w-4 h-4"></i><span>${tr('Savatga qo‘shish','Добавить в корзину')}</span></button>
+                          `) : `<p class="text-[10px] text-gray-400 text-center py-2">${tr("Avval o'lchamni tanlang.",'Сначала выберите размер.')}</p>`}
                         </div>
                       </div>
                     `; })() : (
@@ -15662,30 +15744,28 @@
     // rangdagi barcha o'lchamlar BITTA slaydni bo'lishadi (rang bosilganda
     // ham galereya shu slaydga sakraydi — item 9: "Rang rasmni boshqaradi").
     function productGalleryImages(p) {
+      const vars = productVariants(p);
       const seen = new Set();
       const out = [];
-      const mainImg = p?.img || null;
-      if (mainImg) { out.push({ url: mainImg, key: '__main__' }); seen.add(mainImg); }
-      const seenColors = new Set();
-      for (const v of productVariants(p)) {
-        if (!v.color || seenColors.has(v.color)) continue;
-        seenColors.add(v.color);
-        const colorImg = v.colorImg || variantColorImage(p, v.color);
-        if (colorImg && !seen.has(colorImg)) { seen.add(colorImg); out.push({ url: colorImg, key: `color:${v.color}` }); }
+      if (vars.length) {
+        // Variativ tovar: rasm faqat RANGGA tegishli. O'lcham almashtirilsa
+        // galereya o'zgarmaydi. Kartochka/detail birinchi rangdan boshlanadi.
+        const seenColors = new Set();
+        for (const v of vars) {
+          if (!v.color || seenColors.has(v.color)) continue;
+          seenColors.add(v.color);
+          const colorImg = v.colorImg || variantColorImage(p, v.color);
+          if (colorImg && !seen.has(colorImg)) {
+            seen.add(colorImg);
+            out.push({ url: colorImg, key: `color:${v.color}` });
+          }
+        }
+        // Eski variativ mahsulotlarda rang rasmi topilmasa asosiy rasm fallback.
+        if (!out.length && p?.img) out.push({ url: p.img, key: '__main__' });
+      } else if (p?.img) {
+        out.push({ url: p.img, key: '__main__' });
       }
-      // O'lchamga alohida rasm berilgan bo'lsa u ham swipe galereyada turadi.
-      for (const v of productVariants(p)) {
-        if (!v.color || !v.size || !v.img) continue;
-        const colorImg = v.colorImg || variantColorImage(p, v.color);
-        if (v.img === colorImg || seen.has(v.img)) continue;
-        seen.add(v.img);
-        out.push({ url: v.img, key: `variant:${variantKey(v.size, v.color)}` });
-      }
-      if (!out.length) {
-        const anyVariant = productVariants(p).find((v) => v.img || v.colorImg);
-        if (anyVariant) out.push({ url: anyVariant.img || anyVariant.colorImg, key: '__variant_fallback__' });
-        else out.push({ url: FALLBACK_IMG.replace('150', '300'), key: '__main__' });
-      }
+      if (!out.length) out.push({ url: FALLBACK_IMG.replace('150', '300'), key: '__main__' });
       return out;
     }
     let productGalleryIndex = 0;
@@ -15704,10 +15784,8 @@
       if (idx >= 0) scrollProductGalleryTo(idx);
     }
     function scrollProductGalleryToVariant(colorName, sizeName) {
-      const images = productGalleryImages(selectedProductModal);
-      let idx = images.findIndex((x) => x.key === `variant:${variantKey(sizeName, colorName)}`);
-      if (idx < 0) idx = images.findIndex((x) => x.key === `color:${colorName}`);
-      if (idx >= 0) scrollProductGalleryTo(idx);
+      // O'lchamning alohida rasmi yo'q: rasm rangga tegishli.
+      scrollProductGalleryToColor(colorName);
     }
     // Foydalanuvchi o'zi barmoq bilan surganda ham nuqta-indikator to'g'ri
     // yangilanib tursin (debounce — har scroll pikselida emas, tinchigach).
@@ -15759,6 +15837,15 @@
       if (!p || activeColorName === null || activeSizeName === null) return null;
       return productVariants(p).find((v) => v.color === activeColorName && v.size === activeSizeName) || null;
     }
+    function defaultVariantSelection(p) {
+      const vars = productVariants(p);
+      if (!vars.length) return { color: null, size: null, variant: null };
+      const firstColor = vars.find((v) => v.color)?.color || null;
+      if (firstColor === null) return { color: null, size: null, variant: null };
+      const sameColor = vars.filter((v) => v.color === firstColor);
+      const firstAvailable = sameColor.find((v) => Number(v.qty) > 0) || sameColor[0] || null;
+      return { color: firstColor, size: firstAvailable?.size || null, variant: firstAvailable };
+    }
     function rerenderProductDetailPreserveScroll(afterRender) {
       const sheet = document.getElementById('product-detail-sheet');
       const scrollTop = sheet ? sheet.scrollTop : null;
@@ -15775,7 +15862,8 @@
       const sizesForColor = productVariants(p).filter((v) => v.color === name);
       if (!sizesForColor.length) return;
       activeColorName = name;
-      if (activeSizeName && !sizesForColor.some((v) => v.size === activeSizeName && Number(v.qty) > 0)) activeSizeName = null;
+      const firstAvailable = sizesForColor.find((v) => Number(v.qty) > 0) || sizesForColor[0] || null;
+      activeSizeName = firstAvailable?.size || null;
       rerenderProductDetailPreserveScroll(() => scrollProductGalleryToColor(name));
     }
     function selectSize(name) {
@@ -15791,6 +15879,12 @@
       if (activeSizeName === null) return alert(tr("Avval o'lchamni tanlang", 'Сначала выберите размер'));
       addVariantItemsToCart(productId, { [variantKey(activeSizeName, activeColorName)]: 1 });
       renderModalContainer();
+    }
+    function goToCartFromProductDetail() {
+      // Navigatsiya atomik: modal/sheetni oldin yopamiz, keyin savatga o'tamiz.
+      selectedProductModal = null;
+      activePopupModal = null;
+      switchTab('cart');
     }
     function changeActiveVariantCartQty(delta, event) {
       if (event) event.stopPropagation();
@@ -15825,18 +15919,12 @@
       selectedProductModal = products.find(p => p.id === id);
       selectedSizeQtys = {};
       productGalleryIndex = 0;
-      // Item 8A: default holatda birinchi mavjud rangning rasmi chiqadi
-      // (rasmi bor birinchi rang, aks holda oddiy birinchi rang) —
-      // o'lcham esa hech qachon avtomatik tanlanmaydi (user o'zi bosishi
-      // kerak, item 10'dagi "Avval o'lchamni tanlang" ko'rsatmasi shu
-      // uchun bor).
       activeColorName = null;
       activeSizeName = null;
       if (selectedProductModal) {
-        const vars = productVariants(selectedProductModal);
-        const firstWithImage = vars.find((v) => v.color && v.img);
-        if (firstWithImage) activeColorName = firstWithImage.color;
-        else { const firstAny = vars.find((v) => v.color); if (firstAny) activeColorName = firstAny.color; }
+        const initial = defaultVariantSelection(selectedProductModal);
+        activeColorName = initial.color;
+        activeSizeName = initial.size;
       }
       renderModalContainer();
       if (activeColorName !== null) requestAnimationFrame(() => scrollProductGalleryToColor(activeColorName));
@@ -16193,7 +16281,7 @@
         price = Math.max(0, Number(canonical.price) || 0);
         oldPrice = (canonical.oldPrice !== null && canonical.oldPrice !== undefined && Number(canonical.oldPrice) > price) ? Number(canonical.oldPrice) : null;
         stock = 0; // backend barcha variant qoldiqlarini yig'ib hisoblaydi
-        imageSnap = takeTempImageSnapshot();
+        imageSnap = null;
       } else {
         price = parseFloat(document.getElementById('m-prod-price').value);
         const oldPriceVal = parseFloat(document.getElementById('m-prod-oldprice').value);
