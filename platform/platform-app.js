@@ -3635,10 +3635,11 @@
       <label class="plat-form-field"><span>Xabar matni</span><textarea id="ntd-body" rows="5">${escapeHtml(d.body)}</textarea></label>
       <div class="plat-template-vars"><b>O'zgaruvchilar</b><span>{SHOP_NAME}</span><span>{DAYS_LEFT}</span><span>{EXPIRY_DATE}</span><span>{RETENTION_DAYS_LEFT}</span><span>{REASON}</span><span>{ACTION}</span><span>{SUPPORT_CONTACT}</span></div>
       <div class="plat-media-upload">
-        <div class="plat-media-upload-head"><div><b>Rasm <em>ixtiyoriy</em></b><small>Qurilma xotirasidan JPG, PNG yoki WebP · 3 MB gacha</small></div></div>
+        <div class="plat-media-upload-head"><div><b>Rasm <em>ixtiyoriy</em></b><small>Qurilmadan yoki HTTPS rasm havolasi orqali · JPG, PNG yoki WebP · 3 MB gacha</small></div></div>
         <input type="file" id="ntd-image-file" hidden onchange="onNotificationTemplateImagePicked(event)">
-        ${preview ? `<div class="plat-media-preview"><img src="${escapeHtml(preview)}" alt="Xabar rasmi"><div><button class="secondary" onclick="document.getElementById('ntd-image-file').click()" aria-label="Almashtirish" title="Almashtirish">${pIcon('upload',14)}</button><button class="secondary is-danger" onclick="clearNotificationTemplateImage()" aria-label="Olib tashlash" title="Olib tashlash">${pIcon('trash',14)}</button></div></div>` : `<button class="plat-upload-zone is-compact is-icon-only" onclick="document.getElementById('ntd-image-file').click()" aria-label="Rasm tanlash" title="Rasm tanlash"><span>${pIcon('upload',18)}</span></button>`}
-        <input type="hidden" id="ntd-image" value="${escapeHtml(d.imageUrl || '')}">
+        ${preview ? `<div class="plat-media-preview"><img id="ntd-image-url-preview" src="${escapeHtml(preview)}" alt="Xabar rasmi"><div><button class="secondary" onclick="document.getElementById('ntd-image-file').click()" aria-label="Almashtirish" title="Almashtirish">${pIcon('upload',14)}</button><button class="secondary is-danger" onclick="clearNotificationTemplateImage()" aria-label="Olib tashlash" title="Olib tashlash">${pIcon('trash',14)}</button></div></div>` : `<div class="plat-media-preview plat-url-preview-empty"><img id="ntd-image-url-preview" alt="Xabar rasmi" hidden><button class="plat-upload-zone is-compact is-icon-only" onclick="document.getElementById('ntd-image-file').click()" aria-label="Rasm tanlash" title="Rasm tanlash"><span>${pIcon('upload',18)}</span></button></div>`}
+        <label class="plat-form-field plat-image-url-field"><span>yoki URL orqali</span><input type="url" id="ntd-image" value="${escapeHtml(d.imageUrl || '')}" placeholder="https://..." oninput="onNotificationTemplateImageUrlInput(this.value)"></label>
+        <small id="ntd-image-url-error" class="plat-inline-error"></small>
       </div>
       <label class="plat-toggle-row"><span><b>Faol</b><small>Schedule ushbu shablonni yuboradi</small></span><input type="checkbox" id="ntd-active" ${d.isActive?'checked':''}></label>
       <div class="plat-settings-editor-actions is-three"><button class="secondary" onclick="cancelNotificationTemplateDraft()">Bekor qilish</button><button class="secondary" onclick="sendTestNotification('${d.type}')" ${sendingTestNotification?'disabled':''}>${sendingTestNotification?'Yuborilmoqda…':'Test'}</button><button class="primary" onclick="saveNotificationTemplateDraft()">Saqlash</button></div></div>`;
@@ -3650,13 +3651,38 @@
     if (file.size > 3 * 1024 * 1024) return alert("Rasm hajmi 3MB dan katta bo'lmasin.");
     notificationTemplateImageFile = file;
     notificationTemplateImageRemove = false;
+    if (notificationTemplateDraft) notificationTemplateDraft.imageUrl = '';
     if (notificationTemplateImagePreviewUrl) { try { URL.revokeObjectURL(notificationTemplateImagePreviewUrl); } catch (_) {} }
     notificationTemplateImagePreviewUrl = URL.createObjectURL(file);
     render();
   }
+  function onNotificationTemplateImageUrlInput(value) {
+    const raw = String(value || '').trim();
+    const err = document.getElementById('ntd-image-url-error');
+    const img = document.getElementById('ntd-image-url-preview');
+    if (err) err.textContent = '';
+    notificationTemplateImageFile = null;
+    if (notificationTemplateImagePreviewUrl) { try { URL.revokeObjectURL(notificationTemplateImagePreviewUrl); } catch (_) {} }
+    notificationTemplateImagePreviewUrl = null;
+    // URL tanlansa oldingi managed upload endi faol manba emas; save vaqtida
+    // backend uni olib tashlaydi. Tashqi URLning o'ziga tegilmaydi.
+    notificationTemplateImageRemove = !!raw;
+    if (notificationTemplateDraft) notificationTemplateDraft.imageUrl = raw;
+    if (!raw) { if (img) { img.removeAttribute('src'); img.hidden = true; } return; }
+    let u;
+    try { u = new URL(raw); if (u.protocol !== 'https:') throw new Error('Rasm URL faqat HTTPS bo‘lishi kerak.'); }
+    catch (e) { if (err) err.textContent = e.message || 'Rasm URL noto‘g‘ri.'; if (img) img.hidden = true; return; }
+    if (img) {
+      img.onload = () => { img.hidden = false; if (err) err.textContent = ''; };
+      img.onerror = () => { img.hidden = true; if (err) err.textContent = 'Bu URL orqali rasmni ko‘rsatib bo‘lmadi.'; };
+      img.src = u.href; img.hidden = false;
+    }
+  }
+
   function clearNotificationTemplateImage() {
     notificationTemplateImageFile = null;
     notificationTemplateImageRemove = true;
+    if (notificationTemplateDraft) notificationTemplateDraft.imageUrl = '';
     if (notificationTemplateImagePreviewUrl) { try { URL.revokeObjectURL(notificationTemplateImagePreviewUrl); } catch (_) {} }
     notificationTemplateImagePreviewUrl = null;
     render();
@@ -3682,7 +3708,7 @@
     const imageUrlRaw = document.getElementById('ntd-image').value.trim();
     const isActive = document.getElementById('ntd-active').checked;
     if (!body) return alert('Xabar matni bo\'sh bo\'lmasin.');
-    if (imageUrlRaw && !/^https?:\/\//i.test(imageUrlRaw)) return alert("Rasm havolasi http:// yoki https:// bilan boshlanishi kerak.");
+    if (imageUrlRaw && !/^https:\/\//i.test(imageUrlRaw)) return alert("Rasm havolasi https:// bilan boshlanishi kerak.");
     try {
       const imageUpload = notificationTemplateImageFile ? { base64: await fileToBase64(notificationTemplateImageFile), mimeType: notificationTemplateImageFile.type, fileName: notificationTemplateImageFile.name } : undefined;
       await callPlatformApi('platform_update_notification_template', { type: notificationTemplateDraft.type, body, imageUrl: imageUrlRaw || null, imageUpload, removeImage: notificationTemplateImageRemove, isActive });
@@ -3926,6 +3952,7 @@
   window.cancelNotificationTemplateDraft = cancelNotificationTemplateDraft;
   window.saveNotificationTemplateDraft = saveNotificationTemplateDraft;
   window.onNotificationTemplateImagePicked = onNotificationTemplateImagePicked;
+  window.onNotificationTemplateImageUrlInput = onNotificationTemplateImageUrlInput;
   window.clearNotificationTemplateImage = clearNotificationTemplateImage;
   window.sendTestNotification = sendTestNotification;
   window.openAdminPaymentSettings = openAdminPaymentSettings;
