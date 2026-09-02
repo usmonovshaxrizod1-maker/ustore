@@ -4984,3 +4984,94 @@ html.ustore-dark-theme .fc-personal-picker-row{
   .fc-personal-member-row{grid-template-columns:2.35rem minmax(0,1fr)}
   .fc-personal-member-side{grid-column:2;align-items:flex-start;text-align:left;max-width:none}
 }
+
+/* ================= SEP 02 — variative product builder cleanup ================= */
+.fc-variant-builder-header{display:flex;align-items:flex-start;gap:.55rem;padding-bottom:.65rem;border-bottom:1px solid var(--ustore-border,#e5e7eb)}
+.fc-variant-builder-header h3{font-size:.86rem;font-weight:900;color:var(--ustore-text,#172033);line-height:1.2}
+.fc-variant-builder-header small{display:block;margin-top:.16rem;font-size:.56rem;line-height:1.35;color:var(--ustore-muted-text,#8190a3)}
+.fc-variant-list-card{display:grid;grid-template-columns:3.05rem minmax(0,1fr) 1.65rem 1rem;gap:.55rem;align-items:center;padding:.65rem .7rem;border:1px solid var(--ustore-border,#e5e7eb);border-radius:.9rem;background:var(--ustore-card-bg,#fff);cursor:pointer}
+.fc-variant-list-card+.fc-variant-list-card{margin-top:.45rem}
+.fc-variant-color-editor{display:flex;flex-direction:column;gap:.75rem}
+.fc-variant-editor-top{display:flex;align-items:flex-start;gap:.55rem;padding-bottom:.65rem;border-bottom:1px solid var(--ustore-border,#e5e7eb)}
+.fc-variant-editor-top>div{min-width:0}.fc-variant-editor-top b{font-size:.82rem;color:var(--ustore-text,#172033)}.fc-variant-editor-top small{display:block;margin-top:.12rem;font-size:.56rem;color:var(--ustore-muted-text,#8390a2)}
+.fc-variant-image-line,.fc-variant-image-inline,.fc-image-picker-inline{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.fc-variant-image-line>small{font-size:.52rem;color:var(--ustore-muted-text,#8390a2)}
+.fc-image-preview-square{width:3.25rem;height:3.25rem;aspect-ratio:1/1;object-fit:contain;border:1px solid var(--ustore-border,#e5e7eb);border-radius:.7rem;background:var(--ustore-panel-bg,#f8fafc);padding:.15rem}
+.fc-image-preview-square.is-empty{display:flex;align-items:center;justify-content:center;color:var(--ustore-muted-text,#94a3b8)}
+.fc-image-icon-action,.fc-icon-plain{appearance:none;border:0!important;background:transparent!important;box-shadow:none!important;padding:.28rem!important;margin:0;color:var(--ustore-primary,#2563eb);display:inline-flex;align-items:center;justify-content:center;min-width:1.85rem;min-height:1.85rem;border-radius:.35rem;line-height:1;transition:background .12s ease,transform .12s ease,color .12s ease}
+.fc-image-icon-action:hover,.fc-icon-plain:hover{background:color-mix(in srgb,var(--ustore-primary,#2563eb) 7%,transparent)!important}
+.fc-image-icon-action:active,.fc-icon-plain:active{transform:scale(.94)}
+.fc-image-icon-action.is-danger,.fc-icon-plain.is-danger{color:var(--ustore-danger,#dc2626)!important}
+.fc-image-icon-action.is-danger:hover,.fc-icon-plain.is-danger:hover{background:color-mix(in srgb,var(--ustore-danger,#dc2626) 7%,transparent)!important}
+.fc-variant-editor-section-title{display:flex;align-items:center;justify-content:space-between;padding-top:.15rem}.fc-variant-editor-section-title b{font-size:.68rem;color:var(--ustore-text,#334155)}
+.fc-variant-size-list{display:flex;flex-direction:column;gap:.55rem}
+.fc-variant-size-editor{padding:.65rem;border:1px solid var(--ustore-border,#e5e7eb);border-radius:.85rem;background:color-mix(in srgb,var(--ustore-panel-bg,#f8fafc) 62%,var(--ustore-card-bg,#fff));display:flex;flex-direction:column;gap:.55rem}
+.fc-variant-size-head{display:grid;grid-template-columns:minmax(0,1fr) 1.8rem;gap:.4rem;align-items:end}
+.fc-variant-size-grid{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;align-items:end}
+.fc-inline-stepper{height:2.55rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.72rem;background:var(--ustore-input-bg,#fff);display:grid;grid-template-columns:2rem minmax(2.5rem,1fr) 2rem;align-items:center;overflow:hidden}
+.fc-inline-stepper button{height:100%;border:0;background:transparent;color:var(--ustore-primary,#2563eb);display:flex;align-items:center;justify-content:center;padding:0}
+.fc-inline-stepper button:active{background:color-mix(in srgb,var(--ustore-primary,#2563eb) 8%,transparent)}
+.fc-inline-stepper input{width:100%;height:100%;min-width:0;border:0!important;outline:0!important;background:transparent!important;text-align:center;font-size:.78rem;font-weight:900;color:var(--ustore-text,#172033);padding:0!important;-moz-appearance:textfield}
+.fc-inline-stepper input::-webkit-outer-spin-button,.fc-inline-stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.fc-variant-editor-footer{display:grid;grid-template-columns:1fr 1.2fr;gap:.5rem;padding-top:.15rem}
+.fc-variant-summary-thumb{width:2.35rem;height:2.35rem;aspect-ratio:1/1;border-radius:.6rem;border:1px solid var(--ustore-border,#e5e7eb);background:var(--ustore-panel-bg,#f8fafc);display:inline-flex;align-items:center;justify-content:center;overflow:hidden;color:var(--ustore-muted-text,#94a3b8)}
+.fc-variant-summary-thumb.is-lg{width:3.05rem;height:3.05rem}.fc-variant-summary-thumb img{width:100%;height:100%;object-fit:contain}
+.fc-variant-entry-image-actions{display:flex!important;flex-direction:row!important;align-items:center!important;gap:.2rem!important}
+.fc-variant-row-img-btn{border:0!important;background:transparent!important;box-shadow:none!important;width:auto!important;height:auto!important;min-width:1.85rem!important;min-height:1.85rem!important;border-radius:.35rem!important;padding:.28rem!important}
+.fc-variant-row-check-btn{border:0!important;box-shadow:none!important;width:2rem!important;height:2rem!important;border-radius:.45rem!important}
+@media(max-width:370px){.fc-variant-size-grid{grid-template-columns:1fr}.fc-variant-builder-header small{font-size:.53rem}}
+.fc-customer-variant-stepper{display:grid;grid-template-columns:2.65rem minmax(3rem,1fr) 2.65rem;align-items:center;gap:.35rem;max-width:13rem;margin:0 auto;padding:.25rem .35rem;border:1px solid var(--ustore-border,#e5e7eb);border-radius:.8rem;background:var(--ustore-card-bg,#fff)}
+.fc-customer-variant-stepper button{height:2.35rem;border:0;background:transparent;color:var(--ustore-primary,#2563eb);display:flex;align-items:center;justify-content:center;border-radius:.45rem}
+.fc-customer-variant-stepper button:active{background:color-mix(in srgb,var(--ustore-primary,#2563eb) 8%,transparent)}
+.fc-customer-variant-stepper b{text-align:center;font-size:.9rem;color:var(--ustore-text,#172033)}
+
+/* SEP 02 — image actions are icon-first everywhere. The visible control has no
+   bubble/card; the hit-area remains comfortable for Telegram WebView touch. */
+button[onclick*="openImagePickerSheet"]{
+  appearance:none!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  color:var(--ustore-primary,#2563eb)!important;
+  min-width:2rem!important;
+  min-height:2rem!important;
+  width:auto!important;
+  height:auto!important;
+  padding:.28rem!important;
+  border-radius:.3rem!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+button[onclick*="openImagePickerSheet"]:active{transform:scale(.94)}
+/* Banner image replace used to be a black circular bubble over the image. */
+.fc-banner-slot-swap,.fc-mkt-pro-banners .fc-banner-slot-swap{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+  width:1.65rem!important;
+  height:1.65rem!important;
+  padding:.2rem!important;
+  color:#fff!important;
+  filter:drop-shadow(0 1px 2px rgba(15,23,42,.78));
+}
+.fc-banner-slot-swap:active,.fc-mkt-pro-banners .fc-banner-slot-swap:active{background:transparent!important;transform:scale(.92)}
+/* Compact stock stepper: no oversized square +/- blocks. */
+.fc-inline-stepper{
+  height:2.2rem!important;
+  grid-template-columns:1.6rem minmax(2.15rem,1fr) 1.6rem!important;
+  border-radius:.62rem!important;
+}
+.fc-inline-stepper button{min-width:0!important;padding:0!important;border-radius:0!important}
+.fc-customer-variant-stepper{
+  grid-template-columns:2rem minmax(2.65rem,1fr) 2rem!important;
+  max-width:10.5rem!important;
+  padding:.16rem .24rem!important;
+  border-radius:.68rem!important;
+}
+.fc-customer-variant-stepper button{height:2rem!important;border-radius:.25rem!important}
+/* Empty state is informational only; the single add-color action lives in the header. */
+.fc-variant-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.22rem;min-height:5rem;padding:.8rem;border:1px dashed var(--ustore-border,#dbe4ef);border-radius:.85rem;color:var(--ustore-muted-text,#8491a3);text-align:center}
+.fc-variant-empty-state p{font-size:.62rem;font-weight:800;color:var(--ustore-text,#475569);margin:0}
+.fc-variant-empty-state small{font-size:.5rem;line-height:1.35;margin:0}
