@@ -4252,15 +4252,35 @@
       return !!(window.jspdf && window.jspdf.jsPDF);
     }
     let reportPdfLibPromise = null;
-    function loadExternalScript(src) {
-      return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=true;s.onload=resolve;s.onerror=()=>reject(new Error('pdf_library_load_failed'));document.head.appendChild(s);});
+    function loadExternalScript(src, timeoutMs = 12000) {
+      return new Promise((resolve,reject)=>{
+        const el=document.createElement('script'); let done=false;
+        const finish=(err)=>{if(done)return;done=true;clearTimeout(timer);if(err){try{el.remove();}catch(_){ } reject(err);}else resolve(true);};
+        const timer=setTimeout(()=>finish(new Error('pdf_library_timeout')),timeoutMs);
+        el.src=src;el.async=true;el.onload=()=>finish();el.onerror=()=>finish(new Error('pdf_library_load_failed'));document.head.appendChild(el);
+      });
+    }
+    async function loadFirstWorkingScript(urls, probe) {
+      let lastError=null;
+      for (const url of urls) {
+        if (probe()) return true;
+        try { await loadExternalScript(url); if (probe()) return true; } catch (e) { lastError=e; }
+      }
+      throw lastError || new Error('pdf_library_load_failed');
     }
     async function ensureReportPdfLib() {
       if (reportPdfAvailable() && window.jspdf.jsPDF.API.autoTable) return true;
       if (!reportPdfLibPromise) reportPdfLibPromise = (async()=>{
-        if (!reportPdfAvailable()) await loadExternalScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
-        if (!window.jspdf?.jsPDF?.API?.autoTable) await loadExternalScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js');
-        return reportPdfAvailable();
+        if (!reportPdfAvailable()) await loadFirstWorkingScript([
+          'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+          'https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js'
+        ], reportPdfAvailable);
+        if (!window.jspdf?.jsPDF?.API?.autoTable) await loadFirstWorkingScript([
+          'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
+          'https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js'
+        ], ()=>!!window.jspdf?.jsPDF?.API?.autoTable);
+        if (!reportPdfAvailable() || !window.jspdf?.jsPDF?.API?.autoTable) throw new Error('pdf_library_load_failed');
+        return true;
       })().catch(e=>{reportPdfLibPromise=null;throw e;});
       return reportPdfLibPromise;
     }
@@ -4360,24 +4380,67 @@
       showActionToast(tr('PDF tayyorlanmoqda...','Подготовка PDF...'),'saving');
       try {
         await ensureReportPdfLib();
-        if (reportsActiveTab === 'OVERVIEW') exportOverviewPdf();
-        else if (reportsActiveTab === 'SALES') exportSalesPdf();
-        else if (reportsActiveTab === 'CUSTOMERS') exportCustomerPdf();
-        else exportProductPdf();
-      } catch(e) { pdfLibMissingAlert(); }
-      finally { hideActionToast(); }
+        if (reportsActiveTab === 'OVERVIEW') await exportOverviewPdf();
+        else if (reportsActiveTab === 'SALES') await exportSalesPdf();
+        else if (reportsActiveTab === 'CUSTOMERS') await exportCustomerPdf();
+        else await exportProductPdf();
+      } catch(e) {
+        console.error('[report-pdf]', e);
+        if (String(e?.message || e).includes('pdf_library')) pdfLibMissingAlert();
+        else alert(tr('PDF yuklab bo‘lmadi. Qayta urinib ko‘ring.', 'Не удалось скачать PDF. Повторите попытку.'));
+      } finally { hideActionToast(); }
     }
-    function saveReportPdf(doc, filename) {
-      // Blob+anchor Telegram WebView'da jsPDF'ning ichki save yo'lidan
-      // barqarorroq. Desktop fallback sifatida doc.save saqlanadi.
+    async function reportBlobToBase64(blob) {
+      const bytes=new Uint8Array(await blob.arrayBuffer());
+      let binary=''; const chunk=0x8000;
+      for(let i=0;i<bytes.length;i+=chunk) binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+      return btoa(binary);
+    }
+    function telegramNativeDownloadAvailable() {
+      return typeof window.Telegram?.WebApp?.downloadFile === 'function';
+    }
+    function requestTelegramNativeDownload(url, filename) {
+      return new Promise((resolve,reject)=>{
+        let settled=false; const timer=setTimeout(()=>{if(!settled){settled=true;reject(new Error('telegram_download_timeout'));}},15000);
+        try {
+          window.Telegram.WebApp.downloadFile({ url, file_name: filename }, (accepted)=>{
+            if(settled)return;settled=true;clearTimeout(timer);
+            accepted ? resolve(true) : reject(new Error('telegram_download_rejected'));
+          });
+        } catch(e) { if(!settled){settled=true;clearTimeout(timer);reject(e);} }
+      });
+    }
+    async function browserSaveReportBlob(blob, filename) {
+      const file = (typeof File === 'function') ? new File([blob], filename, { type:'application/pdf' }) : null;
+      const isTelegram = !!window.Telegram?.WebApp?.initData;
+      if (isTelegram && file && navigator.canShare?.({ files:[file] })) {
+        try { await navigator.share({ files:[file], title:filename }); return true; } catch(e) { if (e?.name !== 'AbortError') console.warn('[report-share]',e); }
+      }
+      const url=URL.createObjectURL(blob);
       try {
-        const blob=doc.output('blob'); const url=URL.createObjectURL(blob); const a=document.createElement('a');
-        a.href=url;a.download=filename;a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
-        setTimeout(()=>URL.revokeObjectURL(url),30000);
-      } catch(e) { doc.save(filename); }
+        const a=document.createElement('a');a.href=url;a.download=filename;a.rel='noopener';a.style.display='none';document.body.appendChild(a);a.click();a.remove();
+        return true;
+      } finally { setTimeout(()=>URL.revokeObjectURL(url),60000); }
+    }
+    async function saveReportPdf(doc, filename) {
+      const blob=doc.output('blob');
+      if (!(blob instanceof Blob) || !blob.size) throw new Error('pdf_blob_empty');
+      // Telegram Mini Apps 8.0+ has a native file download prompt, but it
+      // requires an HTTPS URL. The PDF is therefore written to a PRIVATE
+      // latest-per-user bucket and exposed only through a 5-minute signed URL.
+      if (telegramNativeDownloadAvailable()) {
+        try {
+          const uploaded=await callApi('upload_report_pdf',{ fileName:filename, pdfUpload:{ mimeType:'application/pdf', base64:await reportBlobToBase64(blob) } });
+          if (!uploaded?.url) throw new Error('report_download_url_missing');
+          await requestTelegramNativeDownload(uploaded.url, uploaded.fileName || filename);
+          showActionToast(tr('PDF yuklash oynasi ochildi','Открыто окно загрузки PDF'),'success',1400);
+          return true;
+        } catch(e) { console.warn('[report-native-download-fallback]',e); }
+      }
+      return browserSaveReportBlob(blob, filename);
     }
 
-    function exportOverviewPdf() {
+    async function exportOverviewPdf() {
       if (!reportOverviewData) { pdfNoDataYetToast(); return; }
       if (!reportPdfAvailable()) { pdfLibMissingAlert(); return; }
       const d = reportOverviewData;
@@ -4414,10 +4477,10 @@
         y = pdfSectionTitle(doc, 14, y + 4, tr('Eng ko‘p sotilgan mahsulotlar', 'Самые продаваемые товары'));
         doc.autoTable({ startY: y + 2, head: [[tr('Mahsulot', 'Товар'), tr('Dona', 'Шт'), tr('Buyurtma', 'Заказы'), tr('Tushum', 'Выручка')]], body: d.topProducts.map((p) => [p.name, formatNumber(p.unitsSold), formatNumber(p.orderCount), money(p.revenue)]), styles: { fontSize: 8 }, headStyles: { fillColor: [59, 130, 246] }, margin: { left: 14, right: 14 } });
       }
-      saveReportPdf(doc, pdfFilenameFor(tr('Umumiy_Hisobot', 'Obshiy_Otchet'), d.dateFrom, d.dateTo));
+      await saveReportPdf(doc, pdfFilenameFor(tr('Umumiy_Hisobot', 'Obshiy_Otchet'), d.dateFrom, d.dateTo));
     }
 
-    function exportSalesPdf() {
+    async function exportSalesPdf() {
       if (!reportSalesData) { pdfNoDataYetToast(); return; }
       if (!reportPdfAvailable()) { pdfLibMissingAlert(); return; }
       const d = reportSalesData;
@@ -4449,10 +4512,10 @@
         y = pdfSectionTitle(doc, 14, y, tr('Mahsulotlar bo‘yicha', 'По товарам'));
         doc.autoTable({ startY: y + 2, head: [[tr('Mahsulot', 'Товар'), tr('Dona', 'Шт'), tr('Buyurtma', 'Заказы'), tr('Tushum', 'Выручка')]], body: d.byProduct.slice(0, 50).map((p) => [p.name, formatNumber(p.unitsSold), formatNumber(p.orderCount), money(p.revenue)]), styles: { fontSize: 8 }, headStyles: { fillColor: [59, 130, 246] }, margin: { left: 14, right: 14 } });
       }
-      saveReportPdf(doc, pdfFilenameFor(tr('Savdo_Hisoboti', 'Otchet_Prodazh'), d.dateFrom, d.dateTo));
+      await saveReportPdf(doc, pdfFilenameFor(tr('Savdo_Hisoboti', 'Otchet_Prodazh'), d.dateFrom, d.dateTo));
     }
 
-    function exportCustomerPdf() {
+    async function exportCustomerPdf() {
       if (!reportCustomerData) { pdfNoDataYetToast(); return; }
       if (!reportPdfAvailable()) { pdfLibMissingAlert(); return; }
       const d = reportCustomerData;
@@ -4473,10 +4536,10 @@
         body: (d.customers || []).map((c) => [c.name, c.phone || '-', formatNumber(c.successfulOrders), money(c.totalSpent), c.lastOrderAt ? String(c.lastOrderAt).slice(0, 10) : '-']),
         styles: { fontSize: 7.5 }, headStyles: { fillColor: [59, 130, 246] }, margin: { left: 14, right: 14 },
       });
-      saveReportPdf(doc, pdfFilenameFor(tr('Mijozlar_Hisoboti', 'Otchet_Klientov'), d.dateFrom, d.dateTo));
+      await saveReportPdf(doc, pdfFilenameFor(tr('Mijozlar_Hisoboti', 'Otchet_Klientov'), d.dateFrom, d.dateTo));
     }
 
-    function exportProductPdf() {
+    async function exportProductPdf() {
       if (!reportProductData) { pdfNoDataYetToast(); return; }
       if (!reportPdfAvailable()) { pdfLibMissingAlert(); return; }
       const d = reportProductData;
@@ -4489,7 +4552,7 @@
         body: (d.products || []).map((p) => [p.name, formatNumber(p.unitsSold), formatNumber(p.orderCount), money(p.revenue), p.currentStock === null ? '-' : formatNumber(p.currentStock)]),
         styles: { fontSize: 7.5 }, headStyles: { fillColor: [59, 130, 246] }, margin: { left: 14, right: 14 },
       });
-      saveReportPdf(doc, pdfFilenameFor(tr('Mahsulotlar_Hisoboti', 'Otchet_Tovarov'), d.dateFrom, d.dateTo));
+      await saveReportPdf(doc, pdfFilenameFor(tr('Mahsulotlar_Hisoboti', 'Otchet_Tovarov'), d.dateFrom, d.dateTo));
     }
 
     // ---- Qo'llab-quvvatlash sahifasi (POLISH ROUND 1-bosqich, 1-3-band) ----
@@ -13453,6 +13516,8 @@
         await callApi('set_shop_logo', { logoType: 'WORDMARK', wordmark });
         shopLogoType = 'WORDMARK';
         shopLogoWordmark = wordmark;
+        shopLogoUrl = null;
+        clearShopLogoDraft();
         activePopupModal = shopInfoDraft ? 'SHOP_INFO' : null;
         render();
         showActionToast(tr('✅ Logo saqlandi', '✅ Логотип сохранён'), 'success', 1400);
