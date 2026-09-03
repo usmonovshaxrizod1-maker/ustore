@@ -771,7 +771,13 @@
     function pickColorImage(idx) {
       syncVariantBuilderFromDom();
       const input = document.getElementById(`vc-${idx}-image-input`);
-      if (input) { input.value = ''; input.click(); }
+      // 2026-09-03 fix: bu input markupda hali ham `accept="image/*"`
+      // bilan chiqadi (boshqa hech narsa o'zgarmasin uchun HTML atayin
+      // tegilmadi), lekin shu tufayli tugma bosilganda mobil qurilma
+      // to'g'ridan-to'g'ri Galereya/Foto ilovasini ochib yuborardi —
+      // loyihaning boshqa BARCHA rasm-joylari (openImagePickerSheet()
+      // orqali) buni allaqachon shu bir qatorlik yechim bilan hal qilgan.
+      if (input) { input.removeAttribute('accept'); input.value = ''; input.click(); }
     }
     async function onColorImagePicked(event, idx) {
       const file = event.target.files?.[0];
@@ -13034,9 +13040,45 @@
 
     let osmPickerMap = null;
     let osmPickerMarker = null;
+    // PERFORMANCE ROUND 1 (2026-09-03): Leaflet endi index.html'da HAR
+    // ilova ochilganda emas, faqat shu funksiya birinchi marta chaqirilganda
+    // (ya'ni admin xarita picker tugmasini bosganda) yuklanadi — mavjud
+    // ensureScript() (Excel importda ishlatiladigan xuddi shu naqsh) +
+    // yangi ensureStylesheet() bilan. index.html'dagi eski SRI
+    // integrity/crossorigin qiymatlari shu yerga ko'chirildi — xavfsizlik
+    // darajasi o'zgarmaydi. openOsmCoordinatePicker() bu funksiyani
+    // allaqachon await qilib, xato holatini ("Xaritani yuklab bo'lmadi")
+    // to'g'ri ko'rsatadi — shu sabab boshqa hech narsa o'zgarishi shart emas.
+    const LEAFLET_CSS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    const LEAFLET_JS_URL = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    const LEAFLET_CSS_SRI = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+    const LEAFLET_JS_SRI = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+    function ensureStylesheet(href, integrity) {
+      return new Promise((resolve, reject) => {
+        const old = document.querySelector(`link[data-href="${href}"]`);
+        if (old) { if (old.dataset.loaded === '1') return resolve(); old.addEventListener('load', resolve, { once: true }); old.addEventListener('error', reject, { once: true }); return; }
+        const link = document.createElement('link');
+        link.rel = 'stylesheet'; link.href = href;
+        if (integrity) { link.integrity = integrity; link.crossOrigin = ''; }
+        link.dataset.href = href;
+        link.onload = () => { link.dataset.loaded = '1'; resolve(); };
+        link.onerror = reject;
+        document.head.appendChild(link);
+      });
+    }
+    let leafletLoadPromise = null;
     function ensureLeafletLoaded() {
       if (window.L?.map && window.L?.tileLayer && window.L?.marker) return Promise.resolve(window.L);
-      return Promise.reject(new Error('LEAFLET_LOAD_FAILED'));
+      if (!leafletLoadPromise) {
+        leafletLoadPromise = Promise.all([
+          ensureStylesheet(LEAFLET_CSS_URL, LEAFLET_CSS_SRI),
+          ensureScript(LEAFLET_JS_URL, LEAFLET_JS_SRI),
+        ]).then(() => {
+          if (!(window.L?.map && window.L?.tileLayer && window.L?.marker)) throw new Error('LEAFLET_LOAD_FAILED');
+          return window.L;
+        }).catch((e) => { leafletLoadPromise = null; throw e; });
+      }
+      return leafletLoadPromise;
     }
     function parseCoordinatePair(value) {
       const m = String(value || '').trim().match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
@@ -16820,11 +16862,12 @@
     // ============ EXCEL IMPORT (faqat admin ochganda lazy-load) ============
     let excelModulePromise = null;
     let excelOpening = false;
-    function ensureScript(src) {
+    function ensureScript(src, integrity) {
       return new Promise((resolve, reject) => {
         const old = document.querySelector(`script[data-src="${src}"]`);
-        if (old) { if (old.dataset.loaded === '1') return resolve(); old.addEventListener('load', resolve, { once:true }); return; }
+        if (old) { if (old.dataset.loaded === '1') return resolve(); old.addEventListener('load', resolve, { once:true }); old.addEventListener('error', reject, { once:true }); return; }
         const sc = document.createElement('script'); sc.src = src; sc.dataset.src = src; sc.async = true;
+        if (integrity) { sc.integrity = integrity; sc.crossOrigin = ''; }
         sc.onload = () => { sc.dataset.loaded = '1'; resolve(); }; sc.onerror = reject; document.head.appendChild(sc);
       });
     }
@@ -17826,19 +17869,17 @@
         if (activePage === 'STAFF' && staffListLoaded) {
           try { await loadStaffListLazy(true); } catch (e) { console.error('Xodimlar ro\'yxati fon tekshiruvi xatosi:', e); }
         }
-        // 11-band: xodimning o'z huquqi (rol o'zgartirilgani) ilovani qayta
-        // ochmasdan ko'rinishi uchun — yengil action, faqat isAdmin bo'lsa.
-        if (isUserAnAdmin) {
-          try {
-            const permData = await callApi('get_my_permissions', {});
-            const freshPerms = JSON.stringify([permData.staffRole, permData.myPermissions]);
-            const curPerms = JSON.stringify([staffRole, myPermissions]);
-            if (freshPerms !== curPerms) {
-              staffRole = permData.staffRole; myPermissions = Array.isArray(permData.myPermissions) ? permData.myPermissions : [];
-              render();
-            }
-          } catch (e) { console.error('Huquqlarni fon tekshiruvi xatosi:', e); }
-        }
+        // PERFORMANCE ROUND 1 (2026-09-03): bu yerda avval yana bir
+        // "isUserAnAdmin bo'lsa get_my_permissions chaqir" bloki bor edi —
+        // startStaffAccessSync()dagi refreshMyStaffAccess() (12s'da bir
+        // marta, setInterval orqali) bilan AYNAN bir xil so'rov va diff-
+        // mantiqni takrorlardi, faqat 90s kamroq tez-tez. 12s'lik versiya
+        // buni allaqachon to'liq qamrab oladi (va hattoki ko'proq — qayta
+        // kirish himoyasi, reconcileStaffAccessView(), Xodimlar sahifasini
+        // yangilash) — shu sabab bu yerdagi nusxa butunlay ortiqcha edi,
+        // har 90 soniyada bir marta bekorga tarmoq so'rovi yuborardi. Bu
+        // aynan support-chat "qotish" bug'ini keltirib chiqargan dublikat-
+        // poll naqshining o'zi (o'sha ham shu tarzda tuzatilgan edi).
       }, 90000);
     }
 
@@ -17854,8 +17895,24 @@
         return true;
       } catch { return false; }
     }
+    // PERFORMANCE ROUND 1 (2026-09-03): loadCatalog() 90s fon poll orqali
+    // har safar chaqirilganda (home/categories/warehouse tab'da yoki
+    // mahsulot modali ochiq bo'lsa) bu funksiya ILGARI HAR DOIM to'liq
+    // katalogni qayta serializatsiya qilib localStorage'ga yozardi — hatto
+    // hech narsa o'zgarmagan bo'lsa ham (odatiy holat). Endi yozishdan
+    // OLDIN joriy tarkib oxirgi yozilgan tarkib bilan solishtiriladi —
+    // farq bo'lmasa localStorage.setItem() umuman chaqirilmaydi.
+    // `at` maydoni hech qayerda o'qilmagani uchun (faqat diagnostika edi)
+    // ataylab olib tashlandi — shu bilan bitta JSON.stringify() kifoya
+    // qiladi (compare uchun ham, yozish uchun ham).
+    let lastCatalogCacheFingerprint = null;
     function saveCatalogCache() {
-      try { localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify({ products, categories, at: Date.now() })); } catch {}
+      try {
+        const fingerprint = JSON.stringify({ products, categories });
+        if (fingerprint === lastCatalogCacheFingerprint) return;
+        lastCatalogCacheFingerprint = fingerprint;
+        localStorage.setItem(CATALOG_CACHE_KEY, fingerprint);
+      } catch {}
     }
     async function loadCatalog() {
       const perfStarted = performance.now();
