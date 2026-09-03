@@ -3567,6 +3567,7 @@
         case 'DESIGN_SETTINGS': renderDesignSettingsPage(container); break;
         case 'DELIVERY_SETTINGS': renderDeliverySettingsPage(container); break;
         case 'PAYMENT_SETTINGS': renderPaymentSettingsPage(container); break;
+        case 'ORDER_POLICY_SETTINGS': renderOrderPolicySettingsPage(container); break;
         case 'LEGAL_SETTINGS': renderLegalSettingsPage(container); break;
         case 'PROMO_CODES': renderPromoPage(container); break;
         case 'PROMO_USAGE': renderPromoUsagePage(container); break;
@@ -4984,6 +4985,7 @@
           </div>
           <button type="button" onclick="openDeliverySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="truck" class="w-4 h-4"></i>${tr("Yetkazib berish parametrlari", "Параметры доставки")}</span><span>›</span></button>
           <button type="button" onclick="openPaymentSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr("To'lov parametrlari", "Параметры оплаты")}</span><span>›</span></button>
+          <button type="button" onclick="openOrderPolicySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr("Qaytarish va bekor qilish", "Возврат и отмена")}</span><span>›</span></button>
           <button type="button" onclick="openLegalSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="file-lock-2" class="w-4 h-4"></i>${tr("Huquqiy hujjatlar", "Правовые документы")}</span><span>›</span></button>
           <button type="button" onclick="openDesignSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4"></i>${tr("Dizayn", "Дизайн")}</span><span>›</span></button>
           ${(isSuperAdmin && isAdminMode) ? `
@@ -5127,7 +5129,7 @@
       ];
       const dayOptions = [1,3,7,14,30];
       return `<section class="fc-order-policy-panel">
-        <div class="fc-order-policy-head"><span class="fc-shop-settings-icon"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></span><div><b>${tr('Buyurtma va qaytarish qoidalari','Заказ и возврат')}</b><small>${tr('Bekor qilish va qaytarish muddatlarini boshqaring.','Настройте отмену и срок возврата.')}</small></div></div>
+        <div class="fc-order-policy-head"><span class="fc-shop-settings-icon"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></span><div><b>${tr('Qaytarish va bekor qilish','Возврат и отмена')}</b><small>${tr('Bekor qilish va qaytarish muddatlarini boshqaring.','Настройте отмену и срок возврата.')}</small></div></div>
         <div class="fc-order-policy-row"><div><b>${tr('Mijoz qachongacha bekor qila oladi','До какого момента клиент может отменить')}</b></div><div class="fc-policy-segments">${cancelOptions.map(([id,label])=>`<button type="button" onclick="saveOrderPolicies({customerCancelCutoff:'${id}'})" class="${customerCancelCutoff===id?'is-active':''}">${label}</button>`).join('')}</div></div>
         <div class="fc-order-policy-row is-toggle"><div><b>${tr('Qaytarishni yoqish','Разрешить возврат')}</b><small>${tr('Oddiy muammo/support murojaati bundan mustaqil ishlaydi.','Обычная поддержка работает независимо.')}</small></div><label class="fc-toggle"><input type="checkbox" ${returnRequestsEnabled?'checked':''} onchange="saveOrderPolicies({returnRequestsEnabled:this.checked})" ${orderPoliciesSaving?'disabled':''}><span class="fc-toggle-track"></span></label></div>
         ${returnRequestsEnabled ? `<div class="fc-order-policy-row"><div><b>${tr('Qaytarish muddati','Срок возврата')}</b><small>${tr('Yetkazilgan vaqtdan boshlab hisoblanadi.','Считается с момента доставки.')}</small></div><div class="fc-return-days">${dayOptions.map(d=>`<button type="button" onclick="saveOrderPolicies({returnWindowDays:${d}})" class="${Number(returnWindowDays)===d?'is-active':''}">${d}</button>`).join('')}<label><input type="number" min="1" max="365" value="${escapeHtml(String(returnWindowDays))}" onchange="saveOrderPolicies({returnWindowDays:this.value})"><span>${tr('kun','дн.')}</span></label></div></div>
@@ -5142,7 +5144,6 @@
         <div class="space-y-3 text-xs">
           <p class="text-[10px] text-gray-500">${TOP_LEVEL_REGIONS.length} ${tr('ta top-level hudud mavjud ro‘yxatdan olindi', 'регионов взято из текущего списка')}</p>
           <div id="fulfillment-panel">${renderFulfillmentDeliveryPanel()}</div>
-          ${renderOrderPolicySettingsPanel()}
           <div class="grid grid-cols-2 gap-2 sticky bottom-0 fc-delivery-footer">
             <button onclick="saveFulfillmentSettings()" class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash','Сохранить')}</button>
             <button onclick="closeFulfillmentSettingsPage()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button>
@@ -5150,6 +5151,15 @@
         </div>
       `;
       renderPageShell(container, tr("Yetkazib berish parametrlari", "Параметры доставки"), body, { onBack: 'closeFulfillmentSettingsPage()' });
+    }
+
+    function renderOrderPolicySettingsPage(container) {
+      const body = `
+        <div class="space-y-3 text-xs">
+          ${renderOrderPolicySettingsPanel()}
+        </div>
+      `;
+      renderPageShell(container, tr('Qaytarish va bekor qilish', 'Возврат и отмена'), body, { onBack: 'closeOrderPolicySettingsPage()' });
     }
 
     function renderPaymentSettingsPage(container) {
@@ -5255,11 +5265,10 @@
       }).join('');
     }
 
-    // 17-band: bosh sahifadagi banner strip — eng ko'pi bilan 3 ta (server
-    // allaqachon shu chegarani qo'ygan), gorizontal scroll-snap bilan.
-    // Shop takomillashtirish, 8-band: markaz-peek premium carousel + haqiqiy
-    // cheksiz loop (oxiri->boshi va aksincha, klon-va-sakrash usuli — n>=2
-    // bo'lsagina, 1 banner uchun loop shart emas).
+    // Bosh sahifadagi banner strip — serverdan eng ko'pi bilan 5 ta aktiv
+    // banner keladi. Carousel finite: uchinchi banner mavjud bo'lsa boshlang'ich
+    // markaz aynan shu slot; pastdagi nuqta/pill indikator qaysi banner faol
+    // ekanini scroll paytida ham ko'rsatib turadi.
     function renderBannerCarouselHtml() {
       if (!activeBanners.length) return '';
       const cardHtml = (b) => `
@@ -5270,12 +5279,14 @@
             ${b.ctaText ? `<span class="fc-banner-cta">${escapeHtml(b.ctaText)}</span>` : ''}
           </div>` : ''}
         </div>`;
-      return `<div class="fc-banner-strip fc-home-default-block" id="fc-banner-strip">${activeBanners.slice(0,5).map(cardHtml).join('')}</div>`;
+      const banners = activeBanners.slice(0,5);
+      return `<div class="fc-banner-strip fc-home-default-block" id="fc-banner-strip">${banners.map(cardHtml).join('')}</div>
+        <div class="fc-banner-indicators fc-home-default-block" id="fc-banner-indicators" aria-label="${tr('Banner holati','Положение баннера')}">
+          ${banners.map((_, i) => `<button type="button" class="fc-banner-indicator" data-banner-index="${i}" onclick="scrollHomeBannerTo(${i}, event)" aria-label="${i + 1}"></button>`).join('')}
+        </div>`;
     }
-    // Carousel'ning boshlang'ich holati + markazdagi kartani scale/opacity
-    // bilan ajratish + klon chekkasiga yetilganda animatsiyasiz haqiqiy
-    // banner'ga "sakrash" (foydalanuvchi bu sakrashni sezmaydi — chunki bu
-    // chekkaga yetgandan keyin, ko'rinmas holatda amalga oshiriladi).
+    // Admin banner tartibini vitrinaning real kartalari ustida boshqaradi.
+    // Carouselning o'zi finite; clone/wrap/sakrash yo'q.
     let homeBannerDrag = null;
     function beginHomeBannerDrag(id, event) {
       if (!(isAdminMode && isUserAnAdmin && hasPermission('marketing.manage'))) return;
@@ -5333,11 +5344,23 @@
       }
     }
 
+    function scrollHomeBannerTo(index, event) {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      const strip = document.getElementById('fc-banner-strip');
+      if (!strip) return;
+      const cards = [...strip.querySelectorAll('.fc-banner-card')];
+      const card = cards[Math.max(0, Math.min(Number(index) || 0, cards.length - 1))];
+      if (!card) return;
+      strip.scrollTo({ left: card.offsetLeft - (strip.clientWidth - card.clientWidth) / 2, behavior: 'smooth' });
+    }
+
     function initBannerCarousel() {
       const strip = document.getElementById('fc-banner-strip');
       if (!strip) return;
       const cards = [...strip.querySelectorAll('.fc-banner-card')];
       if (!cards.length) return;
+      const indicators = [...document.querySelectorAll('#fc-banner-indicators .fc-banner-indicator')];
       const centerCard = (card, behavior = 'auto') => {
         if (!card) return;
         strip.scrollTo({ left: card.offsetLeft - (strip.clientWidth - card.clientWidth) / 2, behavior });
@@ -5355,11 +5378,14 @@
           card.classList.toggle('is-before', i === idx - 1);
           card.classList.toggle('is-after', i === idx + 1);
         });
+        indicators.forEach((dot, i) => {
+          dot.classList.toggle('is-active', i === idx);
+          dot.setAttribute('aria-current', i === idx ? 'true' : 'false');
+        });
       };
-      // Finite carousel: 5 ta banner bo'lsa 3-chisi boshlang'ich markaz.
-      // Clone/wrap/reset yo'q — Telegram WebView'dagi page-like sakrashning
-      // o'zi shu chekka normalizatsiyasidan kelib chiqmasligi kafolatlanadi.
-      const initialIndex = cards.length >= 5 ? 2 : 0;
+      // Finite carousel: uchinchi banner mavjud bo'lsa aynan u boshlang'ich
+      // markazda turadi. 1-2 bannerli holatda esa mavjud oxirgi karta tanlanadi.
+      const initialIndex = Math.min(2, cards.length - 1);
       requestAnimationFrame(() => { centerCard(cards[initialIndex], 'auto'); updateActiveCard(); });
       strip.addEventListener('scroll', updateActiveCard, { passive: true });
       // Swipe'dan keyin kartani tasodifan ochib yubormaslik uchun drag masofasi kuzatiladi.
@@ -9087,6 +9113,14 @@
       fulfillmentSettingsSection = 'PAYMENTS';
       fulfillmentExpandedPayment = fulfillmentExpandedPayment || 'CASH';
       openPage('PAYMENT_SETTINGS');
+    }
+
+    function openOrderPolicySettingsPage() {
+      if (!isUserAnAdmin || !isAdminMode) return;
+      openPage('ORDER_POLICY_SETTINGS');
+    }
+    function closeOrderPolicySettingsPage() {
+      openPage('SETTINGS', 'nav-profile');
     }
 
     function closeFulfillmentSettingsPage() {
@@ -12998,24 +13032,11 @@
       if (root) root.remove();
     }
 
-    let yandexMapsLoadPromise = null;
-    let yandexPickerMap = null;
-    let yandexPickerPlacemark = null;
-    function yandexMapsApiKey() { return String(window.APP_CONFIG?.YANDEX_MAPS_API_KEY || '').trim(); }
-    function ensureYandexMapsLoaded() {
-      if (window.ymaps?.ready) return new Promise((resolve) => window.ymaps.ready(() => resolve(window.ymaps)));
-      if (yandexMapsLoadPromise) return yandexMapsLoadPromise;
-      const key = yandexMapsApiKey();
-      if (!key) return Promise.reject(new Error('YANDEX_MAPS_API_KEY_REQUIRED'));
-      yandexMapsLoadPromise = new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(key)}&lang=${uiLang === 'ru' ? 'ru_RU' : 'uz_UZ'}`;
-        script.async = true;
-        script.onload = () => window.ymaps?.ready ? window.ymaps.ready(() => resolve(window.ymaps)) : reject(new Error('YANDEX_MAPS_LOAD_FAILED'));
-        script.onerror = () => reject(new Error('YANDEX_MAPS_LOAD_FAILED'));
-        document.head.appendChild(script);
-      });
-      return yandexMapsLoadPromise;
+    let osmPickerMap = null;
+    let osmPickerMarker = null;
+    function ensureLeafletLoaded() {
+      if (window.L?.map && window.L?.tileLayer && window.L?.marker) return Promise.resolve(window.L);
+      return Promise.reject(new Error('LEAFLET_LOAD_FAILED'));
     }
     function parseCoordinatePair(value) {
       const m = String(value || '').trim().match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
@@ -13023,39 +13044,51 @@
       const lat = Number(m[1]), lon = Number(m[2]);
       return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? [lat, lon] : null;
     }
-    function closeYandexCoordinatePicker() {
-      try { yandexPickerMap?.destroy?.(); } catch (_) {}
-      yandexPickerMap = null; yandexPickerPlacemark = null;
-      document.getElementById('fc-yandex-picker-root')?.remove();
+    function closeOsmCoordinatePicker() {
+      try { osmPickerMap?.remove?.(); } catch (_) {}
+      osmPickerMap = null;
+      osmPickerMarker = null;
+      document.getElementById('fc-osm-picker-root')?.remove();
     }
-    function confirmYandexCoordinatePicker() {
-      const coords = yandexPickerPlacemark?.geometry?.getCoordinates?.();
-      if (!coords || coords.length !== 2) return;
-      const value = `${Number(coords[0]).toFixed(6)},${Number(coords[1]).toFixed(6)}`;
+    function confirmOsmCoordinatePicker() {
+      const point = osmPickerMarker?.getLatLng?.();
+      if (!point || !Number.isFinite(Number(point.lat)) || !Number.isFinite(Number(point.lng))) return;
+      const value = `${Number(point.lat).toFixed(6)},${Number(point.lng).toFixed(6)}`;
       const input = document.getElementById('sc-coordinates');
       if (input) { input.value = value; input.dispatchEvent(new Event('input', { bubbles:true })); }
-      closeYandexCoordinatePicker();
+      closeOsmCoordinatePicker();
     }
-    async function openYandexCoordinatePicker() {
-      closeYandexCoordinatePicker();
+    async function openOsmCoordinatePicker() {
+      closeOsmCoordinatePicker();
       const current = parseCoordinatePair(document.getElementById('sc-coordinates')?.value) || parseCoordinatePair(shopInfoDraft?.coordinates) || [41.311081, 69.240562];
-      const root = document.createElement('div'); root.id = 'fc-yandex-picker-root';
-      root.innerHTML = `<div class="fc-sheet-overlay fc-map-picker-overlay"><div class="fc-sheet fc-map-picker-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div><div class="fc-sheet-title">${tr('Joylashuvni tanlang','Выберите местоположение')}</div><p class="fc-shop-info-subtitle">Yandex Maps</p></div><button type="button" onclick="closeYandexCoordinatePicker()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body"><div id="fc-yandex-map" class="fc-yandex-map"><div class="fc-map-loading"><span class="fc-spinner"></span>${tr('Xarita yuklanmoqda…','Карта загружается…')}</div></div><p class="fc-map-picker-hint"><i data-lucide="map-pin" class="w-4 h-4"></i>${tr('Nuqtani bosing yoki markerni suring.','Нажмите на точку или перетащите маркер.')}</p></div><div class="fc-sheet-footer"><button type="button" onclick="closeYandexCoordinatePicker()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button><button id="fc-yandex-confirm" type="button" onclick="confirmYandexCoordinatePicker()" class="fc-btn fc-btn-primary" disabled><i data-lucide="check" class="w-4 h-4"></i>${tr('Tanlash','Выбрать')}</button></div></div></div>`;
-      document.body.appendChild(root); safeCreateIcons();
+      const root = document.createElement('div');
+      root.id = 'fc-osm-picker-root';
+      root.innerHTML = `<div class="fc-sheet-overlay fc-map-picker-overlay"><div class="fc-sheet fc-map-picker-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div><div class="fc-sheet-title">${tr('Joylashuvni tanlang','Выберите местоположение')}</div><p class="fc-shop-info-subtitle">OpenStreetMap</p></div><button type="button" onclick="closeOsmCoordinatePicker()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body"><div id="fc-osm-map" class="fc-osm-map"><div class="fc-map-loading"><span class="fc-spinner"></span>${tr('Xarita yuklanmoqda…','Карта загружается…')}</div></div><p class="fc-map-picker-hint"><i data-lucide="map-pin" class="w-4 h-4"></i>${tr('Nuqtani bosing yoki markerni suring.','Нажмите на точку или перетащите маркер.')}</p></div><div class="fc-sheet-footer"><button type="button" onclick="closeOsmCoordinatePicker()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button><button id="fc-osm-confirm" type="button" onclick="confirmOsmCoordinatePicker()" class="fc-btn fc-btn-primary" disabled><i data-lucide="check" class="w-4 h-4"></i>${tr('Tanlash','Выбрать')}</button></div></div></div>`;
+      document.body.appendChild(root);
+      safeCreateIcons();
       try {
-        const ymaps = await ensureYandexMapsLoaded();
-        if (!document.getElementById('fc-yandex-map')) return;
-        document.getElementById('fc-yandex-map').innerHTML = '';
-        yandexPickerMap = new ymaps.Map('fc-yandex-map', { center: current, zoom: 15, controls: ['zoomControl','geolocationControl'] }, { suppressMapOpenBlock:true });
-        yandexPickerPlacemark = new ymaps.Placemark(current, {}, { draggable:true, preset:'islands#blueDotIcon' });
-        yandexPickerMap.geoObjects.add(yandexPickerPlacemark);
-        const enable = () => { const b=document.getElementById('fc-yandex-confirm'); if(b) b.disabled=false; };
-        yandexPickerPlacemark.events.add('dragend', enable);
-        yandexPickerMap.events.add('click', (e) => { yandexPickerPlacemark.geometry.setCoordinates(e.get('coords')); enable(); });
+        const L = await ensureLeafletLoaded();
+        const mapEl = document.getElementById('fc-osm-map');
+        if (!mapEl) return;
+        mapEl.innerHTML = '';
+        osmPickerMap = L.map(mapEl, { zoomControl: true, attributionControl: true }).setView(current, 15);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(osmPickerMap);
+        osmPickerMarker = L.marker(current, { draggable: true, autoPan: true }).addTo(osmPickerMap);
+        const enable = () => { const b = document.getElementById('fc-osm-confirm'); if (b) b.disabled = false; };
+        osmPickerMarker.on('dragend', enable);
+        osmPickerMap.on('click', (e) => {
+          if (!e?.latlng) return;
+          osmPickerMarker.setLatLng(e.latlng);
+          enable();
+        });
+        setTimeout(() => osmPickerMap?.invalidateSize?.(), 0);
         enable();
       } catch (e) {
-        const map = document.getElementById('fc-yandex-map');
-        if (map) map.innerHTML = `<div class="fc-map-config-error"><i data-lucide="key-round" class="w-5 h-5"></i><b>${tr('Yandex Maps API kaliti kerak','Нужен ключ Yandex Maps API')}</b><p>${tr('config.public.js ichida YANDEX_MAPS_API_KEY ni kiriting. Hozir koordinatani qo‘lda kiritishingiz mumkin.','Укажите YANDEX_MAPS_API_KEY в config.public.js. Пока координаты можно ввести вручную.')}</p></div>`;
+        const mapEl = document.getElementById('fc-osm-map');
+        if (mapEl) mapEl.innerHTML = `<div class="fc-map-config-error"><i data-lucide="wifi-off" class="w-5 h-5"></i><b>${tr('Xaritani yuklab bo‘lmadi','Не удалось загрузить карту')}</b><p>${tr('Internetni tekshiring yoki koordinatani qo‘lda kiriting. API kalit talab qilinmaydi.','Проверьте интернет или введите координаты вручную. API-ключ не требуется.')}</p></div>`;
         safeCreateIcons();
       }
     }
@@ -14621,7 +14654,7 @@
                     </div>
                     <div class="fc-shop-field">
                       <label for="sc-coordinates">${tr("Koordinata", "Координаты")}</label>
-                      <div class="fc-coordinate-picker-row"><div class="fc-shop-input-with-icon"><i data-lucide="navigation" class="w-4 h-4"></i><input type="text" id="sc-coordinates" value="${escapeHtml(form.coordinates || '')}" placeholder="41.217408,69.211225" class="fc-shop-input font-mono"></div><button type="button" onclick="openYandexCoordinatePicker()" class="fc-map-picker-button" aria-label="${tr('Yandex xaritadan tanlash','Выбрать на Яндекс Карте')}" title="${tr('Yandex xaritadan tanlash','Выбрать на Яндекс Карте')}"><i data-lucide="map-pinned" class="w-5 h-5"></i></button></div>
+                      <div class="fc-coordinate-picker-row"><div class="fc-shop-input-with-icon"><i data-lucide="navigation" class="w-4 h-4"></i><input type="text" id="sc-coordinates" value="${escapeHtml(form.coordinates || '')}" placeholder="41.217408,69.211225" class="fc-shop-input font-mono"></div><button type="button" onclick="openOsmCoordinatePicker()" class="fc-map-picker-button" aria-label="${tr('Xaritadan tanlash','Выбрать на карте')}" title="${tr('Xaritadan tanlash','Выбрать на карте')}"><i data-lucide="map-pinned" class="w-5 h-5"></i></button></div>
                       <p class="fc-shop-field-help">${tr("Koordinatani qo'lda kiriting yoki xaritadan tanlang.", "Введите координаты вручную или выберите на карте.")}</p>
                     </div>
                   </div>

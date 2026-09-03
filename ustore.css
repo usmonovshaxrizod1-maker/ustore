@@ -5278,7 +5278,7 @@ button[onclick*="openImagePickerSheet"]:active{transform:scale(.94)}
 .fc-size-chip.is-out{opacity:.76;border-style:dashed!important;background:color-mix(in srgb,#64748b 5%,var(--ustore-card-bg,#fff))!important}
 .fc-size-chip.is-out small{display:block;font-size:.4rem;font-weight:800;line-height:1;color:#9b4c4c;margin-top:.08rem}
 
-/* Yandex coordinate picker: full-width map, safe Telegram viewport. */
+/* OpenStreetMap + Leaflet coordinate picker: full-width map, safe Telegram viewport. */
 .fc-coordinate-picker-row{display:grid;grid-template-columns:minmax(0,1fr) 2.45rem;gap:.42rem;align-items:center}
 .fc-map-picker-button{
   width:2.45rem;height:2.45rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.72rem;background:var(--ustore-card-bg,#fff);
@@ -5288,13 +5288,23 @@ button[onclick*="openImagePickerSheet"]:active{transform:scale(.94)}
 .fc-map-picker-overlay{z-index:118!important}
 .fc-map-picker-sheet{height:min(82dvh,42rem)!important;max-height:82dvh!important;overflow:hidden!important}
 .fc-map-picker-sheet .fc-sheet-body{display:flex;flex-direction:column;min-height:0;overflow:hidden}
-.fc-yandex-map{position:relative;flex:1;min-height:18rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.9rem;overflow:hidden;background:#edf2f7}
+.fc-osm-map{position:relative;flex:1;min-height:18rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.9rem;overflow:hidden;background:#edf2f7}
 .fc-map-loading,.fc-map-config-error{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:.42rem;padding:1rem;text-align:center;font-size:.58rem;font-weight:750;color:#617085;background:rgba(248,250,252,.92);z-index:2}
 .fc-map-config-error{color:#9a5a1f}
 .fc-map-picker-hint{display:flex;align-items:center;justify-content:center;gap:.3rem;margin:.48rem 0 0;font-size:.5rem;line-height:1.35;color:var(--ustore-muted-text,#7c8999)}
+.fc-osm-map .leaflet-control-attribution{font-size:9px;line-height:1.2;background:rgba(255,255,255,.88)}
 .fc-map-picker-sheet .fc-sheet-footer{flex:none;display:grid;grid-template-columns:.8fr 1.2fr;gap:.5rem;padding-bottom:max(.75rem,env(safe-area-inset-bottom))}
-@media(max-height:680px){.fc-map-picker-sheet{height:88dvh!important;max-height:88dvh!important}.fc-yandex-map{min-height:12rem}}
+@media(max-height:680px){.fc-map-picker-sheet{height:88dvh!important;max-height:88dvh!important}.fc-osm-map{min-height:12rem}}
 
 /* Finite banner carousel: contain horizontal gestures and never bounce the whole page. */
 .fc-banner-carousel,.fc-banner-track{overscroll-behavior-inline:contain;touch-action:pan-y pinch-zoom}
 .fc-banner-track{scrollbar-width:none}.fc-banner-track::-webkit-scrollbar{display:none}
+
+
+/* 2026-09-03 — banner carousel holat indikatori: aktiv banner cho'ziq
+   pill, qolganlari nuqta. Stripning pastki bo'shligi indikatorga berildi. */
+.fc-banner-strip{margin-bottom:.42rem!important}
+.fc-banner-indicators{display:flex;align-items:center;justify-content:center;gap:.34rem;margin:0 0 1.2rem;min-height:.55rem}
+.fc-banner-indicator{appearance:none;border:0;padding:0;width:.38rem;height:.38rem;border-radius:999px;background:color-mix(in srgb,var(--ustore-muted-text,#94a3b8) 58%,transparent);transition:width .2s ease,background .2s ease,transform .2s ease;cursor:pointer}
+.fc-banner-indicator.is-active{width:1.08rem;background:var(--ustore-primary,var(--fc-primary,#2563eb));transform:scaleY(1.05)}
+.fc-banner-indicator:focus-visible{outline:2px solid color-mix(in srgb,var(--ustore-primary,var(--fc-primary,#2563eb)) 45%,transparent);outline-offset:3px}
