@@ -1215,7 +1215,9 @@
     let wordmarkDraftBgColor = '#0f172a';
     let wordmarkStyleMenuOpen = false;
     let botUsername = null; // 1.10: "Telegramda ko'rish" uchun — hardcode emas, boot() javobidan
-    let shopContact = { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
+    let shopContact = { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, startImageUrl: null, workHours: null };
+    let startMessageImageDraft = undefined; // undefined=unchanged, null=remove, File=new image
+    let startMessagePreviewUrl = null;
     let shopLowStockThreshold = 5;
     // Billz (billz.ai) integratsiyasi — boshqarilgan/beta chiqarilish: faqat
     // platforma bosh admin ruxsat bergan do'konlarda true bo'ladi (boot()
@@ -4987,16 +4989,14 @@
               <div class="min-w-0"><b class="text-xs">${tr("Buyurtmalarni vaqtincha qabul qilmaslik", "Временно не принимать заказы")}</b><p class="text-[10px] text-gray-400 mt-0.5">${tr("Katalog ko'rinishda qoladi, faqat yangi buyurtma berish vaqtincha to'xtatiladi.", "Каталог остаётся видимым, приостанавливается только оформление новых заказов.")}</p></div>
               <span class="fc-toggle shrink-0"><input type="checkbox" ${ordersPaused ? 'checked' : ''} onchange="toggleOrdersPaused(this.checked)" ${ordersPausedSaving ? 'disabled' : ''}><span class="fc-toggle-track"></span></span>
             </div>
-            ${ordersPaused ? `<textarea id="orders-paused-note" rows="2" placeholder="${tr('Ixtiyoriy izoh, masalan: Bugun inventarizatsiya sababli buyurtmalar qabul qilinmaydi.', 'Необязательный комментарий, например: Сегодня заказы не принимаются из-за инвентаризации.')}" class="w-full p-2 border rounded-xl text-xs" onchange="saveOrdersPausedNote(this.value)">${escapeHtml(ordersPausedNote)}</textarea>` : ''}
+            ${ordersPaused ? `<textarea id="orders-paused-note" rows="2" placeholder="${tr('Ixtiyoriy izoh, masalan: Bugun inventarizatsiya sababli buyurtmalar qabul qilinmaydi.', 'Необязательный комментарий, например: Сегодня заказы не принимаются из-за инвентаризации.')}" class="w-full p-2 border rounded-xl text-xs" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea><div class="flex justify-end"><button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-btn fc-btn-primary px-4 py-2" ${ordersPausedSaving ? 'disabled' : ''}><i data-lucide="save" class="w-4 h-4"></i>${tr('Izohni saqlash','Сохранить комментарий')}</button></div>` : ''}
           </div>
           <button type="button" onclick="openDeliverySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="truck" class="w-4 h-4"></i>${tr("Yetkazib berish parametrlari", "Параметры доставки")}</span><span>›</span></button>
           <button type="button" onclick="openPaymentSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr("To'lov parametrlari", "Параметры оплаты")}</span><span>›</span></button>
           <button type="button" onclick="openOrderPolicySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr("Qaytarish va bekor qilish", "Возврат и отмена")}</span><span>›</span></button>
           <button type="button" onclick="openLegalSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="file-lock-2" class="w-4 h-4"></i>${tr("Huquqiy hujjatlar", "Правовые документы")}</span><span>›</span></button>
           <button type="button" onclick="openDesignSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4"></i>${tr("Dizayn", "Дизайн")}</span><span>›</span></button>
-          ${(isSuperAdmin && isAdminMode) ? `
-            <button type="button" onclick="activePopupModal='START_MESSAGE'; render();" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4"></i>${tr("Bot /start xabari", "Сообщение бота /start")}</span><span>›</span></button>
-          ` : ''}
+          <button type="button" onclick="activePopupModal='START_MESSAGE'; render();" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4"></i>${tr("Bot /start xabari", "Сообщение бота /start")}</span><span>›</span></button>
           ${billzAccessGranted ? `
             <button type="button" onclick="openBillzSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">🔳 Billz</span><span>›</span></button>
           ` : ''}
@@ -5036,9 +5036,20 @@
       }
     }
     async function saveOrdersPausedNote(value) {
-      ordersPausedNote = value;
-      try { await callApi('set_orders_paused', { paused: true, note: value }); }
-      catch (e) { showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500); }
+      const old = ordersPausedNote;
+      ordersPausedNote = String(value || '').slice(0, 500);
+      ordersPausedSaving = true;
+      render();
+      try {
+        await callApi('set_orders_paused', { paused: true, note: ordersPausedNote });
+        showActionToast(tr("✅ Izoh saqlandi", "✅ Комментарий сохранён"), 'success', 1400);
+      } catch (e) {
+        ordersPausedNote = old;
+        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+      } finally {
+        ordersPausedSaving = false;
+        render();
+      }
     }
 
     // 10-band: ilgari popup modal bo'lgan sozlamalar endi to'liq sahifa —
@@ -5175,7 +5186,7 @@
         <div class="space-y-3 text-xs">
           <div id="fulfillment-panel">${renderFulfillmentPaymentsPanel()}</div>
           ${renderOnlineAcquiringIntegrationsHtml()}
-          <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
+          <div class="grid grid-cols-2 gap-2 fc-settings-sticky-actions">
             <button onclick="saveFulfillmentSettings()" class="bg-blue-600 text-white font-black py-3 rounded-xl">✅ ${tr('Saqlash','Сохранить')}</button>
             <button onclick="closeFulfillmentSettingsPage()" class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl">${tr('Bekor qilish','Отмена')}</button>
           </div>
@@ -8849,18 +8860,49 @@
 
     // 18-band: matnni saqlash — webhook ulash (setupBotWebhook, o'zgarmagan)
     // dan alohida, START_MESSAGE modalidagi "Saqlash" tugmasi chaqiradi.
+    async function onStartMessageImagePicked(event) {
+      const file = event?.target?.files?.[0];
+      if (!file) return;
+      if (!/^image\/(jpeg|png|webp)$/i.test(file.type || '')) {
+        event.target.value = '';
+        return alert(tr("JPG, PNG yoki WebP rasm tanlang.", "Выберите JPG, PNG или WebP."));
+      }
+      if (file.size > 6 * 1024 * 1024) {
+        event.target.value = '';
+        return alert(tr("Rasm 6 MB dan katta bo'lmasin.", "Размер изображения не должен превышать 6 МБ."));
+      }
+      startMessageImageDraft = file;
+      if (startMessagePreviewUrl?.startsWith('blob:')) { try { URL.revokeObjectURL(startMessagePreviewUrl); } catch (_) {} }
+      startMessagePreviewUrl = URL.createObjectURL(file);
+      render();
+    }
+    function removeStartMessageImage() {
+      startMessageImageDraft = null;
+      if (startMessagePreviewUrl?.startsWith('blob:')) { try { URL.revokeObjectURL(startMessagePreviewUrl); } catch (_) {} }
+      startMessagePreviewUrl = null;
+      render();
+    }
     async function saveStartMessage() {
       if (!isSuperAdmin) return;
       const value = document.getElementById('sm-text')?.value.trim() || null;
-      const old = shopContact.startMessage;
-      shopContact = { ...shopContact, startMessage: value };
+      const old = { startMessage: shopContact.startMessage, startImageUrl: shopContact.startImageUrl };
       showActionToast(tr("⏳ Saqlanmoqda...", "⏳ Сохранение..."), 'saving');
       try {
-        await callApi('set_start_message', { startMessage: value });
+        const payload = { startMessage: value };
+        if (startMessageImageDraft === null) payload.removeStartImage = true;
+        if (startMessageImageDraft instanceof File) {
+          payload.imageUpload = { mimeType: startMessageImageDraft.type, base64: await fileToBase64(startMessageImageDraft) };
+        }
+        const result = await callApi('set_start_message', payload);
+        shopContact = { ...shopContact, startMessage: result.startMessage ?? value, startImageUrl: result.startImageUrl || null };
+        startMessageImageDraft = undefined;
+        if (startMessagePreviewUrl?.startsWith('blob:')) { try { URL.revokeObjectURL(startMessagePreviewUrl); } catch (_) {} }
+        startMessagePreviewUrl = null;
+        render();
         showActionToast(tr("✅ Saqlandi", "✅ Сохранено"), 'success', 1600);
       } catch (e) {
         console.error(e);
-        shopContact = { ...shopContact, startMessage: old };
+        shopContact = { ...shopContact, ...old };
         render();
         showActionToast(tr("❌ Saqlanmadi", "❌ Не сохранено"), 'error', 2000);
         alert(tr("Xatolik: ", "Ошибка: ") + (e.message || e));
@@ -9080,8 +9122,8 @@
         const result = await callApi('set_design_settings', { themeId: designDraft.themeId, colors: designColorsWithDefaults(designDraft.colors, designDraft.themeId) });
         designSettings = result.designSettings;
         applyDesignColors(designSettings.colors, designSettings.themeId);
-        designDraft = null;
-        closePage();
+        designDraft = cloneData(designSettings);
+        render();
         showActionToast(tr('✅ Dizayn saqlandi', '✅ Дизайн сохранён'), 'success', 1500);
       } catch (e) {
         console.error(e);
@@ -9787,12 +9829,13 @@
       }
       const old = fulfillmentConfig;
       fulfillmentConfig = checked.config;
-      fulfillmentDraft = null;
-      closePage();
-      showActionToast(tr('⏳ Yetkazib berish sozlamalari saqlanmoqda...', '⏳ Настройки доставки сохраняются...'), 'saving');
+      fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
+      showActionToast(tr('⏳ Sozlamalar saqlanmoqda...', '⏳ Сохранение настроек...'), 'saving');
       try {
         const result = await callApi('set_fulfillment_config', { config: fulfillmentConfig });
         fulfillmentConfig = commerce.normalizeConfig(result.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
+        fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
+        render();
         showActionToast(tr('✅ Yetkazib berish va to‘lov sozlamalari saqlandi', '✅ Настройки доставки и оплаты сохранены'), 'success', 1600);
       } catch (e) {
         fulfillmentConfig = old;
@@ -13352,7 +13395,7 @@
         await callApi('set_shop_contact', next);
         if (shopLogoDraft) await callApi('set_shop_logo', { logoUrl: nextLogoUrl });
 
-        shopContact = { ...next, startMessage: shopContact.startMessage };
+        shopContact = { ...next, startMessage: shopContact.startMessage, startImageUrl: shopContact.startImageUrl };
         if (shopLogoDraft) {
           shopLogoUrl = nextLogoUrl;
           shopLogoType = 'IMAGE';
@@ -14765,6 +14808,7 @@
                 <button type="button" class="fc-startmsg-close" onclick="activePopupModal=null; render();" aria-label="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
               </div>
               <div class="fc-startmsg-body">
+                ${(() => { const img = startMessageImageDraft instanceof File ? startMessagePreviewUrl : (startMessageImageDraft === null ? null : shopContact.startImageUrl); return `<div class="fc-startmsg-image-card"><div class="fc-startmsg-image-preview">${img ? `<img src="${escapeHtml(img)}" alt="">` : `<i data-lucide="image" class="w-7 h-7"></i>`}</div><div class="fc-startmsg-image-actions"><div><b>${tr('Start rasmi','Фото /start')}</b><small>${tr('User /start bosganda rasm, tagida xabar matni chiqadi.','При /start отправится фото, а текст будет подписью.')}</small></div><div class="flex gap-2"><input id="sm-image-files" type="file" class="hidden" onchange="onStartMessageImagePicked(event)"><button type="button" onclick="openImagePickerSheet('sm-image-files','sm-image-files')" class="fc-btn fc-btn-secondary fc-btn-icon" title="${tr('Xotiradan rasm tanlash','Выбрать файл')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>${img ? `<button type="button" onclick="removeStartMessageImage()" class="fc-btn fc-btn-secondary fc-btn-icon is-danger" title="${tr('Rasmni o‘chirish','Удалить фото')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>` : ''}</div></div></div>`; })()}
                 <label class="fc-startmsg-label" for="sm-text">${tr("Xabar matni", "Текст сообщения")}</label>
                 <textarea id="sm-text" rows="9" placeholder="${tr('Standart matn ishlatiladi...', 'Используется стандартный текст...')}" class="fc-startmsg-textarea">${escapeHtml(currentStartMessage)}</textarea>
                 <p class="fc-startmsg-help">${tr("Bo'sh qoldirilsa, standart xabar matni ishlatiladi. HTML teglar (masalan <b>...</b>) qo'llab-quvvatlanadi.", "Если оставить пустым, используется стандартный текст. Поддерживаются HTML-теги (например <b>...</b>).")}</p>
@@ -15676,7 +15720,7 @@
         // narxini ko'rsatadi (variativ tovarda bu 0, admin buni ko'rmaydi
         // ham — pastdagi admin narx bloki productVariants(p).length bo'lsa
         // allaqachon "Variantlar:" ro'yxatiga o'tadi).
-        const activeVariant = !isAdminMode ? activeColorSizeVariant(p) : null;
+        const activeVariant = activeColorSizeVariant(p);
         const displayPrice = activeVariant ? (activeVariant.price !== null && activeVariant.price !== undefined ? activeVariant.price : variantPrice(p, activeVariant.size, activeVariant.color)) : p.price;
         const displayOldPrice = activeVariant ? activeVariant.oldPrice : p.oldPrice;
         const displayHasDiscount = activeVariant ? (displayOldPrice && displayOldPrice > displayPrice) : hasDiscount;
@@ -15733,7 +15777,7 @@
                     ` : `
                       <p class="text-base font-black text-blue-600">${money(displayPrice)}</p>
                     `}
-                    ${activeVariant ? `<p class="text-[11px] font-bold text-gray-500 mt-0.5">${tr('Qoldiq', 'Остаток')}: ${activeVariant.qty} ${tr('ta', 'шт.')}</p>` : ''}
+                    ${activeVariant ? `<p class="text-[11px] font-bold text-gray-500 mt-0.5">${escapeHtml(variantLabel(activeVariant))} · ${tr('Qoldiq', 'Остаток')}: ${activeVariant.qty} ${tr('ta', 'шт.')}</p>` : ''}
                   </div>
                   ${canManageProducts() ? `<button onclick="openEditFieldModal('${p.id}', 'price')" class="text-xs p-1 bg-blue-50 text-blue-600 rounded-lg font-bold">${ICON_EDIT}</button>` : ''}
                 </div>
@@ -16072,6 +16116,27 @@
     // Foydalanuvchi o'zi barmoq bilan surganda ham nuqta-indikator to'g'ri
     // yangilanib tursin (debounce — har scroll pikselida emas, tinchigach).
     let productGalleryScrollTimer = null;
+    function syncActiveVariantFromGalleryIndex(index) {
+      const p = selectedProductModal;
+      if (!p) return false;
+      const images = productGalleryImages(p);
+      const item = images[index];
+      if (!item || !String(item.key || '').startsWith('color:')) return false;
+      const colorName = String(item.key).slice('color:'.length);
+      if (!colorName || activeColorName === colorName) return false;
+
+      // Rasmni swipe qilish ham rang tanlash bilan bir xil amal hisoblanadi.
+      // Avvalgi o'lcham yangi rangda mavjud bo'lsa saqlanadi; bo'lmasa shu
+      // rangdagi birinchi mavjud o'lcham tanlanadi. Shu bilan rasm, rang,
+      // narx, eski narx va qoldiq doimo bitta variantdan keladi.
+      const sameColor = productVariants(p).filter((v) => v.color === colorName);
+      if (!sameColor.length) return false;
+      const sameSize = sameColor.find((v) => v.size === activeSizeName);
+      const fallback = sameSize || sameColor.find((v) => Number(v.qty) > 0) || sameColor[0];
+      activeColorName = colorName;
+      activeSizeName = fallback?.size || null;
+      return true;
+    }
     function onProductGalleryScroll() {
       clearTimeout(productGalleryScrollTimer);
       productGalleryScrollTimer = setTimeout(() => {
@@ -16083,6 +16148,11 @@
           if (dist < closestDist) { closestDist = dist; closest = i; }
         });
         productGalleryIndex = closest;
+        const changedVariant = syncActiveVariantFromGalleryIndex(closest);
+        if (changedVariant) {
+          rerenderProductDetailPreserveScroll(() => scrollProductGalleryTo(closest, false));
+          return;
+        }
         updateProductGalleryDots();
       }, 80);
     }
@@ -16876,7 +16946,7 @@
       excelOpening = true;
       render();
       try {
-        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=8');
+        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=9');
         await excelModulePromise;
         if (!window.UstoreExcel) throw new Error('Excel moduli topilmadi');
         await window.UstoreExcel.prepare?.();
@@ -18005,7 +18075,7 @@
         shopLogoType = bootData.logoType === 'WORDMARK' ? 'WORDMARK' : 'IMAGE';
         shopLogoWordmark = bootData.logoWordmark || null;
         botUsername = bootData.botUsername || null;
-        shopContact = bootData.shopContact || { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, workHours: null };
+        shopContact = bootData.shopContact || { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, startMessage: null, startImageUrl: null, workHours: null };
         try { localStorage.setItem(BOOT_BRAND_CACHE_KEY, JSON.stringify({ name: shopContact.name || cachedShopName, logoUrl: bootData.logoUrl || null, logoType: shopLogoType, logoWordmark: shopLogoWordmark })); } catch (_) {}
         shopLowStockThreshold = Number.isFinite(Number(bootData.lowStockThreshold)) ? Number(bootData.lowStockThreshold) : 5;
         billzAccessGranted = bootData.billzAccessGranted === true;
