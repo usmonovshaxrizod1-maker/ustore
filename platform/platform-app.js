@@ -13,6 +13,14 @@
 (function () {
   'use strict';
 
+  // Lifecycle round v2 (2026-09-06): yagona canonical muzlatish muddati —
+  // backend'dagi _shared/lifecycle-constants.ts'ning aynan nusxasi (bu
+  // yerda import qilib bo'lmaydi, chunki bu module emas, oddiy <script>).
+  // Haqiqiy qiymat backend'dan platformLifecycleSettings.retentionDays
+  // orqali keladi — bu FAQAT o'sha hali yuklanmagan paytdagi boshlang'ich
+  // qiymat.
+  const SHOP_FREEZE_DAYS = 60;
+
   let tg = window.Telegram?.WebApp || null;
   if (tg) tg.expand();
 
@@ -160,6 +168,12 @@
     if (s === 'PROVISIONING') return 'Sozlanmoqda';
     if (s === 'FROZEN') return '❄️ Muzlatilgan';
     if (s === 'TERMINATED') return "🔴 O'chirilgan";
+    // 'TERMINATING' — purge jarayoni davomidagi vaqtinchalik write-lock
+    // holati (odatda bir necha soniya, muvaffaqiyatli yakunlanganda shop
+    // qatorining o'zi butunlay o'chadi). Agar purge o'rtada xato bilan
+    // to'xtab qolgan bo'lsa, admin buni "O'chirilgan" deb adashtirmasligi
+    // uchun alohida, aniq belgi bilan ko'rsatiladi.
+    if (s === 'TERMINATING') return "🔒 O'chirilmoqda...";
     return "O'chirilgan";
   }
   function limitLabel(limit) { return (limit === null || limit === undefined) ? 'Cheksiz mahsulot' : `${limit} tagacha mahsulot`; }
@@ -288,7 +302,7 @@
   // 6-topshiriq: freeze/delete sababi va userga ko'rsatiladigan global matn.
   let platformLifecycleSettings = {
     autoFreezeOnExpiry: true,
-    retentionDays: 30,
+    retentionDays: SHOP_FREEZE_DAYS,
     supportLabel: "Admin bilan bog'lanish",
     supportUrl: null,
     freezeUserTitle: "Do'koningiz vaqtincha muzlatildi",
@@ -356,6 +370,7 @@
   let grantDaysSubmitting = false;
   let terminateStep = null;           // null | 'reason' | 'confirm'
   let terminateReasonDraft = '';
+  let terminateNameConfirmInput = '';
   let lifecycleActionSubmitting = false;
   // Lifecycle round: muzlatish muddatini (grace period, do'kon o'chirilishigacha
   // bo'lgan davr) uzaytirish — grantDaysPreset'dan MUSTAQIL holat, chunki bu
@@ -796,7 +811,7 @@
         <p>Tarif va narxlar kelajak uchun o'zgartirilishi mumkin. Amaldagi to'langan davr narxi orqaga qarab o'zgartirilmaydi.</p>
 
         <h2>20.6. Obuna tugashi</h2>
-        <p>Obuna tugaganda shop muzlatiladi. Ma'lumotlar 30 kun davomida saqlanadi. 30 kun ichida obuna yangilanmasa shopni o'chirish/terminatsiya jarayoni boshlanishi mumkin.</p>
+        <p>Obuna tugaganda shop muzlatiladi. Ma'lumotlar ${SHOP_FREEZE_DAYS} kun davomida saqlanadi. ${SHOP_FREEZE_DAYS} kun ichida obuna yangilanmasa shopni o'chirish/terminatsiya jarayoni boshlanishi mumkin.</p>
 
         <h2>20.7. Kompensatsiya</h2>
         <p>UStorE texnik nosozlik yoki boshqa asosli holatlarda obunaga qo'shimcha kun berishi mumkin. Bu avtomatik doimiy huquq emas va Super Admin qarori bilan sabab ko'rsatilgan holda beriladi.</p>
@@ -927,7 +942,7 @@
     ['Mahsulotlar soni limitdan oshsa nima bo\'ladi?', "Tarif limitidan ko'p mahsulot qo'shish uchun yuqoriroq tarifga o'tishingiz kerak."],
     ["Obuna qancha muddatga?", "Standart obuna muddati 30 kun. Yangi do'konning birinchi obunasiga qo'shimcha 7 kun bonus beriladi."],
     ["To'lov qanday amalga oshiriladi?", "Hozircha karta orqali to'lov qilib, chek yuborasiz. To'lov UStorE Admin tomonidan tasdiqlanadi."],
-    ["Obuna tugasa ma'lumotlar o'chadimi?", "Yo'q. Obuna tugaganda do'kon avval muzlatiladi va 30 kun davomida ma'lumotlar saqlanadi."],
+    ["Obuna tugasa ma'lumotlar o'chadimi?", `Yo'q. Obuna tugaganda do'kon avval muzlatiladi va ${SHOP_FREEZE_DAYS} kun davomida ma'lumotlar saqlanadi.`],
   ];
   // 8.2/12-band, screenshot 05: Yordam bosh sahifasidagi 3 ta preview savol
   // — to'liq FAQ_ITEMS'dan ALOHIDA, chunki spec aynan shu 3 ta matnni beradi.
@@ -2148,7 +2163,7 @@
     return `
       <div class="plat-guide-hero tone-green"><span>${pIcon('card',26)}</span><div><h2>To'lov va obuna</h2><p>Tarif, to'lov va obuna boshqaruvi bo'yicha yordam.</p></div></div>
       <div class="plat-guide-card"><h3>Asosiy ma'lumot</h3><div class="plat-guide-row"><span>${pIcon('calendar',17)}</span><b>Standart obuna — 30 kun</b></div><div class="plat-guide-row"><span>${pIcon('gift',17)}</span><b>Birinchi obuna +7 kun bonus</b></div><div class="plat-guide-row"><span>${pIcon('diamond',17)}</span><b>Yillik obunada 2 oy bepul</b></div></div>
-      <div class="plat-guide-card"><h3>Obuna savollari</h3>${[["Tarifni qanday almashtiraman?","Obuna bo'limida do'konni tanlab yangi tarifni belgilang."],["Obuna tugasa nima bo'ladi?","Do'kon avval muzlatiladi, ma'lumotlar 30 kun saqlanadi."],["To'lov qanday tasdiqlanadi?","To'lov so'rovi UStorE Admin tomonidan tekshiriladi."]].map(([q,a])=>`<div class="plat-guide-faq"><b>${q}</b><p>${a}</p></div>`).join('')}</div>
+      <div class="plat-guide-card"><h3>Obuna savollari</h3>${[["Tarifni qanday almashtiraman?","Obuna bo'limida do'konni tanlab yangi tarifni belgilang."],["Obuna tugasa nima bo'ladi?",`Do'kon avval muzlatiladi, ma'lumotlar ${SHOP_FREEZE_DAYS} kun saqlanadi.`],["To'lov qanday tasdiqlanadi?","To'lov so'rovi UStorE Admin tomonidan tekshiriladi."]].map(([q,a])=>`<div class="plat-guide-faq"><b>${q}</b><p>${a}</p></div>`).join('')}</div>
       <button class="primary" onclick="switchTab('subscription')">${pIcon('diamond',16)} Obunalarimni ko'rish</button>
       <button class="secondary" onclick="openSupportPage()">${pIcon('headset',16)} To'lov bo'yicha yordam olish</button>
     `;
@@ -2546,6 +2561,7 @@
     if (status === 'FROZEN') return 'Muzlatilgan';
     if (status === 'PROVISIONING') return 'Sozlanmoqda';
     if (status === 'TERMINATED') return "O'chirilgan";
+    if (status === 'TERMINATING') return "O'chirilmoqda...";
     return status || 'Noma’lum';
   }
   function adminShopDaysBucket(s) {
@@ -2682,13 +2698,22 @@
     if (!s.frozenAt) return null;
     return Math.floor((Date.now() - new Date(s.frozenAt).getTime()) / (24 * 3600 * 1000));
   }
+  // Chegaralar SHOP_FREEZE_DAYS'dan (kanonik 60 kunlik muddat) olinadi —
+  // eski qattiq "30 kun" chegarasi endi HAQIQIY muddat (60 kun)dan farq
+  // qilib, adminni chalg'itardi ("30 kundan ortiq — o'chirish ko'rib
+  // chiqilsin" degan yozuv, aslida muddat hali tugamagan bo'lsa ham
+  // chiqardi). Oxirgi ikki chegara endi SHOP_FREEZE_DAYS'ning yarmi va
+  // o'ziga bog'liq — haqiqiy platform_admin_tasks/GRACE_EXPIRED qarori
+  // bilan mos keladi.
+  const EXPIRED_BUCKET_MID = Math.floor(SHOP_FREEZE_DAYS / 2);
   function expiredShopBucket(days) {
     if (days === null) return "Muzlatilgan sana noma'lum";
     if (days <= 0) return 'Bugun muzlatilgan';
     if (days <= 7) return '1-7 kun oldin';
     if (days <= 14) return '8-14 kun oldin';
-    if (days <= 30) return '15-30 kun oldin';
-    return "30 kundan ortiq (o'chirish ko'rib chiqilsin)";
+    if (days <= EXPIRED_BUCKET_MID) return `15-${EXPIRED_BUCKET_MID} kun oldin`;
+    if (days <= SHOP_FREEZE_DAYS) return `${EXPIRED_BUCKET_MID + 1}-${SHOP_FREEZE_DAYS} kun oldin`;
+    return `${SHOP_FREEZE_DAYS} kundan ortiq (muzlatish muddati tugagan — qaror kerak)`;
   }
   function renderExpiredShopsBody() {
     const list = adminShops.filter((s) => s.status === 'FROZEN');
@@ -2700,7 +2725,7 @@
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(s);
       });
-    const bucketOrder = ['Bugun muzlatilgan', '1-7 kun oldin', '8-14 kun oldin', '15-30 kun oldin', "30 kundan ortiq (o'chirish ko'rib chiqilsin)", "Muzlatilgan sana noma'lum"];
+    const bucketOrder = ['Bugun muzlatilgan', '1-7 kun oldin', '8-14 kun oldin', `15-${EXPIRED_BUCKET_MID} kun oldin`, `${EXPIRED_BUCKET_MID + 1}-${SHOP_FREEZE_DAYS} kun oldin`, `${SHOP_FREEZE_DAYS} kundan ortiq (muzlatish muddati tugagan — qaror kerak)`, "Muzlatilgan sana noma'lum"];
     return bucketOrder.filter((k) => groups.has(k)).map((k) => `
       <div class="plat-expired-group">
         <h3 class="plat-expired-group-title">${escapeHtml(k)} <span>(${groups.get(k).length})</span></h3>
@@ -2888,8 +2913,20 @@
   // xuddi backenddagi platform_admin_dashboard_summary bilan bir xil hisob.
   function isGraceExpired(s) {
     if (s.status !== 'FROZEN' || !s.frozenAt) return false;
-    const deadlineMs = new Date(s.frozenAt).getTime() + (platformLifecycleSettings.retentionDays || 30) * 24 * 3600 * 1000;
+    const deadlineMs = new Date(s.frozenAt).getTime() + (platformLifecycleSettings.retentionDays || SHOP_FREEZE_DAYS) * 24 * 3600 * 1000;
     return Date.now() >= deadlineMs;
+  }
+  // Item 19: "Muzlatilganiga N kun bo'ldi. Saqlash muddati tugashiga M kun
+  // qoldi." — N/M backend'ning o'z kanonik vaqt tamg'asidan (s.frozenAt)
+  // hisoblanadi, faqat "hozir qancha" uchungina mahalliy soat ishlatiladi
+  // (bu muqarrar — istalgan "necha kun qoldi" ko'rsatkichi shunday ishlaydi).
+  function freezeDurationStatusText(s) {
+    if (!s.frozenAt) return `Do'kon ${SHOP_FREEZE_DAYS} kungacha muzlatilgan holatda saqlanadi.`;
+    const frozenMs = new Date(s.frozenAt).getTime();
+    const retentionDays = platformLifecycleSettings.retentionDays || SHOP_FREEZE_DAYS;
+    const daysSinceFrozen = Math.max(0, Math.floor((Date.now() - frozenMs) / (24 * 3600 * 1000)));
+    const daysLeft = Math.max(0, retentionDays - daysSinceFrozen);
+    return `Muzlatilganiga ${daysSinceFrozen} kun bo'ldi. Saqlash muddati tugashiga ${daysLeft} kun qoldi.`;
   }
   function renderLifecycleControlsCard(s) {
     if (s.status === 'PROVISIONING') return '';
@@ -2899,21 +2936,23 @@
           <b>Muzlatish muddati tugadi</b> — bu do'konni tizimdan o'chirasizmi, yoki yana muddat qo'shasizmi?
           <div style="display:flex; gap:8px; margin-top:8px">
             <button class="secondary" style="flex:1; margin-top:0" onclick="startTerminateShop()">Ha, o'chirish</button>
-            <button class="secondary ${extendGraceSubmitting ? 'plat-btn-dimmed' : ''}" style="flex:1; margin-top:0" onclick="quickExtendFrozenGrace('${s.id}')">+7 kun qo'shish</button>
+            <button class="secondary ${extendGraceSubmitting ? 'plat-btn-dimmed' : ''}" style="flex:1; margin-top:0" onclick="quickExtendFrozenGrace('${s.id}')">+${SHOP_FREEZE_DAYS} kun qo'shish</button>
           </div>
         </div>
       ` : ''}
       <div class="card">
         <h2>Boshqaruv</h2>
         ${s.status === 'ACTIVE' ? `
+          <p class="muted" style="margin-top:0">Do'kon ${SHOP_FREEZE_DAYS} kungacha muzlatilgan holatda saqlanadi — mahsulot, buyurtma, mijoz, bot ulanishi va barcha sozlamalar tegilmaydi, faqat yangi buyurtma qabul qilinmaydi.</p>
           <label>Muzlatish sababi</label>
           <input type="text" id="plat-freeze-reason" list="plat-freeze-reasons" placeholder="Sababni tanlang yoki yozing">
           <datalist id="plat-freeze-reasons">${(platformLifecycleSettings.freezeReasons||[]).map((reason)=>`<option value="${escapeHtml(reason)}"></option>`).join('')}</datalist>
           <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitFreezeShop('${s.id}')">❄️ Muzlatish</button>
         ` : ''}
+        ${s.status === 'FROZEN' ? `<p class="muted" style="margin:0 0 8px">${escapeHtml(freezeDurationStatusText(s))}</p>` : ''}
         ${s.status === 'FROZEN' ? `<button class="primary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitReactivateShop('${s.id}')">✅ Qayta faollashtirish</button>` : ''}
         ${s.status === 'FROZEN' ? renderExtendGraceCard(s.id) : ''}
-        ${s.status !== 'TERMINATED' ? renderTerminateSection(s.id) : '<p class="muted">Bu do\'kon o\'chirilgan.</p>'}
+        ${s.status !== 'TERMINATED' ? renderTerminateSection(s.id, s.shopName || s.publicCode) : '<p class="muted">Bu do\'kon o\'chirilgan.</p>'}
       </div>
     `;
   }
@@ -2922,7 +2961,7 @@
   // karta — bu muzlatish-o'chirilishigacha bo'lgan muddatni (grace period,
   // shop_settings.frozen_at) uzaytiradi.
   function renderExtendGraceCard(shopId) {
-    const days = [7, 14, 30];
+    const days = [30, SHOP_FREEZE_DAYS, 90];
     return `
       <div class="card" style="margin-top:10px">
         <h2>Muzlatish muddatini uzaytirish</h2>
@@ -2937,11 +2976,11 @@
     `;
   }
   function setExtendGraceDaysPreset(preset) { extendGraceDaysPreset = preset; render(); }
-  // Muddat-tugagan banneridagi tezkor "+7 kun" — pastdagi to'liq kartaning
-  // (7/14/30/Boshqa) bir qadamlik qisqartmasi, alohida backend/oqim emas.
+  // Muddat-tugagan banneridagi tezkor "+60 kun" — pastdagi to'liq kartaning
+  // (30/60/90/Boshqa) bir qadamlik qisqartmasi, alohida backend/oqim emas.
   async function quickExtendFrozenGrace(shopId) {
     if (extendGraceSubmitting) return;
-    extendGraceDaysPreset = 7;
+    extendGraceDaysPreset = SHOP_FREEZE_DAYS;
     await submitExtendFrozenGrace(shopId);
   }
   async function submitExtendFrozenGrace(shopId) {
@@ -2961,7 +3000,7 @@
     } catch (e) { alert(e.message || String(e)); }
     finally { extendGraceSubmitting = false; render(); }
   }
-  function renderTerminateSection(shopId) {
+  function renderTerminateSection(shopId, shopLabel) {
     if (terminateStep === 'reason') {
       return `
         <label style="margin-top:14px">O'chirish sababi</label>
@@ -2974,18 +3013,41 @@
       `;
     }
     if (terminateStep === 'confirm') {
+      // Lifecycle round v2 (item 14): oddiy "ha/yo'q" tasdiqlash yetarli
+      // emas — admin do'kon nomini ANIQ qayta yozgandagina "Butunlay
+      // o'chirish" tugmasi active bo'ladi.
+      const label = String(shopLabel || '').trim();
+      const nameMatches = label.length > 0 && terminateNameConfirmInput.trim() === label;
+      const canSubmit = nameMatches && !lifecycleActionSubmitting;
       return `
-        <div class="notice error" style="margin-top:14px">Bu amal do'kon faoliyatini to'xtatadi. Davom etasizmi?</div>
+        <div class="notice error" style="margin-top:14px">
+          <b>Bu amal QAYTARILMAS!</b> Mahsulotlar, buyurtmalar, mijozlar, rasmlar, sozlamalar, integratsiyalar va bot ulanishi butunlay o'chiriladi.
+          <div style="margin-top:8px">Tasdiqlash uchun do'kon nomini aniq qayta yozing: <b>${escapeHtml(label)}</b></div>
+          <input type="text" id="plat-terminate-name-confirm" value="${escapeHtml(terminateNameConfirmInput)}" oninput="setTerminateNameConfirmInput(this.value)" placeholder="${escapeHtml(label)}" style="margin-top:6px">
+        </div>
         <div style="display:flex; gap:8px; margin-top:8px">
           <button class="secondary" style="flex:1; margin-top:0" onclick="cancelTerminateShop()">Bekor qilish</button>
-          <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" style="flex:1; margin-top:0; color:#dc2626" onclick="submitTerminateShop('${shopId}')">${lifecycleActionSubmitting ? '<span class="spinner"></span>' : "Ha, o'chirish"}</button>
+          <button id="plat-terminate-submit-btn" class="secondary ${canSubmit ? '' : 'plat-btn-dimmed'}" ${canSubmit ? '' : 'disabled'} style="flex:1; margin-top:0; color:#dc2626" onclick="submitTerminateShop('${shopId}')">${lifecycleActionSubmitting ? '<span class="spinner"></span>' : "Butunlay o'chirish"}</button>
         </div>
       `;
     }
-    return `<button class="secondary" style="margin-top:14px; color:#dc2626" onclick="startTerminateShop()">🗑 O'chirish</button>`;
+    return `<button class="secondary" style="margin-top:14px; color:#dc2626" onclick="startTerminateShop()">O'chirish</button>`;
   }
-  function startTerminateShop() { terminateStep = 'reason'; terminateReasonDraft = ''; render(); }
-  function cancelTerminateShop() { terminateStep = null; terminateReasonDraft = ''; render(); }
+  function startTerminateShop() { terminateStep = 'reason'; terminateReasonDraft = ''; terminateNameConfirmInput = ''; render(); }
+  function cancelTerminateShop() { terminateStep = null; terminateReasonDraft = ''; terminateNameConfirmInput = ''; render(); }
+  // Har tugma bosilganda to'liq render() EMAS — bu <input>'ning o'zini
+  // (fokus/kursor holatini) yo'qotib qo'yardi. Faqat "Butunlay o'chirish"
+  // tugmasining disabled holatini nishonlaymiz (targeted DOM patch).
+  function setTerminateNameConfirmInput(v) {
+    terminateNameConfirmInput = v;
+    const label = String((selectedShopDetails?.shopName || selectedShopDetails?.publicCode) || '').trim();
+    const canSubmit = label.length > 0 && v.trim() === label && !lifecycleActionSubmitting;
+    const btn = document.getElementById('plat-terminate-submit-btn');
+    if (btn) {
+      btn.disabled = !canSubmit;
+      btn.classList.toggle('plat-btn-dimmed', !canSubmit);
+    }
+  }
   function confirmTerminateStepReason() {
     const reason = (document.getElementById('plat-terminate-reason')?.value || '').trim();
     if (!reason) return alert('Sababni kiriting.');
@@ -3027,8 +3089,14 @@
       await callPlatformApi('platform_terminate_shop', { shopId, reason });
       terminateStep = null;
       terminateReasonDraft = '';
+      // Lifecycle round v2: TERMINATE endi do'konni Supabase'dan BUTUNLAY
+      // o'chiradi — shop_id endi adminShops ro'yxatida umuman bo'lmaydi,
+      // shuning uchun Shop Details'da qolib "Do'kon topilmadi" ko'rsatish
+      // o'rniga to'g'ridan-to'g'ri Do'konlar ro'yxatiga qaytariladi.
+      selectedShopDetails = null;
       await reloadAdminShops();
-      selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
+      switchTab('shops');
+      showActionToast("✅ Do'kon butunlay o'chirildi.");
     } catch (e) { alert(e.message || String(e)); }
     finally { lifecycleActionSubmitting = false; render(); }
   }
@@ -4048,6 +4116,7 @@
   window.startTerminateShop = startTerminateShop;
   window.cancelTerminateShop = cancelTerminateShop;
   window.confirmTerminateStepReason = confirmTerminateStepReason;
+  window.setTerminateNameConfirmInput = setTerminateNameConfirmInput;
   window.submitFreezeShop = submitFreezeShop;
   window.submitReactivateShop = submitReactivateShop;
   window.submitTerminateShop = submitTerminateShop;
