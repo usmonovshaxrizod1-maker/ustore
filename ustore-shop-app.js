@@ -144,7 +144,7 @@
     const ICON_COPY_CHECK = fcIcon('<rect x="3" y="8" width="13" height="13" rx="2"></rect><path d="M8 8V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3"></path><path d="M6.5 14.5l2 2 4-4"></path>');
     const ICON_CHECK_SQUARE = fcIcon('<rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M7.5 12.5l3 3 6-6"></path>');
     const ICON_DOWNLOAD = fcIcon('<path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path>');
-    // Legacy audit, 9-band: to'lov metod tanlagichidagi emoji (💵💳⚡🔳) o'rniga.
+    // Legacy audit, 9-band: to'lov metod tanlagichidagi eski emojilar o'rniga.
     const ICON_CASH = fcIcon('<rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle><path d="M6 6v0M18 6v0M6 18v0M18 18v0"></path>', 'w-5 h-5');
     const ICON_CARD = fcIcon('<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path>', 'w-5 h-5');
     const ICON_BOLT = fcIcon('<path d="M13 2 5 14h6l-1 8 9-12h-6l1-8z"></path>', 'w-5 h-5');
@@ -1276,7 +1276,15 @@
     // "Yetkazib berish va to'lov" endi ikkita alohida bo'limga bo'lingan.
     let fulfillmentSettingsSection = 'MENU';
     let fulfillmentDeliveryKind = 'FREE'; // FREE | FIXED | TAXI | POST (faqat DELIVERY bo'limida)
-    let fulfillmentExpandedPayment = null; // CASH | CARD | null (faqat PAYMENTS bo'limida, 1.2: yonma-yon + inline ochilish)
+    // "To'lov usullari" qayta tashkil qilish round (2026-09-05): eski
+    // "hammasi bitta yassi to'r" (fulfillmentExpandedPayment) o'rniga endi
+    // 4 ta asosiy bo'lim + Ekvayring ichida Click/Payme uchun ichki
+    // navigatsiya. MENU = 4 qator; CASH/CARD/QR = shu metodning o'z sahifasi;
+    // ACQUIRING_MENU = Click/Payme ro'yxati (Uzum ATAYLAB yo'q — kod
+    // o'chirilmagan, faqat admin UI'dan chiqarilgan); ACQUIRING_CLICK/
+    // ACQUIRING_PAYME = shu providerning birlashtirilgan (ulash+sinov+
+    // yoqish+hudud) sahifasi.
+    let paymentsPageView = 'MENU';
     // Yetkazib berish parametrlarida bir vaqtda faqat kerakli hudud kartasi ochiq turadi.
     let fulfillmentExpandedRegionKey = null;
     // ROUND14: tumanlar region kartasi ochilishi bilan birdan ko'rinmaydi — alohida tugma bilan ochiladi.
@@ -5179,47 +5187,142 @@
       renderPageShell(container, tr('Qaytarish va bekor qilish', 'Возврат и отмена'), body, { onBack: 'closeOrderPolicySettingsPage()' });
     }
 
+    // "To'lov usullari" qayta tashkil qilish round (2026-09-05): sahifa
+    // sarlavhasi/"‹ Orqaga" endi paymentsPageView'ga qarab DINAMIK —
+    // "bitta pog'ona yuqoriga" xatti-harakati shu bilan ta'minlanadi (yangi
+    // stack-mexanizm yozilmadi, mavjud renderPageShell()ning onBack
+    // parametri shunchaki holatga qarab tanlanadi).
+    const PAYMENTS_PAGE_TITLES = {
+      MENU: () => tr("To'lov usullari", "Способы оплаты"),
+      CASH: () => tr('Naqd orqali', 'Наличными'),
+      CARD: () => tr('Karta orqali', 'Картой'),
+      ACQUIRING_MENU: () => tr('Ekvayring orqali', 'Через эквайринг'),
+      ACQUIRING_CLICK: () => 'Click',
+      ACQUIRING_PAYME: () => 'Payme',
+      QR: () => tr('QR orqali', 'По QR'),
+    };
+    const PAYMENTS_PAGE_BACK = {
+      MENU: 'closeFulfillmentSettingsPage()',
+      CASH: "setPaymentsPageView('MENU')",
+      CARD: "setPaymentsPageView('MENU')",
+      ACQUIRING_MENU: "setPaymentsPageView('MENU')",
+      ACQUIRING_CLICK: "setPaymentsPageView('ACQUIRING_MENU')",
+      ACQUIRING_PAYME: "setPaymentsPageView('ACQUIRING_MENU')",
+      QR: "setPaymentsPageView('MENU')",
+    };
     function renderPaymentSettingsPage(container) {
       if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
       fulfillmentSettingsSection = 'PAYMENTS';
       const body = `
         <div class="space-y-3 text-xs">
           <div id="fulfillment-panel">${renderFulfillmentPaymentsPanel()}</div>
-          ${renderOnlineAcquiringIntegrationsHtml()}
           <div class="grid grid-cols-2 gap-2 fc-settings-sticky-actions">
             <button onclick="saveFulfillmentSettings()" class="bg-blue-600 text-white font-black py-3 rounded-xl">✅ ${tr('Saqlash','Сохранить')}</button>
             <button onclick="closeFulfillmentSettingsPage()" class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl">${tr('Bekor qilish','Отмена')}</button>
           </div>
         </div>
       `;
-      renderPageShell(container, tr("To'lov parametrlari", "Параметры оплаты"), body, { onBack: 'closeFulfillmentSettingsPage()' });
+      const view = PAYMENTS_PAGE_TITLES[paymentsPageView] ? paymentsPageView : 'MENU';
+      renderPageShell(container, PAYMENTS_PAGE_TITLES[view](), body, { onBack: PAYMENTS_PAGE_BACK[view] });
     }
 
-    // POLISH ROUND (task 3): Click/Payme/Uzum onlayn ekvayring sozlamalari
-    // "Do'kon sozlamalari"dan shu yerga ko'chirildi — backend/webhook/
-    // kredensial mantig'i (openClickSettings() va h.k., click_connect/
-    // payme_connect/uzum_connect actionlari) BUTUNLAY o'zgarishsiz, faqat
-    // kirish nuqtasi (tugma) qaysi sahifada ekanligi o'zgardi.
-    function renderOnlineAcquiringIntegrationsHtml() {
+    // 4 asosiy qator: Naqd/Karta/Ekvayring/QR. Har birida qisqa status
+    // subtitle (10-band) — UI'ni ortiqcha to'ldirmasdan. "Ekvayring orqali"
+    // qatori — Billz/Click bilan bir xil platforma-ruxsat naqshi: agar
+    // platforma HALI Click'ga ham, Payme'ga ham ruxsat bermagan bo'lsa,
+    // butun bo'lim ko'rinmaydi (eski yassi to'rdagi filter bilan bir xil
+    // xavfsizlik niyati — ishlatib bo'lmaydigan funksiya ko'rsatilmaydi).
+    function renderPaymentsMenuHtml() {
       const rows = [
-        clickAccessGranted ? { icon: '💳', name: 'Click', onclick: 'openClickSettings()' } : null,
-        paymeAccessGranted ? { icon: '💳', name: 'Payme', onclick: 'openPaymeSettings()' } : null,
-        uzumAccessGranted ? { icon: '💳', name: 'Uzum', onclick: 'openUzumSettings()' } : null,
+        { view: 'CASH', icon: ICON_CASH, label: tr('Naqd orqali', 'Наличными'), status: paymentsMethodStatusHtml('CASH') },
+        { view: 'CARD', icon: ICON_CARD, label: tr('Karta orqali', 'Картой'), status: paymentsMethodStatusHtml('CARD') },
+        (clickAccessGranted || paymeAccessGranted) ? { view: 'ACQUIRING_MENU', icon: ICON_BOLT, label: tr('Ekvayring orqali', 'Через эквайринг'), status: acquiringMenuStatusHtml() } : null,
+        { view: 'QR', icon: ICON_QR, label: tr('QR orqali', 'По QR'), status: paymentsMethodStatusHtml('QR') },
       ].filter(Boolean);
-      if (!rows.length) return '';
+      return `<div class="fc-acquiring-integration-list">${rows.map((r) => `
+        <button type="button" onclick="setPaymentsPageView('${r.view}')" class="fc-acquiring-integration-card">
+          <span class="fc-acquiring-integration-icon">${r.icon}</span>
+          <span class="fc-acquiring-integration-copy"><b>${r.label}</b><small>${r.status}</small></span>
+          <span class="fc-acquiring-integration-chevron">›</span>
+        </button>`).join('')}</div>`;
+    }
+    function paymentsMethodStatusHtml(methodId) {
+      const m = paymentMethodConfig(methodId);
+      return m?.enabled ? tr('Faol', 'Активно') : tr("O'chirilgan", 'Выключено');
+    }
+    function acquiringMenuStatusHtml() {
+      const activeCount = ['CLICK', 'PAYME'].filter((id) => paymentMethodConfig(id)?.enabled).length;
+      return activeCount > 0
+        ? tr(`${activeCount} ta provider faol`, `Активно провайдеров: ${activeCount}`)
+        : tr('Faol emas', 'Не активно');
+    }
+
+    // Ekvayring ichki menyusi — FAQAT Click va Payme (Uzum ATAYLAB yo'q:
+    // foydalanuvchi so'ragan — uning backend/frontend kodi, jadvallari,
+    // actionlari BUTUNLAY o'zgarishsiz/o'chirilmagan holda qoladi, faqat
+    // admin UI'dan chiqarilgan — sabab: Uzum'ning o'z real-to'lov
+    // integratsiyasi hali jonli sinalmagan, _shared/uzum-client.ts o'z
+    // izohida buni ochiq "UNVERIFIED" deb belgilagan).
+    function renderAcquiringMenuHtml() {
+      const providers = [
+        clickAccessGranted ? { id: 'CLICK', label: 'Click' } : null,
+        paymeAccessGranted ? { id: 'PAYME', label: 'Payme' } : null,
+      ].filter(Boolean);
+      return `<div class="fc-acquiring-integration-list">${providers.map((p) => `
+        <button type="button" onclick="setPaymentsPageView('ACQUIRING_${p.id}')" class="fc-acquiring-integration-card">
+          <span class="fc-acquiring-integration-icon">${ICON_BOLT}</span>
+          <span class="fc-acquiring-integration-copy"><b>${p.label}</b><small>${paymentMethodConfig(p.id)?.enabled ? tr('Faol', 'Активно') : tr('Sozlash / ulash', 'Настроить / подключить')}</small></span>
+          <span class="fc-acquiring-integration-chevron">›</span>
+        </button>`).join('')}</div>`;
+    }
+
+    // Click/Payme uchun BIRLASHTIRILGAN sahifa — avval ikkita mustaqil
+    // sirt edi (CLICK_SETTINGS modali — ulash+sinov; asosiy to'r ichidagi
+    // "expand" — yoqish+hudud). Endi bitta sahifa, holatga qarab (5-8-band):
+    // ulanmagan → kredensial forma; ulangan-lekin-tekshirilmagan → 3-marta
+    // sinov bloki (mavjud clickPaymentVerifyBlockHtml, o'zgarishsiz);
+    // tekshirilgan → yoqish/o'chirish + hududlar (mavjud
+    // renderPaymentMethodSettings, endi metod nomi/ikonkasi TO'G'RILANGAN
+    // — pastga qarang). Backend chaqiruvlari (connectClick/disconnectClick/
+    // click_connect va h.k.) BUTUNLAY o'zgarishsiz — faqat qayerda
+    // ko'rsatilishi o'zgardi.
+    function renderAcquiringProviderPageHtml(providerId) {
+      const isClick = providerId === 'CLICK';
+      const conn = isClick ? clickConnectionStatus : paymeConnectionStatus;
+      const progress = isClick ? clickTestProgress : paymeTestProgress;
+      const disconnectFn = isClick ? 'disconnectClick()' : 'disconnectPayme()';
+      if (conn === null) {
+        return `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`;
+      }
+      if (conn.status !== 'CONNECTED') {
+        return isClick ? `
+          <p class="text-gray-500">${tr("Click Merchant kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Click Merchant — заказ будет подтверждаться автоматически после оплаты.")}</p>
+          <input type="text" id="click-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="w-full p-2 border rounded-xl font-mono">
+          <input type="text" id="click-service-id-input" autocomplete="off" placeholder="Service ID" class="w-full p-2 border rounded-xl font-mono">
+          <input type="text" id="click-merchant-user-id-input" autocomplete="off" placeholder="Merchant User ID" class="w-full p-2 border rounded-xl font-mono">
+          <input type="password" id="click-secret-key-input" autocomplete="off" placeholder="Secret Key" class="w-full p-2 border rounded-xl font-mono">
+          <button onclick="connectClick()" id="click-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
+        ` : `
+          <p class="text-gray-500">${tr("Payme Business kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Payme Business — заказ будет подтверждаться автоматически после оплаты.")}</p>
+          <input type="text" id="payme-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="w-full p-2 border rounded-xl font-mono">
+          <input type="text" id="payme-login-input" autocomplete="off" placeholder="Login" class="w-full p-2 border rounded-xl font-mono">
+          <input type="password" id="payme-password-input" autocomplete="off" placeholder="Password" class="w-full p-2 border rounded-xl font-mono">
+          <button onclick="connectPayme()" id="payme-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
+        `;
+      }
+      if (!conn.verified) {
+        return `
+          <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
+          ${clickPaymentVerifyBlockHtml(isClick ? 'click' : 'payme', progress)}
+          <button onclick="${disconnectFn}" class="w-full text-center fc-text-danger font-bold py-2 mt-2">${tr("Uzish", "Отключить")}</button>
+        `;
+      }
+      // verified === true — 8-band: shu paytdagina yoqish/hudud tanlash ochiladi.
+      const method = paymentMethodConfig(providerId);
       return `
-        <div class="fc-card space-y-1.5">
-          <p class="font-bold text-gray-600 mb-0.5">${tr('Onlayn ekvayring', 'Онлайн-эквайринг')}</p>
-          <div class="fc-acquiring-integration-list">
-            ${rows.map((r) => `
-              <button type="button" onclick="${r.onclick}" class="fc-acquiring-integration-card">
-                <span class="fc-acquiring-integration-icon">${r.icon}</span>
-                <span class="fc-acquiring-integration-copy"><b>${r.name}</b><small>${tr('Sozlash / ulash', 'Настроить / подключить')}</small></span>
-                <span class="fc-acquiring-integration-chevron">›</span>
-              </button>
-            `).join('')}
-          </div>
-        </div>
+        <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan va tekshirildi", "Подключено и проверено")}</div>
+        <div id="fulfillment-body">${method ? renderPaymentMethodSettings(method) : ''}</div>
+        <button onclick="${disconnectFn}" class="w-full text-center fc-text-danger font-bold py-2 mt-2">${tr("Uzish", "Отключить")}</button>
       `;
     }
 
@@ -9159,7 +9262,7 @@
       qrProviderLoading.clear();
       qrProviderNeedsTest.clear();
       fulfillmentSettingsSection = 'PAYMENTS';
-      fulfillmentExpandedPayment = fulfillmentExpandedPayment || 'CASH';
+      paymentsPageView = 'MENU';
       openPage('PAYMENT_SETTINGS');
     }
 
@@ -9188,11 +9291,23 @@
     // 1.3: checkbox/toggle bosilganda FAQAT ro'yxat qismi (#fulfillment-body)
     // yangilanadi — sarlavha, bo'lim tugmalari va tashqi scroll konteyner
     // qayta yaratilmaydi, shuning uchun scroll pozitsiyasi buzilmaydi.
+    // "To'lov usullari" qayta tashkil qilish round: har `paymentsPageView`
+    // qaysi metodning toggle+hudud blokini ko'rsatishini shu yerda bog'laydi
+    // (MENU/ACQUIRING_MENU'da hozircha regionli blok yo'q — bo'sh qaytadi).
+    function paymentsPageViewMethodId() {
+      if (paymentsPageView === 'CASH') return 'CASH';
+      if (paymentsPageView === 'CARD') return 'CARD';
+      if (paymentsPageView === 'QR') return 'QR';
+      if (paymentsPageView === 'ACQUIRING_CLICK') return 'CLICK';
+      if (paymentsPageView === 'ACQUIRING_PAYME') return 'PAYME';
+      return null;
+    }
     function rerenderFulfillmentBody() {
       const el = document.getElementById('fulfillment-body');
       if (!el) return;
       if (fulfillmentSettingsSection === 'PAYMENTS') {
-        const method = fulfillmentExpandedPayment ? paymentMethodConfig(fulfillmentExpandedPayment) : null;
+        const methodId = paymentsPageViewMethodId();
+        const method = methodId ? paymentMethodConfig(methodId) : null;
         el.innerHTML = method ? renderPaymentMethodSettings(method) : '';
       } else {
         el.innerHTML = renderFulfillmentDeliveryBody();
@@ -9203,7 +9318,7 @@
     function setFulfillmentSettingsSection(section) {
       fulfillmentSettingsSection = section;
       if (section === 'DELIVERY' && !fulfillmentDeliveryKind) fulfillmentDeliveryKind = 'FREE';
-      if (section === 'PAYMENTS' && !fulfillmentExpandedPayment) fulfillmentExpandedPayment = 'CASH';
+      if (section === 'PAYMENTS' && !paymentsPageView) paymentsPageView = 'MENU';
       rerenderFulfillmentPanel();
     }
 
@@ -9213,12 +9328,18 @@
       rerenderFulfillmentPanel();
     }
 
-    // 1.2: Naqd/Karta yonma-yon; birini bosganda sozlamasi pastda ochiladi
-    // (accordion) — ikkinchisini bossa birinchisi yopiladi, sahifa uzun
-    // ro'yxatga aylanmaydi.
-    function setFulfillmentExpandedPayment(methodId) {
-      fulfillmentExpandedPayment = fulfillmentExpandedPayment === methodId ? null : methodId;
-      rerenderFulfillmentPanel();
+    // "To'lov usullari" qayta tashkil qilish round: sahifa ichidagi
+    // navigatsiya (4 asosiy qator ↔ Naqd/Karta/QR ↔ Ekvayring ro'yxati ↔
+    // Click/Payme). To'liq render() ataylab ishlatiladi (rerenderFulfillmentPanel
+    // emas) — chunki renderPaymentSettingsPage() sahifa sarlavhasidagi
+    // "‹ Orqaga" tugmasini joriy paymentsPageView'ga qarab DINAMIK
+    // hisoblaydi (bir pog'ona yuqoriga qaytish uchun), bu esa faqat to'liq
+    // render()da qayta chizilgan sarlavhada ko'rinadi.
+    function setPaymentsPageView(view) {
+      paymentsPageView = view;
+      if (view === 'ACQUIRING_CLICK' && !clickConnectionStatus) openClickSettings();
+      else if (view === 'ACQUIRING_PAYME' && !paymeConnectionStatus) openPaymeSettings();
+      else render();
     }
 
     function toggleFulfillmentRegionPanel(key) {
@@ -9713,13 +9834,15 @@
       </div>`;
     }
 
+    // Ikonka/label — endi HAR DOIM method.name'dan (backend allaqachon to'g'ri
+    // lokalizatsiya bilan beradi: "Payme orqali (avtomatik)" va h.k.) — eski
+    // qattiq ternary CLICK'dan boshqa hammasini QR deb noto'g'ri belgilardi
+    // (11-band bug'i, Payme "QR orqali" nomi/ikonkasi bilan ko'rinardi).
     function renderPaymentMethodSettings(method) {
-      const icon = method.id === 'CASH' ? ICON_CASH : method.id === 'CARD' ? ICON_CARD : method.id === 'CLICK' ? ICON_BOLT : ICON_QR;
-      const label = method.id === 'CASH' ? tr('Naqd','Наличные') : method.id === 'CARD' ? tr('Karta orqali','Картой') : method.id === 'CLICK' ? tr('Click orqali (avtomatik)', 'Click (автоматически)') : tr('QR orqali', 'По QR');
-      const clickReady = clickConnectionStatus?.status === 'CONNECTED';
+      const icon = method.id === 'CASH' ? ICON_CASH : method.id === 'CARD' ? ICON_CARD : method.id === 'QR' ? ICON_QR : ICON_BOLT;
+      const label = method.name;
       return `<div class="border rounded-2xl p-3 space-y-3">
         <label class="flex items-center justify-between font-black"><span class="flex items-center gap-1.5">${icon} ${escapeHtml(label)}</span><span class="fc-toggle"><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setPaymentMethodEnabled('${method.id}',this.checked)"><span class="fc-toggle-track"></span></span></label>
-        ${method.id === 'CLICK' && !clickReady ? `<p class="text-[10px] text-amber-600 font-bold">${tr("Avval Do'kon sozlamalari → Click bo'limidan hisobingizni ulang.", "Сначала подключите аккаунт в Настройки магазина → Click.")}</p>` : ''}
         ${method.enabled ? `${method.id === 'CARD' ? `<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2"><input type="text" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000" class="w-full p-2 border rounded-xl font-mono"><input type="text" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Karta egasi','Владелец карты')}" class="w-full p-2 border rounded-xl"><label class="flex items-center gap-2 font-bold"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label><p class="text-[10px] text-blue-700">${tr('Faqat xaridorga ko‘rsatiladigan karta raqami va egasi. CVV/PIN/SMS saqlanmaydi.','Только номер и владелец карты для показа покупателю. CVV/PIN/SMS не сохраняются.')}</p></div>` : ''}${method.id === 'QR' ? `<div class="space-y-2">${(method.providers || []).map(renderQrProviderSettings).join('')}</div>` : ''}${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}${renderPaymentRegionRows(method)}` : ''}
       </div>`;
     }
@@ -9769,7 +9892,7 @@
           <span>🚚 ${tr('Yetkazib berish usullari','Способы доставки')}<br><span class="text-[10px] font-normal text-gray-500">${deliveryOnCount} ${tr('usul yoqilgan','способов включено')}</span></span><span>›</span>
         </button>
         <button type="button" onclick="setFulfillmentSettingsSection('PAYMENTS')" class="w-full flex items-center justify-between bg-gray-50 border rounded-2xl p-3.5 font-bold text-left">
-          <span>💳 ${tr("To'lov turlari",'Способы оплаты')}<br><span class="text-[10px] font-normal text-gray-500">${paymentOnCount} ${tr('usul yoqilgan','способов включено')}</span></span><span>›</span>
+          <span class="flex items-center gap-1.5">${ICON_CARD} <span>${tr("To'lov turlari",'Способы оплаты')}<br><span class="text-[10px] font-normal text-gray-500">${paymentOnCount} ${tr('usul yoqilgan','способов включено')}</span></span></span><span>›</span>
         </button>
       </div>`;
     }
@@ -9788,22 +9911,20 @@
     }
 
     // 1.2: Naqd va Karta yonma-yon tugma; bosilgan usul pastda ochiladi.
+    // paymentsPageView asosidagi router — eski yassi grid+expand mexanizmi
+    // (fulfillmentExpandedPayment) TO'LIQ almashtirildi. Har shoxobcha yoki
+    // navigatsiya-ro'yxatini (ACQUIRING_MENU) yoki metod sozlamalarini
+    // (#fulfillment-body ichida — rerenderFulfillmentBody() shu ID'ni
+    // targeted-patch qilib turadi) qaytaradi.
     function renderFulfillmentPaymentsPanel() {
-      // CLICK — faqat platforma ruxsat bergan do'konlarda ko'rinadi (Billz
-      // bilan bir xil naqsh); ruxsatsiz do'kon uchun ishlatib bo'lmaydigan
-      // tugmani ko'rsatib chalkashtirmaslik uchun ro'yxatdan olib tashlanadi.
-      const methods = fulfillmentDraft.payments.methods.filter(m =>
-        (m.id !== 'CLICK' || clickAccessGranted) && (m.id !== 'PAYME' || paymeAccessGranted) && (m.id !== 'UZUM' || uzumAccessGranted)
-      );
-      return `<div class="space-y-3">
-        <div class="fc-payment-method-grid">${methods.map(m => `
-          <button type="button" onclick="setFulfillmentExpandedPayment('${m.id}')" class="fc-payment-method-card ${fulfillmentExpandedPayment === m.id ? 'is-active' : ''}">
-            ${m.id === 'CASH' ? ICON_CASH : m.id === 'CARD' ? ICON_CARD : m.id === 'CLICK' ? ICON_BOLT : ICON_QR}
-            <span>${escapeHtml(m.name)}</span>
-            <span class="text-[9px] font-bold ${m.enabled ? (fulfillmentExpandedPayment === m.id ? 'text-emerald-200' : 'text-emerald-600') : 'text-gray-400'}">${m.enabled ? tr('Yoqilgan','Включено') : tr("O'chirilgan",'Выключено')}</span>
-          </button>`).join('')}</div>
-        <div id="fulfillment-body">${fulfillmentExpandedPayment ? renderPaymentMethodSettings(paymentMethodConfig(fulfillmentExpandedPayment)) : ''}</div>
-      </div>`;
+      if (paymentsPageView === 'CASH' || paymentsPageView === 'CARD' || paymentsPageView === 'QR') {
+        const method = paymentMethodConfig(paymentsPageView);
+        return `<div id="fulfillment-body">${method ? renderPaymentMethodSettings(method) : ''}</div>`;
+      }
+      if (paymentsPageView === 'ACQUIRING_MENU') return renderAcquiringMenuHtml();
+      if (paymentsPageView === 'ACQUIRING_CLICK') return renderAcquiringProviderPageHtml('CLICK');
+      if (paymentsPageView === 'ACQUIRING_PAYME') return renderAcquiringProviderPageHtml('PAYME');
+      return renderPaymentsMenuHtml();
     }
 
     function renderFulfillmentPanel() {
@@ -14022,7 +14143,7 @@
           <div class="fc-bg-warning-soft border fc-border-warning fc-text-warning p-2.5 rounded-xl">
             ${isClick
               ? tr("📲 Click ilovangizga to'lov so'rovi yuborilgan — tasdiqlang, so'ng shu yerga qayting.", "📲 В приложение Click отправлен запрос на оплату — подтвердите и вернитесь сюда.")
-              : tr("💳 To'lov sahifasi ochilgan edi — tasdiqlagan bo'lsangiz, holatni yangilang.", "💳 Была открыта страница оплаты — если оплатили, обновите статус.")}
+              : tr("To'lov sahifasi ochilgan edi — tasdiqlagan bo'lsangiz, holatni yangilang.", "Была открыта страница оплаты — если оплатили, обновите статус.")}
             <button onclick="${isClick ? 'refreshClickTestProgress()' : 'refreshPaymeTestProgress()'}" class="w-full mt-2 bg-white border fc-border-warning fc-text-warning font-bold py-2 rounded-xl">${tr('Holatni yangilash', 'Обновить статус')}</button>
           </div>
         ` : `
@@ -14033,7 +14154,7 @@
       `;
     }
     async function openClickSettings() {
-      activePopupModal = 'CLICK_SETTINGS';
+      paymentsPageView = 'ACQUIRING_CLICK';
       clickConnectionStatus = null;
       clickTestProgress = null;
       render();
@@ -14044,14 +14165,14 @@
         console.error(e);
         clickConnectionStatus = { status: 'DISCONNECTED', merchantId: null, serviceId: null, verified: false };
       }
-      if (activePopupModal === 'CLICK_SETTINGS') render();
+      if (paymentsPageView === 'ACQUIRING_CLICK') render();
     }
     async function refreshClickTestProgress(shouldRender) {
       try {
         clickTestProgress = await callApi('click_test_progress', {});
         if (clickTestProgress.verified && clickConnectionStatus) clickConnectionStatus = { ...clickConnectionStatus, verified: true };
       } catch (e) { console.error(e); }
-      if (shouldRender !== false && activePopupModal === 'CLICK_SETTINGS') render();
+      if (shouldRender !== false && paymentsPageView === 'ACQUIRING_CLICK') render();
     }
     // 048-band: "Sinash" — admin o'z Click ilovasiga kelgan real (kichik
     // summali) to'lov so'rovini tasdiqlaydi; buni 3 marta qilgach avtomatik
@@ -14112,7 +14233,7 @@
 
     // Payme avtomatik to'lov integratsiyasi — Click bilan bir xil naqsh.
     async function openPaymeSettings() {
-      activePopupModal = 'PAYME_SETTINGS';
+      paymentsPageView = 'ACQUIRING_PAYME';
       paymeConnectionStatus = null;
       paymeTestProgress = null;
       render();
@@ -14123,14 +14244,14 @@
         console.error(e);
         paymeConnectionStatus = { status: 'DISCONNECTED', merchantId: null, login: null, verified: false };
       }
-      if (activePopupModal === 'PAYME_SETTINGS') render();
+      if (paymentsPageView === 'ACQUIRING_PAYME') render();
     }
     async function refreshPaymeTestProgress(shouldRender) {
       try {
         paymeTestProgress = await callApi('payme_test_progress', {});
         if (paymeTestProgress.verified && paymeConnectionStatus) paymeConnectionStatus = { ...paymeConnectionStatus, verified: true };
       } catch (e) { console.error(e); }
-      if (shouldRender !== false && activePopupModal === 'PAYME_SETTINGS') render();
+      if (shouldRender !== false && paymentsPageView === 'ACQUIRING_PAYME') render();
     }
     async function startPaymeTestPayment() {
       const amount = Math.max(500, Math.min(50000, Number(document.getElementById('payme-test-amount-input')?.value) || 1000));
@@ -15269,75 +15390,6 @@
                 <button onclick="disconnectBillz()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
               `}
               <button onclick="activePopupModal=null; billzConnectionStatus=null; billzConfigOptions=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
-            </div>
-          </div>
-        `;
-        return;
-      }
-
-      // Click.uz avtomatik to'lov integratsiyasi — BILLZ_SETTINGS bilan bir
-      // xil naqsh. Faqat clickAccessGranted=true bo'lganda ochiladi
-      // (openClickSettings() orqali). Secret Key hech qanday javobda
-      // qaytarilmaydi — bu yerda faqat maydonlarni kiritish shakli.
-      if (activePopupModal === 'CLICK_SETTINGS') {
-        const cst = clickConnectionStatus;
-        const isClickConnected = cst?.status === 'CONNECTED';
-        const isClickLoading = cst === null;
-        container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">💳 Click</h3>
-              ${isClickLoading ? `
-                <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
-              ` : !isClickConnected ? `
-                <p class="text-gray-500">${tr("Click Merchant kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Click Merchant — заказ будет подтверждаться автоматически после оплаты.")}</p>
-                <input type="text" id="click-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="w-full p-2 border rounded-xl font-mono">
-                <input type="text" id="click-service-id-input" autocomplete="off" placeholder="Service ID" class="w-full p-2 border rounded-xl font-mono">
-                <input type="text" id="click-merchant-user-id-input" autocomplete="off" placeholder="Merchant User ID" class="w-full p-2 border rounded-xl font-mono">
-                <input type="password" id="click-secret-key-input" autocomplete="off" placeholder="Secret Key" class="w-full p-2 border rounded-xl font-mono">
-                <button onclick="connectClick()" id="click-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
-              ` : !cst.verified ? `
-                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
-                ${clickPaymentVerifyBlockHtml('click', clickTestProgress)}
-                <button onclick="disconnectClick()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
-              ` : `
-                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan va tekshirildi", "Подключено и проверено")}</div>
-                <p class="text-gray-500">${tr("Endi \"To'lov sozlamalari\"da \"Click orqali (avtomatik)\" metodini yoqishingiz mumkin.", "Теперь вы можете включить метод \"Click (автоматически)\" в настройках оплаты.")}</p>
-                <button onclick="disconnectClick()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
-              `}
-              <button onclick="activePopupModal=null; clickConnectionStatus=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
-            </div>
-          </div>
-        `;
-        return;
-      }
-
-      if (activePopupModal === 'PAYME_SETTINGS') {
-        const pst = paymeConnectionStatus;
-        const isPaymeConnected = pst?.status === 'CONNECTED';
-        const isPaymeLoading = pst === null;
-        container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">💳 Payme</h3>
-              ${isPaymeLoading ? `
-                <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
-              ` : !isPaymeConnected ? `
-                <p class="text-gray-500">${tr("Payme Business kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Payme Business — заказ будет подтверждаться автоматически после оплаты.")}</p>
-                <input type="text" id="payme-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="w-full p-2 border rounded-xl font-mono">
-                <input type="text" id="payme-login-input" autocomplete="off" placeholder="Login" class="w-full p-2 border rounded-xl font-mono">
-                <input type="password" id="payme-password-input" autocomplete="off" placeholder="Password" class="w-full p-2 border rounded-xl font-mono">
-                <button onclick="connectPayme()" id="payme-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
-              ` : !pst.verified ? `
-                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
-                ${clickPaymentVerifyBlockHtml('payme', paymeTestProgress)}
-                <button onclick="disconnectPayme()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
-              ` : `
-                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan va tekshirildi", "Подключено и проверено")}</div>
-                <p class="text-gray-500">${tr("Endi \"To'lov sozlamalari\"da \"Payme orqali (avtomatik)\" metodini yoqishingiz mumkin.", "Теперь вы можете включить метод \"Payme (автоматически)\" в настройках оплаты.")}</p>
-                <button onclick="disconnectPayme()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
-              `}
-              <button onclick="activePopupModal=null; paymeConnectionStatus=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
             </div>
           </div>
         `;
