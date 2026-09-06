@@ -18165,6 +18165,24 @@
         // ko'rsatilmaydi — faqat konsolda (dev tools) qoladi. "Qayta
         // urinish" tugmasi ilovani to'liq yopib-ochish shart qilmaydi.
         console.error('Yuklashda xatolik:', e);
+        // Lifecycle round: do'kon FROZEN/TERMINATED bo'lganda backend endi
+        // aniq xato kodi qaytaradi (resolveShopContext(), shop-api/index.ts) —
+        // bu ikkalasi endi umumiy "internet xatosi" bilan aralashtirilmaydi,
+        // chunki muammo tarmoqda emas, do'konning o'zida (mijoz "ilova
+        // qotib qoldi" deb o'ylamasligi uchun aniq sabab ko'rsatiladi).
+        const code = e?.message || '';
+        const isFrozen = code === 'shop_frozen';
+        const isGone = code === 'shop_terminated' || code === 'unknown_or_disabled_bot';
+        if (isFrozen || isGone) {
+          document.getElementById('app-content').innerHTML = `
+            <div class="fc-bg-warning-soft border fc-border-warning fc-text-warning text-xs p-4 rounded-2xl mt-10 text-center">
+              ${isFrozen
+                ? tr("Bu do'kon vaqtincha faoliyatini to'xtatgan. Tez orada davom etishi mumkin.", 'Этот магазин временно приостановлен. Возможно, скоро возобновит работу.')
+                : tr("Bu do'kon endi mavjud emas.", 'Этого магазина больше не существует.')}
+              ${isFrozen ? `<br><br><button type="button" onclick="boot()" class="fc-btn fc-btn-primary">${tr('Qayta urinish', 'Повторить')}</button>` : ''}
+            </div>`;
+          return;
+        }
         document.getElementById('app-content').innerHTML = `
           <div class="fc-bg-danger-soft border fc-border-danger fc-text-danger text-xs p-4 rounded-2xl mt-10 text-center">
             ⚠️ ${tr("Ma'lumotlarni yuklab bo'lmadi.", 'Не удалось загрузить данные.')}<br>${tr('Internetni tekshiring va qayta urinib ko‘ring.', 'Проверьте интернет и попробуйте снова.')}<br><br>
