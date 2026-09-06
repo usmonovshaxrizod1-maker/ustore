@@ -433,9 +433,15 @@
   function onTabEnter(tab) {
     if (tab === 'shops' && isAdminMode) reloadAdminShops();
     if (tab === 'requests') loadRequests();
-    if (tab === 'tariffs' && isAdminMode) loadAdminTariffs();
-    if (tab === 'profile' && isAdminMode) loadAdminSettings();
+    if (tab === 'support' && isAdminMode) loadAdminSupportTickets();
+    if (tab === 'settings' && isAdminMode) loadAdminSettings();
     if (tab === 'dashboard') { loadDashboardSummary(); loadAnalytics(); }
+    // Platform 2.0, Completion pass (2.1-band): "To'lovlar" tabi endi
+    // (do'koni bor userlar uchun) to'lov tarixini ko'rsatadi.
+    if (tab === 'subscription' && !isAdminMode && myShops.length) {
+      if (!dashboardShopId || !myShops.some((s) => s.id === dashboardShopId)) dashboardShopId = myShops[0].id;
+      loadMyPaymentHistory(dashboardShopId);
+    }
   }
 
   function pageShell(title, bodyHtml, opts) {
@@ -451,18 +457,42 @@
       </div>`;
   }
 
-  // ---- ROLE-MODE POPOVER (ustore-shop-app.js togglePersonMenu naqshi) ---
+  // ---- HEADER AVATAR: Profil ochish + ROLE-MODE POPOVER --------------------
+  // Platform 2.0, Bosqich 1 (2-band): "Profil" endi USER pastki menyusida
+  // yo'q — headerdagi shu tugma orqali ochiladi. Admin rejimi TEGILMAGAN
+  // (u hamon o'z Profil tabiga ega, bosqich 2'gacha), shu yerda faqat
+  // ADMIN REJIMIDA EMAS holat uchun xatti-harakat qo'shildi:
+  //  - oddiy user (superadmin emas): bosilganda to'g'ridan-to'g'ri Profilga
+  //    o'tadi (avval bu tugma unga umuman hech narsa qilmasdi).
+  //  - superadmin (lekin hali user rejimida): popover'da ENDI IKKITA
+  //    tanlov bor — "Profilni ochish" (yangi) va "Admin rejimiga o'tish"
+  //    (avvalgi, YAGONA variant edi — hech narsa yo'qolmadi, faqat ustiga
+  //    qo'shildi).
   function togglePersonMenu(event) {
     const popover = document.getElementById('plat-role-popover');
     if (!popover) return;
     if (!popover.classList.contains('hidden')) { popover.classList.add('hidden'); return; }
-    if (!isSuperAdmin) return; // oddiy foydalanuvchida bu tugma umuman ko'rinmaydi
+    if (isAdminMode) {
+      // Admin rejimi: bosqich 1 buni o'zgartirmaydi — faqat superadmin
+      // "Foydalanuvchi rejimiga o'tish"ni ko'radi, xuddi avvalgidek.
+      if (!isSuperAdmin) return;
+      const btn = event.currentTarget;
+      const rect = btn.getBoundingClientRect();
+      popover.style.top = `${rect.bottom + 6}px`;
+      popover.style.right = `${window.innerWidth - rect.right}px`;
+      popover.innerHTML = `<button class="plat-role-popover-btn" onclick="document.getElementById('plat-role-popover').classList.add('hidden'); toggleAdminRole();">${pIcon('user', 15)} Foydalanuvchi rejimiga o'tish</button>`;
+      popover.classList.remove('hidden');
+      return;
+    }
+    if (!isSuperAdmin) { switchTab('profile'); return; }
     const btn = event.currentTarget;
     const rect = btn.getBoundingClientRect();
     popover.style.top = `${rect.bottom + 6}px`;
     popover.style.right = `${window.innerWidth - rect.right}px`;
-    const label = isAdminMode ? `${pIcon('user', 15)} Foydalanuvchi rejimiga o'tish` : `${pIcon('lock', 15)} Admin rejimiga o'tish`;
-    popover.innerHTML = `<button class="plat-role-popover-btn" onclick="document.getElementById('plat-role-popover').classList.add('hidden'); toggleAdminRole();">${label}</button>`;
+    popover.innerHTML = `
+      <button class="plat-role-popover-btn" onclick="document.getElementById('plat-role-popover').classList.add('hidden'); switchTab('profile');">${pIcon('user', 15)} Profilni ochish</button>
+      <button class="plat-role-popover-btn" onclick="document.getElementById('plat-role-popover').classList.add('hidden'); toggleAdminRole();">${pIcon('lock', 15)} Admin rejimiga o'tish</button>
+    `;
     popover.classList.remove('hidden');
   }
   document.addEventListener('click', (e) => {
@@ -532,6 +562,13 @@
     // USER visual refinements are scoped on <body>; admin styling stays untouched.
     document.body.classList.toggle('plat-user-mode', !isAdminMode);
     document.body.classList.toggle('plat-admin-mode', isAdminMode);
+    // Platform 2.0, Completion pass (2.8-band): >=1024px'da Support
+    // master/detail (ro'yxat + suhbat yonma-yon). Mobil xatti-harakat
+    // (ro'yxat tab -> to'liq-ekran suhbat sahifasi) BUTUNLAY o'zgarmadi —
+    // bu klass faqat platform.css'dagi @media (min-width:1024px) qoidasi
+    // orqali .plat-page'ni (suhbat) ro'yxat ustidan "suzib" chapga surib,
+    // orqadagi ro'yxat tabini ko'rinadigan qiladi.
+    document.body.classList.toggle('plat-support-desktop-split', isAdminMode && (currentTab === 'support' || activePage === 'ADMIN_SUPPORT_THREAD'));
     if (accessDenied) {
       app.innerHTML = `<div class="wrap"><header class="top"><h1>UStorE</h1></header><div class="card"><p class="notice error">⛔ Xatolik yuz berdi. Iltimos, botni qayta oching.</p></div></div>`;
       return;
@@ -547,7 +584,13 @@
 
     if (activePage) {
       try {
-        app.innerHTML = `${renderChrome('')}<div id="plat-page-container">${renderActivePage()}</div>`;
+        // Platform 2.0, Completion pass (2.8-band): support-thread ochiq
+        // paytda .plat-content'ga ro'yxatni ham qo'shib qo'yamiz — mobil'da
+        // bu ko'rinmaydi (thread .plat-page uni to'liq qoplaydi), lekin
+        // platform.css'ning >=1024px qoidasi thread'ni chapga surib, shu
+        // ro'yxatni ochib qo'yadi (haqiqiy master/detail, yangi state yo'q).
+        const chromeBody = activePage === 'ADMIN_SUPPORT_THREAD' ? renderAdminSupportTab() : '';
+        app.innerHTML = `${renderChrome(chromeBody)}<div id="plat-page-container">${renderActivePage()}</div>`;
         if (activePage === 'CONNECT_SHOP') wireConnectShopView();
       } catch (e) {
         console.error('platform active-page render error', { activePage, error: e });
@@ -667,7 +710,7 @@
         <div class="plat-header-title">${isAdminMode ? 'UStorE Admin' : 'UStorE'}</div>
         <div class="plat-header-actions">
           ${!isAdminMode ? `<button class="plat-header-btn plat-header-request-btn" onclick="openMyRequests()" aria-label="Arizalarim">${pIcon('inbox',17)}${myRequests.filter((r)=>r.status==='NEW').length ? `<em>${Math.min(9,myRequests.filter((r)=>r.status==='NEW').length)}${myRequests.filter((r)=>r.status==='NEW').length>9?'+':''}</em>` : ''}</button>` : ''}
-          <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">${pIcon('user', 17)}</button>
+          <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">${!isAdminMode && tg?.initDataUnsafe?.user?.photo_url ? `<img src="${escapeHtml(tg.initDataUnsafe.user.photo_url)}" class="plat-header-avatar-img" alt="">` : pIcon('user', 17)}</button>
         </div>
       </div>
       <div id="plat-role-popover" class="hidden plat-role-popover"></div>
@@ -677,13 +720,23 @@
   }
 
   function renderBottomNav() {
+    // Platform 2.0, Bosqich 1 (2-band): Profil endi USER pastki menyusining
+    // aloha itemi EMAS — headerdagi avatar orqali ochiladi (togglePersonMenu),
+    // shu sababli bu yerda 5ta o'rniga 4ta qoladi. "Obuna" ham "To'lovlar"ga
+    // qayta nomlangan (backend/tab id 'subscription' O'ZGARMAYDI — faqat
+    // ko'rinadigan yorliq, ichki state/routingga tegilmagan).
     const userTabs = [
-      ['home', 'home', 'Bosh sahifa'], ['shops', 'shop', "Do'konlarim"], ['subscription', 'diamond', 'Obuna'],
-      ['help', 'chat', 'Yordam'], ['profile', 'user', 'Profil'],
+      ['home', 'home', 'Bosh sahifa'], ['shops', 'shop', "Do'konlarim"], ['subscription', 'diamond', "To'lovlar"],
+      ['help', 'chat', 'Yordam'],
     ];
+    // Platform 2.0, Bosqich 2 (A-band): admin navigatsiyasi qayta tashkil
+    // qilindi — Tariflar endi alohida tab EMAS (Sozlamalar ichiga ko'chdi),
+    // Support esa Profil ichidan chiqib, o'z-o'zidan ALOHIDA root tab bo'ldi
+    // (kundalik ish, sozlama emas). "Profil" nomi "Sozlamalar"ga o'zgardi —
+    // ichki tab id 'profile' emas, 'settings' (routing/state ham yangilangan).
     const adminTabs = [
-      ['dashboard', 'dashboard', 'Dashboard'], ['shops', 'shop', "Do'konlar"], ['requests', 'inbox', "So'rovlar"],
-      ['tariffs', 'diamond', 'Tariflar'], ['profile', 'user', 'Profil'],
+      ['dashboard', 'dashboard', 'Dashboard'], ['requests', 'inbox', 'Arizalar'], ['shops', 'shop', "Do'konlar"],
+      ['support', 'headset', 'Support'], ['settings', 'gear', 'Sozlamalar'],
     ];
     const tabs = isAdminMode ? adminTabs : userTabs;
     return `
@@ -700,10 +753,10 @@
   function renderTabBody() {
     if (isAdminMode) {
       if (currentTab === 'dashboard') return renderAdminDashboardTab();
-      if (currentTab === 'shops') return renderAdminShopsTab();
       if (currentTab === 'requests') return renderAdminRequestsTab();
-      if (currentTab === 'tariffs') return renderAdminTariffsTab();
-      if (currentTab === 'profile') return renderProfileTab();
+      if (currentTab === 'shops') return renderAdminShopsTab();
+      if (currentTab === 'support') return renderAdminSupportTab();
+      if (currentTab === 'settings') return renderProfileTab();
       return '';
     }
     if (currentTab === 'shops') return renderMyShopsTab();
@@ -721,15 +774,26 @@
     if (p === 'REQUEST_SENT') return pageShell("So'rov yuborildi", renderRequestSentBody(), { onBack: 'goHomePage()' });
     if (p === 'CONNECT_SHOP') return pageShell("Yangi do'kon ulash", renderConnectShopBody(), { onBack: "closePage()" });
     if (p === 'MY_SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderMyShopDetailsBody(), { onBack: "switchTab('shops')" });
+    if (p === 'MY_SHOP_SUB_SUBSCRIPTION') return pageShell("Obuna va tarif", renderMyShopSubscriptionBody(), { onBack: "openPage('MY_SHOP_DETAILS')" });
+    if (p === 'MY_SHOP_SUB_PAYMENTS') return pageShell("To'lovlar", renderMyPaymentHistoryBody({ hideHeading: true }), { onBack: "openPage('MY_SHOP_DETAILS')" });
+    if (p === 'MY_SHOP_SUB_BOT') return pageShell('Bot', renderMyShopBotBody(), { onBack: "openPage('MY_SHOP_DETAILS')" });
+    if (p === 'MY_SHOP_SUB_SUPPORT') return pageShell('Support', renderMyShopSupportBody(), { onBack: "openPage('MY_SHOP_DETAILS')" });
+    if (p === 'MY_SHOP_SUB_STATUS') return pageShell("Do'kon holati", renderMyShopStatusBody(), { onBack: "openPage('MY_SHOP_DETAILS')" });
     if (p === 'SHOP_DETAILS') return pageShell("Do'kon tafsilotlari", renderShopDetailsBody(), { onBack: "switchTab('shops')" });
+    if (p === 'SHOP_SUB_SUBSCRIPTION') return pageShell("Obuna va tarif", renderShopSubscriptionBody(), { onBack: "openPage('SHOP_DETAILS')" });
+    if (p === 'SHOP_SUB_BOT') return pageShell("Bot va integratsiyalar", renderShopBotIntegrationsBody(), { onBack: "openPage('SHOP_DETAILS')" });
+    if (p === 'SHOP_SUB_PAYMENTS') return pageShell("To'lovlar", renderShopPaymentsBody(), { onBack: "openPage('SHOP_DETAILS')" });
+    if (p === 'SHOP_SUB_LIFECYCLE') return pageShell("Do'kon holati", renderShopLifecycleBody(), { onBack: "openPage('SHOP_DETAILS')" });
+    if (p === 'SHOP_SUB_ACTIVITY') return pageShell("Faoliyat tarixi", renderShopActivityBody(), { onBack: "openPage('SHOP_DETAILS')" });
+    if (p === 'SHOP_SUB_SUPPORT') return pageShell("Support", renderShopSupportBody(), { onBack: "openPage('SHOP_DETAILS')" });
     if (p === 'REQUEST_DETAILS') return pageShell("So'rov tafsilotlari", renderRequestDetailsBody(), { onBack: "switchTab('requests')" });
     if (p === 'MY_REQUESTS') return pageShell("Arizalarim", renderMyRequestsBody(), { onBack: "goHomePage()" });
     if (p === 'MY_REQUEST_DETAILS') return pageShell("Ariza holati", renderMyRequestDetailsBody(), { onBack: "openMyRequests()" });
     if (p === 'REQUEST_PROVISION') return pageShell("Do'kon qo'shish", renderRequestProvisioningBody(), { onBack: `openRequestDetails('${provisioningRequestId || selectedRequestId || ''}')` });
-    if (p === 'ADMIN_PAYMENT_SETTINGS') return pageShell("To'lov sozlamalari", renderAdminPaymentSettingsBody(), { onBack: "switchTab('profile')" });
-    if (p === 'ADMIN_NOTIFICATION_SETTINGS') return pageShell("Avtomatik xabarlar", renderAdminNotificationSettingsBody(), { onBack: "switchTab('profile')" });
+    if (p === 'ADMIN_PAYMENT_SETTINGS') return pageShell("To'lov sozlamalari", renderAdminPaymentSettingsBody(), { onBack: "switchTab('settings')" });
+    if (p === 'ADMIN_NOTIFICATION_SETTINGS') return pageShell("Avtomatik xabarlar", renderAdminNotificationSettingsBody(), { onBack: "switchTab('settings')" });
     if (p === 'ADMIN_NOTIFICATION_GROUP') return pageShell(notificationGroupTitle(), renderAdminNotificationGroupBody(), { onBack: "openPage('ADMIN_NOTIFICATION_SETTINGS')" });
-    if (p === 'ADMIN_LIFECYCLE_SETTINGS') return pageShell("Do'kon holati parametrlari", renderAdminLifecycleSettingsBody(), { onBack: "switchTab('profile')" });
+    if (p === 'ADMIN_LIFECYCLE_SETTINGS') return pageShell("Do'kon holati parametrlari", renderAdminLifecycleSettingsBody(), { onBack: "switchTab('settings')" });
     if (p === 'TERMS') return pageShell("Foydalanish shartlari", renderTermsBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'PRIVACY') return pageShell("Maxfiylik siyosati", renderPrivacyBody(), { onBack: "closeTermsPrivacyPage()" });
     if (p === 'ABOUT') return pageShell("UStorE haqida", renderAboutBody(), { onBack: "closePage()" });
@@ -741,9 +805,12 @@
     if (p === 'SUPPORT_THREAD') return pageShell(supportThreadTitle(), renderSupportThreadBody(), { onBack: "openPage('SUPPORT')" });
     if (p === 'BUG_REPORT') return pageShell('Muammo haqida xabar berish', renderBugReportBody(), { onBack: "switchTab('help')" });
     if (p === 'FAQ_FULL') return pageShell('Ko‘p beriladigan savollar', renderFaqFullBody(), { onBack: "switchTab('help')" });
-    if (p === 'ADMIN_SUPPORT') return pageShell('Support', renderAdminSupportBody(), { onBack: "switchTab('profile')" });
     if (p === 'EXPIRED_SHOPS') return pageShell("Muddati tugagan do'konlar", renderExpiredShopsBody(), { onBack: "switchTab('dashboard')" });
-    if (p === 'ADMIN_SUPPORT_THREAD') return pageShell(supportThreadTitle(), renderAdminSupportThreadBody(), { onBack: "openPage('ADMIN_SUPPORT')" });
+    // Platform 2.0, Bosqich 2: Support endi root tab — standalone 'ADMIN_SUPPORT'
+    // sahifasi olib tashlandi, thread'dan orqaga qaytish endi to'g'ridan-to'g'ri
+    // shu tabga.
+    if (p === 'ADMIN_SUPPORT_THREAD') return pageShell(supportThreadTitle(), renderAdminSupportThreadBody(), { onBack: "switchTab('support')" });
+    if (p === 'ADMIN_TARIFFS') return pageShell('Tariflar', renderAdminTariffsTab(), { onBack: "switchTab('settings')" });
     return '';
   }
 
@@ -1394,7 +1461,7 @@
     if (!r || r.kind !== 'NEW_SHOP' || r.status !== 'NEW' || r.paymentClaimedAt) return;
     if (r.paymentDeadlineAt && new Date(r.paymentDeadlineAt).getTime() <= Date.now()) {
       await loadMyRequests(false);
-      alert("Bu to'lov arizasining 1 soatlik muddati tugagan. Yangi ariza oching.");
+      showToast("Bu to'lov arizasining 1 soatlik muddati tugagan. Yangi ariza oching.", 'warning');
       openMyRequests();
       return;
     }
@@ -1558,7 +1625,7 @@
   }
   function detectMyTelegramId() {
     const id = currentTelegramUserId();
-    if (!id) { alert("Telegram ID avtomatik aniqlanmadi. UStorE botga /id yuboring va chiqqan raqamni shu yerga kiriting."); return; }
+    if (!id) { showToast("Telegram ID avtomatik aniqlanmadi. UStorE botga /id yuboring va chiqqan raqamni shu yerga kiriting.", 'warning'); return; }
     newShopOwnerTelegramId = id;
     const el = document.getElementById('plat-new-shop-owner'); if (el) el.value = id;
     updateNewShopRequestIdentity();
@@ -1663,7 +1730,7 @@
     if (!m?.paymentUrl) return;
     if (flowKind === 'NEW_SHOP' && !preparedNewShopRequestId) {
       try { await ensureNewShopPaymentDraft(false); }
-      catch (_) { alert("To'lov arizasini saqlab bo'lmadi. Internetni tekshirib qayta urinib ko'ring."); return; }
+      catch (_) { showToast("To'lov arizasini saqlab bo'lmadi. Internetni tekshirib qayta urinib ko'ring.", 'error'); return; }
     }
     selectedPaymentMethodType = String(m.methodType || '').toUpperCase();
     selectedPaymentMethodId = m.id;
@@ -1713,7 +1780,7 @@
     const text = el ? el.textContent : '';
     const finish = (ok) => {
       const btn = document.querySelector('.plat-copy-btn');
-      if (btn) { const old = btn.textContent; btn.textContent = ok ? '✅ Nusxalandi' : "❌ Bo'lmadi"; setTimeout(() => { btn.textContent = old; }, 1500); }
+      if (btn) { const old = btn.textContent; btn.textContent = ok ? "Nusxalandi" : "Bo'lmadi"; setTimeout(() => { btn.textContent = old; }, 1500); }
     };
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(text).then(() => finish(true)).catch(() => finish(false));
@@ -1741,10 +1808,10 @@
   }
   // ROOT-CAUSE FIX (2026-08-30): reader.onerror = reject used to pass the
   // raw FileReader `error` EVENT (a ProgressEvent, not an Error) straight
-  // through as the rejection reason — every caller's `catch (e) { alert(e.
-  // message || String(e)); }` then showed the user a literal, meaningless
-  // "[object ProgressEvent]" (ProgressEvent has no .message, so it fell
-  // through to String(e)). Wrapping it in a real Error with a readable
+  // through as the rejection reason — every caller's `catch (e) { showToast(
+  // e.message || String(e), 'error'); }` then showed the user a literal,
+  // meaningless "[object ProgressEvent]" (ProgressEvent has no .message, so
+  // it fell through to String(e)). Wrapping it in a real Error with a readable
   // message fixes this for EVERY caller at once (receipt uploads, bug
   // report attachments, notification template images, payment method
   // logos — all six call sites share this one helper).
@@ -1763,17 +1830,17 @@
       newShopOwnerTelegramId = String(document.getElementById('plat-new-shop-owner')?.value || newShopOwnerTelegramId || '').replace(/\D/g,'').slice(0,15);
       newShopBotName = String(document.getElementById('plat-new-shop-bot-name')?.value || newShopBotName || '').trim();
       newShopBotBio = String(document.getElementById('plat-new-shop-bot-bio')?.value || newShopBotBio || '').trim();
-      if (newShopName.length < 2) { alert("Do'kon nomini kiriting."); return; }
-      if (!/^\d{5,15}$/.test(newShopOwnerTelegramId)) { alert("Do'kon egasining Telegram ID sini to'g'ri kiriting."); return; }
+      if (newShopName.length < 2) { showToast("Do'kon nomini kiriting.", 'warning'); return; }
+      if (!/^\d{5,15}$/.test(newShopOwnerTelegramId)) { showToast("Do'kon egasining Telegram ID sini to'g'ri kiriting.", 'warning'); return; }
     }
-    if (!selectedPaymentMethodType) { alert("Avval to'lov usulini tanlang."); return; }
-    if (!consentAccepted) { alert("Davom etish uchun Foydalanish shartlari va Maxfiylik siyosatiga rozilik bildiring."); return; }
-    if (selectedPaymentMethodType !== 'CARD' && !externalPaymentOpened) { alert("Avval tanlangan to'lov usuliga o'tib to'lovni amalga oshiring."); return; }
+    if (!selectedPaymentMethodType) { showToast("Avval to'lov usulini tanlang.", 'warning'); return; }
+    if (!consentAccepted) { showToast("Davom etish uchun Foydalanish shartlari va Maxfiylik siyosatiga rozilik bildiring.", 'warning'); return; }
+    if (selectedPaymentMethodType !== 'CARD' && !externalPaymentOpened) { showToast("Avval tanlangan to'lov usuliga o'tib to'lovni amalga oshiring.", 'warning'); return; }
     const hasCard = !!paymentInfo?.cardNumber && paymentInfo?.isActive !== false;
-    if (selectedPaymentMethodType === 'CARD' && !hasCard) { alert("Karta orqali to'lov hozir faol emas."); return; }
+    if (selectedPaymentMethodType === 'CARD' && !hasCard) { showToast("Karta orqali to'lov hozir faol emas.", 'warning'); return; }
     const selectedExternalMethod = selectedPaymentMethodId ? platformPaymentMethods.find((m) => m.id === selectedPaymentMethodId) : null;
     if (selectedPaymentMethodType !== 'CARD' && (!selectedExternalMethod || String(selectedExternalMethod.methodType).toUpperCase() !== selectedPaymentMethodType)) {
-      alert("Tanlangan to'lov usuli topilmadi. Qayta tanlang.");
+      showToast("Tanlangan to'lov usuli topilmadi. Qayta tanlang.", 'error');
       return;
     }
 
@@ -1866,7 +1933,7 @@
       await callPlatformApi('platform_confirm_payment_claim', { requestId: lastSubmittedRequestId });
       paymentClaimConfirmed = true;
     } catch (e) {
-      alert(e.message || String(e));
+      showToast(e.message || String(e), 'error');
     } finally {
       paymentClaimSubmitting = false;
       rerenderActivePage();
@@ -1875,8 +1942,8 @@
   function onRequestSentReceiptPicked(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { alert("Faqat JPG, PNG yoki WebP rasm qabul qilinadi."); return; }
-    if (file.size > 6 * 1024 * 1024) { alert("Rasm hajmi 6MB dan katta bo'lmasin."); return; }
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { showToast("Faqat JPG, PNG yoki WebP rasm qabul qilinadi.", 'warning'); return; }
+    if (file.size > 6 * 1024 * 1024) { showToast("Rasm hajmi 6MB dan katta bo'lmasin.", 'warning'); return; }
     requestSentReceiptFile = file;
     if (requestSentReceiptPreviewUrl) { try { URL.revokeObjectURL(requestSentReceiptPreviewUrl); } catch (_) {} }
     requestSentReceiptPreviewUrl = URL.createObjectURL(file);
@@ -1901,7 +1968,7 @@
       lastSubmittedHadReceipt = true;
       clearRequestSentReceiptFile();
     } catch (e) {
-      alert(e.message || String(e));
+      showToast(e.message || String(e), 'error');
     } finally {
       attachingRequestReceipt = false;
       rerenderActivePage();
@@ -1943,10 +2010,10 @@
       <section class="card plat-dashboard-focus">
         <div class="plat-dashboard-focus-title"><div><small>Tanlangan do'kon</small><h2>${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</h2><p>${escapeHtml(s.tariffName || 'Tarifsiz')}${left === null ? '' : left <= 0 ? ' · Obuna tugagan' : ` · ${left} kun qoldi`}</p></div><span class="status-pill status-${s.status}">${statusLabel(s.status)}</span></div>
         <div class="plat-dashboard-kpis">
-          <div class="tone-blue"><span>${pIcon('bag',18)}</span><small>Bugungi buyurtmalar</small><b>${Number(s.ordersToday || 0)}</b></div>
-          <div class="tone-violet"><span>${pIcon('box',18)}</span><small>Mahsulotlar</small><b>${usedProducts}</b>${productPct!==null?`<em>${productPct}% limit</em>`:''}</div>
-          <div class="tone-green"><span>${pIcon('chat',18)}</span><small>Yangi xabarlar</small><b>${unreadSupport}</b></div>
-          <div class="tone-amber"><span>${pIcon('diamond',18)}</span><small>Tarif</small><b class="textual">${escapeHtml(s.tariffName || 'Tarifsiz')}</b></div>
+          <div><span>${pIcon('bag',18)}</span><small>Bugungi buyurtmalar</small><b>${Number(s.ordersToday || 0)}</b></div>
+          <div><span>${pIcon('box',18)}</span><small>Mahsulotlar</small><b>${usedProducts}</b>${productPct!==null?`<em>${productPct}% limit</em>`:''}</div>
+          <div><span>${pIcon('chat',18)}</span><small>Yangi xabarlar</small><b>${unreadSupport}</b></div>
+          <div><span>${pIcon('diamond',18)}</span><small>Tarif</small><b class="textual">${escapeHtml(s.tariffName || 'Tarifsiz')}</b></div>
         </div>
         ${shopAction ? `<div class="plat-dashboard-focus-actions">${shopAction}</div>` : ''}
       </section>
@@ -1994,7 +2061,7 @@
     const thirdLabel = noPlanCount > 0 ? 'Tarifsiz' : 'Tez tugaydi';
     return `
       <div class="plat-tab-head plat-shops-head"><div><h1>Do'konlarim</h1><p>${myShops.length} ta ulangan do'kon</p></div><button class="primary plat-new-shop-main" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon</button></div>
-      <div class="plat-summary-strip plat-shops-summary"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length}</b><small>Do'kon</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-amber">${pIcon(noPlanCount > 0 ? 'diamond' : 'calendar',16)}</span><b>${thirdCount}</b><small>${thirdLabel}</small></div></div>
+      <div class="plat-summary-strip plat-shops-summary"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length}</b><small>Do'kon</small></div><div><span class="tone-blue">${pIcon('check',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-blue">${pIcon(noPlanCount > 0 ? 'diamond' : 'calendar',16)}</span><b>${thirdCount}</b><small>${thirdLabel}</small></div></div>
       <div class="plat-shop-list-simple">${myShops.map((shop) => {
         const left = daysUntil(shop.subscriptionExpiresAt);
         const noPlan = !shop.tariffId || !shop.subscriptionExpiresAt;
@@ -2014,21 +2081,50 @@
     dashboardShopId = shopId;
     openPage('MY_SHOP_DETAILS');
   }
+  // Platform 2.0, Completion pass (4-band): user Do'kon-tafsiloti ham endi
+  // summary + navigatsiya-qatorlari (admin tarafidagi 2.4-band bilan bir
+  // xil naqsh). Working mazmun HECH BIRI o'zgarmadi — faqat qaysi
+  // sahifada joylashgani.
   function renderMyShopDetailsBody() {
     const shop = myShops.find((s) => s.id === dashboardShopId) || null;
     if (!shop) return `<div class="plat-empty-pro"><h2>Do'kon topilmadi</h2><button class="primary" onclick="switchTab('shops')">Do'konlarimga qaytish</button></div>`;
     const left = daysUntil(shop.subscriptionExpiresAt);
-    const limit = shop.productLimit ?? null;
-    const used = Number(shop.usedProductCount || 0);
-    const pct = limit ? Math.min(100, Math.round(used / limit * 100)) : null;
-    const tariff = tariffs.find((t) => t.id === shop.tariffId);
-    const noPlan = !shop.tariffId || !shop.subscriptionExpiresAt;
     const warn = left !== null && left >= 0 && left <= 7;
+    const rows = [
+      ['MY_SHOP_SUB_SUBSCRIPTION', 'diamond', 'Obuna va tarif', shop.tariffName || 'Tarifsiz'],
+      ['MY_SHOP_SUB_PAYMENTS', 'wallet', "To'lovlar", "To'lov tarixi"],
+      ['MY_SHOP_SUB_BOT', 'bolt', 'Bot', shop.botUsername ? '@'+shop.botUsername : "Bot ulanmagan"],
+      ['MY_SHOP_SUB_SUPPORT', 'headset', 'Support', 'Yordam olish'],
+      ['MY_SHOP_SUB_STATUS', 'lock', "Do'kon holati", statusLabel(shop.status)],
+    ];
     return `
       <section class="plat-shop-detail-hero ${warn ? 'is-expiring' : ''}">
         <span class="plat-shop-avatar plat-shop-detail-avatar ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span>
         <div><div class="plat-shop-detail-name"><h2>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</h2><span class="status-pill status-${shop.status}">${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<p>@${escapeHtml(shop.botUsername)}</p>` : '<p>Bot ulanmoqda</p>'}<span class="plan-pill">${escapeHtml(shop.tariffName || 'Tarifsiz')}</span></div>
       </section>
+      ${shop.status === 'ACTIVE' && left !== null ? `<div class="plat-shop-detail-days-strip"><b>${left <= 0 ? 'Tugagan' : `${left} kun`}</b><small>obuna qoldi</small></div>` : ''}
+      <div class="plat-shop-nav-rows">
+        ${rows.map(([page, icon, title, subtitle]) => `
+          <button type="button" class="plat-shop-nav-row" onclick="${page === 'MY_SHOP_SUB_PAYMENTS' ? `openPage('${page}'); loadMyPaymentHistory('${shop.id}');` : `openPage('${page}')`}">
+            <span class="plat-shop-nav-row-icon">${pIcon(icon,18)}</span>
+            <span class="plat-shop-nav-row-text"><b>${escapeHtml(title)}</b><small>${escapeHtml(subtitle)}</small></span>
+            ${pIcon('arrowRight',16)}
+          </button>
+        `).join('')}
+      </div>
+    `;
+  }
+  function renderMyShopSubscriptionBody() {
+    const shop = myShops.find((s) => s.id === dashboardShopId) || null;
+    if (!shop) return '<p class="empty">Do\'kon topilmadi.</p>';
+    const limit = shop.productLimit ?? null;
+    const used = Number(shop.usedProductCount || 0);
+    const pct = limit ? Math.min(100, Math.round(used / limit * 100)) : null;
+    const tariff = tariffs.find((t) => t.id === shop.tariffId);
+    const noPlan = !shop.tariffId || !shop.subscriptionExpiresAt;
+    const left = daysUntil(shop.subscriptionExpiresAt);
+    const warn = left !== null && left >= 0 && left <= 7;
+    return `
       <section class="plat-shop-detail-card">
         <div class="plat-section-heading"><div><h2>Do'kon holati</h2><p>Asosiy ko'rsatkichlar va joriy obuna.</p></div></div>
         <div class="plat-shop-detail-metrics"><div><span>${pIcon('box',17)}</span><small>Mahsulotlar</small><b>${used}${limit !== null ? ` / ${limit}` : ''}</b>${pct !== null ? `<div class="mini-progress"><i style="width:${pct}%"></i></div><em>${pct}% foydalanilgan</em>` : ''}</div><div class="${warn ? 'is-warn' : ''}"><span>${pIcon('calendar',17)}</span><small>Obuna</small><b>${noPlan ? 'Tarif tanlanmagan' : left === null ? 'Muddat noma’lum' : left <= 0 ? 'Tugagan' : `${left} kun qoldi`}</b><em>${shop.subscriptionExpiresAt ? formatDate(shop.subscriptionExpiresAt) + ' gacha' : 'Obuna sanasi yo‘q'}</em></div></div>
@@ -2037,6 +2133,12 @@
         <div class="plat-section-heading"><div><h2>Obunani boshqarish</h2><p>${noPlan ? "Tarif tanlab do'kon obunasini faollashtiring." : `Joriy tarif: ${escapeHtml(shop.tariffName || '')}${tariff ? ` · ${money(tariff.price)}/oy` : ''}`}</p></div></div>
         ${noPlan ? `<button class="primary" onclick="startUpgradeFor('${shop.id}')">${pIcon('diamond',16)} Tarif tanlash</button>` : `<div class="plat-shop-detail-actions"><button class="primary" onclick="startExtendFor('${shop.id}')">${pIcon('calendar',16)} Obunani uzaytirish</button><button class="secondary" onclick="startUpgradeFor('${shop.id}')">${pIcon('swap',16)} Tarifni o'zgartirish</button></div><div class="plat-preserve-days-note">${pIcon('check',15)}<span>Istalgan vaqtda uzaytirishingiz mumkin. Qolgan kunlar kuyib ketmaydi — yangi muddat mavjud tugash sanasiga qo'shiladi.</span></div>`}
       </section>
+    `;
+  }
+  function renderMyShopBotBody() {
+    const shop = myShops.find((s) => s.id === dashboardShopId) || null;
+    if (!shop) return '<p class="empty">Do\'kon topilmadi.</p>';
+    return `
       <section class="plat-shop-detail-card">
         <div class="plat-section-heading"><div><h2>Do'kon boshqaruvi</h2><p>Do'konning o'z boshqaruv paneliga o'ting.</p></div></div>
         ${shop.botUsername ? `<a class="primary plat-shop-open-main" href="https://t.me/${escapeHtml(shop.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',16)} Do'konni ochish</a>` : `<button class="secondary" disabled>${pIcon('shop',16)} Bot hali ulanmagan</button>`}
@@ -2044,10 +2146,88 @@
       </section>
     `;
   }
+  function renderMyShopSupportBody() {
+    return `<div class="card"><h2>Support</h2><p class="muted">Savol yoki muammoingiz bo'lsa Yordam bo'limidan yozing.</p><button class="secondary" onclick="switchTab('help')">${pIcon('headset',16)} Yordam bo'limini ochish</button></div>`;
+  }
+  function renderMyShopStatusBody() {
+    const shop = myShops.find((s) => s.id === dashboardShopId) || null;
+    if (!shop) return '<p class="empty">Do\'kon topilmadi.</p>';
+    if (shop.status === 'FROZEN') {
+      return `<div class="card"><h2>Muzlatilgan</h2><p class="muted">${escapeHtml(lifecycleUserText(platformLifecycleSettings.freezeUserBody, shop))}</p>${renderFreezeProgressBar(shop.frozenAt)}<button class="primary" style="margin-top:12px" onclick="openLifecycleSupport()">${escapeHtml(platformLifecycleSettings.supportLabel || "Admin bilan bog'lanish")}</button></div>`;
+    }
+    if (shop.status === 'TERMINATED') {
+      return `<div class="card"><h2>O'chirilgan</h2><p class="muted">${escapeHtml(lifecycleUserText(platformLifecycleSettings.terminateUserBody, shop))}</p></div>`;
+    }
+    return `<div class="card"><h2>${statusLabel(shop.status)}</h2><p class="muted">Do'kon foydalanuvchilar uchun faol.</p></div>`;
+  }
 
-  function renderSubscriptionTab() {
+  // Platform 2.0, Completion pass (2.1-band): "To'lovlar" tabi — haqiqiy
+  // to'lov TARIXI (spec 29). platform_list_subscription_history bilan bir
+  // xil jadval/mapping'dan foydalanadigan, faqat egalik-tekshiruvi bilan
+  // himoyalangan platform_list_my_subscription_history'ni chaqiradi (yangi
+  // backend yozilmadi — 070/2.1-bandda izohlangan additive action).
+  let myPaymentHistoryForShop = null; // { shopId, rows } yoki null
+  let expandedPaymentHistoryId = null;
+  async function loadMyPaymentHistory(shopId) {
+    myPaymentHistoryForShop = null;
+    try {
+      const data = await callPlatformApi('platform_list_my_subscription_history', { shopId });
+      myPaymentHistoryForShop = { shopId, rows: data.history || [] };
+    } catch (e) { console.error(e); myPaymentHistoryForShop = { shopId, rows: [] }; }
+    // Ikki xil joydan chaqiriladi: 'subscription' tab (onTabEnter) YOKI
+    // Do'kon-tafsilotidagi "To'lovlar" sub-sahifasi (MY_SHOP_SUB_PAYMENTS) —
+    // ikkalasida ham qayta render kerak, aks holda ma'lumot yuklangach
+    // ekranda "Yuklanmoqda..." holatida qotib qolardi.
+    if (!isAdminMode && (currentTab === 'subscription' || activePage === 'MY_SHOP_SUB_PAYMENTS')) render();
+  }
+  function setPaymentHistoryShop(shopId) {
+    dashboardShopId = shopId;
+    expandedPaymentHistoryId = null;
+    render();
+    loadMyPaymentHistory(shopId);
+  }
+  function togglePaymentHistoryRow(id) {
+    expandedPaymentHistoryId = expandedPaymentHistoryId === id ? null : id;
+    render();
+  }
+  // opts.hideHeading — Do'kon-tafsiloti sub-sahifasi sifatida ochilganda
+  // (pageShell allaqachon "To'lovlar" sarlavhasini beradi) o'zining ichki
+  // <h1>'ini ikki marta ko'rsatmaslik uchun.
+  function renderMyPaymentHistoryBody(opts) {
+    opts = opts || {};
+    if (!dashboardShopId || !myShops.some((s) => s.id === dashboardShopId)) dashboardShopId = myShops[0].id;
+    const shop = myShops.find((s) => s.id === dashboardShopId) || myShops[0];
+    const rows = (myPaymentHistoryForShop && myPaymentHistoryForShop.shopId === shop.id) ? myPaymentHistoryForShop.rows : null;
     return `
-      <div class="plat-tab-head"><div><h1>Obuna</h1><p>Biznesingizga mos tarifni tanlang. Istalgan vaqtda uzaytirish yoki o'zgartirish mumkin.</p></div></div>
+      ${opts.hideHeading ? '' : `<div class="plat-tab-head"><div><h1>To'lovlar</h1><p>Obuna to'lovlari tarixi va uzaytirish.</p></div></div>`}
+      ${myShops.length > 1 && !opts.hideHeading ? `<div class="plat-payment-shop-switch">${myShops.map((s) => `<button class="${s.id === shop.id ? 'active' : ''}" onclick="setPaymentHistoryShop('${s.id}')">${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</button>`).join('')}</div>` : ''}
+      <button class="primary" onclick="startExtendFor('${shop.id}')">${pIcon('calendar',16)} Obunani uzaytirish</button>
+      <h2 class="plat-section-title" style="margin-top:18px">To'lovlar tarixi</h2>
+      ${rows === null ? `<div class="plat-admin-loading"><span class="spinner"></span></div>`
+        : !rows.length ? `<div class="plat-empty-pro"><span>${pIcon('wallet',26)}</span><h2>Hali to'lov yo'q</h2><p>Birinchi obunangiz to'lovi shu yerda ko'rinadi.</p></div>`
+        : `<div class="plat-payment-history-list">${rows.map((h) => `
+          <button type="button" class="plat-payment-history-row ${expandedPaymentHistoryId === h.id ? 'is-expanded' : ''}" onclick="togglePaymentHistoryRow('${h.id}')">
+            <div class="plat-payment-history-main">
+              <div><b>${money(h.purchasedAmount)}</b><small>${escapeHtml(h.newTariffName || '')} · ${h.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</small></div>
+              <div class="plat-payment-history-right"><span class="status-pill status-ACTIVE">To'landi</span><small>${formatDate(h.createdAt)}</small></div>
+            </div>
+            ${expandedPaymentHistoryId === h.id ? `<div class="plat-payment-history-detail">
+              <div class="preview-row"><span>Necha kun</span><span>${h.purchasedDays} kun</span></div>
+              ${h.bonusDays > 0 ? `<div class="preview-row"><span>Bonus kunlar</span><span>+${h.bonusDays} kun</span></div>` : ''}
+              <div class="preview-row"><span>Yangi tugash sanasi</span><span>${formatDate(h.newExpiresAt)}</span></div>
+            </div>` : ''}
+          </button>
+        `).join('')}</div>`}
+    `;
+  }
+  function renderSubscriptionTab() {
+    // Do'koni bor foydalanuvchi uchun — haqiqiy to'lov tarixi (yuqorida).
+    // Do'koni HALI yo'q foydalanuvchi uchun — bu ALIF birinchi xaridni
+    // amalga oshiradigan yagona yo'l, shuning uchun eski tarif-tanlash
+    // oqimi shu holat uchun TO'LIQ saqlanadi (o'chirilmaydi).
+    if (myShops.length > 0) return renderMyPaymentHistoryBody();
+    return `
+      <div class="plat-tab-head"><div><h1>To'lovlar</h1><p>Biznesingizga mos tarifni tanlang. Istalgan vaqtda uzaytirish yoki o'zgartirish mumkin.</p></div></div>
       ${renderBillingToggle()}
       <div class="plat-subscription-tariff-list">${renderTariffCards(false, { ctaLabel: 'Sotib olish' })}</div>
       <div class="plat-bonus-card plat-bonus-card-pro"><span class="plat-bonus-icon">${pIcon('gift',18)}</span><div><b>Birinchi obunada +7 kun bonus</b><p>Yangi do'konning birinchi obunasida qo'llanadi.</p></div></div>
@@ -2203,7 +2383,7 @@
   async function submitNewSupportMessage() {
     const el = document.getElementById('plat-support-new-msg');
     const message = el?.value.trim();
-    if (!message) return alert('Xabar matnini yozing.');
+    if (!message) return showToast('Xabar matnini yozing.', 'warning');
     el.disabled = true;
     try {
       const result = await callPlatformApi('platform_create_support_ticket', { type: 'SUPPORT', message });
@@ -2211,7 +2391,7 @@
       await loadMySupportTickets();
       openSupportThread(result.ticketId);
     } catch (e) {
-      alert("Yuborilmadi: " + (e.message || e));
+      showToast("Yuborilmadi: " + (e.message || e), 'error');
     } finally {
       if (el) el.disabled = false;
     }
@@ -2241,14 +2421,14 @@
   async function sendSupportReply() {
     const el = document.getElementById('plat-support-reply-msg');
     const body = el?.value.trim();
-    if (!body) return alert('Xabar matnini yozing.');
+    if (!body) return showToast('Xabar matnini yozing.', 'warning');
     sendingSupportMessage = true; render();
     try {
       await callPlatformApi('platform_send_support_message', { ticketId: activeSupportTicketId, body });
       await loadSupportThreadMessages();
       if (isAdminMode) await loadAdminSupportTickets();
     } catch (e) {
-      alert("Yuborilmadi: " + (e.message || e));
+      showToast("Yuborilmadi: " + (e.message || e), 'error');
     } finally {
       sendingSupportMessage = false; render();
     }
@@ -2260,8 +2440,8 @@
   function onBugReportAttachmentPicked(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return alert("Faqat JPG, PNG yoki WebP rasm qabul qilinadi.");
-    if (file.size > 6 * 1024 * 1024) return alert("Rasm hajmi 6MB dan katta bo'lmasin.");
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return showToast("Faqat JPG, PNG yoki WebP rasm qabul qilinadi.", 'warning');
+    if (file.size > 6 * 1024 * 1024) return showToast("Rasm hajmi 6MB dan katta bo'lmasin.", 'warning');
     bugReportAttachmentFile = file;
     if (bugReportAttachmentPreviewUrl) { try { URL.revokeObjectURL(bugReportAttachmentPreviewUrl); } catch (_) {} }
     bugReportAttachmentPreviewUrl = URL.createObjectURL(file);
@@ -2287,7 +2467,7 @@
     const title = document.getElementById('plat-bugreport-title')?.value.trim();
     const section = document.getElementById('plat-bugreport-section')?.value || '';
     const desc = document.getElementById('plat-bugreport-desc')?.value.trim();
-    if (!title || !desc) return alert("Sarlavha va tavsifni to'ldiring.");
+    if (!title || !desc) return showToast("Sarlavha va tavsifni to'ldiring.", 'warning');
     submittingBugReport = true; render();
     try {
       let attachmentUpload;
@@ -2303,7 +2483,7 @@
       bugReportAttachmentPreviewUrl = null;
       bugReportSent = true;
     } catch (e) {
-      alert("Yuborilmadi: " + (e.message || e));
+      showToast("Yuborilmadi: " + (e.message || e), 'error');
     } finally {
       submittingBugReport = false; render();
     }
@@ -2312,7 +2492,6 @@
   // ======================================================================
   // 4.4/4.5-band: Support — admin tomoni
   // ======================================================================
-  function openAdminSupportPage() { openPage('ADMIN_SUPPORT'); loadAdminSupportTickets(); }
   async function loadAdminSupportTickets() {
     adminSupportTicketsLoading = true; render();
     try {
@@ -2321,7 +2500,10 @@
       adminSupportTickets = (await callPlatformApi('platform_admin_list_support_tickets', payload)).tickets || [];
       if (adminSupportTypeFilter) adminSupportTickets = adminSupportTickets.filter((t) => t.type === adminSupportTypeFilter);
     } catch (e) { console.error(e); adminSupportTickets = []; }
-    finally { adminSupportTicketsLoading = false; if (activePage === 'ADMIN_SUPPORT') render(); }
+    // Platform 2.0, Bosqich 2 (G-band): Support endi ALOHIDA root tab
+    // ('support'), avvalgi standalone 'ADMIN_SUPPORT' sahifasi emas —
+    // shuning uchun qayta render sharti ham currentTab'ga qarab tekshiriladi.
+    finally { adminSupportTicketsLoading = false; if (currentTab === 'support' && isAdminMode) render(); }
   }
   function setAdminSupportFilter(status) { adminSupportFilter = status || null; loadAdminSupportTickets(); }
   function setAdminSupportTypeFilter(type) { adminSupportTypeFilter = type || null; loadAdminSupportTickets(); }
@@ -2331,18 +2513,25 @@
         ${['OPEN', 'ANSWERED', 'CLOSED', ''].map((s) => `<button class="plat-filter-btn ${adminSupportFilter === (s || null) ? 'active' : ''}" onclick="setAdminSupportFilter('${s}')">${s || 'Hammasi'}</button>`).join('')}
       </div>
       <div class="plat-filter-row">
-        ${[['', 'Hammasi'], ['SUPPORT', 'Support'], ['BUG_REPORT', '🐞 Bug']].map(([v, l]) => `<button class="plat-filter-btn ${adminSupportTypeFilter === (v || null) ? 'active' : ''}" onclick="setAdminSupportTypeFilter('${v}')">${l}</button>`).join('')}
+        ${[['', 'Hammasi'], ['SUPPORT', 'Support'], ['BUG_REPORT', 'Bug']].map(([v, l]) => `<button class="plat-filter-btn ${adminSupportTypeFilter === (v || null) ? 'active' : ''}" onclick="setAdminSupportTypeFilter('${v}')">${l}</button>`).join('')}
       </div>
       ${adminSupportTicketsLoading ? `<p class="muted">Yuklanmoqda...</p>` : adminSupportTickets.length ? adminSupportTickets.map((t) => `
         <div class="plat-shop-pick-row" onclick="openAdminSupportThread(${t.id})">
           <div>
-            <div class="name">${t.type === 'BUG_REPORT' ? '🐞 ' : ''}#${t.id}${t.subject ? ' — ' + escapeHtml(t.subject) : ''}</div>
+            <div class="name">${t.type === 'BUG_REPORT' ? pIcon('info',13) + ' ' : ''}#${t.id}${t.subject ? ' — ' + escapeHtml(t.subject) : ''}</div>
             <div class="meta">${escapeHtml(t.requesterUsername ? '@' + t.requesterUsername : (t.requesterFirstName || 'Foydalanuvchi'))}${t.pageContext ? ' · ' + escapeHtml(t.pageContext) : ''} · ${formatDate(t.createdAt)}</div>
           </div>
           <span class="status-pill status-${t.status === 'ANSWERED' ? 'ACTIVE' : t.status === 'CLOSED' ? 'DISABLED' : 'PROVISIONING'}">${supportStatusLabel(t.status)}</span>
         </div>
       `).join('') : `<p class="empty">Murojaat yo'q.</p>`}
     `;
+  }
+  // Platform 2.0, Bosqich 2: Support endi root tab bo'lgani uchun o'z
+  // sarlavhasini o'zi chiqarishi kerak (avval bu pageShell('Support', ...)
+  // orqali tashqaridan berilardi). Mazmun (renderAdminSupportBody) 100%
+  // qayta ishlatiladi.
+  function renderAdminSupportTab() {
+    return `<div class="plat-tab-head"><div><h1>Support</h1><p>Foydalanuvchi murojaatlari va bug-reportlar.</p></div></div>${renderAdminSupportBody()}`;
   }
   async function openAdminSupportThread(ticketId) {
     activeSupportTicketId = ticketId;
@@ -2358,12 +2547,12 @@
     `;
   }
   async function closeAdminSupportThread() {
-    if (!confirm("Bu murojaatni yopmoqchimisiz?")) return;
+    if (!(await showConfirm("Bu murojaatni yopmoqchimisiz?"))) return;
     try {
       await callPlatformApi('platform_close_support_ticket', { ticketId: activeSupportTicketId });
       await loadAdminSupportTickets();
-      openPage('ADMIN_SUPPORT');
-    } catch (e) { alert(e.message || String(e)); }
+      switchTab('support');
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
 
   function renderProfileTab() {
@@ -2376,9 +2565,9 @@
     return `
       <div class="plat-tab-head"><div><h1>Profil</h1><p>Telegram akkauntingiz va UStorE ma'lumotlari</p></div></div>
       <section class="plat-profile-hero">${user.photo_url?`<img src="${escapeHtml(user.photo_url)}" class="plat-profile-photo">`:`<div class="plat-profile-photo plat-profile-photo-fallback">${escapeHtml(fullName.charAt(0))}</div>`}<div class="plat-profile-main"><h2>${escapeHtml(fullName)}</h2><p>${user.username?'@'+escapeHtml(user.username):'Telegram foydalanuvchi'}</p><small>${pIcon('user',13)} Telegram ID: ${escapeHtml(String(user.id||''))}</small></div></section>
-      <div class="plat-profile-stats"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length} ta</b><small>do'kon ulangan</small></div><div><span class="tone-green">${pIcon('check',16)}</span><b>${activeSubs} ta</b><small>faol obuna</small></div><div><span class="tone-violet">${pIcon('calendar',16)}</span><b>${nearest===null?'—':nearest+' kun'}</b><small>eng yaqin tugash</small></div></div>
-      <h2 class="plat-profile-section-title">Hisob</h2><div class="plat-profile-list"><button onclick="switchTab('shops')"><span class="tone-green">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-orange">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button></div>
-      <h2 class="plat-profile-section-title">UStorE</h2><div class="plat-profile-list"><button onclick="openPage('GUIDES')"><span class="tone-violet">${pIcon('book',17)}</span><b>Qo'llanmalar</b><em>3 ta ›</em></button><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-green">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-violet">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
+      <div class="plat-profile-stats"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length} ta</b><small>do'kon ulangan</small></div><div><span class="tone-blue">${pIcon('check',16)}</span><b>${activeSubs} ta</b><small>faol obuna</small></div><div><span class="tone-blue">${pIcon('calendar',16)}</span><b>${nearest===null?'—':nearest+' kun'}</b><small>eng yaqin tugash</small></div></div>
+      <h2 class="plat-profile-section-title">Hisob</h2><div class="plat-profile-list"><button onclick="switchTab('shops')"><span class="tone-blue">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-blue">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button></div>
+      <h2 class="plat-profile-section-title">UStorE</h2><div class="plat-profile-list"><button onclick="openPage('GUIDES')"><span class="tone-blue">${pIcon('book',17)}</span><b>Qo'llanmalar</b><em>3 ta ›</em></button><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-blue">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
       <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Akkaunt Telegram profilingiz bilan bog'langan</b><small>Alohida login yoki parol talab qilinmaydi.</small></div>${pIcon('check',18)}</div>
       ${isSuperAdmin?`<button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('lock',22)}</span><div><b>Admin rejimi</b><small>Platformani boshqarish</small></div><em>O'tish →</em></button>`:''}
       <div class="plat-version">UStorE · 2026</div>
@@ -2390,22 +2579,28 @@
     const fullName = [user.first_name,user.last_name].filter(Boolean).join(' ') || 'Administrator';
     const activeMethods = adminPaymentMethods.filter((m)=>m.isActive).length + ((paymentInfoDraft?.isActive && paymentInfoDraft?.cardNumber) ? 1 : 0);
     const activeTemplates = adminNotificationTemplates.filter((t)=>t.isActive).length;
+    // Platform 2.0, Bosqich 2 (H-band): "Profil" endi "Sozlamalar" —
+    // Support bu ro'yxatdan CHIQARILDI (endi o'z-o'zicha root tab, kundalik
+    // ish, sozlama emas), Tariflar esa BU YERGA qo'shildi (avval alohida
+    // root tab edi). Qolgan hamma narsa (to'lov/xabarlar/lifecycle/
+    // integratsiya/legal/mode-toggle) 100% qayta ishlatilgan — faqat
+    // joylashuvi o'zgardi, biror bir funksiya o'chirilmadi/qayta yozilmadi.
     return `
-      <div class="plat-admin-profile-head"><span class="plat-admin-eyebrow">Platforma administratori</span><h1>Profil</h1><p>Akkaunt va UStorE tizim sozlamalarini boshqaring.</p></div>
+      <div class="plat-admin-profile-head"><span class="plat-admin-eyebrow">Platforma administratori</span><h1>Sozlamalar</h1><p>Akkaunt va UStorE tizim sozlamalarini boshqaring.</p></div>
       <section class="plat-admin-profile-card">
         ${user.photo_url?`<img src="${escapeHtml(user.photo_url)}" class="plat-admin-profile-photo">`:`<div class="plat-admin-profile-photo is-fallback">${escapeHtml(fullName.charAt(0))}</div>`}
         <div class="plat-admin-profile-identity"><span class="plat-admin-role-badge">SUPER ADMIN</span><h2>${escapeHtml(fullName)}</h2><p>${user.username?'@'+escapeHtml(user.username):'Telegram administrator'}</p><small>Telegram ID: ${escapeHtml(String(user.id||''))}</small></div>
       </section>
-      <div class="plat-admin-settings-intro"><div><span class="plat-admin-eyebrow">Boshqaruv markazi</span><h2>Admin sozlamalari</h2></div><span>${pIcon('gear',19)}</span></div>
+      <div class="plat-admin-settings-intro"><div><span class="plat-admin-eyebrow">Boshqaruv markazi</span><h2>Platforma</h2></div><span>${pIcon('gear',19)}</span></div>
       <div class="plat-admin-settings-list">
+        <button onclick="openAdminTariffsPage()"><span class="is-blue">${pIcon('diamond',19)}</span><div><b>Tariflar</b><small>Narx, limit va imkoniyatlar</small></div><em>${adminTariffs.length} ta ${pIcon('arrowRight',16)}</em></button>
         <button onclick="openAdminPaymentSettings()"><span class="is-blue">${pIcon('wallet',19)}</span><div><b>To'lov sozlamalari</b><small>Karta, Click, Payme va Paynet</small></div><em>${activeMethods} faol ${pIcon('arrowRight',16)}</em></button>
-        <button onclick="openAdminNotificationSettings()"><span class="is-violet">${pIcon('bell',19)}</span><div><b>Avtomatik xabarlar</b><small>Obuna va onboarding eslatmalari</small></div><em>${activeTemplates} faol ${pIcon('arrowRight',16)}</em></button>
-        <button onclick="openAdminLifecycleSettings()"><span class="is-amber">${pIcon('lock',19)}</span><div><b>Do'kon holati parametrlari</b><small>Muzlatish, o'chirish va owner xabarlari</small></div><em>${pIcon('arrowRight',16)}</em></button>
-        <button onclick="openAdminIntegrationsInfo()"><span class="is-green">${pIcon('layers',19)}</span><div><b>Integratsiyalar</b><small>BILLZ va to'lov provayderlari holati</small></div><em>${pIcon('arrowRight',16)}</em></button>
-        <button onclick="openAdminSupportPage()"><span class="is-amber">${pIcon('headset',19)}</span><div><b>Support</b><small>Foydalanuvchi murojaatlari</small></div><em>${pIcon('arrowRight',16)}</em></button>
+        <button onclick="openAdminNotificationSettings()"><span class="is-blue">${pIcon('bell',19)}</span><div><b>Avtomatik xabarlar</b><small>Obuna va onboarding eslatmalari</small></div><em>${activeTemplates} faol ${pIcon('arrowRight',16)}</em></button>
+        <button onclick="openAdminLifecycleSettings()"><span class="is-blue">${pIcon('lock',19)}</span><div><b>Do'kon holati parametrlari</b><small>Muzlatish, o'chirish va owner xabarlari</small></div><em>${pIcon('arrowRight',16)}</em></button>
+        <button onclick="openAdminIntegrationsInfo()"><span class="is-blue">${pIcon('layers',19)}</span><div><b>Integratsiyalar</b><small>BILLZ va to'lov provayderlari holati</small></div><em>${pIcon('arrowRight',16)}</em></button>
       </div>
       <h2 class="plat-profile-section-title">UStorE</h2>
-      <div class="plat-profile-list"><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-green">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-violet">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
+      <div class="plat-profile-list"><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-blue">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
       <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Admin akkaunti Telegram bilan tasdiqlangan</b><small>Alohida login yoki parol talab qilinmaydi.</small></div>${pIcon('check',18)}</div>
       <button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('user',22)}</span><div><b>Foydalanuvchi rejimi</b><small>Platformaning foydalanuvchi qismiga qaytish</small></div><em>O'tish →</em></button>
       <div class="plat-version">UStorE Admin · 2026</div>`;
@@ -2495,6 +2690,34 @@
     `;
   }
 
+  // Platform 2.0, Bosqich 2 (33/34-band): Dashboard endi "operatsion boshqaruv
+  // markazi" — birinchi katta blok statistika EMAS, "bugun nima qilish kerak"
+  // degan savolga javob (Action Required, 4 ta aniq turkum). Faqat HAQIQIY
+  // hisoblangan sonlar (fabrikatsiya yo'q): to'lov tekshirish/bot ulash/
+  // muzlatish muddati/support — barchasi platform_admin_dashboard_summary'dan.
+  function renderAdminActionRequiredCards(s) {
+    const items = [
+      { count: s.newRequestsCount || 0, label: "Yangi to'lovlar", icon: 'inbox', tone: 'is-info', onclick: "switchTab('requests')" },
+      { count: s.awaitingBotConnectCount || 0, label: 'Bot ulash', icon: 'bolt', tone: 'is-primary', onclick: "openRequestsFilteredFromDashboard('APPROVED')" },
+      { count: s.freezeExpiredCount || 0, label: 'Muzlatish muddati tugagan', icon: 'lock', tone: 'is-warn', onclick: "openPage('EXPIRED_SHOPS')" },
+      { count: s.supportOpenCount || 0, label: 'Support', icon: 'headset', tone: 'is-warn', onclick: "switchTab('support')" },
+    ];
+    const total = items.reduce((sum, it) => sum + it.count, 0);
+    return `
+      <section class="plat-admin-action-required">
+        <h2>${total ? `Bugun sizdan ${total} ta amal talab qilinadi` : "Bugun hech qanday amal talab qilinmaydi"}</h2>
+        <div class="plat-admin-action-grid">
+          ${items.map((it) => `
+            <button type="button" class="plat-admin-action-card ${it.count ? it.tone : ''}" onclick="${it.onclick}">
+              <span class="plat-admin-action-icon">${pIcon(it.icon, 18)}</span>
+              <b>${it.count}</b>
+              <small>${it.label}</small>
+            </button>
+          `).join('')}
+        </div>
+      </section>
+    `;
+  }
   function renderAdminDashboardTab() {
     const s = dashboardSummary;
     if (!s) return `<div class="plat-admin-loading"><span class="spinner"></span><b>Dashboard yuklanmoqda</b><small>Ko'rsatkichlar tayyorlanmoqda...</small></div>`;
@@ -2504,6 +2727,20 @@
         <h1>Dashboard</h1>
         <p>Platforma holati, obunalar va asosiy ko'rsatkichlar.</p>
       </div>
+      ${renderAdminActionRequiredCards(s)}
+      ${(s.attentionItems || []).length ? `
+        <section class="plat-admin-section">
+          <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Nazorat</span><h2>Diqqat talab qiladi</h2></div><span class="plat-admin-section-icon is-warn">${pIcon('bell',18)}</span></div>
+          <div class="plat-admin-attention-list">
+            ${s.attentionItems.slice(0,6).map((it) => `
+              <button class="plat-admin-attention-row" onclick="${it.type === 'NEW_REQUEST' ? "switchTab('requests')" : it.type === 'SUPPORT_WAITING' ? `openAdminSupportThread(${it.ticketId})` : it.shopId ? `openShopDetailsFromDashboard('${it.shopId}')` : "switchTab('shops')"}">
+                <span class="plat-admin-attention-dot ${it.type === 'GRACE_EXPIRED' ? 'is-danger' : ''}"></span><span><b>${escapeHtml(it.label)}</b><small>${escapeHtml(it.detail || '')}</small></span>${pIcon('arrowRight',15)}
+              </button>
+            `).join('')}
+          </div>
+        </section>
+      ` : ''}
+      <h2 class="plat-admin-kpi-heading">Umumiy holat</h2>
       <div class="plat-admin-kpi-grid">
         <button type="button" class="plat-admin-kpi-card is-primary" onclick="switchTab('shops')">
           <span class="plat-admin-kpi-icon">${pIcon('shop', 20)}</span>
@@ -2520,25 +2757,13 @@
           <span class="plat-admin-kpi-copy"><small>Yangi so'rovlar</small><b>${s.newRequestsCount}</b><em>${s.newRequestsCount ? 'Tekshiruv kutmoqda' : 'Yangi so‘rov yo‘q'}</em></span>
           <span class="plat-admin-kpi-go">${pIcon('arrowRight',15)}</span>
         </button>
-        <button type="button" class="plat-admin-kpi-card is-neutral" onclick="switchTab('profile')">
+        <button type="button" class="plat-admin-kpi-card is-neutral" onclick="switchTab('settings')">
           <span class="plat-admin-kpi-icon">${pIcon('user', 20)}</span>
           <span class="plat-admin-kpi-copy"><small>Foydalanuvchilar</small><b>${s.totalUsersCount}</b><em>Do'kon egalari</em></span>
           <span class="plat-admin-kpi-go">${pIcon('arrowRight',15)}</span>
         </button>
       </div>
       ${renderAnalyticsSection()}
-      ${(s.attentionItems || []).length ? `
-        <section class="plat-admin-section">
-          <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Nazorat</span><h2>Diqqat talab qiladi</h2></div><span class="plat-admin-section-icon is-warn">${pIcon('bell',18)}</span></div>
-          <div class="plat-admin-attention-list">
-            ${s.attentionItems.slice(0,6).map((it) => `
-              <button class="plat-admin-attention-row" onclick="${it.type === 'NEW_REQUEST' ? "switchTab('requests')" : it.shopId ? `openShopDetailsFromDashboard('${it.shopId}')` : "switchTab('shops')"}">
-                <span class="plat-admin-attention-dot ${it.type === 'GRACE_EXPIRED' ? 'is-danger' : ''}"></span><span><b>${escapeHtml(it.label)}</b><small>${escapeHtml(it.detail || '')}</small></span>${pIcon('arrowRight',15)}
-              </button>
-            `).join('')}
-          </div>
-        </section>
-      ` : ''}
       <section class="plat-admin-section">
         <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">So'nggi faollik</span><h2>Yangi do'konlar</h2></div><button class="plat-admin-text-btn" onclick="switchTab('shops')">Barchasi ${pIcon('arrowRight',14)}</button></div>
         ${(s.recentShops || []).length ? `<div class="plat-admin-recent-list">${s.recentShops.slice(0,5).map((sh) => `
@@ -2640,6 +2865,39 @@
       <div class="plat-admin-shop-list">
         ${list.length ? list.map(renderAdminShopRow).join('') : renderAdminShopsEmpty()}
       </div>
+      ${renderAdminShopsTable(list)}
+    `;
+  }
+  // Platform 2.0, Completion pass (2.3-band): >=1024px'da professional table
+  // ko'rinishi. SAME `list` massividan (yuqoridagi karta-ro'yxat bilan bir
+  // xil filtrlangan ma'lumot) — yangi so'rov/state yo'q, faqat MUQOBIL
+  // taqdimot. Qaysi biri ko'rinishini platform.css'dagi @media qoidasi hal
+  // qiladi (mobil/tablet — karta, desktop — jadval), shuning uchun
+  // gorizontal overflow tekshiruvi ham bitta joyda.
+  function renderAdminShopsTable(list) {
+    if (!list.length) return '';
+    return `
+      <div class="plat-admin-shop-table-wrap">
+        <table class="plat-admin-shop-table">
+          <thead><tr><th>Do'kon</th><th>Egasi</th><th>Tarif</th><th>Status</th><th>Qolgan kun</th><th>Bot</th><th></th></tr></thead>
+          <tbody>
+            ${list.map((s) => {
+              const left = daysUntil(s.subscriptionExpiresAt);
+              const expiryClass = left !== null && left <= 0 ? 'is-danger' : left !== null && left <= 7 ? 'is-warn' : '';
+              const expiryText = left === null ? '—' : left <= 0 ? 'Tugagan' : `${left} kun`;
+              return `<tr onclick="openShopDetails('${s.id}')">
+                <td><b>${escapeHtml(s.botName || s.botUsername || s.publicCode || "Nomsiz do'kon")}</b></td>
+                <td>${escapeHtml(s.ownerTelegramId || '—')}</td>
+                <td>${escapeHtml(s.tariffName || 'Tarifsiz')}</td>
+                <td><span class="status-pill status-${s.status}">${escapeHtml(adminShopStatusLabel(s.status))}</span></td>
+                <td class="${expiryClass}">${expiryText}</td>
+                <td>${s.botUsername ? '@' + escapeHtml(s.botUsername) : "Ulanmagan"}</td>
+                <td class="plat-admin-shop-table-action"><button type="button" onclick="event.stopPropagation(); openShopDetails('${s.id}')">${pIcon('arrowRight',15)}</button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
     `;
   }
   function renderAdminShopsEmpty() {
@@ -2676,6 +2934,13 @@
   async function openShopDetailsFromDashboard(shopId) {
     if (!adminShops.length) await reloadAdminShops();
     openShopDetails(shopId);
+  }
+  // Platform 2.0, Bosqich 2 (34-band): Dashboard'ning "Bot ulash" Action
+  // Required kartasi bosilganda — Arizalar tabiga o'tib, mos filtrni ham
+  // shu zahoti qo'llaydi (faqat switchTab qilinsa filtr o'zgarmay qolardi).
+  function openRequestsFilteredFromDashboard(filter) {
+    switchTab('requests');
+    setRequestsFilter(filter);
   }
   // 2026-08-28, 054-migratsiya: "Obuna tarixi" (spec 7-bo'lim) — har bir
   // tarif almashtirish/uzaytirish hodisasi to'liq breakdown bilan.
@@ -2771,24 +3036,56 @@
         <div class="plat-mini-row">
           <span>${name}</span>
           <button class="billz-toggle-btn status-pill ${accessGranted ? 'status-ACTIVE' : ''}" onclick="${toggleOnclick}">
-            ${accessGranted ? '✅ Ruxsat berilgan' : '— Ruxsat berilmagan'}
+            ${accessGranted ? "Ruxsat berilgan" : "Ruxsat berilmagan"}
           </button>
         </div>
         <div class="plat-integration-status-line is-${badge.tone}"><span class="plat-integration-status-dot"></span>${badge.label}</div>
       </div>
     `;
   }
+  // Platform 2.0, Completion pass (2.4-band): Do'kon-tafsiloti endi bitta
+  // uzun sahifa EMAS — summary + 6 ta navigatsiya-qatori, har biri o'z
+  // sub-screeniga ochiladi (renderActivePage()'dagi SHOP_SUB_* route'lar).
+  // Working funksiyalarning HECH BIRI o'zgarmadi/duplikatsiya qilinmadi —
+  // faqat qaysi sahifada joylashgani o'zgardi.
   function renderShopDetailsBody() {
     const s = selectedShopDetails;
     if (!s) return '<p class="empty">Do\'kon topilmadi.</p>';
+    const left = daysUntil(s.subscriptionExpiresAt);
+    const rows = [
+      ['SHOP_SUB_SUBSCRIPTION', 'diamond', 'Obuna va tarif', s.tariffName || 'Tarifsiz'],
+      ['SHOP_SUB_BOT', 'bolt', 'Bot va integratsiyalar', s.botUsername ? '@'+s.botUsername : "Bot ulanmagan"],
+      ['SHOP_SUB_PAYMENTS', 'wallet', "To'lovlar", "To'lov tarixi"],
+      ['SHOP_SUB_LIFECYCLE', 'lock', "Do'kon holati", statusLabel(s.status)],
+      ['SHOP_SUB_ACTIVITY', 'clock', 'Faoliyat tarixi', 'Admin amallari'],
+      ['SHOP_SUB_SUPPORT', 'headset', 'Support', "Murojaatlar"],
+    ];
     return `
-      <div class="card">
-        <h2>Do'kon</h2>
-        <div class="preview-row"><span>Owner</span><span>${escapeHtml(s.ownerTelegramId || '-')}</span></div>
-        <div class="preview-row"><span>Telegram bot</span><span>${s.botUsername ? '@' + escapeHtml(s.botUsername) : '-'}</span></div>
-        <div class="preview-row"><span>Yaratilgan</span><span>${formatDate(s.createdAt)}</span></div>
-        <div class="preview-row"><span>Holati</span><span>${statusLabel(s.status)}</span></div>
+      <section class="plat-shop-detail-hero-pro">
+        <span class="plat-admin-detail-icon">${pIcon('shop',24)}</span>
+        <div>
+          <h2>${escapeHtml(s.botName || s.botUsername || s.publicCode || "Nomsiz do'kon")}</h2>
+          <p>Owner: ${escapeHtml(s.ownerTelegramId || '-')} · Yaratilgan: ${formatDate(s.createdAt)}</p>
+          <span class="status-pill status-${s.status}">${statusLabel(s.status)}</span>
+        </div>
+      </section>
+      ${s.status === 'ACTIVE' && left !== null ? `<div class="plat-shop-detail-days-strip"><b>${left <= 0 ? 'Tugagan' : `${left} kun`}</b><small>obuna qoldi</small></div>` : ''}
+      <div class="plat-shop-nav-rows">
+        ${rows.map(([page, icon, title, subtitle]) => `
+          <button type="button" class="plat-shop-nav-row" onclick="openShopSubScreen('${page}')">
+            <span class="plat-shop-nav-row-icon">${pIcon(icon,18)}</span>
+            <span class="plat-shop-nav-row-text"><b>${escapeHtml(title)}</b><small>${escapeHtml(subtitle)}</small></span>
+            ${pIcon('arrowRight',16)}
+          </button>
+        `).join('')}
       </div>
+    `;
+  }
+  function openShopSubScreen(page) { openPage(page); if (page === 'SHOP_SUB_ACTIVITY') loadShopActivity(selectedShopDetails.id); }
+  function renderShopSubscriptionBody() {
+    const s = selectedShopDetails;
+    if (!s) return '<p class="empty">Do\'kon topilmadi.</p>';
+    return `
       <div class="card">
         <h2>Obuna</h2>
         <div class="preview-row"><span>Tarif</span><span>${escapeHtml(s.tariffName || 'Tarifsiz')}</span></div>
@@ -2802,6 +3099,25 @@
         <button class="secondary" onclick="applyTariffFromShopDetails('${s.id}')">Tarifni bog'lash</button>
       </div>
       ${s.status !== 'TERMINATED' ? renderGrantDaysCard(s.id) : ''}
+    `;
+  }
+  // Platform 2.0, Completion pass (2.6-band): "Bot va integratsiyalar
+  // markazi" — avval faqat alert-stub edi. Endi haqiqiy bot-identifikatsiya
+  // (username/ID/holat/ulangan sana) + mavjud 4 ta integratsiya qatori
+  // (o'zgarishsiz qayta ishlatilgan).
+  function renderShopBotIntegrationsBody() {
+    const s = selectedShopDetails;
+    if (!s) return '<p class="empty">Do\'kon topilmadi.</p>';
+    return `
+      <div class="card">
+        <h2>Telegram bot</h2>
+        ${s.botUsername ? `
+          <div class="preview-row"><span>Username</span><span>@${escapeHtml(s.botUsername)}</span></div>
+          <div class="preview-row"><span>Bot ID</span><span class="is-code">${escapeHtml(s.botId || '-')}</span></div>
+          <div class="preview-row"><span>Holati</span><span>${s.botStatus === 'DISABLED' ? "O'chirilgan" : 'Faol'}</span></div>
+          <div class="preview-row"><span>Ulangan sana</span><span>${s.botConnectedAt ? formatDate(s.botConnectedAt) : '-'}</span></div>
+        ` : `<p class="empty">Bu do'konga hali bot ulanmagan.</p>`}
+      </div>
       <div class="card">
         <h2>Integratsiyalar</h2>
         <p class="muted plat-integrations-hint">Yuqoridagi tugma faqat RUXSATni yoqadi/o'chiradi — do'kon o'zi ulanish kredensiallarini kiritmaguncha "Ulangan" bo'lib qolmaydi. Haqiqiy holat pastda.</p>
@@ -2810,9 +3126,55 @@
         ${renderIntegrationRow('PAYME', s.paymeAccessGranted, `togglePaymeAccess('${s.id}', ${!s.paymeAccessGranted})`, s.paymeConnectionStatus, { verified: s.paymeVerified })}
         ${renderIntegrationRow('UZUM', s.uzumAccessGranted, `toggleUzumAccess('${s.id}', ${!s.uzumAccessGranted})`, s.uzumConnectionStatus, {})}
       </div>
-      ${renderLifecycleControlsCard(s)}
-      ${renderSubscriptionHistoryCard(s.id)}
     `;
+  }
+  function renderShopLifecycleBody() {
+    const s = selectedShopDetails;
+    if (!s) return '<p class="empty">Do\'kon topilmadi.</p>';
+    return renderLifecycleControlsCard(s);
+  }
+  function renderShopPaymentsBody() {
+    const s = selectedShopDetails;
+    if (!s) return '<p class="empty">Do\'kon topilmadi.</p>';
+    return renderSubscriptionHistoryCard(s.id);
+  }
+  function renderShopSupportBody() {
+    const s = selectedShopDetails;
+    if (!s) return '<p class="empty">Do\'kon topilmadi.</p>';
+    return `<div class="card"><h2>Support</h2><p class="muted">Bu do'kon egasining murojaatlari umumiy Support bo'limida ko'rinadi.</p><button class="secondary" onclick="switchTab('support')">${pIcon('headset',16)} Support'ni ochish</button></div>`;
+  }
+  // "Faoliyat tarixi" — platform_admin_action_log'dan (REAL, mavjud audit
+  // jadval, 017-migratsiya) o'qiladi, texnik action/details JSON emas,
+  // inson o'qiy oladigan bitta qator sifatida.
+  let shopActivityForShop = null; // { shopId, rows } yoki null
+  async function loadShopActivity(shopId) {
+    shopActivityForShop = null;
+    try {
+      const data = await callPlatformApi('platform_list_shop_admin_actions', { shopId });
+      shopActivityForShop = { shopId, rows: data.actions || [] };
+    } catch (e) { console.error(e); shopActivityForShop = { shopId, rows: [] }; }
+    if (activePage === 'SHOP_SUB_ACTIVITY') render();
+  }
+  function shopActivityLabel(a) {
+    const d = a.details || {};
+    if (a.action === 'GRANT_DAYS') return `${d.days || '?'} kunga uzaytirildi${d.reason ? ' (' + d.reason + ')' : ''}`;
+    if (a.action === 'FREEZE') return `Muzlatildi${d.reason ? ' — ' + d.reason : ''}`;
+    if (a.action === 'REACTIVATE') return 'Qayta faollashtirildi';
+    if (a.action === 'TERMINATE') return `O'chirildi${d.reason ? ' — ' + d.reason : ''}`;
+    if (a.action === 'EXTEND_FROZEN_GRACE') return `Muzlatish muddati ${d.days || '?'} kunga uzaytirildi`;
+    return a.action;
+  }
+  function renderShopActivityBody() {
+    const s = selectedShopDetails;
+    if (!s) return '<p class="empty">Do\'kon topilmadi.</p>';
+    if (!shopActivityForShop || shopActivityForShop.shopId !== s.id) return `<div class="plat-admin-loading"><span class="spinner"></span></div>`;
+    const rows = shopActivityForShop.rows;
+    if (!rows.length) return `<div class="plat-admin-empty"><span>${pIcon('clock',24)}</span><b>Hozircha faoliyat yo'q</b><small>Admin bu do'kon uchun amal bajarganda shu yerda ko'rinadi.</small></div>`;
+    return `<div class="card">${rows.map((a) => `
+      <div class="plat-history-row">
+        <div class="plat-history-row-head"><b>${escapeHtml(shopActivityLabel(a))}</b><small>${formatDateTime(a.createdAt)}</small></div>
+      </div>
+    `).join('')}</div>`;
   }
   function subscriptionHistoryEventLabel(eventType) {
     if (eventType === 'NEW') return 'Birinchi obuna';
@@ -2843,15 +3205,15 @@
   async function applyTariffFromShopDetails(shopId) {
     const sel = document.getElementById('plat-shop-tariff-select');
     const tariffId = sel ? sel.value : '';
-    if (!tariffId) return alert('Tarif tanlang.');
+    if (!tariffId) return showToast('Tarif tanlang.', 'warning');
     try {
       await callPlatformApi('platform_apply_tariff', { shopId, tariffId, notifyCustomer: true });
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
-      alert('Tarif bog\'landi.');
+      showToast('Tarif bog\'landi.', 'success');
       render();
       loadSubscriptionHistory(shopId);
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
 
   // ---- 15-band: qo'lda kun qo'shish -------------------------------------
@@ -2884,11 +3246,11 @@
     const days = grantDaysPreset === 'other'
       ? Number((document.getElementById('plat-grant-days-custom')?.value || '').trim())
       : Number(grantDaysPreset);
-    if (!Number.isFinite(days) || days <= 0) return alert('Kun sonini tanlang yoki kiriting.');
+    if (!Number.isFinite(days) || days <= 0) return showToast('Kun sonini tanlang yoki kiriting.', 'warning');
     const reason = grantDaysReasonPreset === 'other'
       ? (document.getElementById('plat-grant-days-reason-other')?.value || '').trim()
       : (grantDaysReasonPreset || '');
-    if (!reason) return alert('Sababni tanlang yoki kiriting.');
+    if (!reason) return showToast('Sababni tanlang yoki kiriting.', 'warning');
     grantDaysSubmitting = true;
     render();
     try {
@@ -2897,15 +3259,80 @@
       grantDaysReasonPreset = null;
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
-      showActionToast("✅ Kun qo'shildi.");
-    } catch (e) { alert(e.message || String(e)); }
+      showActionToast("Kun qo'shildi.");
+    } catch (e) { showToast(e.message || String(e), 'error'); }
     finally { grantDaysSubmitting = false; render(); }
   }
-  // Kichik, ekranni bloklamaydigan holat xabari (mavjud shop-app'dagi
-  // showActionToast naqshiga o'xshash, lekin platform.css'ning o'zida — bu
-  // yerda shunchaki qisqa alert() bilan almashtiriladi, alohida toast UI
-  // hozircha yo'q.
-  function showActionToast(text) { alert(text); }
+  // Platform 2.0, Completion pass (2.9-band): haqiqiy, bloklamaydigan Toast
+  // tizimi — avval bu funksiya shunchaki alert() edi (vaqtinchalik naqsh).
+  // Toast'lar #app'dan TASHQARIDA, alohida <div id="plat-toast-stack">
+  // ichida yashaydi — shu sababli har bir render() (butun #app'ni almashtirib
+  // qo'yadigan) chaqiruvi ko'rinib turgan toast'ni yo'qotib qo'ymaydi.
+  function ensureToastStack() {
+    let stack = document.getElementById('plat-toast-stack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.id = 'plat-toast-stack';
+      stack.className = 'plat-toast-stack';
+      document.body.appendChild(stack);
+    }
+    return stack;
+  }
+  const TOAST_ICON_BY_VARIANT = { success: 'check', error: 'info', warning: 'info', info: 'info' };
+  function showToast(message, variant) {
+    const v = ['success', 'error', 'warning', 'info'].includes(variant) ? variant : 'info';
+    const stack = ensureToastStack();
+    const el = document.createElement('div');
+    el.className = `plat-toast is-${v}`;
+    el.innerHTML = `<span class="plat-toast-icon">${pIcon(TOAST_ICON_BY_VARIANT[v], 16)}</span><span class="plat-toast-text"></span>`;
+    el.querySelector('.plat-toast-text').textContent = String(message || '');
+    stack.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('is-shown'));
+    const dismissMs = v === 'error' || v === 'warning' ? 4200 : 2600;
+    const remove = () => { el.classList.remove('is-shown'); setTimeout(() => el.remove(), 200); };
+    setTimeout(remove, dismissMs);
+    el.addEventListener('click', remove);
+  }
+  // Eski nom saqlanadi (chaqiruvchilar o'zgarmasin) — endi haqiqiy Toast'ga
+  // yo'naltiradi, alert() emas.
+  function showActionToast(text) { showToast(text, 'success'); }
+
+  // Platform 2.0, Completion pass (2.10-band): native confirm() o'rnini
+  // bosuvchi qayta ishlatiladigan tasdiqlash komponenti — Promise<boolean>
+  // qaytaradi, shuning uchun chaqiruvchi kod deyarli o'zgarmaydi:
+  // `if (!confirm(msg)) return;` -> `if (!(await showConfirm(msg))) return;`.
+  // Desktop'da markazlashgan modal, mobil'da bottom-sheet (bitta komponent,
+  // faqat CSS orqali javob beradi — platform.css'dagi @media qoidasi).
+  function showConfirm(message, opts) {
+    opts = opts || {};
+    return new Promise((resolve) => {
+      const backdrop = document.createElement('div');
+      backdrop.className = 'plat-confirm-backdrop';
+      backdrop.innerHTML = `
+        <div class="plat-confirm-sheet ${opts.danger ? 'is-danger' : ''}">
+          <div class="plat-confirm-sheet-handle"></div>
+          ${opts.title ? `<h3>${escapeHtml(opts.title)}</h3>` : ''}
+          <p></p>
+          <div class="plat-confirm-actions">
+            <button type="button" class="secondary" data-action="cancel">${escapeHtml(opts.cancelLabel || 'Bekor qilish')}</button>
+            <button type="button" class="${opts.danger ? 'danger' : 'primary'}" data-action="confirm">${escapeHtml(opts.confirmLabel || 'Tasdiqlash')}</button>
+          </div>
+        </div>`;
+      backdrop.querySelector('p').textContent = String(message || '');
+      document.body.appendChild(backdrop);
+      requestAnimationFrame(() => backdrop.classList.add('is-shown'));
+      const cleanup = (result) => {
+        backdrop.classList.remove('is-shown');
+        setTimeout(() => backdrop.remove(), 180);
+        resolve(result);
+      };
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) { cleanup(false); return; }
+        const btn = e.target.closest('[data-action]');
+        if (btn) cleanup(btn.dataset.action === 'confirm');
+      });
+    });
+  }
 
   // ---- 16/18/19-bandlar: muzlatish/qayta faollashtirish/o'chirish -------
   // Muzlatish muddati haqiqatan tugaganmi — platformLifecycleSettings.retentionDays
@@ -2928,6 +3355,17 @@
     const daysLeft = Math.max(0, retentionDays - daysSinceFrozen);
     return `Muzlatilganiga ${daysSinceFrozen} kun bo'ldi. Saqlash muddati tugashiga ${daysLeft} kun qoldi.`;
   }
+  // Platform 2.0, Completion pass (5-band): "X / 60 kun" progress — HAM
+  // admin, HAM user tomonda qayta ishlatiladi (bitta manba). Mavjud
+  // frozenAt/retentionDays hisob-kitobidan — yangi biznes-qoida YO'Q.
+  function renderFreezeProgressBar(frozenAt) {
+    if (!frozenAt) return '';
+    const retentionDays = platformLifecycleSettings.retentionDays || SHOP_FREEZE_DAYS;
+    const daysSinceFrozen = Math.max(0, Math.floor((Date.now() - new Date(frozenAt).getTime()) / (24 * 3600 * 1000)));
+    const shown = Math.min(daysSinceFrozen, retentionDays);
+    const pct = Math.min(100, Math.round((daysSinceFrozen / retentionDays) * 100));
+    return `<div class="plat-freeze-progress"><div class="plat-freeze-progress-bar"><i style="width:${pct}%"></i></div><small>${shown} / ${retentionDays} kun</small></div>`;
+  }
   function renderLifecycleControlsCard(s) {
     if (s.status === 'PROVISIONING') return '';
     return `
@@ -2949,11 +3387,28 @@
           <datalist id="plat-freeze-reasons">${(platformLifecycleSettings.freezeReasons||[]).map((reason)=>`<option value="${escapeHtml(reason)}"></option>`).join('')}</datalist>
           <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitFreezeShop('${s.id}')">❄️ Muzlatish</button>
         ` : ''}
-        ${s.status === 'FROZEN' ? `<p class="muted" style="margin:0 0 8px">${escapeHtml(freezeDurationStatusText(s))}</p>` : ''}
-        ${s.status === 'FROZEN' ? `<button class="primary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitReactivateShop('${s.id}')">✅ Qayta faollashtirish</button>` : ''}
+        ${s.status === 'FROZEN' ? `<p class="muted" style="margin:0 0 8px">${escapeHtml(freezeDurationStatusText(s))}</p>${renderFreezeProgressBar(s.frozenAt)}` : ''}
+        ${s.status === 'FROZEN' ? `<button class="primary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitReactivateShop('${s.id}')">${pIcon('check',16)} Qayta faollashtirish</button>` : ''}
         ${s.status === 'FROZEN' ? renderExtendGraceCard(s.id) : ''}
-        ${s.status !== 'TERMINATED' ? renderTerminateSection(s.id, s.shopName || s.publicCode) : '<p class="muted">Bu do\'kon o\'chirilgan.</p>'}
       </div>
+      ${renderDangerZone(s)}
+    `;
+  }
+  // Platform 2.0, Completion pass (2.7-band): Terminate/O'chirish endi
+  // oddiy "Boshqaruv" kartasi ICHIDA emas — alohida, aniq ajratilgan
+  // "Danger Zone" bo'limida (spec 45/46-band aynan shu ranglar/masofa).
+  // renderTerminateSection'ning o'zi (ikki bosqichli sabab→tasdiq oqimi,
+  // do'kon nomini qayta yozish talabi) BUTUNLAY o'zgarmadi — faqat
+  // presentatsiya konteyneri yangi.
+  function renderDangerZone(s) {
+    if (s.status === 'TERMINATED') return '<p class="muted">Bu do\'kon o\'chirilgan.</p>';
+    return `
+      <section class="plat-danger-zone">
+        <span class="plat-admin-eyebrow">Xavfli hudud</span>
+        <h2>Danger Zone</h2>
+        <p>Bu do'konni butunlay o'chirish — barcha ma'lumot, bot ulanishi va integratsiyalar qaytarib bo'lmas tarzda yo'qoladi.</p>
+        ${renderTerminateSection(s.id, s.shopName || s.publicCode)}
+      </section>
     `;
   }
   // Lifecycle round: "Kun qo'shish" (yuqorida, subscription_expires_at —
@@ -2988,7 +3443,7 @@
     const days = extendGraceDaysPreset === 'other'
       ? Number((document.getElementById('plat-extend-grace-days-custom')?.value || '').trim())
       : Number(extendGraceDaysPreset);
-    if (!Number.isFinite(days) || days <= 0) return alert('Kun sonini tanlang yoki kiriting.');
+    if (!Number.isFinite(days) || days <= 0) return showToast('Kun sonini tanlang yoki kiriting.', 'warning');
     extendGraceSubmitting = true;
     render();
     try {
@@ -2996,8 +3451,8 @@
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
       extendGraceDaysPreset = null;
-      showActionToast('✅ Muddat uzaytirildi.');
-    } catch (e) { alert(e.message || String(e)); }
+      showActionToast('Muddat uzaytirildi.');
+    } catch (e) { showToast(e.message || String(e), 'error'); }
     finally { extendGraceSubmitting = false; render(); }
   }
   function renderTerminateSection(shopId, shopLabel) {
@@ -3050,7 +3505,7 @@
   }
   function confirmTerminateStepReason() {
     const reason = (document.getElementById('plat-terminate-reason')?.value || '').trim();
-    if (!reason) return alert('Sababni kiriting.');
+    if (!reason) return showToast('Sababni kiriting.', 'warning');
     terminateReasonDraft = reason;
     terminateStep = 'confirm';
     render();
@@ -3058,14 +3513,14 @@
   async function submitFreezeShop(shopId) {
     if (lifecycleActionSubmitting) return;
     const reason = (document.getElementById('plat-freeze-reason')?.value || '').trim();
-    if (!reason) return alert('Sababni kiriting.');
+    if (!reason) return showToast('Sababni kiriting.', 'warning');
     lifecycleActionSubmitting = true;
     render();
     try {
       await callPlatformApi('platform_freeze_shop', { shopId, reason });
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
     finally { lifecycleActionSubmitting = false; render(); }
   }
   async function submitReactivateShop(shopId) {
@@ -3076,13 +3531,13 @@
       await callPlatformApi('platform_reactivate_shop', { shopId });
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
     finally { lifecycleActionSubmitting = false; render(); }
   }
   async function submitTerminateShop(shopId) {
     if (lifecycleActionSubmitting) return;
     const reason = terminateReasonDraft.trim();
-    if (!reason) return alert('Sababni kiriting.');
+    if (!reason) return showToast('Sababni kiriting.', 'warning');
     lifecycleActionSubmitting = true;
     render();
     try {
@@ -3096,8 +3551,8 @@
       selectedShopDetails = null;
       await reloadAdminShops();
       switchTab('shops');
-      showActionToast("✅ Do'kon butunlay o'chirildi.");
-    } catch (e) { alert(e.message || String(e)); }
+      showActionToast("Do'kon butunlay o'chirildi.");
+    } catch (e) { showToast(e.message || String(e), 'error'); }
     finally { lifecycleActionSubmitting = false; render(); }
   }
 
@@ -3110,7 +3565,7 @@
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || selectedShopDetails;
       render();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   // Click.uz avtomatik to'lov integratsiyasi — Billz'ning aynan bir xil
   // ruxsat-darvoza naqshi.
@@ -3120,7 +3575,7 @@
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || selectedShopDetails;
       render();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   // Payme/Uzum avtomatik to'lov integratsiyasi — aynan bir xil naqsh.
   async function togglePaymeAccess(shopId, enable) {
@@ -3129,7 +3584,7 @@
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || selectedShopDetails;
       render();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   async function toggleUzumAccess(shopId, enable) {
     try {
@@ -3137,7 +3592,7 @@
       await reloadAdminShops();
       selectedShopDetails = adminShops.find((s) => s.id === shopId) || selectedShopDetails;
       render();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
 
   // ---- Bot ulash (mavjud funksiya, xatti-harakati o'zgarishsiz) ---------
@@ -3317,6 +3772,37 @@
     if (!rows.length) return `<p class="muted">Tarix hali shakllanmagan.</p>`;
     return `<div class="plat-application-timeline">${rows.map((h,idx) => { const info = historyEventInfo(h); return `<div class="plat-application-timeline-row ${idx===rows.length-1?'is-latest':''}"><span class="plat-application-timeline-dot">${pIcon(info.icon,14)}</span><div><b>${escapeHtml(info.label)}</b>${info.note?`<small>${escapeHtml(info.note.replace(/^ · /,''))}</small>`:''}<time>${formatDateTime(h.createdAt)}</time></div></div>`; }).join('')}</div>`;
   }
+  // Platform 2.0, Bosqich 1 (spec 22/40-band): raqamlangan step-progress —
+  // FAQAT haqiqiy backend maydonlaridan (status/paymentClaimedAt/shopCreated)
+  // hisoblanadi, hech qanday to'qib chiqarilgan bosqich yo'q (masalan alohida
+  // "bot ulandi" bosqichi YO'Q, chunki backendda buning uchun alohida
+  // vaqt-belgisi mavjud emas — u shopCreated bilan bitta atomik amalda
+  // sodir bo'ladi, shuning uchun "Do'kon yaratildi" ikkalasini ham qamrab
+  // oladi). REJECTED holatda stepper ko'rsatilmaydi — u alohida, aniq
+  // rad-etish xabari bilan ifodalanadi (pastda, mavjud kod).
+  function renderRequestStepProgress(r) {
+    if (r.status === 'REJECTED') return '';
+    const reviewing = !!r.paymentClaimedAt && r.status === 'NEW';
+    const approved = r.status === 'APPROVED';
+    const isNewShop = r.kind === 'NEW_SHOP';
+    const steps = isNewShop
+      ? [
+          { label: 'Tarif tanlandi', done: true },
+          { label: "To'lov yuborildi", done: !!r.paymentClaimedAt, current: !r.paymentClaimedAt },
+          { label: reviewing ? "To'lov tekshirilmoqda" : "To'lov tasdiqlandi", done: approved || r.shopCreated, current: reviewing },
+          { label: "Do'kon yaratildi", done: !!r.shopCreated, current: approved && !r.shopCreated },
+        ]
+      : [
+          { label: "To'lov yuborildi", done: !!r.paymentClaimedAt, current: !r.paymentClaimedAt },
+          { label: reviewing ? "To'lov tekshirilmoqda" : "To'lov tasdiqlandi", done: approved, current: reviewing },
+          { label: 'Yakunlandi', done: approved, current: false },
+        ];
+    return `<div class="plat-req-steps">${steps.map((s, i) => `
+      <div class="plat-req-step ${s.done ? 'is-done' : s.current ? 'is-current' : ''}">
+        <span class="plat-req-step-dot">${s.done ? pIcon('check', 12) : i + 1}</span>
+        <b>${escapeHtml(s.label)}</b>
+      </div>`).join('')}</div>`;
+  }
   function renderMyRequestDetailsBody() {
     const r = myRequests.find((x) => x.id === selectedMyRequestId);
     if (!r) return `<div class="plat-my-requests-empty"><span>${pIcon('info',26)}</span><h2>Ariza topilmadi</h2><button class="secondary" onclick="openMyRequests()">Arizalarga qaytish</button></div>`;
@@ -3326,6 +3812,7 @@
     const needsReceipt = r.status === 'NEW' && !!r.paymentClaimedAt && !!r.receiptRequestedAt && !r.hasReceipt;
     const history = requestHistoryById[r.id] || [];
     return `<div class="plat-application-detail-hero"><div><span class="plat-admin-eyebrow">${escapeHtml(requestTypeLabel(r))}</span><h2>${escapeHtml(requestShopName(r))}</h2><p>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</p></div><span class="plat-request-status-stack"><span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span>${secondary?`<span class="plat-request-secondary-pill is-${secondary.tone}">${escapeHtml(secondary.label)}</span>`:''}</span></div>
+      ${renderRequestStepProgress(r)}
       ${isPaymentDraft ? `<section class="plat-payment-draft-resume"><span>${pIcon('wallet',20)}</span><div><h3>To'lov hali tasdiqlanmagan</h3><p>Telegram oynasi yopilib qolgan bo'lsa ham shu arizadan to'lovni davom ettirishingiz mumkin.</p><small>Ariza ${escapeHtml(paymentDraftTimeLeftLabel(r.paymentDeadlineAt))} ichida avtomatik o'chadi.</small><button class="primary" onclick="resumeNewShopPayment('${r.id}')">${pIcon('arrowRight',16)} To'lovni davom ettirish</button></div></section>` : ''}
       ${needsReceipt ? `<section class="plat-receipt-attention is-detail"><span class="plat-receipt-attention-icon">${pIcon('file',20)}</span><div><h3>To'lovni tasdiqlash uchun chek kerak</h3><p>To'lovingizni aniqlay olmadik. Tekshiruvni davom ettirish uchun to'lov chekini yuboring.</p></div></section>` : ''}
       <section class="plat-application-info-grid">
@@ -3341,7 +3828,7 @@
         ${r.requestedBotBio ? `<div><small>Bot bio</small><b>${escapeHtml(r.requestedBotBio)}</b></div>` : ''}
         ${r.hasBotPhoto ? `<button class="secondary" onclick="viewBotPhoto('${r.id}')">${pIcon('upload',15)} Bot rasmini ko'rish</button>` : ''}
       </section>` : ''}
-      ${(isPaymentDraft || needsReceipt) ? renderMyRequestReceiptUpload(r) : r.status === 'NEW' && r.hasReceipt ? `<div class="plat-receipt-sent-state"><span>${pIcon('check',18)}</span><div><b>✅ Chek yuborildi</b><small>To'lovingiz tekshirilmoqda.</small></div></div>` : ''}
+      ${(isPaymentDraft || needsReceipt) ? renderMyRequestReceiptUpload(r) : r.status === 'NEW' && r.hasReceipt ? `<div class="plat-receipt-sent-state"><span>${pIcon('check',18)}</span><div><b>Chek yuborildi</b><small>To'lovingiz tekshirilmoqda.</small></div></div>` : ''}
       ${r.status === 'REJECTED' && r.rejectReason ? `<div class="notice error">Rad etish sababi: ${escapeHtml(r.rejectReason)}</div>` : ''}
       ${r.kind === 'NEW_SHOP' && r.shopCreated ? `<div class="plat-shop-created-user"><span>${pIcon('shop',20)}</span><div><b>Do'kon faollashtirildi</b><small>${escapeHtml(r.requestedShopName || requestShopName(r))} owner Telegram ID ${escapeHtml(r.ownerTelegramId || '—')} ga biriktirildi.</small></div></div>` : ''}
       <section class="plat-application-timeline-card"><div class="plat-application-section-title"><span>${pIcon('clock',17)}</span><div><b>Ariza tarixi</b><small>Har bir bosqich server vaqti bilan qayd etiladi.</small></div></div>${requestHistoryLoadingId===r.id && !history.length?`<div class="plat-request-list-loading"><span class="spinner"></span></div>`:renderRequestTimeline(history,r)}</section>`;
@@ -3358,8 +3845,8 @@
   function onMyRequestReceiptPicked(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { alert('Faqat JPG, PNG yoki WebP rasm qabul qilinadi.'); return; }
-    if (file.size > 6 * 1024 * 1024) { alert("Rasm hajmi 6MB dan katta bo'lmasin."); return; }
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { showToast('Faqat JPG, PNG yoki WebP rasm qabul qilinadi.', 'warning'); return; }
+    if (file.size > 6 * 1024 * 1024) { showToast("Rasm hajmi 6MB dan katta bo'lmasin.", 'warning'); return; }
     clearMyRequestReceiptFile(false);
     myRequestReceiptFile = file;
     myRequestReceiptPreviewUrl = URL.createObjectURL(file);
@@ -3381,7 +3868,7 @@
       await loadMyRequests(false);
       await loadRequestHistory(requestId, false);
       render();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
     finally { attachingMyRequestReceipt = false; render(); }
   }
   function lifecycleUserText(template, shop) {
@@ -3413,6 +3900,7 @@
     return `<section class="plat-lifecycle-attention ${terminated?'is-terminated':'is-frozen'}">
       <span class="plat-lifecycle-attention-icon">${pIcon(terminated?'info':'lock',22)}</span>
       <div class="plat-lifecycle-attention-copy"><span class="plat-admin-eyebrow">${terminated?"Do'kon o'chirilgan":"Do'kon muzlatilgan"}</span><h3>${escapeHtml(title)}</h3><p><b>${escapeHtml(shop.shopName || shop.name || "Do'kon")}</b></p><div class="plat-lifecycle-message">${escapeHtml(body).replaceAll('\\n','<br>')}</div>
+      ${!terminated ? renderFreezeProgressBar(shop.frozenAt) : ''}
       ${shop.lifecycleChangedAt?`<small>${formatDateTime(shop.lifecycleChangedAt)}</small>`:''}
       <div class="plat-lifecycle-actions">${!terminated?`<button class="secondary" onclick="switchTab('subscription')">Obunani ko'rish</button>`:''}<button class="primary" onclick="openLifecycleSupport()">${escapeHtml(platformLifecycleSettings.supportLabel || "Admin bilan bog'lanish")}</button></div></div>
     </section>`;
@@ -3425,7 +3913,7 @@
     const active = needsReceipt || receiptSent;
     const attention = !active ? '' : needsReceipt
       ? `<section class="plat-receipt-attention"><span class="plat-receipt-attention-icon">${pIcon('file',20)}</span><div class="plat-receipt-attention-copy"><h3>To'lovni tasdiqlash uchun chek kerak</h3><p><b>${escapeHtml(requestShopName(needsReceipt))}</b> do'koni bo'yicha to'lovingizni aniqlay olmadik. Tekshiruvni davom ettirish uchun chek yuboring.</p><div><button class="primary" onclick="openMyRequestDetails('${needsReceipt.id}',true)">Chekni yuborish</button><button class="secondary" onclick="openMyRequestDetails('${needsReceipt.id}')">Arizani ko'rish</button></div></div></section>`
-      : `<section class="plat-receipt-attention is-sent"><span class="plat-receipt-attention-icon">${pIcon('check',20)}</span><div class="plat-receipt-attention-copy"><h3>✅ Chek yuborildi</h3><p>To'lovingiz tekshirilmoqda.</p><div><button class="secondary" onclick="openMyRequestDetails('${receiptSent.id}')">Arizani ko'rish</button></div></div></section>`;
+      : `<section class="plat-receipt-attention is-sent"><span class="plat-receipt-attention-icon">${pIcon('check',20)}</span><div class="plat-receipt-attention-copy"><h3>Chek yuborildi</h3><p>To'lovingiz tekshirilmoqda.</p><div><button class="secondary" onclick="openMyRequestDetails('${receiptSent.id}')">Arizani ko'rish</button></div></div></section>`;
     const openCount = myRequests.filter((r) => r.status === 'NEW').length;
     return `${attention}<button class="plat-my-requests-home-link" onclick="openMyRequests()"><span>${pIcon('inbox',18)}</span><span><b>Arizalarim</b><small>${myRequests.length ? `${myRequests.length} ta ariza · ${openCount} ta faol` : "So'rovlaringiz holatini kuzating"}</small></span>${pIcon('arrowRight',16)}</button>`;
   }
@@ -3481,14 +3969,14 @@
     return `
       <div class="plat-admin-list-head">
         <span class="plat-admin-eyebrow">To'lov nazorati</span>
-        <h1>So'rovlar</h1>
+        <h1>Arizalar</h1>
         <p>Obuna va yangi do'kon to'lovlarini tezkor tekshiring.</p>
       </div>
       <div class="plat-admin-request-stats">
         <div><span class="is-blue">${pIcon('inbox',17)}</span><b>${open.length}</b><small>Yangi</small></div>
-        <div><span class="is-violet">${pIcon('clock',17)}</span><b>${reviewing}</b><small>Tekshiruvda</small></div>
-        <div><span class="is-amber">${pIcon('file',17)}</span><b>${receipt}</b><small>Chek so'ralgan</small></div>
-        <div><span class="is-green">${pIcon('check',17)}</span><b>${approvedToday}</b><small>Bugun tasdiq</small></div>
+        <div><span class="is-blue">${pIcon('clock',17)}</span><b>${reviewing}</b><small>Tekshiruvda</small></div>
+        <div><span class="is-blue">${pIcon('file',17)}</span><b>${receipt}</b><small>Chek so'ralgan</small></div>
+        <div><span class="is-blue">${pIcon('check',17)}</span><b>${approvedToday}</b><small>Bugun tasdiq</small></div>
       </div>
       <label class="plat-admin-search is-wide">${pIcon('search',18)}<input type="text" placeholder="Ism, @username, Telegram ID yoki tarif" value="${escapeHtml(requestsSearchQuery)}" oninput="setRequestsSearch(this.value)"></label>
       <div class="plat-admin-segment">
@@ -3535,6 +4023,47 @@
     openPage('REQUEST_DETAILS');
     loadRequestHistory(requestId);
   }
+  // Platform 2.0, Completion pass (2.2-band): "Keyingi amal" — ariza
+  // tafsilotining ENG YUQORISIDA, stepper/tarixdan ALOHIDA va undan
+  // YUQORIDA. Backend enum (NEW/APPROVED/paymentClaimedAt/shopCreated)
+  // to'g'ridan-to'g'ri UI'da ko'rinmaydi — faqat inson tiliga o'girilgan
+  // BITTA keyingi qadam. Har bir tarmoq mavjud (allaqachon ishlaydigan)
+  // action-funksiyalarni chaqiradi — biror yangi biznes-logika yozilmagan.
+  function renderRequestNextAction(r) {
+    const isNewShop = r.kind === 'NEW_SHOP';
+    if (r.status === 'REJECTED') return '';
+    if (r.status === 'NEW' && !r.paymentClaimedAt) {
+      return `<section class="plat-next-action is-waiting">
+        <span class="plat-admin-eyebrow">Keyingi amal</span>
+        <h2>${pIcon('clock',18)} Hozircha amal kerak emas</h2>
+        <p>Foydalanuvchi hali "To'ladim" tugmasini bosmagan — navbat unda. To'lanmasa ariza 1 soatda avtomatik yopiladi.</p>
+      </section>`;
+    }
+    if (r.status === 'NEW' && r.paymentClaimedAt) {
+      return `<section class="plat-next-action is-action">
+        <span class="plat-admin-eyebrow">Keyingi amal</span>
+        <h2>${pIcon('wallet',18)} To'lovni tekshiring</h2>
+        <p>Foydalanuvchi to'lov qilganini tasdiqladi. Chekni ko'rib, to'lovni tasdiqlang yoki qo'shimcha chek so'rang.</p>
+        <div class="plat-next-action-buttons">
+          <button class="primary" onclick="approveRequest('${r.id}')">${pIcon('check',16)} Tasdiqlash</button>
+          ${!r.hasReceipt ? `<button class="secondary" onclick="requestReceiptForRequest('${r.id}')">${pIcon('file',16)} Chek so'rash</button>` : ''}
+        </div>
+      </section>`;
+    }
+    if (isNewShop && r.status === 'APPROVED' && !r.shopCreated) {
+      return `<section class="plat-next-action is-action">
+        <span class="plat-admin-eyebrow">Keyingi amal</span>
+        <h2>${pIcon('shop',18)} Telegram botni ulang</h2>
+        <p>To'lov tasdiqlandi. Arizadagi ma'lumotlar bilan do'konni yarating va botni ulang.</p>
+        <div class="plat-next-action-buttons"><button class="primary" onclick="openRequestProvisioning('${r.id}')">${pIcon('shop',16)} Botni ulash</button></div>
+      </section>`;
+    }
+    return `<section class="plat-next-action is-done">
+      <span class="plat-admin-eyebrow">Keyingi amal</span>
+      <h2>${pIcon('check',18)} Yakunlangan</h2>
+      <p>Bu ariza bo'yicha boshqa amal talab qilinmaydi.</p>
+    </section>`;
+  }
   function renderRequestDetailsBody() {
     const r = requests.find((x)=>x.id===selectedRequestId);
     if (!r) return `<div class="plat-admin-empty"><span>${pIcon('info',24)}</span><b>So'rov topilmadi</b><small>Ro'yxatga qaytib qayta urinib ko'ring.</small></div>`;
@@ -3548,6 +4077,7 @@
         <div><span class="plat-admin-eyebrow">${escapeHtml(requestTypeLabel(r))}</span><h2>${escapeHtml(isNewShop ? (r.requestedShopName || r.requesterFirstName || 'Yangi do\'kon') : (r.requesterFirstName || r.requesterTelegramId))}</h2><p>${requesterIdentity}</p></div>
         <span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span>
       </div>
+      ${renderRequestNextAction(r)}
       <section class="plat-admin-section">
         <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Ariza</span><h2>So'rov ma'lumotlari</h2></div></div>
         <div class="plat-admin-detail-grid">
@@ -3570,8 +4100,8 @@
       ${r.status === 'NEW' && r.receiptRequestedAt && !r.hasReceipt ? `<section class="plat-admin-receipt-wait"><span>${pIcon('file',20)}</span><div><b>To'lovni tasdiqlash uchun chek kerak</b><p>To'lovingizni aniqlay olmadik. Tekshiruvni davom ettirish uchun to'lov chekini yuboring.</p><small>Userga “Chekni yuborish” CTA ko'rsatilmoqda.</small></div></section>` : ''}
       ${r.status === 'NEW' && !r.paymentClaimedAt ? `<section class="plat-admin-section plat-admin-payment-wait"><div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">1-bosqich</span><h2>User to'lovi kutilmoqda</h2></div></div><div class="plat-admin-request-note">${pIcon('clock',16)} User hali “To'ladim”ni bosmagan. Bu bosqichda admin to'lovni tasdiqlamaydi, chek so'ramaydi va arizani qo'lda o'zgartirmaydi. To'lanmasa 1 soatda avtomatik o'chadi.</div></section>` : ''}
       ${r.status === 'NEW' && r.paymentClaimedAt ? `<section class="plat-admin-section"><div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">2-bosqich</span><h2>To'lovni tekshirish</h2></div></div><div class="plat-admin-detail-actions"><button class="primary" onclick="approveRequest('${r.id}')">${pIcon('check',17)} To'lovni tasdiqlash</button>${!r.hasReceipt ? `<button class="secondary" onclick="requestReceiptForRequest('${r.id}')">${pIcon('file',17)} Chek so'rash</button>` : ''}<button class="secondary is-danger" onclick="openRejectPrompt('${r.id}')">Rad etish</button></div>${rejectingRequestId === r.id ? `<div class="plat-reject-box"><input type="text" id="reject-reason-${r.id}" placeholder="Rad etish sababi"><button class="secondary" onclick="submitReject('${r.id}')">Yuborish</button></div>` : ''}</section>` : ''}
-      ${isNewShop && r.status === 'APPROVED' && !r.shopCreated ? `<section class="plat-provision-stage"><span class="plat-provision-stage-icon">${pIcon('check',21)}</span><div><span class="plat-admin-eyebrow">Keyingi bosqich</span><h2>✅ To'lov tasdiqlandi</h2><p>To'lov tekshiruvi yakunlandi. Arizadagi ma'lumotlar bilan do'konni yarating.</p><button class="primary" onclick="openRequestProvisioning('${r.id}')">${pIcon('shop',17)} Do'kon qo'shish</button></div></section>` : ''}
-      ${isNewShop && r.shopCreated ? `<section class="plat-provision-stage is-created"><span class="plat-provision-stage-icon">${pIcon('shop',21)}</span><div><span class="plat-admin-eyebrow">Provisioning yakunlandi</span><h2>✅ Do'kon yaratildi</h2><p><b>${escapeHtml(r.requestedShopName || 'Do\'kon')}</b> → Owner: Telegram ID ${escapeHtml(r.ownerTelegramId || '—')}</p>${r.appliedShopId?`<small>Shop ID: ${escapeHtml(r.appliedShopId)}</small>`:''}</div></section>` : ''}
+      ${isNewShop && r.status === 'APPROVED' && !r.shopCreated ? `<section class="plat-provision-stage"><span class="plat-provision-stage-icon">${pIcon('check',21)}</span><div><span class="plat-admin-eyebrow">Keyingi bosqich</span><h2>To'lov tasdiqlandi</h2><p>To'lov tekshiruvi yakunlandi. Arizadagi ma'lumotlar bilan do'konni yarating.</p><button class="primary" onclick="openRequestProvisioning('${r.id}')">${pIcon('shop',17)} Do'kon qo'shish</button></div></section>` : ''}
+      ${isNewShop && r.shopCreated ? `<section class="plat-provision-stage is-created"><span class="plat-provision-stage-icon">${pIcon('shop',21)}</span><div><span class="plat-admin-eyebrow">Provisioning yakunlandi</span><h2>Do'kon yaratildi</h2><p><b>${escapeHtml(r.requestedShopName || 'Do\'kon')}</b> → Owner: Telegram ID ${escapeHtml(r.ownerTelegramId || '—')}</p>${r.appliedShopId?`<small>Shop ID: ${escapeHtml(r.appliedShopId)}</small>`:''}</div></section>` : ''}
       <section class="plat-application-timeline-card plat-admin-history"><div class="plat-application-section-title"><span>${pIcon('clock',17)}</span><div><b>Ariza tarixi</b><small>Server vaqtida saqlangan to'liq timeline.</small></div></div>${requestHistoryLoadingId===r.id && !history.length?`<div class="plat-request-list-loading"><span class="spinner"></span></div>`:renderRequestTimeline(history,r)}</section>
     `;
   }
@@ -3622,23 +4152,23 @@
     try {
       const data = await callPlatformApi('platform_get_subscription_receipt_url', { requestId });
       if (tg?.openLink) tg.openLink(data.url); else window.open(data.url, '_blank');
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   async function viewBotPhoto(requestId) {
     try {
       const data = await callPlatformApi('platform_get_bot_photo_url', { requestId });
       if (tg?.openLink) tg.openLink(data.url); else window.open(data.url, '_blank');
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   async function approveRequest(requestId) {
-    if (!confirm("So'rovni tasdiqlaysizmi?")) return;
+    if (!(await showConfirm("So'rovni tasdiqlaysizmi?"))) return;
     try {
       await callPlatformApi('platform_approve_subscription_request', { requestId });
       await loadRequests();
       await loadRequestHistory(requestId, false);
       loadDashboardSummary();
       render();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   async function requestReceiptForRequest(requestId) {
     try { window.event?.stopPropagation?.(); } catch (_) {}
@@ -3647,20 +4177,20 @@
       await loadRequests();
       await loadRequestHistory(requestId, false);
       render();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   function openRejectPrompt(requestId) { rejectingRequestId = requestId; render(); }
   async function submitReject(requestId) {
     const input = document.getElementById(`reject-reason-${requestId}`);
     const reason = (input?.value || '').trim();
-    if (!reason) return alert('Sababni kiriting.');
+    if (!reason) return showToast('Sababni kiriting.', 'warning');
     try {
       await callPlatformApi('platform_reject_subscription_request', { requestId, reason });
       rejectingRequestId = null;
       await loadRequests();
       await loadRequestHistory(requestId, false);
       render();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
 
   // ======================================================================
@@ -3682,20 +4212,25 @@
         platformLifecycleSettings = { ...platformLifecycleSettings, ...lData.settings };
         lifecycleSettingsDraft = JSON.parse(JSON.stringify(platformLifecycleSettings));
       }
-      if (currentTab === 'profile' || ['ADMIN_PAYMENT_SETTINGS','ADMIN_NOTIFICATION_SETTINGS','ADMIN_NOTIFICATION_GROUP','ADMIN_LIFECYCLE_SETTINGS'].includes(activePage)) render();
+      if (currentTab === 'settings' || ['ADMIN_PAYMENT_SETTINGS','ADMIN_NOTIFICATION_SETTINGS','ADMIN_NOTIFICATION_GROUP','ADMIN_LIFECYCLE_SETTINGS'].includes(activePage)) render();
     } catch (e) { console.error(e); }
   }
+  // Platform 2.0, Bosqich 2 (H-band): Tariflar endi root tab emas —
+  // Sozlamalar ichidan ochiladigan sahifa ('ADMIN_TARIFFS'), shu funksiya
+  // orqali (ochish + ma'lumotni yuklash bitta joyda, boshqa ADMIN_*_SETTINGS
+  // sahifalari bilan bir xil naqsh).
+  function openAdminTariffsPage() { openPage('ADMIN_TARIFFS'); loadAdminTariffs(); }
   async function loadAdminTariffs() {
     try {
       const tData = await callPlatformApi('platform_admin_list_tariffs', {});
       adminTariffs = tData.tariffs || [];
-      if (currentTab === 'tariffs') render();
+      if (activePage === 'ADMIN_TARIFFS') render();
     } catch (e) { console.error(e); }
   }
   function renderAdminTariffsTab() {
     const activeCount = adminTariffs.filter((t)=>t.isActive).length;
     return `
-      <div class="plat-admin-list-head is-with-action"><div><span class="plat-admin-eyebrow">Obuna katalogi</span><h1>Tariflar</h1><p>Tariflar, limitlar va foydalanuvchiga ko'rinadigan imkoniyatlarni boshqaring.</p></div><button class="plat-admin-add-btn" onclick="openNewTariffDraft()">${pIcon('plus',17)} Yangi tarif</button></div>
+      <div class="plat-admin-list-head is-with-action"><div><span class="plat-admin-eyebrow">Obuna katalogi</span><p>Tariflar, limitlar va foydalanuvchiga ko'rinadigan imkoniyatlarni boshqaring.</p></div><button class="plat-admin-add-btn" onclick="openNewTariffDraft()">${pIcon('plus',17)} Yangi tarif</button></div>
       <div class="plat-admin-tariff-summary"><div><b>${adminTariffs.length}</b><small>Jami tarif</small></div><div><b>${activeCount}</b><small>Faol</small></div><div><b>${adminTariffs.filter((t)=>t.isPopular).length}</b><small>Ommabop</small></div></div>
       ${tariffDraft ? renderTariffDraftForm() : ''}
       <div class="plat-admin-tariff-list">${adminTariffs.length ? adminTariffs.map(renderAdminTariffRow).join('') : `<div class="plat-admin-empty"><span>${pIcon('diamond',24)}</span><b>Hozircha tarif yo'q</b><small>Yangi tarif yaratish uchun yuqoridagi tugmadan foydalaning.</small></div>`}</div>
@@ -3748,16 +4283,16 @@
       terminateUserBody: String(document.getElementById('lcs-terminate-body')?.value || '').trim(),
       terminateReasons: splitReasons('lcs-terminate-reasons'),
     };
-    if (!payload.freezeReasons.length || !payload.terminateReasons.length) return alert("Kamida bitta sabab kiriting.");
+    if (!payload.freezeReasons.length || !payload.terminateReasons.length) return showToast("Kamida bitta sabab kiriting.", 'warning');
     try {
       const result = await callPlatformApi('platform_update_lifecycle_settings', payload);
       platformLifecycleSettings = { ...platformLifecycleSettings, ...(result.settings||payload) };
       lifecycleSettingsDraft = JSON.parse(JSON.stringify(platformLifecycleSettings));
-      alert('Saqlandi.');
+      showToast('Saqlandi.', 'success');
       render();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
-  function openAdminIntegrationsInfo(){ alert("Integratsiyalar shop detail orqali boshqariladi. Alohida integratsiyalar markazi keyingi bosqichda kengaytiriladi."); }
+  function openAdminIntegrationsInfo(){ showToast("Integratsiyalar endi har bir do'konning o'z sahifasida: Do'konlar → do'kon → Bot va integratsiyalar.", 'info'); }
 
   function maskedCardNumber(v) {
     const d=String(v||'').replace(/\D/g,''); if(!d) return "Karta qo'shilmagan";
@@ -3778,7 +4313,7 @@
   function editPlatformCard(){ paymentInfoDraft = {...(paymentInfoDraft||{cardNumber:'',cardHolder:'',isActive:true}), editing:true}; render(); }
   function cancelPlatformCardEdit(){ paymentInfoDraft.editing=false; render(); }
   function renderPlatformCardEditor(){ return `<div class="plat-settings-editor"><div class="plat-settings-editor-head"><b>${paymentInfoDraft.cardNumber?'Kartani tahrirlash':"Karta qo'shish"}</b><button onclick="cancelPlatformCardEdit()">×</button></div><label>Karta raqami<input type="text" id="pi-card-number" inputmode="numeric" value="${escapeHtml(paymentInfoDraft.cardNumber||'')}" placeholder="8600 0000 0000 0000"></label><label>Karta egasi<input type="text" id="pi-card-holder" value="${escapeHtml(paymentInfoDraft.cardHolder||'')}" placeholder="F. I. Sh."></label><label class="plat-toggle-row"><span><b>Faol</b><small>User to'lov oynasida ko'rinadi</small></span><input type="checkbox" id="pi-card-active" ${paymentInfoDraft.isActive!==false?'checked':''}></label><div class="plat-settings-editor-actions"><button class="secondary" onclick="cancelPlatformCardEdit()">Bekor qilish</button><button class="primary" onclick="savePaymentInfo()">Saqlash</button></div></div>`; }
-  async function togglePlatformCardActive(active){ paymentInfoDraft={...(paymentInfoDraft||{}),isActive:active}; try{await callPlatformApi('platform_set_payment_info',{cardNumber:paymentInfoDraft.cardNumber||'',cardHolder:paymentInfoDraft.cardHolder||'',isActive:active}); paymentInfo=null;}catch(e){alert(e.message||String(e)); loadAdminSettings();} }
+  async function togglePlatformCardActive(active){ paymentInfoDraft={...(paymentInfoDraft||{}),isActive:active}; try{await callPlatformApi('platform_set_payment_info',{cardNumber:paymentInfoDraft.cardNumber||'',cardHolder:paymentInfoDraft.cardHolder||'',isActive:active}); paymentInfo=null;}catch(e){showToast(e.message||String(e), 'error'); loadAdminSettings();} }
 
   let notificationGroupKey = null;
   const NOTIFICATION_GROUPS = {
@@ -3810,7 +4345,7 @@
     const body = t.body || '';
     return `<div class="plat-notification-template-card"><span class="plat-template-status ${t.isActive?'is-on':''}">${pIcon(t.isActive?'check':'bell',16)}</span><div><b>${escapeHtml(NOTIFICATION_TEMPLATE_LABELS[t.type] || t.type)}</b><small>${escapeHtml(body.length>88?body.slice(0,88)+'…':body)}</small></div><label class="plat-switch"><input type="checkbox" ${t.isActive?'checked':''} onchange="toggleNotificationTemplateActive('${t.type}',this.checked)"><span></span></label><button onclick="openEditNotificationTemplateDraft('${t.type}')">Tahrirlash</button></div>`;
   }
-  async function toggleNotificationTemplateActive(type,active){ const t=adminNotificationTemplates.find(x=>x.type===type); if(!t)return; try{await callPlatformApi('platform_update_notification_template',{type,body:t.body,imageUrl:t.imageUrl||null,isActive:active});t.isActive=active;render();}catch(e){alert(e.message||String(e));loadAdminSettings();} }
+  async function toggleNotificationTemplateActive(type,active){ const t=adminNotificationTemplates.find(x=>x.type===type); if(!t)return; try{await callPlatformApi('platform_update_notification_template',{type,body:t.body,imageUrl:t.imageUrl||null,isActive:active});t.isActive=active;render();}catch(e){showToast(e.message||String(e), 'error');loadAdminSettings();} }
   function openEditNotificationTemplateDraft(type) {
     const t = adminNotificationTemplates.find((x) => x.type === type);
     if (!t) return;
@@ -3848,8 +4383,8 @@
   function onNotificationTemplateImagePicked(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return alert('Faqat JPG, PNG yoki WebP rasm qabul qilinadi.');
-    if (file.size > 3 * 1024 * 1024) return alert("Rasm hajmi 3MB dan katta bo'lmasin.");
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return showToast('Faqat JPG, PNG yoki WebP rasm qabul qilinadi.', 'warning');
+    if (file.size > 3 * 1024 * 1024) return showToast("Rasm hajmi 3MB dan katta bo'lmasin.", 'warning');
     notificationTemplateImageFile = file;
     notificationTemplateImageRemove = false;
     if (notificationTemplateDraft) notificationTemplateDraft.imageUrl = '';
@@ -3900,27 +4435,27 @@
     render();
     try {
       await callPlatformApi('platform_send_test_notification', { type });
-      alert("Sinov xabari Telegram'ingizga yuborildi.");
-    } catch (e) { alert(e.message || String(e)); }
+      showToast("Sinov xabari Telegram'ingizga yuborildi.", 'success');
+    } catch (e) { showToast(e.message || String(e), 'error'); }
     finally { sendingTestNotification = false; render(); }
   }
   async function saveNotificationTemplateDraft() {
     const body = document.getElementById('ntd-body').value.trim();
     const imageUrlRaw = document.getElementById('ntd-image').value.trim();
     const isActive = document.getElementById('ntd-active').checked;
-    if (!body) return alert('Xabar matni bo\'sh bo\'lmasin.');
-    if (imageUrlRaw && !/^https:\/\//i.test(imageUrlRaw)) return alert("Rasm havolasi https:// bilan boshlanishi kerak.");
+    if (!body) return showToast('Xabar matni bo\'sh bo\'lmasin.', 'warning');
+    if (imageUrlRaw && !/^https:\/\//i.test(imageUrlRaw)) return showToast("Rasm havolasi https:// bilan boshlanishi kerak.", 'warning');
     try {
       const imageUpload = notificationTemplateImageFile ? { base64: await fileToBase64(notificationTemplateImageFile), mimeType: notificationTemplateImageFile.type, fileName: notificationTemplateImageFile.name } : undefined;
       await callPlatformApi('platform_update_notification_template', { type: notificationTemplateDraft.type, body, imageUrl: imageUrlRaw || null, imageUpload, removeImage: notificationTemplateImageRemove, isActive });
       cancelNotificationTemplateDraft();
       await loadAdminSettings();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   function renderAdminPaymentMethodRow(m) {
     return `<div class="plat-payment-method-card">${paymentMethodVisual(m)}<div><b>${escapeHtml(m.displayName)}</b><small>${escapeHtml(shortUrl(m.paymentUrl))}${m.hasCustomLogo?' · Custom logo':''}</small></div><label class="plat-switch" onclick="event.stopPropagation()"><input type="checkbox" ${m.isActive?'checked':''} onchange="togglePaymentMethodActive('${m.id}',this.checked)"><span></span></label><button onclick="openEditPaymentMethodDraft('${m.id}')">Tahrirlash</button></div>`;
   }
-  async function togglePaymentMethodActive(id,active){ const m=adminPaymentMethods.find(x=>x.id===id); if(!m)return; try{await callPlatformApi('platform_upsert_payment_method',{id:m.id,methodType:m.methodType,displayName:m.displayName,paymentUrl:m.paymentUrl,isActive:active,sortOrder:m.sortOrder||0});m.isActive=active;render();}catch(e){alert(e.message||String(e));loadAdminSettings();} }
+  async function togglePaymentMethodActive(id,active){ const m=adminPaymentMethods.find(x=>x.id===id); if(!m)return; try{await callPlatformApi('platform_upsert_payment_method',{id:m.id,methodType:m.methodType,displayName:m.displayName,paymentUrl:m.paymentUrl,isActive:active,sortOrder:m.sortOrder||0});m.isActive=active;render();}catch(e){showToast(e.message||String(e), 'error');loadAdminSettings();} }
   function resetPaymentMethodLogoDraft() {
     paymentMethodLogoFile = null;
     if (paymentMethodLogoPreviewUrl) { try { URL.revokeObjectURL(paymentMethodLogoPreviewUrl); } catch (_) {} }
@@ -3939,8 +4474,8 @@
   function onPaymentMethodLogoPicked(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return alert('Faqat JPG, PNG yoki WebP rasm qabul qilinadi.');
-    if (file.size > 3 * 1024 * 1024) return alert("Logo hajmi 3MB dan katta bo'lmasin.");
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return showToast('Faqat JPG, PNG yoki WebP rasm qabul qilinadi.', 'warning');
+    if (file.size > 3 * 1024 * 1024) return showToast("Logo hajmi 3MB dan katta bo'lmasin.", 'warning');
     paymentMethodLogoFile = file;
     paymentMethodLogoRemove = false;
     if (paymentMethodLogoPreviewUrl) { try { URL.revokeObjectURL(paymentMethodLogoPreviewUrl); } catch (_) {} }
@@ -3973,15 +4508,15 @@
     const displayName = document.getElementById('pmd-name').value.trim();
     const paymentUrl = document.getElementById('pmd-url').value.trim();
     const isActive = document.getElementById('pmd-active').checked;
-    if (!displayName) return alert('Nomi kiritilishi shart.');
-    if (!/^https?:\/\//i.test(paymentUrl)) return alert("To'lov havolasi http:// yoki https:// bilan boshlanishi kerak.");
+    if (!displayName) return showToast('Nomi kiritilishi shart.', 'warning');
+    if (!/^https?:\/\//i.test(paymentUrl)) return showToast("To'lov havolasi http:// yoki https:// bilan boshlanishi kerak.", 'warning');
     try {
       const logoImageUpload = paymentMethodLogoFile ? { base64: await fileToBase64(paymentMethodLogoFile), mimeType: paymentMethodLogoFile.type, fileName: paymentMethodLogoFile.name } : undefined;
       await callPlatformApi('platform_upsert_payment_method', { id: paymentMethodDraft.id || undefined, methodType, displayName, paymentUrl, logoImageUpload, removeLogo: paymentMethodLogoRemove, isActive });
       resetPaymentMethodLogoDraft();
       paymentMethodDraft = null;
       await loadAdminSettings();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   function renderAdminTariffRow(t) {
     const features = Array.isArray(t.features) ? t.features : [];
@@ -4025,7 +4560,7 @@
       await callPlatformApi('platform_upsert_tariff', { id: tariffDraft.id || undefined, name, price, productLimit, isActive, isPopular, features });
       tariffDraft = null;
       await loadAdminTariffs();
-    } catch (e) { alert(e.message || String(e)); }
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
   async function savePaymentInfo() {
     const cardNumber = document.getElementById('pi-card-number').value;
@@ -4035,8 +4570,8 @@
       await callPlatformApi('platform_set_payment_info', { cardNumber, cardHolder, isActive });
       paymentInfoDraft = { cardNumber, cardHolder, isActive, editing: false };
       paymentInfo = null; // keyingi to'lov sahifasi qayta yuklasin
-      alert('Saqlandi.');
-    } catch (e) { alert(e.message || String(e)); }
+      showToast('Saqlandi.', 'success');
+    } catch (e) { showToast(e.message || String(e), 'error'); }
   }
 
   // render() ichida activePage === 'CONNECT_SHOP' bo'lsa wireConnectShopView()
@@ -4103,9 +4638,14 @@
   window.startUpgradeFor = startUpgradeFor;
   window.startExtendFor = startExtendFor;
   window.setDashboardShop = setDashboardShop;
+  window.setPaymentHistoryShop = setPaymentHistoryShop;
+  window.loadMyPaymentHistory = loadMyPaymentHistory;
+  window.togglePaymentHistoryRow = togglePaymentHistoryRow;
   window.openMyShopManage = openMyShopManage;
   window.openShopDetails = openShopDetails;
+  window.openShopSubScreen = openShopSubScreen;
   window.openShopDetailsFromDashboard = openShopDetailsFromDashboard;
+  window.openRequestsFilteredFromDashboard = openRequestsFilteredFromDashboard;
   window.applyTariffFromShopDetails = applyTariffFromShopDetails;
   window.setGrantDaysPreset = setGrantDaysPreset;
   window.setGrantDaysReasonPreset = setGrantDaysReasonPreset;
@@ -4132,7 +4672,7 @@
   window.sendSupportReply = sendSupportReply;
   window.onBugReportAttachmentPicked = onBugReportAttachmentPicked;
   window.submitBugReport = submitBugReport;
-  window.openAdminSupportPage = openAdminSupportPage;
+  window.openAdminTariffsPage = openAdminTariffsPage;
   window.setAdminSupportFilter = setAdminSupportFilter;
   window.setAdminSupportTypeFilter = setAdminSupportTypeFilter;
   window.openAdminSupportThread = openAdminSupportThread;
