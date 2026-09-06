@@ -269,6 +269,14 @@
   let attachingMyRequestReceipt = false;
   let newShopName = '';
   let newShopOwnerTelegramId = '';
+  // Bot nomi/bio/rasmi — IXTIYORIY, faqat "taklif" sifatida saqlanadi
+  // (admin botni @BotFather orqali qo'lda yaratayotganda foydalanadi —
+  // bot rasmini dastur ichidan o'zgartirish Telegram'da umuman mumkin
+  // emas, shuning uchun bu yerda hech qanday Telegram API chaqirilmaydi).
+  let newShopBotName = '';
+  let newShopBotBio = '';
+  let newShopBotPhotoFile = null;
+  let newShopBotPhotoPreviewUrl = null;
   // 3-topshiriq: NEW_SHOP to'lov oynasi ochilishi bilan 1 soatlik
   // resumable draft yaratiladi. Telegram WebView yopilib qolsa Arizalarimdan
   // aynan shu arizani davom ettirish mumkin.
@@ -349,6 +357,11 @@
   let terminateStep = null;           // null | 'reason' | 'confirm'
   let terminateReasonDraft = '';
   let lifecycleActionSubmitting = false;
+  // Lifecycle round: muzlatish muddatini (grace period, do'kon o'chirilishigacha
+  // bo'lgan davr) uzaytirish — grantDaysPreset'dan MUSTAQIL holat, chunki bu
+  // butunlay boshqa narsa (tarif/obuna muddati emas).
+  let extendGraceDaysPreset = null;    // 7|14|30|'other'|null
+  let extendGraceSubmitting = false;
 
   // Admin: to'lov ma'lumoti tahrirlash (Tariflar bo'limi ichida kichik bo'lim)
   let paymentInfoDraft = null;
@@ -1134,6 +1147,30 @@
   function prepareNewShopIdentity() {
     newShopName = '';
     newShopOwnerTelegramId = currentTelegramUserId();
+    newShopBotName = '';
+    newShopBotBio = '';
+    clearNewShopBotPhoto();
+  }
+  function clearNewShopBotPhoto() {
+    newShopBotPhotoFile = null;
+    if (newShopBotPhotoPreviewUrl) { try { URL.revokeObjectURL(newShopBotPhotoPreviewUrl); } catch (_) {} }
+    newShopBotPhotoPreviewUrl = null;
+  }
+  // Pure reset (above) is reused by prepareNewShopIdentity() at flow-start,
+  // BEFORE any page is necessarily active yet — this wrapper is the one
+  // actually wired to the "remove photo" button's onclick, since THAT click
+  // must also re-render the (already-open) form.
+  function removeNewShopBotPhoto() { clearNewShopBotPhoto(); rerenderActivePage(); }
+  function onNewShopBotPhotoPicked(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { connectError = "Faqat JPG, PNG yoki WebP rasm qabul qilinadi."; render(); return; }
+    if (file.size > 6 * 1024 * 1024) { connectError = "Rasm hajmi 6MB dan katta bo'lmasin."; render(); return; }
+    connectError = null;
+    newShopBotPhotoFile = file;
+    if (newShopBotPhotoPreviewUrl) { try { URL.revokeObjectURL(newShopBotPhotoPreviewUrl); } catch (_) {} }
+    newShopBotPhotoPreviewUrl = URL.createObjectURL(file);
+    rerenderActivePage();
   }
 
   function resetSubscriptionFlow() {
@@ -1472,6 +1509,13 @@
         <label class="plat-field-pro"><span>Do'kon egasining Telegram IDsi</span><input id="plat-new-shop-owner" type="text" inputmode="numeric" maxlength="15" value="${escapeHtml(ownerId)}" placeholder="123456789" oninput="updateNewShopRequestIdentity()"></label>
         ${detectedId ? `<div class="plat-owner-id-hint is-ok">${pIcon('check',14)} <span><b>${escapeHtml(detectedId)}</b> — Bu sizning Telegram ID'ingiz. Fieldni boshqa owner ID'siga o'zgartirish mumkin.</span></div>` : `<div class="plat-owner-id-hint is-warn">${pIcon('info',14)}<span><b>Telegram ID avtomatik aniqlanmadi.</b> ID'ingizni qo'lda kiriting. Agar ID'ingizni bilmasangiz, UStorE botga <b>/id</b> yuboring.</span><button type="button" onclick="detectMyTelegramId()">ID'imni aniqlash</button></div>`}
         <div id="plat-owner-confirm" class="plat-owner-confirm ${ownerValid ? '' : 'is-invalid'}">${pIcon('user',15)} <span>Do'kon quyidagi Telegram ID egasiga biriktiriladi: <b>${escapeHtml(ownerId || '—')}</b></span></div>
+        <div class="plat-payment-section-title" style="margin-top:14px"><span>${pIcon('chat',18)}</span><div><b>Bot ma'lumotlari</b><small>Ixtiyoriy — botingiz shu nom/bio/rasm bilan sozlanadi.</small></div></div>
+        <label class="plat-field-pro"><span>Bot nomi (ixtiyoriy)</span><input id="plat-new-shop-bot-name" type="text" maxlength="64" value="${escapeHtml(newShopBotName)}" placeholder="Masalan: FITCORE Shop"></label>
+        <label class="plat-field-pro"><span>Bot bio/tavsifi (ixtiyoriy)</span><textarea id="plat-new-shop-bot-bio" maxlength="500" rows="2" placeholder="Botingiz haqida qisqa matn">${escapeHtml(newShopBotBio)}</textarea></label>
+        <input type="file" id="plat-new-shop-bot-photo-file" class="hidden" onchange="onNewShopBotPhotoPicked(event)">
+        ${newShopBotPhotoFile
+          ? `<div class="plat-upload-selected">${newShopBotPhotoPreviewUrl ? `<img src="${newShopBotPhotoPreviewUrl}" alt="Bot rasmi preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(newShopBotPhotoFile.name)}</b><small>${Math.max(1, Math.round(newShopBotPhotoFile.size / 1024))} KB</small></div><button class="secondary" onclick="document.getElementById('plat-new-shop-bot-photo-file').click()" aria-label="Almashtirish" title="Almashtirish">${pIcon('upload',14)}</button><button class="plat-upload-remove" onclick="removeNewShopBotPhoto()" aria-label="Rasmni olib tashlash">×</button></div>`
+          : `<button class="plat-upload-zone is-compact is-icon-only" onclick="document.getElementById('plat-new-shop-bot-photo-file').click()" aria-label="Bot rasmi tanlash" title="Bot rasmi tanlash"><span>${pIcon('upload',20)}</span></button>`}
       </section>`;
   }
   function updateNewShopRequestIdentity() {
@@ -1702,6 +1746,8 @@
     if (flowKind === 'NEW_SHOP') {
       newShopName = String(document.getElementById('plat-new-shop-name')?.value || newShopName || '').trim();
       newShopOwnerTelegramId = String(document.getElementById('plat-new-shop-owner')?.value || newShopOwnerTelegramId || '').replace(/\D/g,'').slice(0,15);
+      newShopBotName = String(document.getElementById('plat-new-shop-bot-name')?.value || newShopBotName || '').trim();
+      newShopBotBio = String(document.getElementById('plat-new-shop-bot-bio')?.value || newShopBotBio || '').trim();
       if (newShopName.length < 2) { alert("Do'kon nomini kiriting."); return; }
       if (!/^\d{5,15}$/.test(newShopOwnerTelegramId)) { alert("Do'kon egasining Telegram ID sini to'g'ri kiriting."); return; }
     }
@@ -1721,6 +1767,7 @@
     rerenderActivePage();
     try {
       const receiptImageUpload = receiptFile ? { base64: await fileToBase64(receiptFile), mimeType: receiptFile.type, fileName: receiptFile.name } : undefined;
+      const botPhotoUpload = newShopBotPhotoFile ? { base64: await fileToBase64(newShopBotPhotoFile), mimeType: newShopBotPhotoFile.type, fileName: newShopBotPhotoFile.name } : undefined;
       const result = await callPlatformApi('platform_submit_subscription_request', {
         kind: flowKind, shopId: flowShopId || undefined, tariffId: flowTariffId,
         requestId: flowKind === 'NEW_SHOP' ? (preparedNewShopRequestId || undefined) : undefined,
@@ -1733,6 +1780,9 @@
         consentAccepted: true,
         shopName: flowKind === 'NEW_SHOP' ? newShopName.trim() : undefined,
         ownerTelegramId: flowKind === 'NEW_SHOP' ? newShopOwnerTelegramId : undefined,
+        botName: flowKind === 'NEW_SHOP' ? (newShopBotName.trim() || undefined) : undefined,
+        botBio: flowKind === 'NEW_SHOP' ? (newShopBotBio.trim() || undefined) : undefined,
+        botPhotoUpload: flowKind === 'NEW_SHOP' ? botPhotoUpload : undefined,
       });
       lastSubmittedRequestId = result.requestId;
       lastSubmittedHadReceipt = !!receiptFile;
@@ -2467,8 +2517,8 @@
           <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Nazorat</span><h2>Diqqat talab qiladi</h2></div><span class="plat-admin-section-icon is-warn">${pIcon('bell',18)}</span></div>
           <div class="plat-admin-attention-list">
             ${s.attentionItems.slice(0,6).map((it) => `
-              <button class="plat-admin-attention-row" onclick="${it.type === 'NEW_REQUEST' ? "switchTab('requests')" : "switchTab('shops')"}">
-                <span class="plat-admin-attention-dot"></span><span><b>${escapeHtml(it.label)}</b><small>${escapeHtml(it.detail || '')}</small></span>${pIcon('arrowRight',15)}
+              <button class="plat-admin-attention-row" onclick="${it.type === 'NEW_REQUEST' ? "switchTab('requests')" : it.shopId ? `openShopDetailsFromDashboard('${it.shopId}')` : "switchTab('shops')"}">
+                <span class="plat-admin-attention-dot ${it.type === 'GRACE_EXPIRED' ? 'is-danger' : ''}"></span><span><b>${escapeHtml(it.label)}</b><small>${escapeHtml(it.detail || '')}</small></span>${pIcon('arrowRight',15)}
               </button>
             `).join('')}
           </div>
@@ -2602,6 +2652,14 @@
     selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
     openPage('SHOP_DETAILS');
     loadSubscriptionHistory(shopId);
+  }
+  // Dashboard "Diqqat talab qiladi" ro'yxatidan bosilganda — adminShops
+  // hali yuklanmagan bo'lishi mumkin (u faqat "Do'konlar" tabiga kirilganda
+  // reloadAdminShops() bilan to'ldiriladi), shuning uchun kerak bo'lsa
+  // avval yuklab olinadi, keyin oddiy openShopDetails() chaqiriladi.
+  async function openShopDetailsFromDashboard(shopId) {
+    if (!adminShops.length) await reloadAdminShops();
+    openShopDetails(shopId);
   }
   // 2026-08-28, 054-migratsiya: "Obuna tarixi" (spec 7-bo'lim) — har bir
   // tarif almashtirish/uzaytirish hodisasi to'liq breakdown bilan.
@@ -2825,9 +2883,26 @@
   function showActionToast(text) { alert(text); }
 
   // ---- 16/18/19-bandlar: muzlatish/qayta faollashtirish/o'chirish -------
+  // Muzlatish muddati haqiqatan tugaganmi — platformLifecycleSettings.retentionDays
+  // (admin sozlaydigan, 3532/3590-qatorlarda yuklanadi/saqlanadi) asosida,
+  // xuddi backenddagi platform_admin_dashboard_summary bilan bir xil hisob.
+  function isGraceExpired(s) {
+    if (s.status !== 'FROZEN' || !s.frozenAt) return false;
+    const deadlineMs = new Date(s.frozenAt).getTime() + (platformLifecycleSettings.retentionDays || 30) * 24 * 3600 * 1000;
+    return Date.now() >= deadlineMs;
+  }
   function renderLifecycleControlsCard(s) {
     if (s.status === 'PROVISIONING') return '';
     return `
+      ${isGraceExpired(s) ? `
+        <div class="notice error" style="margin-bottom:10px">
+          <b>Muzlatish muddati tugadi</b> — bu do'konni tizimdan o'chirasizmi, yoki yana muddat qo'shasizmi?
+          <div style="display:flex; gap:8px; margin-top:8px">
+            <button class="secondary" style="flex:1; margin-top:0" onclick="startTerminateShop()">Ha, o'chirish</button>
+            <button class="secondary ${extendGraceSubmitting ? 'plat-btn-dimmed' : ''}" style="flex:1; margin-top:0" onclick="quickExtendFrozenGrace('${s.id}')">+7 kun qo'shish</button>
+          </div>
+        </div>
+      ` : ''}
       <div class="card">
         <h2>Boshqaruv</h2>
         ${s.status === 'ACTIVE' ? `
@@ -2837,9 +2912,54 @@
           <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitFreezeShop('${s.id}')">❄️ Muzlatish</button>
         ` : ''}
         ${s.status === 'FROZEN' ? `<button class="primary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitReactivateShop('${s.id}')">✅ Qayta faollashtirish</button>` : ''}
+        ${s.status === 'FROZEN' ? renderExtendGraceCard(s.id) : ''}
         ${s.status !== 'TERMINATED' ? renderTerminateSection(s.id) : '<p class="muted">Bu do\'kon o\'chirilgan.</p>'}
       </div>
     `;
+  }
+  // Lifecycle round: "Kun qo'shish" (yuqorida, subscription_expires_at —
+  // TARIF/TO'LOV muddati) bilan CHALKASHTIRMASLIK uchun butunlay alohida
+  // karta — bu muzlatish-o'chirilishigacha bo'lgan muddatni (grace period,
+  // shop_settings.frozen_at) uzaytiradi.
+  function renderExtendGraceCard(shopId) {
+    const days = [7, 14, 30];
+    return `
+      <div class="card" style="margin-top:10px">
+        <h2>Muzlatish muddatini uzaytirish</h2>
+        <p class="muted" style="margin-top:-4px">Do'kon ma'lumotlari o'chirilishigacha bo'lgan muddat.</p>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px">
+          ${days.map((d) => `<button class="plat-small-btn ${extendGraceDaysPreset === d ? 'primary' : 'secondary'}" style="width:auto" onclick="setExtendGraceDaysPreset(${d})">+${d} kun</button>`).join('')}
+          <button class="plat-small-btn ${extendGraceDaysPreset === 'other' ? 'primary' : 'secondary'}" style="width:auto" onclick="setExtendGraceDaysPreset('other')">Boshqa</button>
+        </div>
+        ${extendGraceDaysPreset === 'other' ? `<input type="text" id="plat-extend-grace-days-custom" inputmode="numeric" placeholder="Kun soni" style="margin-top:8px">` : ''}
+        <button class="primary ${extendGraceSubmitting ? 'plat-btn-dimmed' : ''}" style="margin-top:10px" onclick="submitExtendFrozenGrace('${shopId}')">${extendGraceSubmitting ? '<span class="spinner"></span> Yuborilmoqda...' : 'Muddatni uzaytirish'}</button>
+      </div>
+    `;
+  }
+  function setExtendGraceDaysPreset(preset) { extendGraceDaysPreset = preset; render(); }
+  // Muddat-tugagan banneridagi tezkor "+7 kun" — pastdagi to'liq kartaning
+  // (7/14/30/Boshqa) bir qadamlik qisqartmasi, alohida backend/oqim emas.
+  async function quickExtendFrozenGrace(shopId) {
+    if (extendGraceSubmitting) return;
+    extendGraceDaysPreset = 7;
+    await submitExtendFrozenGrace(shopId);
+  }
+  async function submitExtendFrozenGrace(shopId) {
+    if (extendGraceSubmitting) return;
+    const days = extendGraceDaysPreset === 'other'
+      ? Number((document.getElementById('plat-extend-grace-days-custom')?.value || '').trim())
+      : Number(extendGraceDaysPreset);
+    if (!Number.isFinite(days) || days <= 0) return alert('Kun sonini tanlang yoki kiriting.');
+    extendGraceSubmitting = true;
+    render();
+    try {
+      await callPlatformApi('platform_extend_frozen_grace', { shopId, days });
+      await reloadAdminShops();
+      selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
+      extendGraceDaysPreset = null;
+      showActionToast('✅ Muddat uzaytirildi.');
+    } catch (e) { alert(e.message || String(e)); }
+    finally { extendGraceSubmitting = false; render(); }
   }
   function renderTerminateSection(shopId) {
     if (terminateStep === 'reason') {
@@ -3146,6 +3266,13 @@
         ${r.kind === 'NEW_SHOP' ? `<div><small>Owner Telegram ID</small><b>${escapeHtml(r.ownerTelegramId || '—')}</b></div><div><small>Do'kon nomi</small><b>${escapeHtml(r.requestedShopName || 'Hali kiritilmagan')}</b></div>` : ''}
         ${r.hasReceipt ? `<div><small>Chek yuborilgan joy</small><b>${escapeHtml(receiptSourceLabel(r.receiptSource))}</b></div><div><small>Chek vaqti</small><b>${formatDateTime(r.receiptUploadedAt)}</b></div>` : ''}
       </section>
+      ${r.kind === 'NEW_SHOP' && (r.requestedBotName || r.requestedBotBio || r.hasBotPhoto) ? `
+      <section class="plat-application-timeline-card">
+        <div class="plat-application-section-title"><span>${pIcon('chat',17)}</span><div><b>Bot uchun so'ralgan ma'lumotlar</b><small>@BotFather orqali qo'lda sozlash uchun.</small></div></div>
+        ${r.requestedBotName ? `<div><small>Bot nomi</small><b>${escapeHtml(r.requestedBotName)}</b></div>` : ''}
+        ${r.requestedBotBio ? `<div><small>Bot bio</small><b>${escapeHtml(r.requestedBotBio)}</b></div>` : ''}
+        ${r.hasBotPhoto ? `<button class="secondary" onclick="viewBotPhoto('${r.id}')">${pIcon('upload',15)} Bot rasmini ko'rish</button>` : ''}
+      </section>` : ''}
       ${(isPaymentDraft || needsReceipt) ? renderMyRequestReceiptUpload(r) : r.status === 'NEW' && r.hasReceipt ? `<div class="plat-receipt-sent-state"><span>${pIcon('check',18)}</span><div><b>✅ Chek yuborildi</b><small>To'lovingiz tekshirilmoqda.</small></div></div>` : ''}
       ${r.status === 'REJECTED' && r.rejectReason ? `<div class="notice error">Rad etish sababi: ${escapeHtml(r.rejectReason)}</div>` : ''}
       ${r.kind === 'NEW_SHOP' && r.shopCreated ? `<div class="plat-shop-created-user"><span>${pIcon('shop',20)}</span><div><b>Do'kon faollashtirildi</b><small>${escapeHtml(r.requestedShopName || requestShopName(r))} owner Telegram ID ${escapeHtml(r.ownerTelegramId || '—')} ga biriktirildi.</small></div></div>` : ''}
@@ -3426,6 +3553,12 @@
   async function viewReceipt(requestId) {
     try {
       const data = await callPlatformApi('platform_get_subscription_receipt_url', { requestId });
+      if (tg?.openLink) tg.openLink(data.url); else window.open(data.url, '_blank');
+    } catch (e) { alert(e.message || String(e)); }
+  }
+  async function viewBotPhoto(requestId) {
+    try {
+      const data = await callPlatformApi('platform_get_bot_photo_url', { requestId });
       if (tg?.openLink) tg.openLink(data.url); else window.open(data.url, '_blank');
     } catch (e) { alert(e.message || String(e)); }
   }
@@ -3873,6 +4006,8 @@
   window.setExternalPaymentWarningChecked = setExternalPaymentWarningChecked;
   window.confirmExternalPaymentOpen = confirmExternalPaymentOpen;
   window.onReceiptPicked = onReceiptPicked;
+  window.onNewShopBotPhotoPicked = onNewShopBotPhotoPicked;
+  window.removeNewShopBotPhoto = removeNewShopBotPhoto;
   window.submitSubscriptionRequest = submitSubscriptionRequest;
   window.confirmPaymentClaim = confirmPaymentClaim;
   window.onRequestSentReceiptPicked = onRequestSentReceiptPicked;
@@ -3902,10 +4037,14 @@
   window.setDashboardShop = setDashboardShop;
   window.openMyShopManage = openMyShopManage;
   window.openShopDetails = openShopDetails;
+  window.openShopDetailsFromDashboard = openShopDetailsFromDashboard;
   window.applyTariffFromShopDetails = applyTariffFromShopDetails;
   window.setGrantDaysPreset = setGrantDaysPreset;
   window.setGrantDaysReasonPreset = setGrantDaysReasonPreset;
   window.submitGrantDays = submitGrantDays;
+  window.setExtendGraceDaysPreset = setExtendGraceDaysPreset;
+  window.submitExtendFrozenGrace = submitExtendFrozenGrace;
+  window.quickExtendFrozenGrace = quickExtendFrozenGrace;
   window.startTerminateShop = startTerminateShop;
   window.cancelTerminateShop = cancelTerminateShop;
   window.confirmTerminateStepReason = confirmTerminateStepReason;
@@ -3934,6 +4073,7 @@
   window.setRequestsSearch = setRequestsSearch;
   window.openRequestDetails = openRequestDetails;
   window.viewReceipt = viewReceipt;
+  window.viewBotPhoto = viewBotPhoto;
   window.approveRequest = approveRequest;
   window.openRejectPrompt = openRejectPrompt;
   window.submitReject = submitReject;

@@ -1468,6 +1468,7 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
 .plat-admin-attention-row small,.plat-admin-recent-list small { display:block;margin-top:2px;font-size:9.5px;color:#8794a5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .plat-admin-attention-row>svg { color:#b3becd; }
 .plat-admin-attention-dot { width:8px!important;height:8px;border-radius:999px;background:#efb34d;flex:0 0 8px!important; }
+.plat-admin-attention-dot.is-danger { background:#b91c1c; }
 .plat-admin-recent-icon { width:32px;height:32px;border-radius:10px;background:#eef4ff;color:#5b8def;display:flex;align-items:center;justify-content:center;flex:none!important; }
 
 /* Shared search / empty / loading */
