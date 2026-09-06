@@ -1,0 +1,1899 @@
+/* USTORE Platform Mini App — light-blue, modern admin styling.
+   Plain CSS on purpose (no Tailwind build pipeline available here) —
+   deliberately NOT sharing ../ustore.css, whose classes/CSS variables are
+   tied to per-shop design settings, not the platform admin UI. */
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: #eef5ff;
+  color: #0f172a;
+  min-height: 100vh;
+}
+.wrap { max-width: 520px; margin: 0 auto; padding: 20px 16px 40px; }
+
+header.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+header.top h1 { font-size: 18px; font-weight: 800; margin: 0; letter-spacing: 0.2px; }
+header.top .badge {
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px;
+  background: #eaf2ff; color: #2563eb; border: 1px solid #cfe1fd;
+}
+
+.card {
+  background: #ffffff; border: 1px solid #e1ebfb; border-radius: 14px;
+  padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(30,64,175,0.05);
+}
+.card h2 { font-size: 14px; font-weight: 700; margin: 0 0 10px; color: #0f172a; }
+.muted { color: #64748b; font-size: 12px; }
+
+.shop-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid #eef2fb;
+}
+.shop-row:last-child { border-bottom: none; }
+.shop-row .name { font-weight: 600; font-size: 13px; color: #0f172a; }
+.shop-row .meta { font-size: 11px; color: #64748b; margin-top: 2px; }
+.status-pill {
+  font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 999px; text-transform: uppercase;
+}
+.status-ACTIVE { background: #dcfce7; color: #15803d; }
+.status-PROVISIONING { background: #fef3c7; color: #b45309; }
+.status-DISABLED { background: #fee2e2; color: #b91c1c; }
+.status-FROZEN { background: #e0f2fe; color: #0369a1; }
+.status-TERMINATED { background: #fee2e2; color: #b91c1c; }
+.pill-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.billz-toggle-btn {
+  border: none; cursor: pointer; font-family: inherit; transition: background 0.15s ease, color 0.15s ease;
+  background: #eef2fb; color: #64748b;
+}
+.billz-toggle-btn.status-ACTIVE { background: #dcfce7; color: #15803d; }
+
+button.primary {
+  width: 100%; padding: 12px; border-radius: 10px; border: none;
+  background: #2563eb; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
+  box-shadow: 0 1px 2px rgba(37,99,235,0.25);
+}
+button.primary:active { transform: scale(0.98); }
+button.primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+/* 5-band: rozilik checkbox'i belgilanmaguncha "So'rov yuborish" VIZUAL
+   jihatdan o'chirilgan ko'rinadi, lekin native disabled EMAS — bosilganda
+   "rozilik bildiring" xabari chiqishi kerak, disabled tugma esa umuman
+   click hodisasini chaqirmaydi. */
+button.primary.plat-btn-dimmed { opacity: 0.5; }
+button.secondary {
+  width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #d7e3f8;
+  background: #fff; color: #334155; font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 8px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+button.secondary:active { transform: scale(0.98); background: #f4f8ff; }
+
+label { display: block; font-size: 12px; font-weight: 600; color: #334155; margin: 12px 0 6px; }
+input[type="text"], input[type="password"] {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d7e3f8;
+  background: #fff; color: #0f172a; font-size: 14px; font-family: monospace;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+/* 2026-08-28: tarif "Xususiyatlar" ko'p qatorli maydoni — inputlar bilan
+   bir xil ramka/rang, faqat matn uchun oddiy shrift va vertikal resize. */
+textarea {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d7e3f8;
+  background: #fff; color: #0f172a; font-size: 13px; font-family: inherit; line-height: 1.5;
+  resize: vertical; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+.notice { font-size: 12px; padding: 10px 12px; border-radius: 10px; margin-top: 10px; }
+.notice.error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+.notice.success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.notice.warn { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+
+.preview-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; }
+.preview-row span:first-child { color: #64748b; }
+.preview-row span:last-child { color: #0f172a; font-weight: 600; }
+
+.empty { text-align: center; padding: 24px 12px; color: #94a3b8; font-size: 13px; }
+.hidden { display: none !important; }
+.spinner {
+  display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -2px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+select {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d7e3f8;
+  background: #fff; color: #0f172a; font-size: 14px; font-family: inherit;
+}
+select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+
+/* ============================================================
+   3-bosqich: navigatsiya asosi — sahifa-router, pastki menyu,
+   admin/user rejim popover'i.
+   ============================================================ */
+
+.p-icon { display: inline-block; vertical-align: -4px; flex-shrink: 0; }
+
+/* Global header (brend, profil) hech qachon yopilib qolmasin — TERMS/PRIVACY/
+   SHOP_DETAILS kabi to'liq ichki sahifalar (.plat-page) undan PASTDA
+   boshlanadi, header esa ustida z-50 bilan doim ko'rinib turadi. Ikkalasi
+   ham shu bitta --plat-header-h qiymatiga tayanadi. */
+:root { --plat-header-h: 64px; }
+.plat-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid #e6eefb; position: sticky; top: 0;
+  min-height: var(--plat-header-h);
+  background: rgba(255,255,255,0.92); backdrop-filter: blur(6px); z-index: 50;
+}
+.plat-header-title { font-size: 17px; font-weight: 800; letter-spacing: 0.2px; color: #0f172a; }
+.plat-header-btn {
+  width: 36px; height: 36px; border-radius: 999px; border: 1px solid #dbe7fb;
+  background: #fff; color: #1d4ed8; font-size: 16px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+.plat-header-btn:active { transform: scale(0.94); background: #eaf2ff; }
+
+.plat-role-popover {
+  position: fixed; z-index: 20; background: #fff; border: 1px solid #e1ebfb;
+  border-radius: 10px; box-shadow: 0 12px 30px rgba(30,64,175,0.16); overflow: hidden;
+  animation: platPopIn 0.14s ease;
+}
+@keyframes platPopIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.plat-role-popover-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%; white-space: nowrap; padding: 12px 16px; border: none;
+  background: transparent; color: #0f172a; font-size: 13px; font-weight: 600; cursor: pointer; text-align: left;
+  transition: background 0.12s ease;
+}
+.plat-role-popover-btn:hover { background: #f0f6ff; }
+
+.plat-content { max-width: 520px; margin: 0 auto; padding: 16px 16px 96px; animation: platFadeIn 0.18s ease; }
+@keyframes platFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+.plat-bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  display: flex; background: rgba(255,255,255,0.94); backdrop-filter: blur(6px); border-top: 1px solid #e6eefb;
+  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+}
+.plat-nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border: none; background: transparent; color: #94a3b8; padding: 6px 2px; cursor: pointer;
+  transition: color 0.15s ease, transform 0.12s ease;
+}
+.plat-nav-btn:active { transform: scale(0.94); }
+.plat-nav-btn.active { color: #2563eb; }
+.plat-nav-icon { display: flex; line-height: 1; transition: transform 0.15s ease; }
+.plat-nav-btn.active .plat-nav-icon { transform: translateY(-1px); }
+.plat-nav-label { font-size: 10px; font-weight: 600; }
+
+.plat-page { position: fixed; top: var(--plat-header-h); right: 0; bottom: 0; left: 0; background: #eef5ff; z-index: 10; display: flex; flex-direction: column; animation: platSlideIn 0.2s ease; }
+/* ROOT-CAUSE FIX (scroll-jump follow-up): a same-page data-refresh render
+   still fully recreates this element (render() always replaces #app's
+   innerHTML) — without this, the slide-in animation replayed on every such
+   refresh, visible as a "flash/reload" once scroll position itself stopped
+   jumping. Applied only when the render was NOT a genuine navigation. */
+.plat-page.no-anim { animation: none; }
+@keyframes platSlideIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+.plat-page-header {
+  display: flex; align-items: center; gap: 10px; padding: 14px 12px;
+  border-bottom: 1px solid #e6eefb; flex-shrink: 0; background: #fff;
+}
+.plat-page-header-btn {
+  width: 34px; height: 34px; border-radius: 999px; border: 1px solid #dbe7fb;
+  background: #fff; color: #1d4ed8; font-size: 15px; cursor: pointer; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+.plat-page-header-btn:active { transform: scale(0.94); background: #eaf2ff; }
+.plat-page-header-title { font-size: 15px; font-weight: 700; flex: 1; color: #0f172a; }
+.plat-page-body { flex: 1; overflow-y: auto; padding: 16px; max-width: 520px; margin: 0 auto; width: 100%; }
+.plat-page-title { font-size: 20px; font-weight: 800; margin: 4px 0 14px; color: #0f172a; }
+
+/* ============================================================
+   4-bosqich: landing/hero, tariflar, obuna oqimi
+   ============================================================ */
+
+.plat-hero { text-align: center; padding: 28px 8px 8px; }
+.plat-hero-title {
+  font-size: 30px; font-weight: 900; margin: 0 0 4px; letter-spacing: 0.3px;
+  background: linear-gradient(135deg, #1d4ed8, #38bdf8); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.plat-hero-sub { font-size: 14px; font-weight: 700; color: #334155; margin: 0 0 6px; }
+.plat-hero-desc { font-size: 13px; color: #64748b; margin: 0 0 18px; }
+
+
+.plat-tariff-grid { display: flex; flex-direction: column; gap: 10px; }
+.plat-tariff-card {
+  position: relative; text-align: left; background: #fff; border: 1px solid #e1ebfb;
+  border-radius: 14px; padding: 14px; cursor: pointer; color: inherit; font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+.plat-tariff-card:active { transform: scale(0.99); }
+.plat-tariff-card.selected { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb inset, 0 4px 14px rgba(37,99,235,0.12); }
+.plat-tariff-badge {
+  position: absolute; top: -9px; right: 12px; background: #2563eb; color: #fff;
+  font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 999px;
+}
+.plat-tariff-badge-sm {
+  display: inline-block; background: #2563eb; color: #fff; font-size: 9px; font-weight: 800;
+  padding: 2px 7px; border-radius: 999px; margin-left: 6px; vertical-align: middle;
+}
+.plat-tariff-name { font-size: 15px; font-weight: 700; color: #0f172a; }
+.plat-tariff-limit { font-size: 12px; color: #64748b; margin-top: 2px; }
+.plat-tariff-price { font-size: 18px; font-weight: 800; color: #1d4ed8; margin-top: 8px; }
+.plat-tariff-price span { font-size: 11px; font-weight: 600; color: #64748b; }
+
+.plat-summary-card { font-size: 13px; }
+.plat-choice-btn {
+  display: block; width: 100%; text-align: left; background: #fff; border: 1px solid #e1ebfb;
+  border-radius: 12px; padding: 16px; margin-bottom: 10px; color: #0f172a; font-size: 14px;
+  font-weight: 600; cursor: pointer; font-family: inherit; transition: border-color 0.15s ease, transform 0.12s ease;
+}
+.plat-choice-btn:active { transform: scale(0.99); border-color: #93c5fd; }
+
+.plat-shop-pick-list { display: flex; flex-direction: column; gap: 8px; }
+.plat-shop-pick-row {
+  display: flex; align-items: center; justify-content: space-between; background: #fff;
+  border: 1px solid #e1ebfb; border-radius: 12px; padding: 12px 14px; cursor: pointer;
+  color: #0f172a; font-family: inherit; transition: border-color 0.15s ease, transform 0.12s ease;
+}
+.plat-shop-pick-row:active { transform: scale(0.99); }
+.plat-shop-pick-row .name { font-weight: 700; font-size: 13px; }
+.plat-shop-pick-row .meta { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+.plat-card-number-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.plat-card-number { font-family: monospace; font-size: 16px; font-weight: 700; color: #0f172a; letter-spacing: 0.5px; }
+.plat-copy-btn {
+  flex-shrink: 0; border: 1px solid #d7e3f8; background: #f4f8ff; color: #1d4ed8;
+  font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+}
+.plat-copy-btn:active { transform: scale(0.95); }
+.plat-receipt-preview { width: 100%; max-height: 220px; object-fit: contain; border-radius: 10px; margin-top: 10px; border: 1px solid #e1ebfb; }
+
+.plat-center { text-align: center; }
+
+/* ============================================================
+   Oddiy foydalanuvchi: bosh sahifa / do'konlarim / obuna / yordam / profil
+   ============================================================ */
+
+.plat-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.plat-summary-card-sm {
+  background: #fff; border: 1px solid #e1ebfb; border-radius: 12px; padding: 12px; text-align: center;
+}
+.plat-summary-card-sm span { font-size: 18px; display: block; margin-bottom: 4px; }
+.plat-summary-card-sm b { display: block; font-size: 14px; color: #0f172a; }
+.plat-summary-card-sm small { display: block; font-size: 10px; color: #64748b; margin-top: 2px; }
+
+.plat-shop-card-list { display: flex; flex-direction: column; gap: 12px; }
+.plat-shop-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+/* 2026-08-28: "Obuna tarixi" (proratsiya audit) qatorlari. */
+.plat-history-row { padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+.plat-history-row:last-child { border-bottom: none; }
+.plat-history-row-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.plat-history-row-head b { font-size: 12.5px; color: #0f172a; }
+.plat-history-row-head small { font-size: 10.5px; color: #94a3b8; }
+/* 2026-08-28: So'rovlar kartasidagi DERIVED 5-holat belgisi (Kutilmoqda/
+   Tekshirilmoqda/Tasdiqlangan/Rad etilgan/Chek talab qilindi). */
+.plat-request-status-row { margin-bottom: 8px; }
+.plat-request-status-pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+.plat-request-status-pill.is-muted { background: #f1f5f9; color: #64748b; }
+.plat-request-status-pill.is-info { background: #dbeafe; color: #1d4ed8; }
+.plat-request-status-pill.is-warn { background: #fef3c7; color: #b45309; }
+.plat-request-status-pill.is-ok { background: #dcfce7; color: #15803d; }
+.plat-request-status-pill.is-danger { background: #fee2e2; color: #b91c1c; }
+.plat-shop-card-actions { display: flex; gap: 8px; margin-top: 8px; }
+.plat-shop-card-actions > * { flex: 1; margin-top: 0; }
+.plat-link-btn {
+  display: flex; align-items: center; justify-content: center; text-decoration: none; box-sizing: border-box;
+  padding: 10px; border-radius: 10px; border: 1px solid #d7e3f8; background: #fff;
+  color: #334155; font-weight: 600; font-size: 13px; cursor: pointer; transition: background 0.15s ease;
+}
+.plat-link-btn:active { background: #f4f8ff; }
+
+.plat-plan-name { font-size: 13px; font-weight: 700; color: #1d4ed8; margin: 2px 0 8px; }
+.plat-progress { height: 8px; border-radius: 999px; background: #eef2fb; border: 1px solid #e1ebfb; overflow: hidden; }
+.plat-progress-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #38bdf8); transition: width 0.3s ease; }
+
+.plat-help-list { display: flex; flex-direction: column; gap: 10px; }
+.plat-help-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0; cursor: pointer; }
+.plat-help-row span:first-child { font-size: 18px; }
+
+.plat-profile-card { display: flex; align-items: center; gap: 12px; }
+.plat-profile-photo { width: 52px; height: 52px; border-radius: 999px; object-fit: cover; }
+.plat-profile-photo-fallback {
+  display: flex; align-items: center; justify-content: center; background: #eaf2ff; color: #1d4ed8; font-size: 22px;
+}
+.plat-profile-menu { padding: 4px 16px; }
+.plat-profile-row {
+  display: flex; align-items: center; justify-content: space-between; padding: 12px 0;
+  border-bottom: 1px solid #eef2fb; font-size: 13px; color: #0f172a;
+}
+.plat-profile-row:last-child { border-bottom: none; }
+
+/* ============================================================
+   5-bosqich: admin operatsion qatlami
+   ============================================================ */
+
+.plat-mini-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; font-size: 12.5px; }
+
+/* 2026-08-28: Billz/Click/Payme/Uzum integratsiya UX birlashtirish — ruxsat
+   tumbleri (yuqorida, .plat-mini-row) + haqiqiy ulanish holati (pastda). */
+.plat-integrations-hint { font-size: 10.5px; line-height: 1.4; margin: 0 0 10px; }
+.plat-integration-row { padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+.plat-integration-row:last-child { border-bottom: none; }
+.plat-integration-row .plat-mini-row { padding: 4px 0; }
+.plat-integration-status-line { display: flex; align-items: center; gap: 6px; font-size: 11px; padding: 2px 0 4px; }
+.plat-integration-status-dot { width: 7px; height: 7px; border-radius: 999px; flex: none; background: #94a3b8; }
+.plat-integration-status-line.is-muted { color: #64748b; }
+.plat-integration-status-line.is-ok { color: #15803d; }
+.plat-integration-status-line.is-ok .plat-integration-status-dot { background: #22c55e; }
+.plat-integration-status-line.is-warn { color: #b45309; }
+.plat-integration-status-line.is-warn .plat-integration-status-dot { background: #f59e0b; }
+.plat-integration-status-line.is-danger { color: #b91c1c; }
+.plat-integration-status-line.is-danger .plat-integration-status-dot { background: #ef4444; }
+
+.plat-tab-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.plat-small-btn { width: auto; padding: 8px 14px; margin-top: 0; font-size: 12px; }
+.plat-clickable { cursor: pointer; }
+
+.plat-filter-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.plat-filter-btn {
+  flex: 1; padding: 8px; border-radius: 10px; border: 1px solid #e1ebfb; background: #fff;
+  color: #64748b; font-size: 12px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.plat-filter-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+/* 2026-08-28: 5+ chip bo'lganda (Do'konlar status-filtri) flex:1 matnni
+   siqib qo'yadi — shu variant siqmasdan gorizontal skroll qiladi. */
+.plat-filter-row.is-scroll { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.plat-filter-row.is-scroll .plat-filter-btn { flex: 0 0 auto; white-space: nowrap; }
+.plat-shops-search {
+  display: block; width: 100%; padding: 10px 12px; margin-bottom: 10px; border-radius: 12px;
+  border: 1px solid #e1ebfb; background: #fff; font-size: 12.5px; color: #1e293b; font-family: inherit;
+}
+.plat-shops-search:focus { outline: none; border-color: #2563eb; }
+
+.plat-request-actions { display: flex; gap: 8px; margin-top: 10px; }
+.plat-request-actions > * { flex: 1; margin-top: 0; }
+.plat-reject-box { display: flex; gap: 8px; margin-top: 10px; }
+.plat-reject-box input { flex: 1; margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid #d7e3f8; background: #fff; color: #0f172a; font-size: 13px; }
+.plat-reject-box button { width: auto; margin-top: 0; padding: 10px 14px; }
+
+.plat-tariff-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.plat-tariff-row button { width: auto; margin-top: 0; }
+
+.plat-checkbox-row { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #334155; font-size: 13px; margin: 10px 0 0; }
+.plat-checkbox-row input { width: auto; margin: 0; }
+
+/* ============================================================
+   5-band: Foydalanish shartlari / Maxfiylik siyosati — uzun matnli
+   yuridik hujjat sahifalari.
+   ============================================================ */
+.plat-legal { font-size: 13px; line-height: 1.6; color: #334155; }
+.plat-legal h2 { font-size: 15px; font-weight: 800; color: #0f172a; margin: 22px 0 4px; }
+.plat-legal h2:first-child { margin-top: 0; }
+.plat-legal h3 { font-size: 13px; font-weight: 700; color: #1d4ed8; margin: 14px 0 6px; }
+.plat-legal p { margin: 0 0 8px; }
+.plat-legal ul { margin: 0 0 8px; padding-left: 18px; }
+.plat-legal li { margin-bottom: 4px; }
+.plat-legal .plat-legal-meta { color: #94a3b8; font-size: 11px; margin-bottom: 16px; }
+
+/* ============================================================
+   D-bosqich: landing sahifasi — swipe-carousel, "Qanday ishlaydi",
+   bonus promo, ishonch bloki, FAQ, yakuniy CTA.
+   ============================================================ */
+.plat-section-title { font-size: 17px; font-weight: 800; margin: 28px 0 4px; color: #0f172a; }
+.plat-section-sub { font-size: 12px; color: #64748b; margin: 0 0 14px; }
+
+.plat-carousel {
+  display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory;
+  padding: 2px 2px 4px; margin: 0 -2px; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.plat-carousel::-webkit-scrollbar { display: none; }
+.plat-carousel-item { scroll-snap-align: start; flex: 0 0 82%; }
+.plat-carousel-dots { display: flex; justify-content: center; gap: 5px; margin: 8px 0 4px; }
+.plat-carousel-dot { width: 6px; height: 6px; border-radius: 999px; background: #cbdcf7; transition: width 0.2s ease, background 0.2s ease; }
+.plat-carousel-dot:first-child { background: #2563eb; width: 16px; }
+
+.plat-why-card {
+  background: #fff; border: 1px solid #e1ebfb; border-radius: 16px; padding: 16px; height: 100%;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.plat-why-card:active { transform: scale(0.99); }
+.plat-why-card-icon {
+  width: 40px; height: 40px; border-radius: 12px; margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #eaf2ff, #dbeafe); color: #1d4ed8;
+}
+.plat-why-card-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+.plat-why-card-desc { font-size: 12px; color: #64748b; line-height: 1.4; }
+
+.plat-step-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+.plat-step-num {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 999px; background: linear-gradient(135deg, #2563eb, #3b82f6); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;
+  box-shadow: 0 2px 6px rgba(37,99,235,0.3);
+}
+.plat-step-title { font-size: 13px; font-weight: 700; color: #0f172a; }
+.plat-step-desc { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+.plat-bonus-card {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; border-radius: 16px;
+  padding: 16px; margin: 10px 0;
+}
+.plat-bonus-title { display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 800; color: #b45309; margin-bottom: 4px; }
+.plat-bonus-desc { font-size: 12px; color: #334155; margin-bottom: 4px; }
+.plat-bonus-note { font-size: 11px; color: #64748b; }
+
+.plat-trust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.plat-trust-card {
+  background: #fff; border: 1px solid #e1ebfb; border-radius: 14px; padding: 14px 10px;
+  font-size: 11.5px; font-weight: 600; color: #334155; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.plat-trust-card:active { transform: scale(0.98); }
+.plat-trust-card-icon {
+  width: 36px; height: 36px; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #eaf2ff, #dbeafe); color: #1d4ed8;
+}
+.plat-trust-card-text { line-height: 1.3; }
+
+.plat-faq-card { padding: 4px 16px; }
+.plat-faq-item { border-bottom: 1px solid #eef2fb; }
+.plat-faq-item:last-child { border-bottom: none; }
+.plat-faq-q {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer;
+  font-size: 13px; font-weight: 700; color: #0f172a; width: 100%; text-align: left;
+  background: none; border: none; padding: 12px 0; font-family: inherit;
+}
+.plat-faq-chevron { display: flex; color: #94a3b8; flex-shrink: 0; transition: transform 0.2s ease; }
+.plat-faq-item.open .plat-faq-chevron { transform: rotate(180deg); color: #2563eb; }
+.plat-faq-a { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.25s ease, opacity 0.2s ease; }
+.plat-faq-item.open .plat-faq-a { max-height: 300px; opacity: 1; }
+.plat-faq-a-inner { font-size: 12px; color: #64748b; line-height: 1.5; padding-bottom: 14px; }
+
+.plat-final-cta { text-align: center; padding: 28px 10px; margin-top: 10px; }
+.plat-final-cta-title { font-size: 18px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+.plat-final-cta-desc { font-size: 12px; color: #64748b; margin-bottom: 14px; }
+
+/* ==========================================================================
+   2026-08-27 — USER PLATFORM REDESIGN (5 skrinshot: Bosh sahifa yangi user /
+   Dashboard / Do'konlarim / Obuna / Yordam markazi). Rangli tokenlar aynan
+   spec bo'yicha (2.4-band); mavjud .plat-* klasslarga QO'SHIMCHA — hech
+   birini o'chirmaydi, faqat yangi komponentlar.
+   ========================================================================== */
+:root {
+  --plat2-bg: #F5F8FF;
+  --plat2-card: #FFFFFF;
+  --plat2-primary: #2563EB;
+  --plat2-primary-pressed: #1D4ED8;
+  --plat2-primary-soft: #EEF4FF;
+  --plat2-title: #102A4C;
+  --plat2-text: #1E293B;
+  --plat2-muted: #64748B;
+  --plat2-border: #DCE6F5;
+  --plat2-success: #16A34A; --plat2-success-bg: #ECFDF3;
+  --plat2-warning: #F59E0B; --plat2-warning-bg: #FFF7E6;
+  --plat2-error: #DC2626; --plat2-error-bg: #FEF2F2;
+}
+.is-ok { color: var(--plat2-success) !important; }
+.is-warn { color: var(--plat2-warning) !important; }
+.is-danger { color: var(--plat2-error) !important; }
+.plat-tiny { font-size: 11px; margin: 2px 0; }
+.plat-inline-link { background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 700; color: var(--plat2-primary); }
+.plat-section-title-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 28px; }
+.plat-section-title-row .plat-section-title { margin-top: 0; }
+
+/* ---- Do'konlarim (skrinshot 03) ---- */
+.plat-shops-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.plat-shops-header-icon { width: 46px; height: 46px; border-radius: 14px; background: var(--plat2-primary-soft); color: var(--plat2-primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.plat-shops-header h1 { font-size: 22px; font-weight: 800; color: var(--plat2-title); margin: 0; }
+.plat-shops-header .muted { font-size: 12.5px; margin-top: 2px; }
+.plat-shops-header-cta { margin-left: auto; }
+.plat-tip-banner, .plat-grow-banner {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px;
+  background: var(--plat2-primary-soft); border: 1px solid #cfe1fd; margin-bottom: 16px; font-size: 12px; color: var(--plat2-text);
+}
+.plat-tip-banner b, .plat-grow-banner b { font-size: 13px; color: var(--plat2-title); display: block; margin-bottom: 2px; }
+.plat-tip-banner p, .plat-grow-banner p { margin: 0; color: var(--plat2-muted); line-height: 1.4; }
+.plat-tip-banner span { color: var(--plat2-primary); flex-shrink: 0; }
+.plat-grow-banner { background: var(--plat2-success-bg); border-color: #bbf0d1; margin-top: 16px; }
+.plat-grow-banner span { font-size: 22px; flex-shrink: 0; }
+
+.plat-shop-avatar { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--plat2-primary-soft); color: var(--plat2-primary); font-weight: 800; }
+/* Do'kon logotipi endi 4:1 majburiy (Shop App) — kvadrat konteynerda
+   object-fit:cover asosiy qismini KESIB tashlar edi (faqat o'rtadagi tor
+   chiziq ko'rinardi). HAQIQIY logo bo'lganda (.is-logo, shopAvatarClass()
+   orqali) keng to'rtburchakka o'tadi + object-fit:contain — logo TO'LIQ,
+   crop/deformatsiyasiz ko'rinadi. Harf-fallback holatda ESKI kvadrat
+   ko'rinish o'zgarishsiz qoladi (pastda .is-logo bilan cheklangan). */
+.plat-shop-avatar-img { width: 100%; height: 100%; object-fit: contain; padding: 3px; }
+.plat-shop-avatar.is-logo { width: 66px; height: 30px; border-radius: 8px; background: #fff; border: 1px solid var(--plat2-border, #e5eaf1); }
+.plat-shop-avatar-fallback { font-size: 17px; }
+.plat-shop-avatar-lg { width: 52px; height: 52px; border-radius: 14px; }
+.plat-shop-avatar-lg.is-logo { width: 96px; height: 40px; border-radius: 10px; }
+
+.plat-shop-card-v2 { padding: 14px; }
+.plat-shop-card-v2-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+.plat-shop-card-v2-title { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.plat-shop-card-v2-title b { font-size: 15px; font-weight: 800; color: var(--plat2-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plat-shop-card-v2-title small { font-size: 11.5px; color: var(--plat2-primary); }
+.plat-shop-days-pill {
+  display: flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: 10px; font-size: 10.5px; font-weight: 700;
+  background: var(--plat2-success-bg); color: var(--plat2-success); flex-shrink: 0; white-space: nowrap;
+}
+.plat-shop-days-pill.is-warn { background: var(--plat2-warning-bg); color: var(--plat2-warning); }
+.plat-shop-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px 0; border-top: 1px solid var(--plat2-border); border-bottom: 1px solid var(--plat2-border); margin-bottom: 10px; }
+.plat-shop-metrics div { text-align: center; }
+.plat-shop-metrics b { display: block; font-size: 13px; font-weight: 800; color: var(--plat2-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plat-shop-metrics small { font-size: 10px; color: var(--plat2-muted); }
+.plat-shop-card-actions { display: flex; gap: 8px; }
+.plat-shop-card-actions > * { flex: 1; text-align: center; }
+.plat-shop-status-row { display: flex; align-items: center; gap: 7px; margin-top: 10px; padding: 8px 10px; border-radius: 10px; background: var(--plat2-success-bg); color: var(--plat2-success); font-size: 11.5px; font-weight: 600; }
+.plat-shop-status-row.is-warn { background: var(--plat2-warning-bg); color: var(--plat2-warning); }
+.plat-shop-status-row.is-danger { background: var(--plat2-error-bg); color: var(--plat2-error); }
+.plat-new-shop-cta {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px; margin-top: 4px;
+  border: 1.5px dashed #b6cdf2; border-radius: 14px; background: var(--plat2-primary-soft); text-align: left;
+}
+.plat-new-shop-cta:active { transform: scale(0.99); }
+.plat-new-shop-cta-icon { width: 38px; height: 38px; border-radius: 999px; background: var(--plat2-primary); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.plat-new-shop-cta b { display: block; font-size: 13.5px; color: var(--plat2-primary); }
+.plat-new-shop-cta small { font-size: 11px; color: var(--plat2-muted); }
+
+/* ---- Obuna (skrinshot 04) ---- */
+.plat-shop-selector { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.plat-shop-selector select { flex: 1; max-width: 220px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--plat2-border); background: #fff; font-size: 12.5px; font-weight: 600; color: var(--plat2-text); }
+.plat-subscription-summary-top { display: flex; align-items: flex-start; gap: 12px; }
+.plat-subscription-summary-name { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+.plat-subscription-summary-name b { font-size: 16px; font-weight: 800; color: var(--plat2-title); }
+.plat-subscription-summary-mid { display: flex; gap: 16px; margin: 12px 0; padding: 10px 0; border-top: 1px solid var(--plat2-border); }
+.plat-subscription-summary-mid b { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--plat2-title); margin: 2px 0; }
+.plat-subscription-summary-actions { display: flex; gap: 8px; }
+.plat-subscription-summary-actions > * { flex: 1; }
+
+.plat-billing-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 10px; }
+.plat-billing-opt { padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--plat2-border); background: #fff; text-align: left; }
+.plat-billing-opt b { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; color: var(--plat2-text); }
+.plat-billing-opt small { font-size: 11px; color: var(--plat2-muted); }
+.plat-billing-opt.active { border-color: var(--plat2-primary); background: var(--plat2-primary-soft); }
+.plat-billing-opt.active b { color: var(--plat2-primary); }
+.plat-billing-free-badge { font-size: 9.5px; font-weight: 800; color: var(--plat2-success); background: var(--plat2-success-bg); padding: 2px 7px; border-radius: 999px; }
+.plat-billing-promo { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--plat2-primary-soft); border: 1px solid #cfe1fd; margin-bottom: 12px; }
+.plat-billing-promo-icon { width: 30px; height: 30px; border-radius: 999px; background: var(--plat2-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
+.plat-billing-promo b { font-size: 12.5px; color: var(--plat2-title); display: block; }
+.plat-billing-promo p { margin: 2px 0 0; font-size: 11.5px; color: var(--plat2-muted); }
+
+.plat-tariff-price-strike { font-size: 11.5px; color: var(--plat2-muted); text-decoration: line-through; margin-top: 8px; }
+.plat-tariff-price-strike + .plat-tariff-price { margin-top: 1px; }
+.plat-tariff-annual-badge { display: inline-block; margin-top: 4px; font-size: 10px; font-weight: 800; color: var(--plat2-success); background: var(--plat2-success-bg); padding: 3px 8px; border-radius: 999px; }
+.plat-tariff-features { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.plat-tariff-features li { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--plat2-text); }
+.plat-tariff-features li .p-icon { color: var(--plat2-success); flex-shrink: 0; }
+.plat-tariff-card.is-current { border-color: var(--plat2-primary); box-shadow: 0 0 0 1px var(--plat2-primary) inset, 0 6px 18px rgba(37,99,235,0.14); }
+.plat-tariff-badge.is-current { background: var(--plat2-primary); color: #fff; }
+.plat-tariff-current-btn { color: var(--plat2-primary) !important; background: var(--plat2-primary-soft) !important; border-color: var(--plat2-primary) !important; opacity: 1 !important; cursor: default; }
+
+/* ---- Bosh sahifa dashboard, do'koni bor user (skrinshot 02) ---- */
+.plat-dashboard-summary { position: relative; }
+.plat-dashboard-summary-top { display: flex; align-items: center; gap: 12px; }
+.plat-dashboard-summary-mid { flex: 1; min-width: 0; }
+.plat-dashboard-greet { font-size: 12px; color: var(--plat2-muted); margin: 0 0 2px; }
+.plat-dashboard-summary-name { display: flex; align-items: center; gap: 4px; }
+.plat-dashboard-summary-name b { font-size: 16px; font-weight: 800; color: var(--plat2-title); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plat-shop-switch-btn { background: none; border: none; color: var(--plat2-muted); display: flex; padding: 2px; flex-shrink: 0; }
+.plat-dashboard-shop-menu { position: absolute; top: 60px; left: 14px; right: 14px; z-index: 5; background: #fff; border: 1px solid var(--plat2-border); border-radius: 12px; box-shadow: 0 10px 26px rgba(15,23,42,0.12); overflow: hidden; }
+.plat-dashboard-shop-menu button { display: block; width: 100%; text-align: left; padding: 10px 14px; border: none; background: none; font-size: 12.5px; color: var(--plat2-text); border-bottom: 1px solid #f1f5f9; }
+.plat-dashboard-shop-menu button:last-child { border-bottom: none; }
+.plat-dashboard-summary-bottom { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--plat2-border); font-size: 12px; color: var(--plat2-text); }
+.plat-dashboard-summary-bottom span { display: flex; align-items: center; gap: 5px; }
+
+.plat-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.plat-stat-card { display: flex; flex-direction: column; gap: 4px; padding: 12px; }
+.plat-stat-icon { width: 32px; height: 32px; border-radius: 10px; background: var(--plat2-primary-soft); color: var(--plat2-primary); display: flex; align-items: center; justify-content: center; }
+.plat-stat-card small { font-size: 11px; color: var(--plat2-muted); }
+.plat-stat-card b { font-size: 22px; font-weight: 800; color: var(--plat2-title); }
+
+/* ---- Admin Dashboard — KPI kartalari (2026-08-28, "Muddati tugagan" ishi) ---- */
+.plat-admin-dash-head { margin: 0 0 16px; }
+.plat-admin-dash-head h1 { font-size: 22px; font-weight: 800; color: var(--plat2-title); margin: 0 0 2px; }
+.plat-admin-dash-head p { font-size: 12.5px; color: var(--plat2-muted); margin: 0; }
+.plat-admin-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.plat-admin-kpi-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px;
+  border-radius: 16px; background: var(--plat2-card); border: 1px solid var(--plat2-border);
+  text-align: left; box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+}
+button.plat-admin-kpi-card { cursor: pointer; }
+button.plat-admin-kpi-card:active { transform: scale(0.98); }
+.plat-admin-kpi-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--plat2-primary-soft); color: var(--plat2-primary); display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+.plat-admin-kpi-card.is-warn .plat-admin-kpi-icon { background: var(--plat2-warning-bg); color: var(--plat2-warning); }
+.plat-admin-kpi-card b { font-size: 22px; font-weight: 800; color: var(--plat2-title); line-height: 1.1; }
+.plat-admin-kpi-card small { font-size: 11.5px; font-weight: 600; color: var(--plat2-text); }
+.plat-admin-kpi-card em { font-size: 10.5px; font-style: normal; color: var(--plat2-muted); }
+.plat-admin-kpi-card.is-warn em { color: var(--plat2-warning); }
+
+/* ---- Admin Dashboard — Analitika bo'limi (2026-08-28) ---- */
+.plat-analytics-card h2 { font-size: 15px; font-weight: 800; color: var(--plat2-title); margin: 0; }
+.plat-analytics-subtitle { font-size: 12.5px; font-weight: 800; color: var(--plat2-title); margin: 16px 0 8px; }
+.plat-analytics-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.plat-analytics-kpi { padding: 10px 12px; border-radius: 12px; background: var(--plat2-bg); border: 1px solid var(--plat2-border); }
+.plat-analytics-kpi b { display: block; font-size: 16px; font-weight: 800; color: var(--plat2-title); }
+.plat-analytics-kpi small { font-size: 10.5px; color: var(--plat2-muted); }
+.plat-analytics-kpi.is-primary { background: var(--plat2-primary-soft); border-color: #cfe1fd; }
+.plat-analytics-kpi.is-primary b { color: var(--plat2-primary); }
+.plat-analytics-breakdown-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--plat2-border); font-size: 12px; }
+.plat-analytics-breakdown-row:last-child { border-bottom: none; }
+.plat-analytics-breakdown-row span { color: var(--plat2-muted); }
+.plat-analytics-breakdown-row b { color: var(--plat2-title); font-weight: 700; }
+/* Kunlik savdo dinamikasi — bitta rangli ustunli diagramma, SVG/path
+   interpolatsiyasiz (spec: mobil-do'st, "rainbow" emas). */
+.plat-analytics-bars { display: flex; align-items: flex-end; gap: 4px; height: 110px; padding-top: 8px; overflow-x: auto; }
+.plat-analytics-bar-col { flex: 1 0 14px; min-width: 14px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.plat-analytics-bar { width: 100%; max-width: 18px; border-radius: 4px 4px 0 0; background: var(--plat2-primary); min-height: 4px; }
+.plat-analytics-bar-col small { display: block; margin-top: 4px; font-size: 8.5px; color: var(--plat2-muted); white-space: nowrap; }
+
+/* ---- Muddati tugagan do'konlar ro'yxati (yosh-guruhlangan) ---- */
+.plat-expired-group { margin-bottom: 16px; }
+.plat-expired-group-title { font-size: 12.5px; font-weight: 800; color: var(--plat2-title); margin: 0 0 8px; }
+.plat-expired-group-title span { font-weight: 600; color: var(--plat2-muted); }
+
+.plat-quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.plat-quick-action {
+  display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 6px; border-radius: 14px;
+  background: #fff; border: 1px solid var(--plat2-border); color: var(--plat2-primary); text-align: center; text-decoration: none;
+}
+.plat-quick-action:active { transform: scale(0.97); background: var(--plat2-primary-soft); }
+.plat-quick-action span { font-size: 10.5px; font-weight: 700; color: var(--plat2-text); line-height: 1.25; }
+
+.plat-alert-list { padding: 4px 14px; }
+.plat-alert-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; text-align: left; background: none; border-left: none; border-right: none; border-top: none; }
+.plat-alert-row:last-child { border-bottom: none; }
+.plat-alert-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--plat2-success-bg); color: var(--plat2-success); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.plat-alert-row b { display: block; font-size: 12.5px; color: var(--plat2-text); }
+.plat-alert-row small { font-size: 11px; color: var(--plat2-muted); }
+.plat-alert-chevron { margin-left: auto; color: #94a3b8; flex-shrink: 0; }
+.plat-all-ok { display: flex; align-items: center; gap: 8px; color: var(--plat2-success); font-size: 13px; }
+
+.plat-capability-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.plat-capability-card { display: flex; align-items: center; gap: 9px; padding: 12px; border-radius: 14px; background: #fff; border: 1px solid var(--plat2-border); color: var(--plat2-primary); }
+.plat-capability-card span { font-size: 11.5px; font-weight: 600; color: var(--plat2-text); line-height: 1.3; }
+
+/* ---- Yordam markazi (skrinshot 05) ---- */
+.plat-help-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 6px 2px 18px; }
+.plat-help-hero h1 { font-size: 24px; font-weight: 800; color: var(--plat2-title); margin: 0 0 4px; }
+.plat-help-hero .muted { font-size: 12.5px; max-width: 230px; line-height: 1.4; }
+.plat-help-hero-icon { color: var(--plat2-primary-soft); opacity: 0.9; flex-shrink: 0; }
+.plat-help-row { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; border: 1px solid var(--plat2-border); }
+.plat-help-row-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.plat-help-icon-blue { background: var(--plat2-primary-soft); color: var(--plat2-primary); }
+.plat-help-icon-green { background: var(--plat2-success-bg); color: var(--plat2-success); }
+.plat-help-icon-orange { background: var(--plat2-warning-bg); color: var(--plat2-warning); }
+.plat-help-row-copy { flex: 1; min-width: 0; }
+.plat-help-row-copy b { display: block; font-size: 13.5px; font-weight: 800; color: var(--plat2-title); }
+.plat-help-row-copy small { font-size: 11px; color: var(--plat2-muted); line-height: 1.35; }
+.plat-help-row-chevron { color: #94a3b8; flex-shrink: 0; }
+.plat-help-row-action { background: var(--plat2-primary-soft); border-color: #cfe1fd; }
+.plat-help-row-action.plat-help-row-green { background: var(--plat2-success-bg); border-color: #bbf0d1; }
+.plat-help-row-action .plat-small-btn { flex-shrink: 0; }
+.plat-btn-green { color: var(--plat2-success) !important; border-color: var(--plat2-success) !important; background: #fff !important; }
+.plat-faq-preview { padding: 4px 4px; }
+.plat-faq-preview-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 12px; border-bottom: 1px solid #f1f5f9; text-align: left; background: none; border-left: none; border-right: none; border-top: none; font-size: 12.5px; color: var(--plat2-text); }
+.plat-faq-preview-row:last-child { border-bottom: none; }
+.plat-faq-preview-icon { width: 22px; height: 22px; border-radius: 999px; background: var(--plat2-primary-soft); color: var(--plat2-primary); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; flex-shrink: 0; }
+.plat-faq-preview-chevron { margin-left: auto; color: #94a3b8; flex-shrink: 0; }
+
+@media (max-width: 359px) {
+  .plat-quick-actions { grid-template-columns: repeat(2, 1fr); }
+  .plat-shop-metrics { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+}
+
+/* ============================================================
+   USER PLATFORM — PREMIUM REDESIGN (2026-08-27)
+   Scope: user home / landing / shops / subscriptions / help / profile.
+   Admin selectors are intentionally untouched.
+   ============================================================ */
+:root {
+  --u-bg:#f6f8fc; --u-card:#ffffff; --u-text:#111b31; --u-muted:#718096;
+  --u-border:#e4eaf3; --u-blue:#2563eb; --u-blue-soft:#eef4ff;
+  --u-green:#18a365; --u-green-soft:#ecf9f2; --u-amber:#d97706; --u-amber-soft:#fff7e8;
+  --u-violet:#7357d9; --u-violet-soft:#f4f0ff; --u-red:#dc4c55; --u-red-soft:#fff0f1;
+  --u-shadow:0 8px 24px rgba(24,39,75,.07);
+}
+body { background:var(--u-bg); }
+.plat-content { max-width:430px; padding:18px 16px 104px; }
+.plat-header { background:rgba(255,255,255,.96); border-bottom:1px solid var(--u-border); }
+.plat-header-title { color:var(--u-text); }
+.plat-bottom-nav { border-top:1px solid var(--u-border); box-shadow:0 -7px 24px rgba(30,41,59,.04); }
+.plat-nav-btn { padding:8px 2px 5px; }
+.plat-nav-label { font-size:10.5px; }
+.card { border:1px solid var(--u-border); border-radius:18px; box-shadow:var(--u-shadow); background:#fff; }
+.plat-section-title { margin:20px 0 10px; font-size:18px; color:var(--u-text); }
+.plat-section-heading { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin:22px 0 12px; }
+.plat-section-heading h2 { margin:0; font-size:19px; color:var(--u-text); }
+.plat-section-heading p { margin:3px 0 0; font-size:12px; line-height:1.4; color:var(--u-muted); }
+.plat-tab-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.plat-tab-head h1 { margin:0; font-size:27px; line-height:1.05; color:var(--u-text); }
+.plat-tab-head p { margin:5px 0 0; color:var(--u-muted); font-size:12px; }
+.plat-compact-cta { width:auto !important; margin:0 !important; padding:10px 14px !important; white-space:nowrap; }
+.plat-icon-button { width:42px; height:42px; border:1px solid var(--u-border); border-radius:14px; background:#fff; color:var(--u-blue); display:flex; align-items:center; justify-content:center; }
+
+/* New-user landing */
+.plat-landing-hero { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(110px,.8fr); gap:10px; align-items:center; background:#fff; border:1px solid var(--u-border); border-radius:22px; padding:20px 18px; box-shadow:var(--u-shadow); overflow:hidden; }
+.plat-eyebrow { display:inline-flex; align-items:center; gap:6px; font-size:10.5px; font-weight:800; color:var(--u-blue); background:var(--u-blue-soft); padding:6px 9px; border-radius:999px; }
+.plat-landing-hero h1 { margin:10px 0 8px; font-size:27px; line-height:1.05; letter-spacing:-.5px; color:var(--u-text); }
+.plat-landing-hero h1 span { color:var(--u-blue); }
+.plat-landing-hero p { margin:0; color:var(--u-muted); font-size:12px; line-height:1.5; }
+.plat-landing-hero-actions { display:flex; gap:8px; margin-top:15px; }
+.plat-landing-hero-actions button { margin:0; padding:10px 11px; font-size:11.5px; }
+.plat-landing-visual { min-height:190px; position:relative; display:flex; align-items:center; justify-content:center; }
+.plat-landing-phone { width:92px; height:168px; border:5px solid #17223a; background:#f9fbff; border-radius:22px; box-shadow:0 16px 30px rgba(37,99,235,.18); padding:18px 8px 8px; transform:rotate(3deg); }
+.plat-landing-phone-line { display:block; width:35px; height:5px; background:#dbe5f4; border-radius:999px; margin:0 auto 14px; }
+.plat-landing-phone-kpi { background:#fff; border:1px solid var(--u-border); border-radius:10px; padding:7px; }
+.plat-landing-phone-kpi b { display:block; font-size:17px; color:var(--u-text); }.plat-landing-phone-kpi small{font-size:8px;color:var(--u-muted)}
+.plat-landing-phone-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:8px; }.plat-landing-phone-grid span{height:33px;border-radius:8px;background:linear-gradient(145deg,#eaf1ff,#fff);border:1px solid #e2eaf7}
+.plat-landing-float { position:absolute; width:38px; height:38px; display:flex; align-items:center; justify-content:center; border-radius:12px; color:#fff; box-shadow:0 10px 24px rgba(37,99,235,.2); }.plat-landing-float.one{left:2px;top:33px;background:#2563eb}.plat-landing-float.two{right:0;bottom:26px;background:#7357d9}
+.plat-landing-section { margin-top:18px; }
+.plat-benefit-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.plat-benefit-card { min-height:92px; display:flex; gap:10px; padding:13px; border:1px solid var(--u-border); border-radius:16px; background:#fff; }
+.plat-benefit-card>span { width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none;background:var(--u-blue-soft);color:var(--u-blue)}
+.plat-benefit-card.tone-2>span{background:var(--u-green-soft);color:var(--u-green)}.plat-benefit-card.tone-3>span{background:var(--u-amber-soft);color:var(--u-amber)}.plat-benefit-card.tone-4>span{background:var(--u-violet-soft);color:var(--u-violet)}
+.plat-benefit-card b{display:block;font-size:12.5px;color:var(--u-text)}.plat-benefit-card small{display:block;margin-top:3px;color:var(--u-muted);font-size:10.5px;line-height:1.35}
+.plat-how-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }.plat-how-grid>div{position:relative;padding:12px 10px;border:1px solid var(--u-border);border-radius:15px;background:#fff}.plat-how-grid span{display:flex;width:24px;height:24px;border-radius:8px;background:var(--u-blue-soft);color:var(--u-blue);align-items:center;justify-content:center;font-weight:800;font-size:11px}.plat-how-grid b{display:block;margin-top:8px;font-size:11.5px;color:var(--u-text)}.plat-how-grid small{display:block;margin-top:3px;font-size:9.5px;color:var(--u-muted);line-height:1.35}
+.plat-bonus-card-pro { display:flex; align-items:center; gap:11px; padding:13px 14px; margin-top:14px; background:#fbfaff; border-color:#e4dcff; }.plat-bonus-card-pro .plat-bonus-icon{width:36px;height:36px;border-radius:11px;background:var(--u-violet-soft);color:var(--u-violet);display:flex;align-items:center;justify-content:center}.plat-bonus-card-pro b{font-size:12.5px;color:var(--u-text)}.plat-bonus-card-pro p{margin:2px 0 0;font-size:10.5px;color:var(--u-muted)}
+.plat-integrations-strip { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; padding:13px 14px; background:#fff; border:1px solid var(--u-border); border-radius:16px; }.plat-integrations-strip b{display:block;font-size:11.5px;color:var(--u-text)}.plat-integrations-strip small{display:block;font-size:9.5px;color:var(--u-muted);margin-top:2px}.plat-integration-pills{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.plat-integration-pills span{font-size:9.5px;font-weight:800;padding:5px 7px;border-radius:999px;background:#f4f7fb;color:#44536a}
+.plat-final-cta-pro { display:flex; align-items:center; justify-content:space-between; gap:12px; text-align:left; padding:16px; }.plat-final-cta-pro b{font-size:13px;color:var(--u-text)}.plat-final-cta-pro p{font-size:10.5px;color:var(--u-muted);margin:3px 0 0}.plat-final-cta-pro button{width:auto;margin:0;white-space:nowrap}
+
+/* Color-coded tariff cards — accents stay pastel, surfaces stay white. */
+.plat-tariff-carousel { margin:0 -4px; padding:8px 4px 12px; }.plat-tariff-carousel-item{flex:0 0 88%;}
+.plat-tariff-card { border-radius:18px; padding:15px; box-shadow:0 6px 18px rgba(30,41,59,.05); background:#fff; }
+.plat-tariff-head { display:flex; align-items:center; gap:10px; }.plat-tariff-symbol{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:var(--u-blue-soft);color:var(--u-blue)}
+.plat-tariff-tone-start{border-color:#d8eedf}.plat-tariff-tone-start .plat-tariff-symbol{background:var(--u-green-soft);color:var(--u-green)}.plat-tariff-tone-start .plat-tariff-name{color:#17834f}
+.plat-tariff-tone-standard{border-color:#cfe0ff}.plat-tariff-tone-standard .plat-tariff-symbol{background:var(--u-blue-soft);color:var(--u-blue)}.plat-tariff-tone-standard .plat-tariff-name{color:#1d5dd6}
+.plat-tariff-tone-business{border-color:#dfd6fb}.plat-tariff-tone-business .plat-tariff-symbol{background:var(--u-violet-soft);color:var(--u-violet)}.plat-tariff-tone-business .plat-tariff-name{color:#6544c4}
+.plat-tariff-tone-premium{border-color:#f2dfbd}.plat-tariff-tone-premium .plat-tariff-symbol{background:var(--u-amber-soft);color:var(--u-amber)}.plat-tariff-tone-premium .plat-tariff-name{color:#a86608}
+.plat-tariff-price { color:var(--u-text); font-size:20px; }.plat-tariff-saving{display:inline-block;margin-top:4px;padding:3px 7px;border-radius:999px;background:var(--u-green-soft);color:var(--u-green);font-size:9.5px;font-weight:800}.plat-tariff-select,.plat-tariff-current-btn{width:100%;margin-top:12px!important}.plat-tariff-features{min-height:108px}
+.plat-billing-toggle { background:#fff; border:1px solid var(--u-border); border-radius:14px; padding:4px; gap:4px; }.plat-billing-opt{border:none;text-align:center;padding:9px 7px;background:transparent}.plat-billing-opt small{display:none}.plat-billing-opt.active{background:var(--u-blue);}.plat-billing-opt.active b{color:#fff}.plat-billing-opt.active .plat-billing-free-badge{background:#dff6e9;color:#14844f}
+
+/* Existing-user dashboard */
+.plat-dashboard-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }.plat-dashboard-eyebrow{margin:0;color:var(--u-muted);font-size:11px;font-weight:700}.plat-dashboard-head h1{margin:3px 0 0;font-size:22px;color:var(--u-text)}
+.plat-dashboard-shop-tabs { display:flex; gap:9px; overflow-x:auto; scroll-snap-type:x mandatory; padding:3px 1px 10px; scrollbar-width:none; }.plat-dashboard-shop-tabs::-webkit-scrollbar{display:none}
+.plat-dashboard-shop-card { flex:0 0 76%; scroll-snap-align:start; display:flex; align-items:center; gap:10px; padding:12px; border:1px solid var(--u-border); border-radius:17px; background:#fff; text-align:left; position:relative; box-shadow:0 4px 14px rgba(30,41,59,.04); }.plat-dashboard-shop-card.active{border-color:#7ba6ff;box-shadow:0 0 0 1px #9ab8ff inset,0 6px 18px rgba(37,99,235,.08)}
+.plat-dashboard-shop-copy{min-width:0;flex:1}.plat-dashboard-shop-copy b{display:block;font-size:13px;color:var(--u-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.plat-dashboard-shop-copy small{display:block;font-size:10.5px;color:var(--u-muted);margin-top:2px}.plat-dashboard-shop-copy em{display:block;font-size:10px;font-style:normal;color:#536278;margin-top:5px}.plat-dashboard-shop-copy em.is-warn{color:var(--u-amber);font-weight:700}.status-dot{width:9px;height:9px;border-radius:50%;background:#cbd5e1}.status-dot.ok{background:var(--u-green);box-shadow:0 0 0 4px var(--u-green-soft)}
+.plat-dashboard-focus { padding:14px; margin-top:2px; }.plat-dashboard-focus-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.plat-dashboard-focus-title small{font-size:10px;color:var(--u-muted)}.plat-dashboard-focus-title h2{font-size:17px;margin:2px 0;color:var(--u-text)}
+.plat-dashboard-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.plat-dashboard-kpis>div{position:relative;padding:12px;border:1px solid var(--u-border);border-radius:15px;min-height:92px;background:#fff}.plat-dashboard-kpis span{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--u-blue-soft);color:var(--u-blue)}.plat-dashboard-kpis .tone-violet span{background:var(--u-violet-soft);color:var(--u-violet)}.plat-dashboard-kpis .tone-green span{background:var(--u-green-soft);color:var(--u-green)}.plat-dashboard-kpis .tone-amber span{background:var(--u-amber-soft);color:var(--u-amber)}.plat-dashboard-kpis small{display:block;margin-top:7px;font-size:10px;color:var(--u-muted)}.plat-dashboard-kpis b{font-size:22px;color:var(--u-text)}.plat-dashboard-kpis b.textual{font-size:15px}.plat-dashboard-kpis em{position:absolute;right:10px;bottom:10px;font-size:9px;font-style:normal;color:var(--u-muted)}
+.plat-health-strip { display:flex;align-items:center;gap:10px;margin-top:16px;padding:12px 14px;border:1px solid #cfe9da;border-radius:15px;background:#f5fcf8;color:var(--u-green)}.plat-health-strip b{display:block;font-size:12px}.plat-health-strip small{display:block;font-size:10px;color:#5f766a;margin-top:2px}
+.plat-alert-row.tone-warn .plat-alert-icon{background:var(--u-amber-soft);color:var(--u-amber)}.plat-alert-row.tone-danger .plat-alert-icon{background:var(--u-red-soft);color:var(--u-red)}.plat-alert-row.tone-info .plat-alert-icon{background:var(--u-blue-soft);color:var(--u-blue)}
+.plat-quick-actions{gap:8px}.plat-quick-action{min-height:82px;justify-content:center;border-radius:16px}.plat-quick-action span{font-size:10px}
+
+/* Shops + subscriptions */
+.plat-summary-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:14px; }.plat-summary-strip>div{display:grid;grid-template-columns:30px 1fr;grid-template-rows:auto auto;column-gap:7px;align-items:center;padding:10px;border:1px solid var(--u-border);border-radius:15px;background:#fff}.plat-summary-strip span{grid-row:1/3;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center}.plat-summary-strip .tone-blue{background:var(--u-blue-soft);color:var(--u-blue)}.plat-summary-strip .tone-green{background:var(--u-green-soft);color:var(--u-green)}.plat-summary-strip .tone-amber{background:var(--u-amber-soft);color:var(--u-amber)}.plat-summary-strip .tone-violet{background:var(--u-violet-soft);color:var(--u-violet)}.plat-summary-strip b{font-size:16px;color:var(--u-text)}.plat-summary-strip small{font-size:9px;color:var(--u-muted)}
+.plat-shop-pro-list,.plat-subscription-cards{display:flex;flex-direction:column;gap:12px}.plat-shop-pro-card,.plat-sub-card{background:#fff;border:1px solid var(--u-border);border-radius:18px;padding:14px;box-shadow:var(--u-shadow)}.plat-shop-pro-card.is-expiring,.plat-sub-card.is-expiring{border-color:#f2d5a5}
+.plat-shop-pro-head,.plat-sub-card-head{display:flex;align-items:flex-start;gap:10px}.plat-shop-pro-head>div:nth-child(2),.plat-sub-card-head>div:nth-child(2){min-width:0;flex:1}.plat-shop-pro-head h2,.plat-sub-card-head h2{margin:0;font-size:16px;color:var(--u-text)}.plat-shop-pro-head p,.plat-sub-card-head p{margin:2px 0 0;font-size:10.5px;color:var(--u-muted)}.plat-shop-badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}.plan-pill{padding:4px 8px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:9.5px;font-weight:800}.plat-more-btn{border:1px solid var(--u-border);background:#fff;width:34px;height:34px;border-radius:11px;color:#68758b}
+.plat-shop-pro-metrics{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:12px;border-top:1px solid var(--u-border);padding-top:12px}.plat-shop-pro-metrics>div{padding:0 10px}.plat-shop-pro-metrics>div+div{border-left:1px solid var(--u-border)}.plat-shop-pro-metrics span{color:var(--u-blue)}.plat-shop-pro-metrics b{display:block;margin-top:4px;font-size:13px;color:var(--u-text)}.plat-shop-pro-metrics small{display:block;font-size:9.5px;color:var(--u-muted);margin-top:2px}.mini-progress{height:5px;background:#edf1f6;border-radius:999px;overflow:hidden;margin-top:8px}.mini-progress i{display:block;height:100%;background:var(--u-blue);border-radius:999px}.mini-progress.time i{background:var(--u-green)}.is-warn .mini-progress.time i,.plat-shop-pro-metrics .is-warn .mini-progress i{background:var(--u-amber)}
+.plat-shop-pro-actions,.plat-sub-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.plat-shop-pro-actions .primary,.plat-shop-pro-actions .secondary,.plat-sub-card-actions .primary,.plat-sub-card-actions .secondary{margin:0;text-decoration:none;display:flex;align-items:center;justify-content:center}
+.plat-sub-card-head .plan-pill{margin-left:auto}.plat-sub-card-grid{display:grid;grid-template-columns:repeat(4,1fr);margin-top:12px;border:1px solid var(--u-border);border-radius:14px;overflow:hidden}.plat-sub-card-grid>div{padding:10px 6px;text-align:center}.plat-sub-card-grid>div+div{border-left:1px solid var(--u-border)}.plat-sub-card-grid b{display:block;font-size:11px;color:var(--u-text)}.plat-sub-card-grid small{display:block;font-size:8.5px;color:var(--u-muted);margin-top:3px;line-height:1.25}.plat-sub-progress{margin-top:10px}.plat-sub-progress>span{font-size:9.5px;color:var(--u-muted)}.plat-sub-progress>div{height:6px;margin-top:5px;background:#edf1f6;border-radius:999px;overflow:hidden}.plat-sub-progress i{display:block;height:100%;background:var(--u-blue);border-radius:999px}.plat-sub-card.is-expiring .plat-sub-progress i{background:var(--u-amber)}
+.plat-new-shop-inline{width:100%;display:flex;align-items:center;gap:10px;margin:12px 0 0;padding:12px;border:1px dashed #b8c9ef;border-radius:15px;background:#fbfcff;color:var(--u-blue);text-align:left}.plat-new-shop-inline>svg{width:34px;height:34px;padding:8px;border-radius:50%;background:var(--u-violet-soft);color:var(--u-violet)}.plat-new-shop-inline span{flex:1}.plat-new-shop-inline b{display:block;font-size:12px;color:var(--u-text)}.plat-new-shop-inline small{display:block;margin-top:2px;font-size:9.5px;color:var(--u-muted)}.plat-new-shop-inline em{font-size:22px;font-style:normal;color:#64748b}
+.plat-empty-pro{text-align:center;padding:36px 18px;border:1px solid var(--u-border);border-radius:20px;background:#fff}.plat-empty-pro>span{width:58px;height:58px;margin:0 auto 12px;border-radius:18px;background:var(--u-blue-soft);color:var(--u-blue);display:flex;align-items:center;justify-content:center}.plat-empty-pro h1{font-size:20px;color:var(--u-text)}.plat-empty-pro p{font-size:12px;color:var(--u-muted);line-height:1.5}.plat-empty-pro button{margin-top:14px}
+
+/* Help center */
+.plat-help-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.plat-help-head h1{margin:0;font-size:25px;color:var(--u-text)}.plat-help-head p{margin:4px 0 0;font-size:11px;color:var(--u-muted);line-height:1.4}.plat-help-head>span{width:48px;height:48px;border-radius:15px;background:var(--u-blue-soft);color:var(--u-blue);display:flex;align-items:center;justify-content:center}
+.plat-help-search{display:flex;align-items:center;gap:9px;padding:0 13px;height:48px;border:1px solid var(--u-border);border-radius:15px;background:#fff;color:#94a3b8}.plat-help-search input{border:none!important;box-shadow:none!important;padding:0!important;font-family:inherit!important;background:transparent!important;font-size:12px!important}
+.plat-help-primary-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}.plat-help-primary-card{display:flex;align-items:center;gap:9px;min-height:96px;padding:12px;border:1px solid #d6e4ff;border-radius:17px;background:#f8fbff;text-align:left;color:var(--u-text)}.plat-help-primary-card.bug{border-color:#f2dfc2;background:#fffaf2}.plat-help-primary-card>span{width:35px;height:35px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--u-blue-soft);color:var(--u-blue);flex:none}.plat-help-primary-card.bug>span{background:var(--u-amber-soft);color:var(--u-amber)}.plat-help-primary-card div{flex:1}.plat-help-primary-card b{font-size:11px}.plat-help-primary-card small{display:block;margin-top:3px;font-size:9px;color:var(--u-muted);line-height:1.35}.plat-help-primary-card em{font-style:normal;font-size:20px;color:#7c8aa0}
+.plat-my-tickets-link{width:100%;display:flex;align-items:center;gap:10px;margin-top:10px;padding:12px;border:1px solid var(--u-border);border-radius:15px;background:#fff;text-align:left}.plat-my-tickets-link>svg{color:var(--u-blue)}.plat-my-tickets-link span{flex:1}.plat-my-tickets-link b{display:block;font-size:11.5px;color:var(--u-text)}.plat-my-tickets-link small{display:block;font-size:9.5px;color:var(--u-muted);margin-top:2px}.plat-my-tickets-link em{font-style:normal;font-size:20px;color:#7c8aa0}
+.plat-help-guide-list{border:1px solid var(--u-border);border-radius:17px;background:#fff;overflow:hidden}.plat-help-guide-list button{width:100%;display:flex;align-items:center;gap:10px;padding:12px;border:0;border-bottom:1px solid var(--u-border);background:#fff;text-align:left}.plat-help-guide-list button:last-child{border-bottom:none}.plat-help-guide-list div{flex:1}.plat-help-guide-list b{display:block;font-size:11.5px;color:var(--u-text)}.plat-help-guide-list small{display:block;font-size:9.5px;color:var(--u-muted);margin-top:2px}.plat-help-guide-list em{font-style:normal;font-size:20px;color:#8290a5}
+.plat-guide-hero{display:flex;align-items:center;gap:14px;margin-bottom:14px;padding:16px;border:1px solid var(--u-border);border-radius:18px;background:#fff}.plat-guide-hero>span{width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center}.plat-guide-hero.tone-blue>span{background:var(--u-blue-soft);color:var(--u-blue)}.plat-guide-hero.tone-green>span{background:var(--u-green-soft);color:var(--u-green)}.plat-guide-hero.tone-orange>span{background:var(--u-amber-soft);color:var(--u-amber)}.plat-guide-hero h2{margin:0;font-size:20px;color:var(--u-text)}.plat-guide-hero p{margin:3px 0 0;font-size:10.5px;color:var(--u-muted)}
+.plat-guide-card{margin-bottom:12px;padding:14px;border:1px solid var(--u-border);border-radius:17px;background:#fff}.plat-guide-card h3{margin:0 0 10px;font-size:13px;color:var(--u-text)}.plat-guide-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.plat-guide-steps>div{position:relative;text-align:center;padding:9px 5px;border:1px solid var(--u-border);border-radius:13px}.plat-guide-steps em{position:absolute;top:5px;left:5px;width:18px;height:18px;border-radius:50%;background:var(--u-blue);color:#fff;font-size:9px;font-style:normal;display:flex;align-items:center;justify-content:center}.plat-guide-steps span{width:32px;height:32px;margin:8px auto 6px;border-radius:10px;background:var(--u-blue-soft);color:var(--u-blue);display:flex;align-items:center;justify-content:center}.plat-guide-steps b{font-size:9.5px;color:var(--u-text)}
+.plat-guide-row{display:flex;align-items:center;gap:9px;padding:10px 0;border-bottom:1px solid var(--u-border)}.plat-guide-row:last-child{border-bottom:0}.plat-guide-row span{width:29px;height:29px;border-radius:9px;background:var(--u-blue-soft);color:var(--u-blue);display:flex;align-items:center;justify-content:center}.plat-guide-row b{flex:1;font-size:11px;color:var(--u-text)}.plat-guide-row em{font-style:normal;color:#7f8ca0}.plat-guide-faq{padding:10px 0;border-bottom:1px solid var(--u-border)}.plat-guide-faq:last-child{border-bottom:0}.plat-guide-faq b{font-size:11px;color:var(--u-text)}.plat-guide-faq p{margin:3px 0 0;font-size:9.5px;color:var(--u-muted);line-height:1.45}.plat-guide-timeline>div{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--u-border)}.plat-guide-timeline>div:last-child{border-bottom:0}.plat-guide-timeline em{width:24px;height:24px;border-radius:50%;background:var(--u-amber-soft);color:var(--u-amber);font-style:normal;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center}.plat-guide-timeline span{color:var(--u-amber)}.plat-guide-timeline b{font-size:11px;color:var(--u-text)}.plat-link-primary{display:flex!important;text-decoration:none;align-items:center;justify-content:center;margin-top:8px}
+
+/* Profile */
+.plat-profile-hero{display:flex;align-items:center;gap:13px;padding:16px;border:1px solid var(--u-border);border-radius:18px 18px 0 0;background:#fff}.plat-profile-photo{width:72px!important;height:72px!important;border-radius:50%!important;object-fit:cover}.plat-profile-main{min-width:0;flex:1}.plat-profile-main h2{margin:0;font-size:18px;color:var(--u-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.plat-profile-main p{margin:4px 0;color:var(--u-muted);font-size:11px}.plat-profile-main small{display:flex;align-items:center;gap:4px;color:#8090a6;font-size:9.5px}
+.plat-profile-stats{display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border:1px solid var(--u-border);border-top:none;border-radius:0 0 18px 18px;padding:10px 6px;margin-bottom:18px}.plat-profile-stats>div{display:grid;grid-template-columns:30px 1fr;grid-template-rows:auto auto;gap:0 7px;align-items:center;padding:5px 7px}.plat-profile-stats>div+div{border-left:1px solid var(--u-border)}.plat-profile-stats span{grid-row:1/3;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center}.plat-profile-stats .tone-blue{background:var(--u-blue-soft);color:var(--u-blue)}.plat-profile-stats .tone-green{background:var(--u-green-soft);color:var(--u-green)}.plat-profile-stats .tone-violet{background:var(--u-violet-soft);color:var(--u-violet)}.plat-profile-stats b{font-size:12px;color:var(--u-text)}.plat-profile-stats small{font-size:8.5px;color:var(--u-muted)}
+.plat-profile-section-title{font-size:13px;color:#68758b;margin:14px 0 8px}.plat-profile-list{border:1px solid var(--u-border);border-radius:17px;background:#fff;overflow:hidden}.plat-profile-list>div,.plat-profile-list>button{width:100%;display:flex;align-items:center;gap:10px;padding:12px;border:0;border-bottom:1px solid var(--u-border);background:#fff;text-align:left}.plat-profile-list>*:last-child{border-bottom:0}.plat-profile-list span{width:31px;height:31px;border-radius:10px;display:flex;align-items:center;justify-content:center}.plat-profile-list .tone-blue{background:var(--u-blue-soft);color:var(--u-blue)}.plat-profile-list .tone-green{background:var(--u-green-soft);color:var(--u-green)}.plat-profile-list .tone-violet{background:var(--u-violet-soft);color:var(--u-violet)}.plat-profile-list .tone-orange{background:var(--u-amber-soft);color:var(--u-amber)}.plat-profile-list b{flex:1;font-size:11.5px;color:var(--u-text)}.plat-profile-list em{font-style:normal;font-size:10.5px;color:#718096}
+.plat-telegram-security{display:flex;align-items:center;gap:10px;margin-top:12px;padding:12px 14px;border:1px solid #d6e4ff;border-radius:15px;background:#f8fbff;color:var(--u-blue)}.plat-telegram-security div{flex:1}.plat-telegram-security b{display:block;font-size:10.5px;color:var(--u-text)}.plat-telegram-security small{display:block;margin-top:2px;font-size:9px;color:var(--u-muted)}
+.plat-admin-switch{width:100%;display:flex;align-items:center;gap:11px;margin-top:12px;padding:13px;border:1px solid #d6e4ff;border-radius:16px;background:linear-gradient(135deg,#f8fbff,#f5f2ff);text-align:left}.plat-admin-switch>span{width:40px;height:40px;border-radius:12px;background:var(--u-blue-soft);color:var(--u-blue);display:flex;align-items:center;justify-content:center}.plat-admin-switch div{flex:1}.plat-admin-switch b{display:block;font-size:12px;color:var(--u-text)}.plat-admin-switch small{display:block;margin-top:2px;font-size:9.5px;color:var(--u-muted)}.plat-admin-switch em{font-style:normal;color:var(--u-blue);font-size:11px;font-weight:800}.plat-version{text-align:center;margin:16px 0 0;color:#9aa6b7;font-size:9.5px}
+
+@media (max-width:359px){.plat-landing-hero{grid-template-columns:1fr}.plat-landing-visual{display:none}.plat-benefit-grid{grid-template-columns:1fr}.plat-sub-card-grid{grid-template-columns:1fr 1fr}.plat-sub-card-grid>div:nth-child(3){border-left:0;border-top:1px solid var(--u-border)}.plat-sub-card-grid>div:nth-child(4){border-top:1px solid var(--u-border)}.plat-help-primary-actions{grid-template-columns:1fr}.plat-guide-steps{grid-template-columns:1fr 1fr}}
+
+/* Support, ticket chat, bug report */
+.plat-support-hero{display:flex;align-items:center;gap:14px;padding:18px;border:1px solid var(--u-border);border-radius:18px;background:#fff}.plat-support-hero>span{width:58px;height:58px;border-radius:18px;background:var(--u-blue-soft);color:var(--u-blue);display:flex;align-items:center;justify-content:center}.plat-support-hero h2{margin:0;font-size:20px;color:var(--u-text)}.plat-support-hero p{margin:4px 0 0;font-size:11px;color:var(--u-muted)}
+.plat-support-meta{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.plat-support-meta span{display:flex;align-items:center;gap:5px;padding:7px 9px;border-radius:999px;background:#fff;border:1px solid var(--u-border);font-size:9.5px;color:#68758b}
+.plat-support-compose,.plat-chat-compose{padding:12px;border:1px solid var(--u-border);border-radius:17px;background:#fff}.plat-support-compose textarea,.plat-chat-compose textarea,.plat-bug-form textarea{width:100%;border:1px solid var(--u-border);border-radius:13px;padding:11px;font-family:inherit;font-size:12px;resize:vertical;outline:none}.plat-support-compose textarea:focus,.plat-chat-compose textarea:focus,.plat-bug-form textarea:focus{border-color:#9bb9f5;box-shadow:0 0 0 3px #edf3ff}.plat-support-compose button,.plat-chat-compose button{margin-top:8px}
+.plat-ticket-list{border:1px solid var(--u-border);border-radius:17px;background:#fff;overflow:hidden}.plat-ticket-list button{width:100%;display:flex;align-items:center;gap:9px;padding:11px;border:0;border-bottom:1px solid var(--u-border);background:#fff;text-align:left}.plat-ticket-list button:last-child{border-bottom:0}.plat-ticket-icon{width:31px;height:31px;border-radius:10px;background:var(--u-blue-soft);color:var(--u-blue);display:flex;align-items:center;justify-content:center}.plat-ticket-list button>div{min-width:0;flex:1}.plat-ticket-list b{display:block;font-size:10.5px;color:var(--u-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.plat-ticket-list small{font-size:9px;color:var(--u-muted)}.plat-ticket-list em{font-style:normal;color:#8190a4}.plat-empty-inline,.plat-support-loading{text-align:center;padding:20px;border:1px solid var(--u-border);border-radius:16px;background:#fff;color:var(--u-muted);font-size:11px}
+.plat-chat-shell{display:flex;flex-direction:column;gap:10px}.plat-chat-info{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--u-border);border-radius:16px;background:#fff}.plat-chat-info>span{width:40px;height:40px;border-radius:12px;background:var(--u-blue-soft);color:var(--u-blue);display:flex;align-items:center;justify-content:center}.plat-chat-info b{display:block;font-size:12px;color:var(--u-text)}.plat-chat-info small{font-size:9.5px;color:var(--u-muted)}.plat-chat-messages{min-height:260px;padding:14px;border:1px solid var(--u-border);border-radius:18px;background:#fbfcff}.plat-chat-msg{display:flex;margin-bottom:10px}.plat-chat-msg.mine{justify-content:flex-end}.plat-chat-msg>div{max-width:82%;padding:10px 11px;border:1px solid var(--u-border);border-radius:14px;background:#fff}.plat-chat-msg.mine>div{background:#edf4ff;border-color:#cfe0ff}.plat-chat-msg b{display:block;font-size:9px;color:var(--u-blue);margin-bottom:3px}.plat-chat-msg p{margin:0;font-size:11.5px;color:var(--u-text);white-space:pre-wrap;line-height:1.4}.plat-chat-msg small{display:block;margin-top:5px;text-align:right;font-size:8.5px;color:var(--u-muted)}.plat-chat-msg img{max-width:100%;margin-top:7px;border-radius:10px}.plat-chat-empty{text-align:center;padding:70px 0;color:var(--u-muted);font-size:11px}
+.plat-bug-form{padding:14px;border:1px solid var(--u-border);border-radius:18px;background:#fff}.plat-bug-form label{font-size:10.5px;margin-top:10px}.plat-bug-form input[type=text],.plat-bug-form select{font-family:inherit}.plat-file-pick{width:100%;display:flex;align-items:center;gap:8px;padding:11px;border:1px dashed #b8c9ef;border-radius:13px;background:#fbfcff;color:var(--u-blue);text-align:left}.plat-file-pick small{margin-left:auto;font-size:8.5px;color:var(--u-muted)}.plat-file-pick.is-icon-only{width:44px;height:44px;padding:0;border-radius:50%;justify-content:center}
+.plat-bug-file-hint{display:block;font-weight:400;color:var(--u-muted)}.plat-bug-process{margin:12px 0;padding:11px;border:1px solid #d7eadf;border-radius:14px;background:#f8fcfa}.plat-bug-process>b{font-size:10.5px;color:var(--u-text)}.plat-bug-process>div{display:grid;grid-template-columns:24px 1fr 24px 1fr 24px 1fr;align-items:center;gap:5px;margin-top:8px}.plat-bug-process span{width:24px;height:24px;border-radius:50%;background:var(--u-green-soft);color:var(--u-green);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}.plat-bug-process small{font-size:8.5px;color:var(--u-muted)}.plat-success-state{text-align:center;padding:30px 18px;border:1px solid var(--u-border);border-radius:20px;background:#fff}.plat-success-state>span{width:58px;height:58px;margin:0 auto 12px;border-radius:18px;background:var(--u-green-soft);color:var(--u-green);display:flex;align-items:center;justify-content:center}.plat-success-state h2{font-size:19px;color:var(--u-text)}.plat-success-state p{font-size:11px;color:var(--u-muted)}.plat-about-copy{font-size:11px;line-height:1.55;color:var(--u-muted);margin:0}
+
+/* ============================================================
+   USER PLATFORM — v12 FINAL STABILITY + APPROVED UI ALIGNMENT
+   P0 runtime fixes live in platform-app.js; these are visual-only
+   overrides for the already-approved light/premium USER design.
+   ============================================================ */
+
+/* Boot must never look like a blank screen. */
+.plat-boot-state {
+  min-height: 100svh;
+  padding: 32px 24px calc(32px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  background: var(--u-bg, #f6f8fc);
+  color: var(--u-text, #111b31);
+}
+.plat-boot-brand { font-size: 25px; line-height: 1; font-weight: 850; letter-spacing: -.4px; color: var(--u-blue, #2563eb); margin-bottom: 10px; }
+.plat-boot-spinner { width: 46px; height: 46px; border-radius: 50%; border: 4px solid #dfe8f6; border-top-color: var(--u-blue, #2563eb); animation: spin .8s linear infinite; }
+.plat-boot-state > b { margin-top: 4px; font-size: 16px; line-height: 1.25; }
+.plat-boot-state > small { max-width: 290px; color: var(--u-muted, #718096); font-size: 12px; line-height: 1.45; }
+.plat-boot-error-icon { width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #c2410c; background: #fff7ed; border: 1px solid #fed7aa; }
+.plat-boot-retry { width: min(100%, 260px) !important; min-height: 48px; margin-top: 8px; border-radius: 14px !important; }
+.plat-render-error { margin: 28px 0; padding: 26px 18px; border: 1px solid var(--u-border); border-radius: 20px; background: #fff; text-align: center; box-shadow: var(--u-shadow); }
+.plat-render-error > span { width: 52px; height: 52px; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; border-radius: 16px; color: var(--u-amber); background: var(--u-amber-soft); }
+.plat-render-error h2 { margin: 0; font-size: 18px; color: var(--u-text); }
+.plat-render-error p { margin: 6px auto 14px; max-width: 280px; font-size: 12px; line-height: 1.45; color: var(--u-muted); }
+.plat-render-error button { min-height: 48px; border-radius: 14px; }
+
+/* 390px reference viewport: safe, stable spacing; no clipped page titles. */
+.plat-content { max-width: 430px; padding: 22px 16px calc(104px + env(safe-area-inset-bottom)); overflow-x: clip; }
+.plat-tab-head { margin-top: 2px; margin-bottom: 14px; min-width: 0; }
+.plat-tab-head h1 { font-size: 28px; line-height: 1.12; letter-spacing: -.35px; }
+.plat-tab-head p { font-size: 13px; line-height: 1.35; }
+
+/* Existing-user HOME: 2 connected shops must both be visible, not one-and-a-half. */
+.plat-dashboard-shop-tabs.is-one .plat-dashboard-shop-card { flex: 0 0 100%; }
+.plat-dashboard-shop-tabs.is-two { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); overflow: visible; gap: 10px; padding-bottom: 12px; }
+.plat-dashboard-shop-tabs.is-two .plat-dashboard-shop-card { width: 100%; min-width: 0; flex: none; padding: 12px 10px; gap: 8px; }
+.plat-dashboard-shop-tabs.is-two .plat-shop-avatar { width: 46px; height: 46px; border-radius: 13px; }
+.plat-dashboard-shop-tabs.is-two .plat-shop-avatar.is-logo { width: 56px; height: 24px; border-radius: 7px; }
+.plat-dashboard-shop-tabs.is-two .plat-dashboard-shop-copy b { font-size: 12.5px; }
+.plat-dashboard-shop-tabs.is-two .plat-dashboard-shop-copy small { font-size: 10px; }
+.plat-dashboard-shop-tabs.is-two .plat-dashboard-shop-copy em { font-size: 9.5px; line-height: 1.25; }
+.plat-dashboard-shop-tabs.is-many .plat-dashboard-shop-card { flex-basis: 78%; }
+.plat-dashboard-focus-title p { margin: 4px 0 0; color: var(--u-muted); font-size: 10.5px; line-height: 1.3; }
+.plat-dashboard-focus-actions { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--u-border); }
+.plat-dashboard-open-shop {
+  min-height: 46px; width: 100%; border-radius: 13px; background: var(--u-blue); color: #fff; text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 12.5px; font-weight: 800;
+  box-shadow: 0 4px 12px rgba(37,99,235,.16);
+}
+.plat-health-strip { min-height: 62px; overflow: visible; align-items: center; line-height: 1.25; margin-bottom: 0; }
+.plat-health-strip > div { min-width: 0; }
+.plat-health-strip b { font-size: 13px; line-height: 1.25; }
+.plat-health-strip small { font-size: 10.5px; line-height: 1.35; margin-top: 3px; white-space: normal; }
+
+/* Do'konlarim — approved reference proportions. */
+.plat-shops-head { margin-bottom: 14px; }
+.plat-shops-head h1 { font-size: 28px; }
+.plat-shops-summary { gap: 10px; margin-bottom: 14px; }
+.plat-shops-summary > div {
+  min-height: 76px; grid-template-columns: 36px minmax(0,1fr); column-gap: 9px; padding: 11px 10px;
+  border-radius: 17px; box-shadow: 0 3px 12px rgba(30,41,59,.035);
+}
+.plat-shops-summary span { width: 36px; height: 36px; border-radius: 12px; }
+.plat-shops-summary b { font-size: 20px; line-height: 1; }
+.plat-shops-summary small { margin-top: 4px; font-size: 10px; line-height: 1.15; }
+.plat-new-shop-main { min-height: 48px; margin: 0 0 14px !important; border-radius: 14px !important; font-size: 14px !important; box-shadow: 0 5px 14px rgba(37,99,235,.16) !important; }
+.plat-shop-pro-list { gap: 14px; }
+.plat-shop-pro-card { padding: 16px; border-radius: 20px; box-shadow: 0 7px 22px rgba(30,41,59,.055); }
+.plat-shop-pro-card.is-expiring { border-color: #f1d5a5; }
+.plat-shop-pro-head { gap: 12px; align-items: flex-start; }
+.plat-shop-avatar-lg { width: 64px; height: 64px; border-radius: 17px; }
+.plat-shop-avatar-lg.is-logo { width: 100px; height: 42px; border-radius: 11px; }
+.plat-shop-avatar-lg .plat-shop-avatar-fallback { font-size: 22px; }
+.plat-shop-pro-head h2 { margin-top: 2px; font-size: 20px; line-height: 1.15; letter-spacing: -.2px; }
+.plat-shop-pro-head p { margin-top: 4px; font-size: 12.5px; }
+.plat-shop-badges { margin-top: 8px; gap: 6px; }
+.plat-shop-badges .status-pill, .plat-shop-badges .plan-pill { min-height: 27px; padding: 5px 9px; display: inline-flex; align-items: center; font-size: 10px; }
+.plat-more-btn { width: 44px; height: 44px; border-radius: 14px; font-size: 17px; flex: 0 0 44px; cursor: pointer; }
+.plat-shop-pro-metrics { margin-top: 14px; padding-top: 14px; }
+.plat-shop-pro-metrics > div { min-width: 0; min-height: 92px; padding: 0 12px; }
+.plat-shop-pro-metrics > div:first-child { padding-left: 4px; }
+.plat-shop-pro-metrics > div:last-child { padding-right: 4px; }
+.plat-shop-pro-metrics > div > span { width: 34px; height: 34px; border-radius: 11px; background: var(--u-blue-soft); display: flex; align-items: center; justify-content: center; }
+.plat-shop-pro-metrics > div.is-warn > span { color: var(--u-amber); background: var(--u-amber-soft); }
+.plat-shop-pro-metrics b { margin-top: 6px; font-size: 14px; line-height: 1.25; }
+.plat-shop-pro-metrics b .metric-unit { display: inline; margin: 0; font-size: 11px; font-weight: 500; color: var(--u-muted); }
+.plat-shop-pro-metrics small { margin-top: 4px; font-size: 10.5px; line-height: 1.3; }
+.mini-progress { height: 6px; margin-top: 9px; }
+.plat-shop-pro-actions { gap: 10px; margin-top: 14px; }
+.plat-shop-pro-actions > * { min-width: 0; min-height: 48px; border-radius: 13px !important; font-size: 12px !important; font-weight: 800 !important; }
+.plat-shop-pro-actions a.primary {
+  padding: 0 10px; border: 0; background: var(--u-blue); color: #fff; text-decoration: none;
+  box-shadow: 0 4px 12px rgba(37,99,235,.15);
+}
+.plat-shop-pro-actions button.secondary { margin-top: 0; padding: 0 10px; border-color: #dbe4f0; color: #315baf; background: #fff; }
+.plat-shop-pro-actions button:disabled { opacity: .62; cursor: default; }
+.plat-shops-info { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 11px 12px; border: 1px solid var(--u-border); border-radius: 14px; background: rgba(255,255,255,.72); color: var(--u-muted); font-size: 10.5px; line-height: 1.35; }
+.plat-shops-info .p-icon { color: var(--u-blue); }
+
+/* Subscription tab: keep cards light/pastel, not saturated. */
+.plat-sub-card { border-color: #e5eaf2; box-shadow: 0 6px 20px rgba(30,41,59,.045); }
+.plat-sub-card.is-expiring { border-color: #f1ddba; background: #fffdfa; }
+.plat-sub-card-grid { background: #fbfcfe; }
+.plat-sub-card-actions > * { min-height: 46px; border-radius: 13px !important; }
+.plat-new-shop-inline { min-height: 58px; background: #fcfdff; }
+.plat-tariff-tone-start, .plat-tariff-tone-standard, .plat-tariff-tone-business, .plat-tariff-tone-premium { background: #fff; }
+
+/* Shared billing toggle — visible and tappable; it was missing at runtime in v11. */
+.plat-billing-toggle { min-height: 50px; }
+.plat-billing-opt { min-height: 42px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 11px; }
+.plat-billing-opt b { justify-content: center; }
+
+@media (max-width: 374px) {
+  .plat-dashboard-shop-tabs.is-two { grid-template-columns: 1fr; }
+  .plat-dashboard-shop-tabs.is-two .plat-dashboard-shop-card { min-height: 82px; }
+  .plat-shops-summary { gap: 7px; }
+  .plat-shops-summary > div { grid-template-columns: 30px minmax(0,1fr); min-height: 70px; padding: 9px 8px; }
+  .plat-shops-summary span { width: 30px; height: 30px; }
+  .plat-shops-summary b { font-size: 18px; }
+  .plat-shop-avatar-lg { width: 58px; height: 58px; }
+  .plat-shop-avatar-lg.is-logo { width: 84px; height: 36px; }
+  .plat-shop-pro-head h2 { font-size: 18px; }
+  .plat-shop-pro-actions { grid-template-columns: 1fr 1fr; }
+}
+
+/* ============================================================
+   USER v13 — Do'konlarim detail-first + subscription purchase flow
+   2026-08-28. Current light/premium design preserved.
+   ============================================================ */
+:root {
+  --u-blue: #3b82f6;
+  --u-blue-soft: #f1f6ff;
+  --plat2-primary: #3b82f6;
+  --plat2-primary-pressed: #2f76ed;
+  --plat2-primary-soft: #f1f6ff;
+}
+button.primary,
+a.primary {
+  min-height: 48px;
+  border-radius: 16px;
+  background: #3b82f6;
+  box-shadow: 0 7px 18px rgba(59,130,246,.16);
+  font-weight: 700;
+}
+button.primary:active,
+a.primary:active { background:#2f76ed; }
+button.secondary { border-radius: 15px; border-color:#d9e5f5; background:#fbfdff; }
+.plat-billing-opt.active { background:#3b82f6; box-shadow:0 5px 14px rgba(59,130,246,.13); }
+.plat-tariff-select { min-height: 52px !important; border-radius: 16px !important; }
+
+/* flow intro */
+.plat-flow-intro { display:flex;align-items:flex-start;gap:12px;padding:14px 15px;margin-bottom:12px;background:#fff;border:1px solid var(--u-border);border-radius:18px;box-shadow:var(--u-shadow); }
+.plat-flow-intro>span { width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:13px;background:var(--u-violet-soft);color:var(--u-violet);flex:none; }
+.plat-flow-intro b { display:block;font-size:15px;color:var(--u-text); }
+.plat-flow-intro p { margin:4px 0 0;font-size:11px;line-height:1.45;color:var(--u-muted); }
+
+/* Do'konlarim — list first, whole card opens detail */
+.plat-shops-head { align-items:center; margin-bottom:12px; }
+.plat-shops-head .plat-new-shop-main { width:auto; min-width:145px; margin:0; padding:0 17px; min-height:46px; border-radius:15px; }
+.plat-shop-list-simple { display:flex;flex-direction:column;gap:12px; }
+.plat-shop-list-card { width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:14px;background:#fff;border:1px solid var(--u-border);border-radius:18px;box-shadow:0 6px 18px rgba(30,41,59,.045);font-family:inherit;color:inherit;cursor:pointer; }
+.plat-shop-list-card:active { transform:scale(.992);background:#fbfdff; }
+.plat-shop-list-card.is-expiring { border-color:#efd4a7;background:#fffdfa; }
+.plat-shop-list-main { min-width:0;flex:1; }
+.plat-shop-list-title { display:flex;align-items:center;gap:7px;min-width:0; }
+.plat-shop-list-title b { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;color:var(--u-text); }
+.plat-shop-list-main>small { display:block;margin-top:3px;font-size:11px;color:var(--u-muted); }
+.plat-shop-list-meta { display:flex;flex-wrap:wrap;gap:7px 12px;margin-top:8px; }
+.plat-shop-list-meta span { display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:#5f6d82; }
+.plat-shop-list-meta span.is-warn { color:var(--u-amber); }
+.plat-shop-list-chevron { font-size:27px;font-weight:300;color:#94a3b8;line-height:1;flex:none; }
+
+/* user shop detail */
+.plat-shop-detail-hero { display:flex;align-items:center;gap:13px;padding:16px;margin-bottom:14px;border:1px solid var(--u-border);border-radius:20px;background:#fff;box-shadow:var(--u-shadow); }
+.plat-shop-detail-hero.is-expiring { border-color:#efd4a7;background:linear-gradient(180deg,#fff,#fffdf8); }
+.plat-shop-detail-avatar { width:64px;height:64px;border-radius:17px; }
+.plat-shop-detail-avatar.is-logo { width:100px;height:42px;border-radius:11px; }
+.plat-shop-detail-hero>div { flex:1;min-width:0; }
+.plat-shop-detail-name { display:flex;align-items:center;gap:8px;min-width:0; }
+.plat-shop-detail-name h2 { margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:20px;line-height:1.15;color:var(--u-text); }
+.plat-shop-detail-hero p { margin:4px 0 7px;font-size:11.5px;color:var(--u-muted); }
+.plat-shop-detail-card { margin-bottom:14px;padding:15px;background:#fff;border:1px solid var(--u-border);border-radius:19px;box-shadow:var(--u-shadow); }
+.plat-shop-detail-card .plat-section-heading { margin:0 0 12px; }
+.plat-shop-detail-metrics { display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--u-border);padding-top:13px; }
+.plat-shop-detail-metrics>div { min-width:0;padding:0 12px; }
+.plat-shop-detail-metrics>div:first-child { padding-left:2px; }
+.plat-shop-detail-metrics>div+div { border-left:1px solid var(--u-border); }
+.plat-shop-detail-metrics>div>span { width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:var(--u-blue-soft);color:var(--u-blue); }
+.plat-shop-detail-metrics>div.is-warn>span { background:var(--u-amber-soft);color:var(--u-amber); }
+.plat-shop-detail-metrics small { display:block;margin-top:7px;font-size:10px;color:var(--u-muted); }
+.plat-shop-detail-metrics b { display:block;margin-top:3px;font-size:15px;color:var(--u-text); }
+.plat-shop-detail-metrics em { display:block;margin-top:4px;font-size:9.8px;font-style:normal;color:var(--u-muted); }
+.plat-shop-detail-actions { display:grid;grid-template-columns:1fr 1fr;gap:9px; }
+.plat-shop-detail-actions>* { margin:0 !important;min-height:50px; }
+.plat-preserve-days-note { display:flex;align-items:flex-start;gap:8px;margin-top:11px;padding:10px 11px;border-radius:13px;background:#f4fbf7;color:#267657;font-size:10.2px;line-height:1.4; }
+.plat-preserve-days-note>svg { margin-top:1px;flex:none; }
+a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-content:center;gap:7px;text-decoration:none; }
+.plat-shop-detail-info-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px; }
+.plat-shop-detail-info-grid>div { padding:11px;border:1px solid var(--u-border);border-radius:14px;background:#fbfcff; }
+.plat-shop-detail-info-grid span { color:var(--u-blue); }
+.plat-shop-detail-info-grid b { display:block;margin-top:7px;font-size:9.5px;color:var(--u-muted); }
+.plat-shop-detail-info-grid strong { display:block;margin-top:2px;font-size:18px;color:var(--u-text); }
+
+/* Subscription tab now contains tariffs only */
+.plat-subscription-tariff-list .plat-tariff-grid { gap:14px; }
+.plat-subscription-tariff-list .plat-tariff-card { padding:17px; }
+
+/* tariff selected -> target page */
+.plat-target-hero { display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:11px;padding:15px;margin-bottom:14px;border:1px solid var(--u-border);border-radius:19px;background:#fff;box-shadow:var(--u-shadow); }
+.plat-target-icon { width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:var(--u-violet-soft);color:var(--u-violet); }
+.plat-target-hero small { font-size:9.5px;color:var(--u-muted); }
+.plat-target-hero h2 { margin:1px 0 2px;font-size:18px;color:var(--u-text); }
+.plat-target-hero p { margin:0;font-size:10px;color:var(--u-muted); }
+.plat-target-hero>strong { text-align:right;font-size:17px;color:var(--u-text); }
+.plat-target-hero>strong small { display:block;margin-top:2px; }
+.plat-new-shop-choice { width:100%;display:flex;align-items:center;gap:11px;padding:14px;border:1px dashed #b9cdf0;border-radius:17px;background:#f8fbff;color:inherit;text-align:left;font-family:inherit;cursor:pointer; }
+.plat-new-shop-choice-icon { width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:13px;background:var(--u-blue-soft);color:var(--u-blue);flex:none; }
+.plat-new-shop-choice div { flex:1; }
+.plat-new-shop-choice b { display:block;font-size:13.5px;color:var(--u-text); }
+.plat-new-shop-choice small { display:block;margin-top:3px;font-size:9.8px;line-height:1.35;color:var(--u-muted); }
+.plat-new-shop-choice em { font-size:25px;font-style:normal;color:#8ba0bc; }
+.plat-target-heading { margin-top:18px; }
+.plat-target-shop-list { display:flex;flex-direction:column;gap:10px; }
+.plat-target-shop-card { display:grid;grid-template-columns:auto 1fr;gap:10px;padding:12px;border:1px solid var(--u-border);border-radius:16px;background:#fff; }
+.plat-target-shop-main { min-width:0; }
+.plat-target-shop-main b { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--u-text); }
+.plat-target-shop-main small { display:block;margin-top:3px;font-size:9.8px;color:var(--u-muted); }
+.plat-target-shop-actions { grid-column:1/-1;display:grid;grid-template-columns:1fr 1.2fr;gap:8px;margin-top:2px; }
+.plat-target-shop-actions button { margin:0;min-height:44px;padding:8px 10px;font-size:11px; }
+.plat-target-empty { display:flex;align-items:flex-start;gap:9px;padding:12px;border:1px solid var(--u-border);border-radius:15px;background:#fff; }
+.plat-target-empty>span { color:var(--u-blue); }
+.plat-target-empty b { font-size:12px;color:var(--u-text); }
+.plat-target-empty p { margin:2px 0 0;font-size:10px;color:var(--u-muted); }
+
+/* payment redesign */
+.plat-payment-loading { display:flex;flex-direction:column;align-items:center;gap:10px;padding:42px 18px;color:var(--u-muted); }
+.plat-payment-summary { padding:15px;margin-bottom:13px;border:1px solid var(--u-border);border-radius:19px;background:#fff;box-shadow:var(--u-shadow); }
+.plat-payment-summary-top { display:grid;grid-template-columns:38px 1fr auto;gap:10px;align-items:center; }
+.plat-payment-summary-top>span { width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--u-blue-soft);color:var(--u-blue); }
+.plat-payment-summary-top small { font-size:9px;color:var(--u-muted); }
+.plat-payment-summary-top h2 { margin:1px 0 1px;font-size:17px;color:var(--u-text); }
+.plat-payment-summary-top p { margin:0;font-size:9.8px;color:var(--u-muted); }
+.plat-payment-summary-top strong { font-size:17px;color:var(--u-text);white-space:nowrap; }
+.plat-payment-shop-row,.plat-payment-bonus { display:flex;align-items:center;gap:9px;margin-top:12px;padding:10px;border-radius:13px;background:#f8faff;border:1px solid #edf1f7; }
+.plat-payment-shop-row>div,.plat-payment-bonus>span { min-width:0; }
+.plat-payment-shop-row b,.plat-payment-bonus b { display:block;font-size:11px;color:var(--u-text); }
+.plat-payment-shop-row small,.plat-payment-bonus small { display:block;margin-top:2px;font-size:9px;color:var(--u-muted); }
+.plat-payment-bonus>svg { color:var(--u-violet);flex:none; }
+/* 2026-08-28: tarif almashtirish preview'i ("qolgan qiymatingiz N kunga
+   aylanadi") — Karta bo'limi tepasida, mavjud plat-payment-bonus bilan
+   bir xil yumshoq karta uslubi. */
+.plat-tariff-preview { margin-top:12px;padding:10px 12px;border-radius:13px;background:var(--u-blue-soft);border:1px solid #d9e6fb; }
+.plat-tariff-preview p { margin:0;font-size:10.5px;line-height:1.5;color:var(--u-text);display:flex;align-items:flex-start;gap:6px; }
+.plat-tariff-preview p+p { margin-top:4px; }
+.plat-tariff-preview p.muted { color:var(--u-muted); }
+.plat-tariff-preview.is-loading { display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--u-muted); }
+.plat-tariff-preview.is-loading .spinner { border-color:rgba(37,99,235,0.25); border-top-color:var(--u-blue); }
+.plat-payment-summary-line { display:flex;align-items:center;justify-content:space-between;margin-top:11px;padding-top:10px;border-top:1px solid var(--u-border);font-size:10px;color:var(--u-muted); }
+.plat-payment-summary-line b { color:var(--u-text); }
+.plat-payment-card { padding:15px;margin-bottom:13px;border:1px solid var(--u-border);border-radius:19px;background:#fff;box-shadow:var(--u-shadow); }
+.plat-payment-section-title { display:flex;align-items:flex-start;gap:9px;margin-bottom:12px; }
+.plat-payment-section-title>span { width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:11px;background:var(--u-blue-soft);color:var(--u-blue);flex:none; }
+.plat-payment-section-title b { display:block;font-size:12.5px;color:var(--u-text); }
+.plat-payment-section-title small { display:block;margin-top:2px;font-size:9px;color:var(--u-muted); }
+.plat-payment-unavailable { display:flex;gap:9px;padding:11px;border-radius:13px;background:#fff8ec;border:1px solid #f2ddb8;color:#9a6816; }
+.plat-payment-unavailable>span { flex:none; }
+.plat-payment-unavailable b { display:block;font-size:11px; }
+.plat-payment-unavailable p { margin:3px 0 0;font-size:9.5px;line-height:1.35; }
+.plat-payment-bank-card { display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px;border-radius:14px;background:linear-gradient(135deg,#f6f9ff,#eef5ff);border:1px solid #d9e6fb; }
+.plat-payment-bank-card>div { min-width:0; }
+.plat-payment-bank-card small { display:block;font-size:9px;color:var(--u-muted); }
+.plat-payment-bank-card .plat-card-number { display:block;margin-top:4px;font-size:16px;letter-spacing:.7px; }
+.plat-card-holder { margin-top:5px; }
+.plat-copy-btn { display:inline-flex;align-items:center;gap:5px;min-height:36px;border-radius:11px;background:#fff; }
+/* 2026-08-28: Karta ostidagi qo'shimcha Click/Payme/Paynet havola-usullari
+   (052-migratsiya) — soddagina "soft card" qatorlar, bosilsa yangi tabda
+   admin qo'ygan tashqi to'lov havolasi ochiladi. */
+.plat-payment-alt-methods { display:flex;flex-direction:column;gap:8px;margin-top:10px; }
+.plat-payment-alt-method {
+  display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:13px;
+  background:#fff;border:1px solid var(--u-border);text-decoration:none;color:var(--u-text);
+}
+.plat-payment-alt-method:active { transform:scale(0.98); }
+.plat-payment-alt-method span { flex:none;width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--u-blue-soft);color:var(--u-blue); }
+.plat-payment-alt-method b { flex:1;font-size:12px;font-weight:700; }
+.plat-payment-alt-method em { flex:none;font-style:normal;color:var(--u-muted);font-size:16px; }
+/* 2026-08-28: to'lovdan oldin majburiy ogohlantirish (spec) — havola
+   ochilishidan oldin inline kengayadigan tasdiqlash qutisi. */
+.plat-payment-warning-box { padding:13px;border-radius:14px;background:var(--u-amber-soft);border:1px solid #f3dcae; }
+.plat-payment-warning-head { display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+.plat-payment-warning-head span { flex:none;color:var(--u-amber); }
+.plat-payment-warning-head b { font-size:12.5px;color:var(--u-text); }
+.plat-payment-warning-box>p { margin:0 0 10px;font-size:10.5px;line-height:1.45;color:var(--u-amber); }
+.plat-payment-warning-actions { display:flex;gap:8px;margin-top:10px; }
+.plat-payment-warning-actions>* { flex:1;margin-top:0; }
+.plat-upload-zone { width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:18px 12px;border:1.5px dashed #b8ccee;border-radius:15px;background:#fbfdff;color:var(--u-blue);font-family:inherit;cursor:pointer; }
+.plat-upload-zone>span { width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--u-blue-soft); }
+.plat-upload-zone b { display:block;text-align:left;font-size:11.5px;color:var(--u-text); }
+.plat-upload-zone small { display:block;margin-top:2px;text-align:left;font-size:9px;color:var(--u-muted); }
+/* 4 TA YANGI TOPSHIRIQ (2026-09-01), 2-topshiriq: matnli CTA o'rniga
+   icon-only, touch-friendly (44px) dumaloq tugma — mavjud .plat-upload-zone
+   dropzone bilan bir xil bosish maydoni/handler, faqat matnsiz variant. */
+.plat-upload-zone.is-icon-only { width:44px;height:44px;padding:0;border-radius:50%;flex-shrink:0; }
+.plat-upload-zone.is-icon-only>span { width:100%;height:100%;border-radius:50%;margin:0; }
+.plat-upload-remove.is-icon { width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px; }
+.plat-upload-selected { display:grid;grid-template-columns:48px 1fr auto 28px;align-items:center;gap:9px;padding:9px;border:1px solid var(--u-border);border-radius:14px;background:#fbfcff; }
+.plat-upload-selected img { width:48px;height:48px;object-fit:cover;border-radius:10px;border:1px solid var(--u-border); }
+.plat-upload-selected>span { width:48px;height:48px;display:flex;align-items:center;justify-content:center;color:var(--u-blue); }
+.plat-upload-selected b { display:block;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10.5px;color:var(--u-text); }
+.plat-upload-selected small { display:block;margin-top:2px;font-size:8.5px;color:var(--u-muted); }
+.plat-upload-selected .secondary { width:auto;margin:0;min-height:36px;padding:7px 9px;font-size:9px; }
+.plat-upload-remove { width:28px;height:28px;border:none;border-radius:9px;background:#fff0f0;color:#d84d4d;font-size:18px;cursor:pointer; }
+.plat-payment-consent .plat-checkbox-row { margin:0;align-items:flex-start; }
+.plat-payment-consent .plat-checkbox-row span { font-size:10.5px;line-height:1.45;color:#4f5d70; }
+.plat-payment-consent a { color:#2f76ed;font-weight:700; }
+.plat-payment-total { margin-bottom:12px;padding:13px 15px;border:1px solid var(--u-border);border-radius:17px;background:#fff; }
+.plat-payment-total>div { display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:10.5px;color:var(--u-muted); }
+.plat-payment-total b { color:var(--u-text); }
+.plat-payment-total .is-total { margin-top:5px;padding-top:10px;border-top:1px solid var(--u-border);align-items:center; }
+.plat-payment-total strong { font-size:18px;color:var(--u-text); }
+.plat-payment-submit { min-height:54px !important;border-radius:18px !important;margin-bottom:12px; }
+.plat-request-success { text-align:center;padding:24px 16px;border:1px solid var(--u-border);border-radius:20px;background:#fff;box-shadow:var(--u-shadow); }
+.plat-request-success>span { width:58px;height:58px;margin:0 auto 11px;display:flex;align-items:center;justify-content:center;border-radius:18px;background:var(--u-green-soft);color:var(--u-green); }
+.plat-request-success h2 { margin:0;font-size:20px;color:var(--u-text); }
+.plat-request-success>p { margin:6px 0 12px;font-size:10.5px;line-height:1.45;color:var(--u-muted); }
+.plat-request-status { display:inline-flex;align-items:center;gap:5px;padding:7px 10px;border-radius:999px;background:var(--u-amber-soft);color:var(--u-amber);font-size:10px;font-weight:800; }
+.plat-request-context { margin:13px 0;padding:10px;border-radius:13px;background:#f8faff;color:#526277;font-size:10px;line-height:1.45; }
+
+/* ---- 2026-08-28: chek ixtiyoriy — "To'ladim" da'vo qutisi ---- */
+.plat-receipt-hint { margin:8px 2px 0;font-size:9.5px;line-height:1.4;color:var(--u-muted); }
+.plat-payment-claim-box { margin:14px 0;padding:14px;border-radius:15px;background:var(--u-amber-soft);border:1px solid #f3dcae;text-align:left; }
+.plat-payment-claim-box>p { display:flex;align-items:flex-start;gap:7px;margin:0 0 10px;font-size:10.5px;line-height:1.4;color:var(--u-amber); }
+.plat-payment-claim-box button { width:100%; }
+.plat-payment-claim-done { display:flex;align-items:center;justify-content:center;gap:6px;margin:14px 0;padding:10px;border-radius:13px;background:var(--u-green-soft);color:var(--u-green);font-size:10.5px;font-weight:700; }
+
+@media (max-width: 370px) {
+  .plat-shops-head { align-items:flex-start; }
+  .plat-shops-head .plat-new-shop-main { min-width:132px;padding:0 12px;font-size:12px; }
+  .plat-shop-list-card { padding:12px;gap:10px; }
+  .plat-shop-list-title b { font-size:15px; }
+  .plat-shop-detail-actions,.plat-target-shop-actions { grid-template-columns:1fr; }
+  .plat-target-hero { grid-template-columns:40px 1fr; }
+  .plat-target-hero>strong { grid-column:2;text-align:left; }
+  .plat-upload-selected { grid-template-columns:44px 1fr 28px; }
+  .plat-upload-selected .secondary { grid-column:1/-1;width:100%; }
+}
+.plat-payment-period { margin-bottom:13px;padding:12px 13px;border:1px solid var(--u-border);border-radius:17px;background:#fff;box-shadow:var(--u-shadow); }
+.plat-payment-period-label b { display:block;font-size:11.5px;color:var(--u-text); }
+.plat-payment-period-label small { display:block;margin-top:2px;font-size:9px;color:var(--u-muted); }
+.plat-payment-period .plat-billing-toggle { margin:10px 0 0; }
+
+
+/* ============================================================
+   USER v14 — softer primary actions + professional tariff carousel
+   Scope is USER only; admin mode intentionally unchanged.
+   ============================================================ */
+.plat-user-mode {
+  --u-blue: #5b8def;
+  --u-blue-soft: #f2f6ff;
+  --plat2-primary: #5b8def;
+  --plat2-primary-pressed: #4f7fe0;
+  --plat2-primary-soft: #f2f6ff;
+}
+.plat-user-mode button.primary,
+.plat-user-mode a.primary {
+  background: #5b8def;
+  box-shadow: 0 7px 18px rgba(91,141,239,.17);
+  color: #fff;
+}
+.plat-user-mode button.primary:active,
+.plat-user-mode a.primary:active {
+  background: #4f7fe0;
+  box-shadow: 0 4px 12px rgba(79,127,224,.16);
+}
+.plat-user-mode button.secondary {
+  background: #f9fbff;
+  border-color: #cad9f4;
+  color: #356fd0;
+}
+.plat-user-mode .plat-billing-opt.active {
+  background: #5b8def;
+  box-shadow: 0 5px 14px rgba(91,141,239,.15);
+}
+
+/* Pricing carousel: one complete banner + a visible peek of the next one. */
+.plat-user-mode .plat-tariff-carousel {
+  gap: 12px;
+  margin: 0 -10px;
+  padding: 10px 10px 14px;
+  scroll-padding-left: 10px;
+  overscroll-behavior-x: contain;
+}
+.plat-user-mode .plat-tariff-carousel-item {
+  flex: 0 0 86%;
+  scroll-snap-align: start;
+  min-width: 0;
+}
+.plat-user-mode .plat-tariff-carousel-item .plat-tariff-card {
+  height: 100%;
+}
+.plat-user-mode .plat-carousel-dots {
+  margin: 3px 0 13px;
+  gap: 6px;
+}
+.plat-user-mode .plat-carousel-dots .plat-carousel-dot,
+.plat-user-mode .plat-carousel-dots .plat-carousel-dot:first-child {
+  width: 7px;
+  height: 7px;
+  background: #d7e3f7;
+}
+.plat-user-mode .plat-carousel-dots .plat-carousel-dot.active {
+  width: 20px;
+  background: #5b8def;
+}
+
+/* Premium pricing card hierarchy. */
+.plat-user-mode .plat-tariff-card {
+  min-height: 322px;
+  padding: 17px;
+  border-radius: 20px;
+  box-shadow: 0 9px 24px rgba(30,41,59,.055);
+  cursor: default;
+}
+.plat-user-mode .plat-tariff-card.selected,
+.plat-user-mode .plat-tariff-card.is-current {
+  border-color: #8db2f5;
+  box-shadow: 0 0 0 1px rgba(91,141,239,.26) inset, 0 10px 25px rgba(91,141,239,.10);
+}
+.plat-user-mode .plat-tariff-badge,
+.plat-user-mode .plat-tariff-badge.is-current {
+  top: -10px;
+  right: 14px;
+  padding: 4px 10px;
+  background: #6f9bf0;
+  box-shadow: 0 4px 10px rgba(91,141,239,.16);
+}
+.plat-user-mode .plat-tariff-summary-row {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.plat-user-mode .plat-tariff-head {
+  min-width: 0;
+}
+.plat-user-mode .plat-tariff-symbol {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+}
+.plat-user-mode .plat-tariff-name {
+  font-size: 17px;
+  line-height: 1.1;
+  font-weight: 800;
+}
+.plat-user-mode .plat-tariff-limit {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin-top: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f5f7fb;
+  color: #718096;
+  font-size: 10px;
+  font-weight: 700;
+}
+.plat-user-mode .plat-tariff-price-block {
+  min-width: 104px;
+  text-align: right;
+}
+.plat-user-mode .plat-tariff-price-block .plat-tariff-price,
+.plat-user-mode .plat-tariff-price-block .plat-tariff-price-strike {
+  margin-top: 0;
+}
+.plat-user-mode .plat-tariff-price {
+  font-size: 20px;
+  line-height: 1.12;
+  white-space: nowrap;
+  letter-spacing: -.25px;
+}
+.plat-user-mode .plat-tariff-price span {
+  font-size: 10px;
+  margin-left: 2px;
+}
+.plat-user-mode .plat-tariff-price-strike {
+  font-size: 10px;
+}
+.plat-user-mode .plat-tariff-saving {
+  margin-top: 5px;
+  font-size: 9px;
+}
+.plat-user-mode .plat-tariff-divider {
+  height: 1px;
+  margin: 13px 0 12px;
+  background: #edf1f7;
+}
+.plat-user-mode .plat-tariff-features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 9px 10px;
+  min-height: 104px;
+  margin: 0;
+}
+.plat-user-mode .plat-tariff-features li {
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  font-size: 10.8px;
+  line-height: 1.32;
+}
+.plat-user-mode .plat-tariff-features li .p-icon,
+.plat-user-mode .plat-tariff-features li > svg {
+  margin-top: 1px;
+}
+.plat-user-mode .plat-tariff-select,
+.plat-user-mode .plat-tariff-current-btn {
+  min-height: 50px !important;
+  margin-top: 14px !important;
+  border-radius: 16px !important;
+}
+.plat-user-mode .plat-tariff-current-btn {
+  background: #f2f6ff !important;
+  border-color: #c7d8f8 !important;
+  color: #4f7fe0 !important;
+}
+.plat-user-mode .plat-subscription-tariff-list .plat-tariff-card {
+  padding: 17px;
+}
+
+@media (max-width: 374px) {
+  .plat-user-mode .plat-tariff-carousel-item { flex-basis: 89%; }
+  .plat-user-mode .plat-tariff-summary-row { gap: 8px; }
+  .plat-user-mode .plat-tariff-symbol { width: 40px; height: 40px; }
+  .plat-user-mode .plat-tariff-name { font-size: 15.5px; }
+  .plat-user-mode .plat-tariff-price { font-size: 18px; }
+  .plat-user-mode .plat-tariff-price-block { min-width: 94px; }
+  .plat-user-mode .plat-tariff-features { gap: 8px; }
+  .plat-user-mode .plat-tariff-features li { font-size: 10.2px; }
+}
+
+/* ========================================================================
+   2026-08-28 — ADMIN REDESIGN v29
+   Dashboard + Do'konlar + So'rovlar. USER platform visual language,
+   admin hierarchy and controls. Scoped to .plat-admin-mode.
+   ======================================================================== */
+.plat-admin-mode {
+  --plat2-bg: #f6f8fc;
+  --plat2-card: #ffffff;
+  --plat2-primary: #5b8def;
+  --plat2-primary-pressed: #4f7fe0;
+  --plat2-primary-soft: #eef4ff;
+  --plat2-title: #132238;
+  --plat2-text: #2b3a4d;
+  --plat2-muted: #7b8899;
+  --plat2-border: #dfe7f2;
+  background: var(--plat2-bg);
+}
+.plat-admin-mode .plat-content { padding: 18px 18px 104px; }
+.plat-admin-mode button.primary {
+  background: #5b8def;
+  border-radius: 15px;
+  box-shadow: 0 7px 18px rgba(91,141,239,.16);
+}
+.plat-admin-mode button.primary:active { background:#4f7fe0; }
+.plat-admin-mode button.secondary {
+  border-color:#d4dfef;
+  background:#fbfcff;
+  color:#40536b;
+  border-radius:14px;
+}
+.plat-admin-mode .plat-nav-btn.active { color:#4f7fe0; }
+.plat-admin-mode .plat-nav-btn.active .plat-nav-icon {
+  width:31px;height:27px;border-radius:10px;background:#eef4ff;display:flex;align-items:center;justify-content:center;
+}
+.plat-admin-mode .plat-bottom-nav { border-top-color:#e6ebf3; box-shadow:0 -8px 24px rgba(27,47,76,.035); }
+.plat-admin-mode .plat-header { border-bottom-color:#e7ecf3; }
+.plat-admin-mode .plat-header-btn { color:#4f7fe0; border-color:#dce5f2; }
+
+.plat-admin-eyebrow {
+  display:block;margin-bottom:4px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7e8da1;
+}
+.plat-admin-list-head { margin:2px 0 16px; }
+.plat-admin-list-head h1,
+.plat-admin-dash-head h1 { margin:0;color:var(--plat2-title);font-size:28px;line-height:1.08;letter-spacing:-.55px;font-weight:850; }
+.plat-admin-list-head p,
+.plat-admin-dash-head p { margin:6px 0 0;font-size:12.5px;line-height:1.45;color:var(--plat2-muted);max-width:390px; }
+.plat-admin-dash-head { margin:2px 0 18px; }
+
+/* Dashboard KPI */
+.plat-admin-mode .plat-admin-kpi-grid { gap:11px;margin-bottom:16px; }
+.plat-admin-mode .plat-admin-kpi-card {
+  position:relative;min-height:138px;padding:15px;border-radius:20px;border:1px solid #e0e7f1;
+  background:#fff;box-shadow:0 8px 24px rgba(34,55,86,.045);overflow:hidden;
+  display:grid;grid-template-columns:40px minmax(0,1fr);grid-template-rows:auto 1fr;gap:10px 11px;
+}
+.plat-admin-mode button.plat-admin-kpi-card:active { transform:translateY(1px) scale(.992); }
+.plat-admin-mode .plat-admin-kpi-icon {
+  grid-row:1;width:40px;height:40px;border-radius:13px;margin:0;background:#eef4ff;color:#5b8def;
+}
+.plat-admin-mode .plat-admin-kpi-card.is-warn .plat-admin-kpi-icon { background:#fff5df;color:#d99421; }
+.plat-admin-mode .plat-admin-kpi-card.is-info .plat-admin-kpi-icon { background:#eef3ff;color:#668ce5; }
+.plat-admin-mode .plat-admin-kpi-card.is-neutral .plat-admin-kpi-icon { background:#f3f4f7;color:#7c8798; }
+.plat-admin-kpi-copy { grid-column:1 / -1;display:flex;flex-direction:column;align-items:flex-start;min-width:0; }
+.plat-admin-mode .plat-admin-kpi-copy small { order:1;font-size:11px;color:#66758a;font-weight:750; }
+.plat-admin-mode .plat-admin-kpi-copy b { order:2;margin-top:3px;font-size:26px;line-height:1;color:#16243a;letter-spacing:-.45px; }
+.plat-admin-mode .plat-admin-kpi-copy em { order:3;margin-top:7px;font-size:9.8px;line-height:1.3;color:#8995a5; }
+.plat-admin-mode .plat-admin-kpi-card.is-warn .plat-admin-kpi-copy em { color:#c88a25; }
+.plat-admin-kpi-go { position:absolute;right:13px;top:17px;color:#b4c0cf; }
+
+/* Common admin section */
+.plat-admin-section {
+  margin:0 0 14px;padding:16px;border-radius:20px;background:#fff;border:1px solid #e0e7f1;
+  box-shadow:0 7px 23px rgba(34,55,86,.04);
+}
+.plat-admin-section-head { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:13px; }
+.plat-admin-section-head h2 { margin:0;font-size:16px;line-height:1.2;color:var(--plat2-title);font-weight:820; }
+.plat-admin-section-icon { width:34px;height:34px;border-radius:11px;background:#eef4ff;color:#5b8def;display:flex;align-items:center;justify-content:center;flex:none; }
+.plat-admin-section-icon.is-warn { background:#fff5df;color:#d99421; }
+.plat-admin-text-btn { display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;padding:6px 0;color:#5f86d9;font-size:10.5px;font-weight:750; }
+
+/* Dashboard analytics */
+.plat-admin-period-switch { display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:4px;margin-bottom:13px;border-radius:14px;background:#f3f6fa;border:1px solid #e6ebf2; }
+.plat-admin-period-switch button { min-width:0;padding:8px 4px;border:0;border-radius:10px;background:transparent;color:#718095;font:700 10.5px/1 inherit;white-space:nowrap; }
+.plat-admin-period-switch button.active { color:#3f73d3;background:#fff;box-shadow:0 3px 10px rgba(44,67,98,.08); }
+.plat-admin-mode .plat-analytics-kpi-grid { gap:8px;margin:0; }
+.plat-admin-mode .plat-analytics-kpi { min-height:70px;padding:10px;border-radius:14px;background:#f8faff;border:1px solid #e8edf5;display:flex;align-items:flex-start;gap:8px; }
+.plat-admin-mode .plat-analytics-kpi>span { width:27px;height:27px;border-radius:9px;background:#eef4ff;color:#6d93e8;display:flex;align-items:center;justify-content:center;flex:none; }
+.plat-admin-mode .plat-analytics-kpi b { font-size:14px;line-height:1.15;color:#1b2b42;overflow-wrap:anywhere; }
+.plat-admin-mode .plat-analytics-kpi small { display:block;margin-top:3px;font-size:9.5px;line-height:1.25;color:#8190a2; }
+.plat-admin-mode .plat-analytics-kpi.is-primary { background:#f2f6ff;border-color:#d7e4fa; }
+.plat-admin-mode .plat-analytics-kpi.is-primary b { color:#4d7edc; }
+.plat-admin-analytics-block { margin-top:16px;padding-top:14px;border-top:1px solid #edf1f6; }
+.plat-admin-subhead { display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px; }
+.plat-admin-subhead b { font-size:12px;color:#26374d; }
+.plat-admin-subhead small { font-size:9.5px;color:#929dab; }
+.plat-admin-mode .plat-analytics-bars { height:102px;padding:8px 4px 0;background:linear-gradient(180deg,#fbfcff,#fff);border-radius:12px;overflow-x:auto; }
+.plat-admin-mode .plat-analytics-bar { background:linear-gradient(180deg,#7da6f3,#5b8def);border-radius:5px 5px 2px 2px; }
+.plat-admin-period-stats { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.plat-admin-period-stats>div { padding:11px;border-radius:14px;background:#f8faff;border:1px solid #e8edf5; }
+.plat-admin-period-stats span,.plat-admin-tariff-breakdown span { display:block;font-size:10px;color:#7d8a9c; }
+.plat-admin-period-stats b,.plat-admin-tariff-breakdown b { display:block;margin-top:4px;font-size:14px;color:#1e2e45; }
+.plat-admin-period-stats small,.plat-admin-tariff-breakdown small { display:block;margin-top:3px;font-size:9.5px;color:#8f9baa; }
+.plat-admin-tariff-breakdown { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; }
+.plat-admin-tariff-breakdown>div { min-width:0;padding:10px;border-radius:13px;background:#fafbfe;border:1px solid #e9eef5; }
+.plat-admin-tariff-breakdown span,.plat-admin-tariff-breakdown b,.plat-admin-tariff-breakdown small { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.plat-admin-attention-list,.plat-admin-recent-list { display:flex;flex-direction:column; }
+.plat-admin-attention-row,.plat-admin-recent-list button { width:100%;display:flex;align-items:center;gap:9px;padding:11px 0;border:0;border-bottom:1px solid #edf1f5;background:transparent;text-align:left;color:inherit; }
+.plat-admin-attention-row:last-child,.plat-admin-recent-list button:last-child { border-bottom:0;padding-bottom:2px; }
+.plat-admin-attention-row>span:nth-child(2),.plat-admin-recent-list button>span:nth-child(2) { min-width:0;flex:1; }
+.plat-admin-attention-row b,.plat-admin-recent-list b { display:block;font-size:11.5px;color:#27384d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.plat-admin-attention-row small,.plat-admin-recent-list small { display:block;margin-top:2px;font-size:9.5px;color:#8794a5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.plat-admin-attention-row>svg { color:#b3becd; }
+.plat-admin-attention-dot { width:8px!important;height:8px;border-radius:999px;background:#efb34d;flex:0 0 8px!important; }
+.plat-admin-attention-dot.is-danger { background:#b91c1c; }
+.plat-admin-recent-icon { width:32px;height:32px;border-radius:10px;background:#eef4ff;color:#5b8def;display:flex;align-items:center;justify-content:center;flex:none!important; }
+
+/* Shared search / empty / loading */
+.plat-admin-search-row { display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:9px;margin:0 0 12px; }
+.plat-admin-search { min-width:0;min-height:48px;margin:0;padding:0 14px;display:flex;align-items:center;gap:9px;border:1px solid #dfe6ef;border-radius:15px;background:#fff;color:#8a99aa;box-shadow:0 3px 12px rgba(38,57,82,.025); }
+.plat-admin-search.is-wide { margin:0 0 12px; }
+.plat-admin-search input { min-width:0;width:100%;padding:0;border:0!important;box-shadow:none!important;background:transparent;font-family:inherit;font-size:12px;color:#24364c; }
+.plat-admin-search input::placeholder { color:#98a4b3; }
+.plat-admin-filter-toggle { position:relative;width:48px;height:48px;border:1px solid #dfe6ef;border-radius:15px;background:#fff;color:#687a91;display:flex;align-items:center;justify-content:center; }
+.plat-admin-filter-toggle.active { color:#4f7fe0;background:#eef4ff;border-color:#cddcf7; }
+.plat-admin-filter-toggle i { position:absolute;right:-3px;top:-4px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#5b8def;color:#fff;font:800 9px/18px inherit;font-style:normal; }
+.plat-admin-empty { min-height:185px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 18px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;color:#8a97a7; }
+.plat-admin-empty.is-compact { min-height:110px;border:0;background:#f9fbfe;border-radius:14px; }
+.plat-admin-empty>span { width:44px;height:44px;border-radius:14px;background:#f1f5fb;color:#7d97c5;display:flex;align-items:center;justify-content:center;margin-bottom:10px; }
+.plat-admin-empty b { color:#34455a;font-size:13px; }
+.plat-admin-empty small { max-width:285px;margin-top:5px;font-size:10.5px;line-height:1.45;color:#8d99a8; }
+.plat-admin-empty button { margin-top:12px;border:0;border-radius:11px;padding:9px 12px;background:#eef4ff;color:#527fd5;font-size:10.5px;font-weight:750; }
+.plat-admin-loading { min-height:150px;display:flex;flex-direction:column;gap:7px;align-items:center;justify-content:center;color:#64758a;text-align:center; }
+.plat-admin-loading .spinner { width:20px;height:20px;border-color:#d5e0f2;border-top-color:#5b8def; }
+.plat-admin-loading b { font-size:12px;color:#42546a; }
+.plat-admin-loading small { font-size:10px;color:#8e99a8; }
+.plat-admin-skeleton-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.plat-admin-skeleton-grid i { height:70px;border-radius:14px;background:linear-gradient(90deg,#f1f4f8 25%,#f8fafc 50%,#f1f4f8 75%);background-size:200% 100%;animation:adminShimmer 1.3s infinite; }
+@keyframes adminShimmer { to { background-position:-200% 0; } }
+
+/* Shops */
+.plat-admin-summary-strip { display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:13px; }
+.plat-admin-summary-strip>div { min-width:0;padding:10px 7px;border-radius:14px;background:#fff;border:1px solid #e2e8f0;text-align:center; }
+.plat-admin-summary-strip b { display:block;font-size:15px;color:#203149; }
+.plat-admin-summary-strip small { display:block;margin-top:2px;font-size:8.8px;color:#8794a4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.plat-admin-quick-tabs { display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px;margin-bottom:12px;background:#eef2f7;border-radius:14px; }
+.plat-admin-quick-tabs button,.plat-admin-segment button { border:0;border-radius:10px;background:transparent;color:#6f7d8e;font:750 10.5px/1 inherit;padding:9px 5px;display:flex;align-items:center;justify-content:center;gap:5px; }
+.plat-admin-quick-tabs button.active,.plat-admin-segment button.active { background:#fff;color:#4e78c9;box-shadow:0 3px 10px rgba(38,57,82,.07); }
+.plat-admin-quick-tabs em,.plat-admin-segment em { font-style:normal;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#e7edf6;color:#78869a;font:800 8.5px/17px inherit; }
+.plat-admin-quick-tabs button.active em,.plat-admin-segment button.active em { background:#eef4ff;color:#4f7fe0; }
+.plat-admin-filter-panel { margin-bottom:13px;padding:13px;border:1px solid #dfe6ef;border-radius:17px;background:#fff;box-shadow:0 8px 22px rgba(38,57,82,.04); }
+.plat-admin-filter-panel-head { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px; }
+.plat-admin-filter-panel-head b { display:block;font-size:12px;color:#2a3b51; }
+.plat-admin-filter-panel-head small { display:block;margin-top:2px;font-size:9.5px;color:#8b97a6; }
+.plat-admin-filter-panel-head button { border:0;background:transparent;color:#5b82cf;font-size:10px;font-weight:750;padding:2px; }
+.plat-admin-filter-grid { display:grid;grid-template-columns:1fr 1fr;gap:9px; }
+.plat-admin-filter-grid label { margin:0;min-width:0; }
+.plat-admin-filter-grid label>span { display:block;margin-bottom:5px;font-size:9px;font-weight:750;color:#78869a; }
+.plat-admin-filter-grid select { min-width:0;width:100%;height:40px;padding:0 9px;border:1px solid #dfe6ef;border-radius:11px;background:#fbfcfe;color:#34465c;font-size:10.5px; }
+.plat-admin-result-head { display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:13px 2px 8px; }
+.plat-admin-result-head b { font-size:11.5px;color:#384a60; }
+.plat-admin-result-head small { font-size:9.5px;color:#8e9aaa; }
+.plat-admin-shop-list { display:flex;flex-direction:column;gap:9px; }
+.plat-admin-shop-card { width:100%;display:flex;align-items:flex-start;gap:11px;padding:14px;border:1px solid #e0e7f0;border-radius:18px;background:#fff;text-align:left;color:inherit;box-shadow:0 6px 20px rgba(34,55,86,.035); }
+.plat-admin-shop-card:active { transform:scale(.994);background:#fbfcff; }
+.plat-admin-shop-avatar { width:44px;height:44px;border-radius:13px;background:#eef4ff;color:#5b8def;display:flex;align-items:center;justify-content:center;flex:none; }
+.plat-admin-shop-main { min-width:0;flex:1; }
+.plat-admin-shop-title { display:flex;align-items:center;gap:7px;min-width:0; }
+.plat-admin-shop-title>b { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;color:#1d2d44; }
+.plat-admin-shop-title .status-pill { flex:none;font-size:8px;padding:3px 7px;text-transform:none; }
+.plat-admin-shop-main>small { display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9.8px;color:#8996a6; }
+.plat-admin-shop-meta { display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:10px; }
+.plat-admin-shop-meta em { padding:4px 7px;border-radius:8px;background:#f4f7fb;color:#64758b;font:700 8.8px/1 inherit;font-style:normal; }
+.plat-admin-shop-meta em.is-warn { background:#fff5df;color:#c88720!important; }
+.plat-admin-shop-meta em.is-danger { background:#fff0f1;color:#cf5964!important; }
+.plat-admin-shop-chevron { align-self:center;color:#b1bdcc;flex:none; }
+
+/* Requests */
+.plat-admin-request-stats { display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:13px; }
+.plat-admin-request-stats>div { min-width:0;padding:9px 6px;border:1px solid #e3e9f1;border-radius:14px;background:#fff;text-align:center; }
+.plat-admin-request-stats span { width:28px;height:28px;margin:0 auto 5px;border-radius:9px;display:flex;align-items:center;justify-content:center; }
+.plat-admin-request-stats span.is-blue { background:#eef4ff;color:#5b8def; }.plat-admin-request-stats span.is-violet { background:#f4efff;color:#8a70d7; }.plat-admin-request-stats span.is-amber { background:#fff5df;color:#d39429; }.plat-admin-request-stats span.is-green { background:#edf9f1;color:#3aa66a; }
+.plat-admin-request-stats b { display:block;font-size:14px;color:#203149; }
+.plat-admin-request-stats small { display:block;margin-top:2px;font-size:8px;line-height:1.15;color:#8a97a7; }
+.plat-admin-segment { display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px;margin-bottom:9px;border-radius:14px;background:#eef2f7; }
+.plat-admin-request-subfilters { display:flex;gap:6px;overflow-x:auto;margin:0 -2px 12px;padding:2px;scrollbar-width:none; }
+.plat-admin-request-subfilters::-webkit-scrollbar { display:none; }
+.plat-admin-request-subfilters button { flex:none;border:1px solid #e0e6ef;border-radius:999px;background:#fff;color:#738195;padding:7px 10px;font-size:9.5px;font-weight:750;white-space:nowrap; }
+.plat-admin-request-subfilters button.active { border-color:#cfddf6;background:#eef4ff;color:#507bcf; }
+.plat-admin-request-subfilters em { font-style:normal;margin-left:3px; }
+.plat-admin-request-list { display:flex;flex-direction:column;gap:9px; }
+.plat-admin-request-card { width:100%;display:flex;flex-direction:column;gap:11px;padding:14px;border:1px solid #e0e7f0;border-radius:18px;background:#fff;text-align:left;color:inherit;box-shadow:0 6px 20px rgba(34,55,86,.035); }
+.plat-admin-request-card:active { transform:scale(.994);background:#fbfcff; }
+.plat-admin-request-top,.plat-admin-request-mid,.plat-admin-request-foot { display:flex;align-items:center;justify-content:space-between;gap:10px; }
+.plat-admin-request-top>span:first-child { min-width:0; }
+.plat-admin-request-top b { display:block;font-size:12.5px;color:#203149;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.plat-admin-request-top small { display:block;margin-top:2px;font-size:9.5px;color:#8b98a8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.plat-admin-request-mid { padding:10px;border-radius:13px;background:#f8faff;border:1px solid #edf1f6; }
+.plat-admin-request-mid span { min-width:0; }
+.plat-admin-request-mid small { display:block;font-size:8.8px;color:#8390a0; }
+.plat-admin-request-mid b { display:block;margin-top:3px;font-size:10.8px;color:#34465d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.plat-admin-request-mid strong { flex:none;font-size:13px;color:#203149; }
+.plat-admin-request-foot small { display:flex;align-items:center;gap:4px;min-width:0;font-size:9.3px;color:#8996a6; }
+.plat-admin-request-foot>svg { color:#b3becb;flex:none; }
+.plat-admin-mode .plat-request-status-pill { text-transform:none;font-size:8.8px;padding:4px 8px;white-space:nowrap; }
+
+/* Request detail */
+.plat-admin-detail-hero { display:flex;align-items:center;gap:11px;margin-bottom:14px;padding:15px;border:1px solid #e0e7f0;border-radius:19px;background:#fff;box-shadow:0 7px 22px rgba(34,55,86,.04); }
+.plat-admin-detail-icon { width:43px;height:43px;border-radius:13px;background:#eef4ff;color:#5b8def;display:flex;align-items:center;justify-content:center;flex:none; }
+.plat-admin-detail-hero>div { flex:1;min-width:0; }
+.plat-admin-detail-hero h2 { margin:0;font-size:15px;color:#1e2f46;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.plat-admin-detail-hero p { margin:3px 0 0;font-size:9.5px;color:#8996a6; }
+.plat-admin-detail-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.plat-admin-detail-grid>div { min-width:0;padding:10px;border:1px solid #e9eef5;border-radius:12px;background:#f9fbfe; }
+.plat-admin-detail-grid small { display:block;font-size:8.5px;color:#8b98a8; }
+.plat-admin-detail-grid b { display:block;margin-top:4px;font-size:10.8px;color:#32445a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.plat-admin-detail-grid b.is-code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:8.6px; }
+.plat-admin-payment-timeline { display:flex;flex-direction:column;gap:8px; }
+.plat-admin-payment-timeline>div { display:flex;align-items:center;gap:9px;padding:10px;border:1px solid #e8edf4;border-radius:13px;background:#fafbfe;color:#8a97a7; }
+.plat-admin-payment-timeline>div>span { width:30px;height:30px;border-radius:9px;background:#f0f3f7;display:flex;align-items:center;justify-content:center;flex:none; }
+.plat-admin-payment-timeline>div.done>span { background:#edf9f1;color:#36a466; }.plat-admin-payment-timeline>div.warn>span { background:#fff5df;color:#d39429; }.plat-admin-payment-timeline>div.danger>span { background:#fff0f1;color:#cf5964; }
+.plat-admin-payment-timeline p { flex:1;min-width:0;margin:0; }.plat-admin-payment-timeline b { display:block;font-size:10.5px;color:#34465c; }.plat-admin-payment-timeline small { display:block;margin-top:2px;font-size:9px;color:#8d99a8; }
+.plat-admin-payment-timeline button { border:0;border-radius:9px;background:#eef4ff;color:#517ed3;padding:7px 9px;font-size:9.5px;font-weight:750; }
+.plat-admin-detail-actions { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.plat-admin-detail-actions button { margin:0;min-height:44px; }
+.plat-admin-detail-actions button:first-child { grid-column:1 / -1; }
+.plat-admin-detail-actions button.is-danger { background:#fff7f7;border-color:#f2d9dd;color:#c85e68; }
+
+@media (min-width: 680px) {
+  .plat-admin-mode .plat-content,.plat-admin-mode .plat-page-body { max-width:760px; }
+  .plat-admin-mode .plat-admin-kpi-grid { grid-template-columns:repeat(4,1fr); }
+  .plat-admin-mode .plat-admin-kpi-card { min-height:150px; }
+  .plat-admin-mode .plat-analytics-kpi-grid { grid-template-columns:repeat(3,1fr); }
+  .plat-admin-shop-list,.plat-admin-request-list { display:grid;grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 374px) {
+  .plat-admin-mode .plat-content { padding-left:14px;padding-right:14px; }
+  .plat-admin-list-head h1,.plat-admin-dash-head h1 { font-size:25px; }
+  .plat-admin-mode .plat-admin-kpi-card { min-height:132px;padding:13px; }
+  .plat-admin-summary-strip small { font-size:8px; }
+  .plat-admin-filter-grid { grid-template-columns:1fr; }
+  .plat-admin-request-stats small { font-size:7.4px; }
+  .plat-admin-detail-grid { grid-template-columns:1fr; }
+}
+.plat-admin-request-note { margin-top:-2px;padding:7px 9px;border-radius:10px;background:#f7f9fc;color:#7b899a;font-size:8.8px;line-height:1.3; }
+.plat-admin-request-note.is-info { background:#eef4ff;color:#597dbf; }
+.plat-admin-request-card .notice { margin:0;padding:7px 9px;border:0;border-radius:10px;background:#fff8e9;color:#a6782a;font-size:8.8px;line-height:1.3; }
+.plat-admin-request-foot-actions { display:flex;align-items:center;gap:7px;color:#b3becb;flex:none; }
+.plat-admin-request-foot-actions button { border:0;border-radius:9px;padding:6px 8px;background:#f1f5fb;color:#5f7eae;font-size:8.8px;font-weight:750; }
+
+/* ======================================================================
+   ADMIN v14 — Tariffs / Settings / Profile professional IA redesign
+   ====================================================================== */
+.plat-admin-mode .plat-admin-list-head.is-with-action{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+.plat-admin-mode .plat-admin-list-head.is-with-action>div{min-width:0}
+.plat-admin-add-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:0 13px;border:1px solid #cbdaf3;border-radius:13px;background:#edf4ff;color:#4777c9;font-size:10.5px;font-weight:800;box-shadow:0 5px 14px rgba(61,101,168,.08)}
+.plat-admin-tariff-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
+.plat-admin-tariff-summary>div{padding:11px 10px;border:1px solid #e2e8f0;border-radius:15px;background:#fff;box-shadow:0 5px 18px rgba(35,52,79,.025)}
+.plat-admin-tariff-summary b{display:block;font-size:17px;color:#203149}.plat-admin-tariff-summary small{display:block;margin-top:2px;font-size:8.8px;color:#8996a7}
+.plat-admin-tariff-list{display:flex;flex-direction:column;gap:10px}
+.plat-admin-tariff-card{position:relative;width:100%;display:flex;align-items:center;gap:11px;padding:14px;border:1px solid #e0e7f0;border-radius:18px;background:#fff;color:inherit;text-align:left;box-shadow:0 7px 22px rgba(34,55,86,.035)}
+.plat-admin-tariff-card.is-popular{border-color:#cbdcfb;background:linear-gradient(135deg,#fff,#f8fbff)}
+.plat-admin-tariff-card.is-off{opacity:.68}.plat-admin-tariff-card:active{transform:scale(.995)}
+.plat-admin-tariff-icon{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:none;background:#eef4ff;color:#5b8def}
+.plat-admin-tariff-main{min-width:0;flex:1}.plat-admin-tariff-title{display:flex;align-items:center;gap:6px;min-width:0}.plat-admin-tariff-title b{font-size:13px;color:#1f3047}.plat-admin-tariff-title em{font-style:normal;font-size:7.8px;font-weight:800;padding:3px 6px;border-radius:999px;background:#eaf2ff;color:#557fca}.plat-admin-tariff-title em.is-off{background:#f2f4f7;color:#8a95a4}
+.plat-admin-tariff-main strong{display:block;margin-top:5px;font-size:16px;color:#1b2b42}.plat-admin-tariff-main strong small{font-size:9px;font-weight:650;color:#7f8c9c}.plat-admin-tariff-main>small{display:block;margin-top:3px;font-size:9px;color:#8996a6}
+.plat-admin-tariff-edit{display:flex;align-items:center;gap:3px;flex:none;color:#6b86b5;font-size:9px;font-weight:750}
+
+.plat-admin-profile-head{margin:3px 0 14px}.plat-admin-profile-head h1{margin:3px 0 2px;font-size:27px;letter-spacing:-.6px;color:#1c2d44}.plat-admin-profile-head p{margin:0;color:#8190a3;font-size:10.5px}
+.plat-admin-profile-card{display:flex;align-items:center;gap:13px;padding:16px;border:1px solid #dfe7f1;border-radius:21px;background:linear-gradient(145deg,#fff,#fbfdff);box-shadow:0 8px 28px rgba(36,57,88,.045)}
+.plat-admin-profile-photo{width:60px;height:60px;border-radius:18px;object-fit:cover;flex:none}.plat-admin-profile-photo.is-fallback{display:flex;align-items:center;justify-content:center;background:#edf4ff;color:#527dcd;font-size:23px;font-weight:850}
+.plat-admin-profile-identity{min-width:0}.plat-admin-role-badge{display:inline-flex;padding:3px 7px;border-radius:999px;background:#edf4ff;color:#527dcd;font-size:7.5px;font-weight:850;letter-spacing:.5px}.plat-admin-profile-identity h2{margin:5px 0 1px;font-size:16px;color:#1f3047;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.plat-admin-profile-identity p,.plat-admin-profile-identity small{display:block;margin:0;color:#8795a5;font-size:9.5px}
+.plat-admin-settings-intro{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:22px 2px 9px}.plat-admin-settings-intro h2{margin:2px 0 0;font-size:15px;color:#26384e}.plat-admin-settings-intro>span{width:34px;height:34px;border-radius:11px;background:#f1f5fb;color:#6684b5;display:flex;align-items:center;justify-content:center}
+.plat-admin-settings-list{overflow:hidden;border:1px solid #dfe7f1;border-radius:19px;background:#fff;box-shadow:0 6px 22px rgba(34,55,86,.025)}
+.plat-admin-settings-list>button{width:100%;display:flex;align-items:center;gap:11px;padding:13px 12px;border:0;border-bottom:1px solid #edf1f5;background:#fff;color:inherit;text-align:left}.plat-admin-settings-list>button:last-child{border-bottom:0}.plat-admin-settings-list>button:active{background:#f9fbfe}
+.plat-admin-settings-list>button>span{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none}.plat-admin-settings-list .is-blue{background:#eef4ff;color:#5b8def}.plat-admin-settings-list .is-violet{background:#f4efff;color:#8a70d7}.plat-admin-settings-list .is-green{background:#edf9f1;color:#3aa66a}.plat-admin-settings-list .is-amber{background:#fff5df;color:#d39429}
+.plat-admin-settings-list>button>div{min-width:0;flex:1}.plat-admin-settings-list b{display:block;font-size:11px;color:#2d3f56}.plat-admin-settings-list small{display:block;margin-top:2px;font-size:8.8px;color:#8a97a7}.plat-admin-settings-list em{display:flex;align-items:center;gap:4px;flex:none;font-size:8.5px;font-style:normal;color:#93a0af}
+
+.plat-settings-page-intro{margin:1px 0 16px}.plat-settings-page-intro.is-compact{margin-bottom:12px}.plat-settings-page-intro h2{margin:3px 0 3px;font-size:21px;color:#203149;letter-spacing:-.35px}.plat-settings-page-intro p{margin:0;color:#8593a4;font-size:10px;line-height:1.45}
+.plat-settings-section{margin-bottom:13px;padding:14px;border:1px solid #dfe7f1;border-radius:19px;background:#fff;box-shadow:0 7px 22px rgba(34,55,86,.03)}
+.plat-settings-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:11px}.plat-settings-section-head h3{margin:0;font-size:13px;color:#26384f}.plat-settings-section-head p{margin:3px 0 0;font-size:8.8px;line-height:1.35;color:#8b98a8}.plat-section-add{display:inline-flex;align-items:center;gap:4px;min-height:34px;padding:0 9px;border:1px solid #d6e1f1;border-radius:10px;background:#f7faff;color:#5c7fb7;font-size:9px;font-weight:800}
+.plat-payment-method-list{display:flex;flex-direction:column;gap:8px}.plat-payment-method-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:9px;padding:11px;border:1px solid #e5eaf1;border-radius:14px;background:#fbfcfe}.plat-payment-method-card.is-bank{grid-template-columns:auto minmax(0,1fr) auto}.plat-method-logo{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:#eef4ff;color:#5b8def;font-size:10px;font-weight:900}.plat-method-logo.is-click{background:#eef4ff;color:#497fd7}.plat-method-logo.is-payme{background:#eafaf8;color:#24968e}.plat-method-logo.is-paynet{background:#fff6e7;color:#c58a25}
+.plat-payment-method-card>div{min-width:0}.plat-payment-method-card b{display:block;font-size:10.5px;color:#314359;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.plat-payment-method-card small{display:block;margin-top:2px;font-size:8.5px;color:#8c99a8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.plat-payment-method-card>button{border:0;background:transparent;color:#6382b1;font-size:8.8px;font-weight:800;padding:6px 2px}
+.plat-switch{position:relative;display:inline-flex;width:38px;height:22px;flex:none}.plat-switch input{position:absolute;opacity:0;pointer-events:none}.plat-switch>span{width:38px;height:22px;border-radius:999px;background:#dce3eb;transition:.18s;position:relative}.plat-switch>span:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.14);transition:.18s}.plat-switch input:checked+span{background:#78a3ed}.plat-switch input:checked+span:after{transform:translateX(16px)}
+.plat-add-setting-card{width:100%;display:flex;align-items:center;gap:10px;padding:12px;border:1px dashed #cbd9ec;border-radius:14px;background:#f9fbfe;color:#5b7dad;text-align:left}.plat-add-setting-card>svg{flex:none}.plat-add-setting-card b{display:block;font-size:10.5px}.plat-add-setting-card small{display:block;margin-top:2px;font-size:8.5px;color:#8b98a8}
+.plat-settings-editor{margin-top:10px;padding:12px;border:1px solid #dfe7f1;border-radius:14px;background:#f9fbfe}.plat-settings-editor-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.plat-settings-editor-head b{font-size:11px;color:#314359}.plat-settings-editor-head button{border:0;background:transparent;color:#8d99a7;font-size:18px}.plat-settings-editor label{display:block;margin:8px 0 0;font-size:8.8px;font-weight:750;color:#738197}.plat-settings-editor input{width:100%;height:40px;margin-top:5px;padding:0 10px;border:1px solid #dce4ee;border-radius:11px;background:#fff;color:#314359;font-size:10.5px}.plat-toggle-row{display:flex!important;align-items:center;justify-content:space-between;gap:10px;padding:10px 0}.plat-toggle-row span b{display:block;font-size:10px;color:#34465c}.plat-toggle-row span small{display:block;font-size:8px;color:#8d99a8}.plat-toggle-row input{width:auto;height:auto;margin:0}.plat-settings-editor-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.plat-settings-editor-actions button{margin:0;min-height:42px}
+
+.plat-notification-groups{display:flex;flex-direction:column;gap:9px}.plat-notification-groups>button{width:100%;display:flex;align-items:center;gap:11px;padding:14px;border:1px solid #dfe7f1;border-radius:17px;background:#fff;color:inherit;text-align:left;box-shadow:0 6px 20px rgba(34,55,86,.025)}.plat-notification-groups>button>span{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none}.plat-notification-groups .is-blue{background:#eef4ff;color:#5b8def}.plat-notification-groups .is-amber{background:#fff5df;color:#d39429}.plat-notification-groups .is-violet{background:#f4efff;color:#8a70d7}.plat-notification-groups>button>div{flex:1;min-width:0}.plat-notification-groups b{display:block;font-size:11.2px;color:#2d3f56}.plat-notification-groups small{display:block;margin-top:2px;font-size:8.6px;line-height:1.3;color:#8b98a8}.plat-notification-groups em{display:inline-block;margin-top:6px;padding:3px 6px;border-radius:999px;background:#f2f5f9;color:#718095;font-size:7.8px;font-style:normal;font-weight:750}.plat-notification-groups>button>svg{color:#aab6c4;flex:none}
+.plat-settings-note{display:flex;align-items:flex-start;gap:8px;margin-top:12px;padding:10px;border:1px solid #e3e9f1;border-radius:13px;background:#f8faff;color:#6f8198;font-size:8.8px;line-height:1.4}.plat-settings-note svg{flex:none;color:#6e94d5}
+.plat-notification-template-list{display:flex;flex-direction:column;gap:9px}.plat-notification-template-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:9px;padding:12px;border:1px solid #dfe7f1;border-radius:16px;background:#fff;box-shadow:0 5px 18px rgba(34,55,86,.025)}.plat-template-status{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#f2f4f7;color:#8b98a8}.plat-template-status.is-on{background:#edf9f1;color:#3aa66a}.plat-notification-template-card>div{min-width:0}.plat-notification-template-card b{display:block;font-size:10.5px;color:#314359}.plat-notification-template-card small{display:block;margin-top:3px;font-size:8.3px;line-height:1.35;color:#8b98a8;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.plat-notification-template-card>button{border:0;background:transparent;color:#6382b1;font-size:8.6px;font-weight:800}
+
+/* Existing editor cards become calm inside admin settings. */
+.plat-admin-mode .plat-settings-section>.card,.plat-admin-mode .plat-notification-template-list+.card{margin:0 0 10px;border-color:#e0e7f0;box-shadow:none;background:#f9fbfe}
+
+@media(max-width:374px){.plat-admin-add-btn{padding:0 10px}.plat-admin-list-head.is-with-action h1{font-size:24px}.plat-payment-method-card,.plat-notification-template-card{grid-template-columns:auto minmax(0,1fr) auto}.plat-payment-method-card>button,.plat-notification-template-card>button{grid-column:2 / -1;justify-self:start;padding:2px 0}.plat-admin-tariff-edit{font-size:0}.plat-admin-tariff-edit svg{width:16px}}
+.plat-tariff-editor{margin-bottom:13px}.plat-editor-close{width:30px;height:30px;border:0;border-radius:9px;background:#f2f5f9;color:#8190a2;font-size:18px}.plat-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.plat-form-grid label,.plat-form-field{display:block;margin:0 0 9px}.plat-form-grid label>span,.plat-form-field>span{display:block;margin-bottom:5px;font-size:8.8px;font-weight:780;color:#728096}.plat-form-field span em{font-style:normal;font-weight:600;color:#a0aab7}.plat-form-grid input,.plat-form-grid select,.plat-form-field input,.plat-form-field textarea{width:100%;min-width:0;border:1px solid #dce4ee;border-radius:11px;background:#fbfcfe;color:#314359;font:500 10.5px/1.35 inherit}.plat-form-grid input,.plat-form-grid select,.plat-form-field input{height:40px;padding:0 10px}.plat-form-field textarea{padding:10px;resize:vertical}.plat-editor-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:3px 0 10px}.plat-editor-options label{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1px solid #e4eaf1;border-radius:12px;background:#fafbfe}.plat-editor-options b{display:block;font-size:9.5px;color:#34465c}.plat-editor-options small{display:block;margin-top:2px;font-size:7.8px;color:#8d99a8}.plat-editor-options input{width:16px;height:16px}.plat-settings-editor-head>div small{display:block;margin-top:2px;font-size:8px;color:#929eac}.plat-template-vars{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px}.plat-template-vars b{width:100%;font-size:8.5px;color:#748297}.plat-template-vars span{padding:4px 6px;border-radius:7px;background:#eef3f9;color:#5c7394;font:700 7.8px/1 ui-monospace,SFMono-Regular,Menlo,monospace}.plat-settings-editor-actions.is-three{grid-template-columns:1fr .7fr 1fr}.plat-method-editor select{appearance:none}.plat-method-editor{margin:0 0 10px}.plat-notification-editor{margin-bottom:10px}
+@media(max-width:374px){.plat-form-grid,.plat-editor-options{grid-template-columns:1fr}.plat-settings-editor-actions.is-three{grid-template-columns:1fr 1fr}.plat-settings-editor-actions.is-three .primary{grid-column:1/-1}}
+
+/* ========================================================================
+   USER v15 — checkout clarity + compact pricing + guides relocation
+   2026-08-28
+   ======================================================================== */
+
+/* Shared provider marks: compact brand-like symbols, not plain text rows. */
+.plat-provider-badge{
+  width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;
+  position:relative;flex:none;font-style:normal;font-weight:900;letter-spacing:-.4px;border:1px solid transparent;
+  box-shadow:0 3px 9px rgba(30,41,59,.05);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+.plat-provider-badge b{font-size:15px;line-height:1}.plat-provider-badge i{font-size:10px;line-height:1;font-style:normal;margin-left:1px}
+.plat-provider-badge.is-compact{width:23px;height:23px;border-radius:7px;box-shadow:none}.plat-provider-badge.is-compact b{font-size:9px}.plat-provider-badge.is-compact i{font-size:6px}
+.plat-provider-badge.is-click{background:linear-gradient(145deg,#eaf2ff,#f7faff);border-color:#cfdef8;color:#3f74d1}
+.plat-provider-badge.is-click i{color:#7ca4ec}
+.plat-provider-badge.is-payme{background:linear-gradient(145deg,#e8fbf8,#f8fffd);border-color:#c8eee9;color:#188b83}.plat-provider-badge.is-payme i{color:#4fb4ad}
+.plat-provider-badge.is-paynet{background:linear-gradient(145deg,#fff5df,#fffdfa);border-color:#f1dfb8;color:#bd7d13}.plat-provider-badge.is-paynet b{font-size:10px;letter-spacing:-.7px}
+.plat-provider-badge.is-card{background:linear-gradient(145deg,#eef4ff,#fbfdff);border-color:#d5e2f8;color:#527fcf}
+.plat-integration-pills>span{display:inline-flex!important;align-items:center;gap:5px}
+
+/* 3-topshiriq: tarif carousel sal ingichka, hierarchy aniqroq. */
+.plat-user-mode .plat-tariff-carousel{gap:10px;margin:0 -9px;padding:8px 9px 12px;scroll-padding-left:9px}
+.plat-user-mode .plat-tariff-carousel-item{flex-basis:80%}
+.plat-user-mode .plat-tariff-card{min-height:278px;padding:15px;border-radius:19px}
+.plat-user-mode .plat-tariff-title-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:9px}
+.plat-user-mode .plat-tariff-title-main{display:flex;align-items:flex-start;gap:9px;min-width:0}
+.plat-user-mode .plat-tariff-title-main>div{min-width:0}
+.plat-user-mode .plat-tariff-symbol{width:40px;height:40px;border-radius:13px;margin-top:0}
+.plat-user-mode .plat-tariff-name{font-size:16px;line-height:1.08;margin:1px 0 0}
+.plat-user-mode .plat-tariff-limit{display:inline-flex!important;width:max-content;max-width:100%;min-height:21px;margin-top:7px;padding:3px 8px;background:#f2f5fa;border:1px solid #e8edf4;color:#63748a;font-size:9.6px;font-weight:800;white-space:nowrap}
+.plat-user-mode .plat-tariff-price-block{min-width:94px;padding-top:1px}
+.plat-user-mode .plat-tariff-price{font-size:18px;letter-spacing:-.35px}
+.plat-user-mode .plat-tariff-price span{font-size:9px}.plat-user-mode .plat-tariff-price-strike{font-size:9px}
+.plat-user-mode .plat-tariff-saving{font-size:8.3px;padding:3px 6px}
+.plat-user-mode .plat-tariff-divider{margin:11px 0 10px}
+.plat-user-mode .plat-tariff-features{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 9px;min-height:76px}
+.plat-user-mode .plat-tariff-features li{gap:5px;font-size:9.7px;line-height:1.25;min-width:0;align-items:center}
+.plat-user-mode .plat-tariff-features li span{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plat-user-mode .plat-tariff-select,.plat-user-mode .plat-tariff-current-btn{min-height:46px!important;margin-top:11px!important;border-radius:15px!important;font-size:12px}
+.plat-user-mode .plat-tariff-badge,.plat-user-mode .plat-tariff-badge.is-current{top:-8px;right:11px;padding:3px 8px;font-size:8.5px}
+
+/* 1-2-topshiriq: checkout bir xil template, context esa flowga mos. */
+.plat-checkout-intro{display:flex;align-items:center;gap:10px;margin:0 0 11px;padding:11px 13px;border:1px solid #dfe8f7;border-radius:16px;background:linear-gradient(135deg,#fbfdff,#f4f8ff)}
+.plat-checkout-intro>span{width:35px;height:35px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:#eef4ff;color:#5b8def;flex:none}
+.plat-checkout-intro b{display:block;font-size:12.5px;color:#1c2b40}.plat-checkout-intro small{display:block;margin-top:2px;font-size:9.4px;line-height:1.38;color:#718096}
+.plat-payment-period.is-compact{padding:10px 12px;margin-bottom:11px}.plat-payment-period.is-compact .plat-billing-toggle{margin-top:8px}
+.plat-payment-period.is-compact .plat-billing-opt{min-height:45px}.plat-payment-period.is-compact .plat-billing-opt small{display:none}
+
+.plat-checkout-plan{margin-bottom:11px;padding:14px;border:1px solid #e1e8f2;border-radius:19px;background:#fff;box-shadow:0 7px 20px rgba(30,41,59,.045)}
+.plat-checkout-plan-top{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:9px;align-items:center}
+.plat-checkout-plan-top>div{min-width:0}.plat-checkout-plan-top>div>small{display:block;font-size:8.8px;color:#8996a8}.plat-checkout-plan-top h2{margin:1px 0 4px;font-size:17px;line-height:1.1;color:#17243a}
+.plat-checkout-plan-top>strong{font-size:17px;white-space:nowrap;color:#17243a;text-align:right}.plat-checkout-plan-top>strong small{display:block;margin-top:2px;font-size:8.5px;color:#7d8a9b;font-weight:700}
+.plat-checkout-limit{display:inline-flex;padding:3px 8px;border-radius:999px;background:#f3f6fa;border:1px solid #e7ecf2;color:#687990;font-size:9px;font-weight:800}
+.plat-checkout-bonus,.plat-checkout-shop{display:flex;align-items:center;gap:8px;margin-top:11px;padding:9px 10px;border-radius:13px;background:#faf9ff;border:1px solid #eee8fb}
+.plat-checkout-bonus>svg{color:#7d5bc7;flex:none}.plat-checkout-bonus b,.plat-checkout-shop b{display:block;font-size:10.5px;color:#243249}.plat-checkout-bonus small,.plat-checkout-shop small{display:block;margin-top:2px;font-size:8.7px;color:#7b889b}
+
+.plat-change-preview{margin:0 0 11px;padding:13px;border:1px solid #dbe7f8;border-radius:18px;background:#fbfdff;box-shadow:0 6px 17px rgba(57,93,145,.04)}
+.plat-change-preview.is-loading{display:flex;align-items:center;gap:10px;min-height:76px}.plat-change-preview.is-loading b{display:block;font-size:11px;color:#243249}.plat-change-preview.is-loading small{display:block;margin-top:2px;font-size:9px;color:#8190a4}
+.plat-change-preview-head{display:flex;align-items:center;gap:8px}.plat-change-preview-head>span{width:31px;height:31px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#eef4ff;color:#5b8def}.plat-change-preview-head b{display:block;font-size:11.5px;color:#223148}.plat-change-preview-head small{display:block;margin-top:1px;font-size:8.8px;color:#7e8da1}
+.plat-change-plans{display:grid;grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:7px;align-items:stretch;margin-top:10px}.plat-change-plans>div{padding:9px;border:1px solid #e5ebf3;border-radius:12px;background:#fff}.plat-change-plans>div.is-new{border-color:#cadcf9;background:#f5f9ff}.plat-change-plans>span{align-self:center;justify-self:center;color:#7d96bc}.plat-change-plans small,.plat-change-plans em{display:block;font-size:8.2px;color:#8492a5;font-style:normal}.plat-change-plans b{display:block;margin:2px 0 3px;font-size:11px;color:#243249}
+.plat-change-calc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}.plat-change-calc>div{padding:8px;border-radius:11px;background:#f6f8fb;text-align:center}.plat-change-calc small{display:block;font-size:7.8px;line-height:1.25;color:#7e8da1}.plat-change-calc b{display:block;margin-top:3px;font-size:9.5px;color:#25344a}
+.plat-change-result{display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 10px;border-radius:12px;background:#eef7f2;border:1px solid #d3eadc;color:#35815b}.plat-change-result>span{flex:none}.plat-change-result small{display:block;font-size:8px;color:#668b76}.plat-change-result b{display:block;margin-top:2px;font-size:10.5px;color:#285b42}.plat-change-note{display:flex;align-items:flex-start;gap:5px;margin:7px 1px 0;font-size:8.3px;line-height:1.35;color:#8692a3}
+
+.plat-payment-methods-card{padding-bottom:13px}
+/* 2026-08-31: endi ARALASH tarkib — haqiqiy logo bo'lgan usullar (is-logo-only,
+   kichik/kvadratsimon) yonma-yon (wrap) bo'lib joylashadi, matn-fallback
+   usullar (rasm yo'q) esa o'z alohida to'liq-kenglikdagi qatorida qoladi. */
+.plat-payment-method-grid{display:flex;flex-flow:row wrap;gap:8px}
+.plat-payment-method-choice{width:100%;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:9px;padding:10px 11px;border:1px solid #e3e9f1;border-radius:14px;background:#fff;text-align:left;color:#223148;transition:.16s ease}
+.plat-payment-method-choice:active{transform:scale(.99)}.plat-payment-method-choice.selected{border-color:#a9c5f3;background:#f7faff;box-shadow:0 0 0 1px rgba(91,141,239,.08) inset}.plat-payment-method-choice>span:nth-child(2){min-width:0}.plat-payment-method-choice b{display:block;font-size:11.2px;color:#223148}.plat-payment-method-choice small{display:block;margin-top:2px;font-size:8.7px;color:#8390a2}.plat-payment-method-choice>em{font-style:normal;color:#6e89b0;display:flex}
+.plat-payment-method-choice.is-logo-only{width:auto;flex:0 0 auto;display:inline-flex;position:relative;padding:8px;grid-template-columns:none}
+.plat-payment-method-choice.is-logo-only .plat-provider-logo{width:64px;height:44px;border-radius:11px}
+.plat-payment-method-check{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--u-blue,#2563eb);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(37,99,235,.35)}
+.plat-payment-bank-card.is-selected{margin-top:8px}.plat-payment-return-hint{display:flex;gap:8px;align-items:flex-start;margin-top:8px;padding:9px 10px;border-radius:12px;background:#eef8f3;border:1px solid #d5eadf;color:#35815b}.plat-payment-return-hint>svg{flex:none;margin-top:1px}.plat-payment-return-hint b{display:block;font-size:9.7px;color:#315e47}.plat-payment-return-hint small{display:block;margin-top:2px;font-size:8.4px;line-height:1.35;color:#668777}
+.plat-payment-empty-methods{display:flex;align-items:flex-start;gap:9px;padding:11px;border-radius:13px;background:#f7f9fc;border:1px solid #e7ecf2;color:#718096}.plat-payment-empty-methods>span{flex:none}.plat-payment-empty-methods b{display:block;font-size:10.5px;color:#49596e}.plat-payment-empty-methods small{display:block;margin-top:2px;font-size:8.7px;line-height:1.35}
+.plat-receipt-compact .plat-payment-section-title em{font-style:normal;margin-left:4px;padding:2px 6px;border-radius:999px;background:#eef7f2;color:#428264;font-size:8px}.plat-upload-zone.is-compact{padding:12px}.plat-upload-zone.is-compact>span{width:34px;height:34px}.plat-receipt-compact .plat-receipt-hint{margin-top:7px}
+.plat-payment-total.is-professional{box-shadow:0 5px 15px rgba(30,41,59,.035)}.plat-total-method{display:inline-flex;align-items:center;gap:5px}
+
+/* Tashqi Click/Payme/Paynet uchun qo'rqitmaydigan modal. */
+.plat-payment-modal-backdrop{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;padding:16px;background:rgba(20,32,50,.32);backdrop-filter:blur(3px)}
+.plat-payment-modal{width:min(100%,420px);padding:18px;border-radius:22px;background:#fff;box-shadow:0 22px 60px rgba(18,31,50,.20);animation:platPaymentSheetIn .18s ease-out}
+@keyframes platPaymentSheetIn{from{transform:translateY(16px);opacity:.5}to{transform:translateY(0);opacity:1}}
+.plat-payment-modal-mark{display:flex;justify-content:center;margin-bottom:9px}.plat-payment-modal h3{margin:0;text-align:center;font-size:17px;color:#1b293e}.plat-payment-modal>p{margin:7px 0 13px;text-align:center;font-size:10.2px;line-height:1.5;color:#6f7f93}
+.plat-payment-modal-check{display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid #e3e9f1;border-radius:13px;background:#f9fbfd;font-size:11px;font-weight:750;color:#35465c}.plat-payment-modal-check input{width:19px;height:19px;accent-color:#5b8def}
+.plat-payment-modal-actions{display:grid;grid-template-columns:1fr 1.15fr;gap:8px;margin-top:11px}.plat-payment-modal-actions button{margin:0;min-height:47px}
+
+.plat-request-receipt-note{display:flex;align-items:flex-start;gap:7px;margin:10px 0;padding:9px 10px;border-radius:12px;background:#f6f8fb;color:#6e7c90;font-size:9px;line-height:1.4;text-align:left}.plat-request-receipt-note svg{flex:none}.plat-payment-claim-box.is-soft{background:#f6f9ff;border-color:#dce7f8}.plat-payment-claim-box.is-soft>p{color:#657995}
+
+/* 5-topshiriq: Qo'llanmalar Yordamdan Profil ichiga ko'chirildi. */
+.plat-guides-hub-head{display:flex;align-items:center;gap:11px;margin-bottom:12px;padding:13px;border:1px solid #dfe8f7;border-radius:17px;background:linear-gradient(135deg,#fbfdff,#f5f8ff)}
+.plat-guides-hub-head>span{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#f1edff;color:#7555c6;flex:none}.plat-guides-hub-head h2{margin:0;font-size:17px;color:#1d2b41}.plat-guides-hub-head p{margin:3px 0 0;font-size:9.3px;line-height:1.4;color:#75859a}.plat-guides-hub-list{box-shadow:0 6px 18px rgba(30,41,59,.04)}
+
+/* Admin/request views use the same provider marks. */
+.plat-request-method{display:inline-flex;align-items:center;gap:5px;margin-top:5px;font-style:normal;font-size:8.7px;font-weight:800;color:#63748a}.plat-admin-payment-method-value{display:inline-flex!important;align-items:center;gap:5px}.plat-payment-method-card>.plat-provider-badge{width:36px;height:36px;border-radius:11px}
+
+@media(max-width:374px){
+  .plat-user-mode .plat-tariff-carousel-item{flex-basis:84%}
+  .plat-user-mode .plat-tariff-card{min-height:272px;padding:14px}
+  .plat-user-mode .plat-tariff-price{font-size:16.8px}.plat-user-mode .plat-tariff-price-block{min-width:86px}
+  .plat-user-mode .plat-tariff-features{gap:6px 7px}.plat-user-mode .plat-tariff-features li{font-size:9.2px}
+  .plat-change-calc{grid-template-columns:1fr 1fr}.plat-change-calc>div:last-child{grid-column:1/-1}
+  .plat-payment-modal-backdrop{padding:10px}.plat-payment-modal{padding:16px;border-radius:20px}
+}
+
+/* ============================================================
+   058 — Ariza + payment verification + shop provisioning
+   Scoped additions only; existing platform flows remain unchanged.
+   ============================================================ */
+.plat-header-actions{display:flex;align-items:center;gap:7px}.plat-header-request-btn{position:relative}.plat-header-request-btn>em{position:absolute;right:-4px;top:-5px;min-width:17px;height:17px;padding:0 4px;border:2px solid #fff;border-radius:999px;background:#e95858;color:#fff;font-size:8px;font-style:normal;font-weight:900;line-height:13px;text-align:center;box-shadow:0 2px 6px rgba(185,28,28,.15)}
+.plat-new-shop-identity{border-color:#d9e6f8!important;background:linear-gradient(145deg,#fff,#f8fbff)!important}.plat-field-pro{display:block;margin-top:11px}.plat-field-pro>span{display:block;margin-bottom:6px;font-size:9.5px;font-weight:800;color:#52647a}.plat-field-pro input{font-family:inherit!important;min-height:44px}.plat-owner-id-hint{display:flex;align-items:flex-start;gap:7px;margin-top:8px;padding:9px 10px;border-radius:12px;font-size:8.7px;line-height:1.42}.plat-owner-id-hint svg{flex:none;margin-top:1px}.plat-owner-id-hint b{color:inherit}.plat-owner-id-hint.is-ok{border:1px solid #d5eadf;background:#f1f8f4;color:#4f7761}.plat-owner-id-hint.is-warn{border:1px solid #f0dfb8;background:#fff9ec;color:#8b6a2d}.plat-owner-id-hint button{margin-left:auto;flex:none;border:0;border-radius:9px;padding:6px 8px;background:#fff;color:#5b76a0;font-size:8px;font-weight:850;box-shadow:0 0 0 1px rgba(106,130,164,.18)}.plat-owner-confirm{display:flex;align-items:flex-start;gap:7px;margin-top:9px;padding:10px;border-radius:12px;border:1px solid #cadff9;background:#f2f7ff;color:#486a9d;font-size:9px;line-height:1.4}.plat-owner-confirm svg{flex:none}.plat-owner-confirm.is-invalid{border-color:#ead9d9;background:#fff7f7;color:#966262}
+
+.plat-my-requests-home-link{width:100%;display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:10px;margin:0 0 12px;padding:11px 12px;border:1px solid #dfe8f4;border-radius:16px;background:#fff;color:#2a3c53;text-align:left;box-shadow:0 6px 19px rgba(31,54,85,.035)}.plat-my-requests-home-link>span:first-child{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#eef4ff;color:#5b8def}.plat-my-requests-home-link>span:nth-child(2){min-width:0}.plat-my-requests-home-link b{display:block;font-size:11.5px}.plat-my-requests-home-link small{display:block;margin-top:2px;font-size:8.7px;color:#8390a1}.plat-my-requests-home-link>svg{color:#91a0b2}
+.plat-receipt-attention{display:grid;grid-template-columns:42px minmax(0,1fr);gap:11px;margin:0 0 11px;padding:14px;border:1px solid #ead69e;border-radius:18px;background:linear-gradient(145deg,#fffdf8,#fff8e9);box-shadow:0 8px 24px rgba(133,93,30,.055)}.plat-receipt-attention.is-detail{margin-bottom:12px}.plat-receipt-attention.is-sent{border-color:#cce8da;background:linear-gradient(145deg,#fbfffd,#eef9f3)}.plat-receipt-attention-icon{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:#fff;color:#bc8429;box-shadow:0 2px 8px rgba(89,62,23,.07)}.plat-receipt-attention.is-sent .plat-receipt-attention-icon{color:#389061}.plat-receipt-attention-copy h3,.plat-receipt-attention h3{margin:0;font-size:12.5px;color:#28384e}.plat-receipt-attention-copy p,.plat-receipt-attention p{margin:4px 0 0;font-size:9px;line-height:1.5;color:#6d7a8c}.plat-receipt-attention-copy>div{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}.plat-receipt-attention-copy button{min-height:39px;margin:0;padding:8px;font-size:9.5px;border-radius:11px}.plat-receipt-attention.is-sent .plat-receipt-attention-copy>div{grid-template-columns:1fr}
+
+.plat-my-requests-intro{margin:1px 0 14px}.plat-my-requests-intro h2{margin:3px 0 3px;font-size:20px;letter-spacing:-.35px;color:#1d2b40}.plat-my-requests-intro p{margin:0;font-size:9.5px;line-height:1.45;color:#8090a3}.plat-my-request-list{display:flex;flex-direction:column;gap:8px}.plat-my-request-card{width:100%;display:grid;grid-template-columns:39px minmax(0,1fr) auto;align-items:center;gap:10px;padding:12px;border:1px solid #e0e7f0;border-radius:17px;background:#fff;color:inherit;text-align:left;box-shadow:0 5px 17px rgba(31,49,75,.035)}.plat-my-request-card:active{transform:scale(.995);background:#fbfdff}.plat-my-request-card-icon{width:39px;height:39px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#f0f5fd;color:#6086c3}.plat-my-request-card-main{min-width:0}.plat-my-request-card-top{display:flex;align-items:center;justify-content:space-between;gap:7px}.plat-my-request-card-top>b{font-size:9px;color:#708096}.plat-my-request-card-main>strong{display:block;margin-top:3px;font-size:12.5px;color:#26374d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.plat-my-request-card-main>small{display:block;margin-top:3px;font-size:8.5px;color:#748397}.plat-my-request-card-main>span:last-child{display:block;margin-top:5px;font-size:7.8px;color:#9aa5b2}.plat-my-request-chevron{color:#96a4b4}.plat-request-list-loading{display:flex;align-items:center;justify-content:center;gap:8px;min-height:110px;color:#77879a;font-size:10px}.plat-request-list-loading .spinner{border-color:#dce5f1;border-top-color:#6585b7}.plat-my-requests-empty{text-align:center;padding:38px 15px}.plat-my-requests-empty>span{width:48px;height:48px;margin:0 auto 10px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:#eef4fd;color:#6486bb}.plat-my-requests-empty h2{margin:0;font-size:15px;color:#2a3a50}.plat-my-requests-empty p{margin:5px auto 0;max-width:290px;font-size:9.5px;line-height:1.5;color:#8390a1}.plat-my-requests-empty button{margin-top:12px}
+
+.plat-application-detail-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:11px;padding:14px;border:1px solid #dfe7f1;border-radius:18px;background:linear-gradient(140deg,#fff,#f7faff)}.plat-application-detail-hero>div{min-width:0}.plat-application-detail-hero h2{margin:3px 0 2px;font-size:18px;letter-spacing:-.25px;color:#203149;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.plat-application-detail-hero p{margin:0;font-size:9px;color:#7b899b}.plat-application-info-grid,.plat-provision-summary{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px;padding:11px;border:1px solid #e2e8f0;border-radius:17px;background:#fff}.plat-application-info-grid>div,.plat-provision-summary>div{min-width:0;padding:8px;border-radius:11px;background:#f7f9fc}.plat-application-info-grid small,.plat-provision-summary small{display:block;font-size:7.8px;color:#8895a5}.plat-application-info-grid b,.plat-provision-summary b{display:block;margin-top:3px;font-size:9.5px;line-height:1.35;color:#304157;word-break:break-word}.plat-application-info-grid .is-code,.plat-provision-summary .is-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:7.7px}
+.plat-receipt-sent-state,.plat-shop-created-user{display:flex;align-items:flex-start;gap:9px;margin-bottom:11px;padding:11px 12px;border:1px solid #cfe8dc;border-radius:15px;background:#f1f9f5;color:#3f775b}.plat-receipt-sent-state>span,.plat-shop-created-user>span{flex:none}.plat-receipt-sent-state b,.plat-shop-created-user b{display:block;font-size:10.5px}.plat-receipt-sent-state small,.plat-shop-created-user small{display:block;margin-top:2px;font-size:8.6px;line-height:1.4;color:#688879}
+.plat-my-request-upload,.plat-application-timeline-card,.plat-provision-token-card{margin-bottom:11px;padding:13px;border:1px solid #dfe7f1;border-radius:17px;background:#fff;box-shadow:0 5px 18px rgba(31,49,75,.03)}.plat-application-section-title{display:flex;align-items:center;gap:8px;margin-bottom:10px}.plat-application-section-title>span{width:31px;height:31px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#eef4ff;color:#5e82ba;flex:none}.plat-application-section-title b{display:block;font-size:10.5px;color:#2c3d53}.plat-application-section-title small{display:block;margin-top:1px;font-size:8.2px;color:#8995a4}.plat-my-request-receipt-preview{display:block;width:100%;max-height:230px;object-fit:contain;margin-bottom:9px;border:1px solid #e4e9f0;border-radius:13px;background:#f7f8fa}.plat-upload-file-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0;padding:9px;border:1px solid #e3e9f1;border-radius:11px;background:#f8fafc;font-size:8.7px;color:#63748a}.plat-upload-file-row>span{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.plat-upload-file-row button{flex:none;border:0;background:none;color:#b15c5c;font-size:8px;font-weight:800}.plat-upload-select{margin:0 0 8px!important}.plat-upload-bot-note{margin:8px 1px 0;font-size:8.2px;line-height:1.45;color:#8a96a4}
+.plat-application-timeline{position:relative;padding-left:3px}.plat-application-timeline-row{display:grid;grid-template-columns:31px minmax(0,1fr);gap:8px;position:relative;padding-bottom:14px}.plat-application-timeline-row:not(:last-child):before{content:"";position:absolute;left:15px;top:27px;bottom:0;width:1px;background:#dfe6ef}.plat-application-timeline-row:last-child{padding-bottom:0}.plat-application-timeline-dot{position:relative;z-index:1;width:31px;height:31px;border:1px solid #dfe7f1;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#fff;color:#7990b0}.plat-application-timeline-row.is-latest .plat-application-timeline-dot{border-color:#bfd5f5;background:#eef5ff;color:#4e7fc6}.plat-application-timeline-row b{display:block;padding-top:2px;font-size:9.8px;color:#32445a}.plat-application-timeline-row small{display:block;margin-top:2px;font-size:8.2px;color:#77879b}.plat-application-timeline-row time{display:block;margin-top:3px;font-size:7.7px;color:#9ba5b2}
+
+.plat-admin-receipt-wait{display:flex;align-items:flex-start;gap:10px;margin:0 0 13px;padding:13px;border:1px solid #ead9aa;border-radius:17px;background:#fffaf0}.plat-admin-receipt-wait>span{width:37px;height:37px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:#fff;color:#b98731;flex:none}.plat-admin-receipt-wait b{font-size:10.5px;color:#3d4859}.plat-admin-receipt-wait p{margin:3px 0;font-size:8.8px;line-height:1.45;color:#777e88}.plat-admin-receipt-wait small{font-size:8px;color:#9a8662}.plat-provision-stage{display:flex;align-items:flex-start;gap:11px;margin-bottom:13px;padding:14px;border:1px solid #cfe2fb;border-radius:18px;background:linear-gradient(140deg,#f9fcff,#edf5ff)}.plat-provision-stage.is-created{border-color:#cce6d9;background:linear-gradient(140deg,#fbfffd,#edf8f2)}.plat-provision-stage-icon{width:40px;height:40px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:#fff;color:#5180c1;flex:none}.plat-provision-stage.is-created .plat-provision-stage-icon{color:#3b8b60}.plat-provision-stage>div{min-width:0;flex:1}.plat-provision-stage h2{margin:2px 0 3px;font-size:14px;color:#25364c}.plat-provision-stage p{margin:0;font-size:8.8px;line-height:1.45;color:#718197}.plat-provision-stage p b{color:#34465c}.plat-provision-stage small{display:block;margin-top:4px;font-size:8px;color:#8996a5}.plat-provision-stage button{margin-top:10px;min-height:42px}.plat-admin-history{margin-top:13px}
+.plat-provision-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:11px;padding:14px;border:1px solid #dce7f6;border-radius:18px;background:linear-gradient(145deg,#fff,#f6f9ff)}.plat-provision-head>span{width:43px;height:43px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:#edf4ff;color:#5d82bd;flex:none}.plat-provision-head h2{margin:2px 0 3px;font-size:17px;color:#22334a}.plat-provision-head p{margin:0;font-size:8.8px;line-height:1.45;color:#7b8a9d}.plat-provision-summary{margin-bottom:11px}.plat-provision-token-card .plat-field-pro{margin-bottom:0}.plat-provision-submit{min-height:48px;border-radius:14px!important}
+
+@media(max-width:374px){
+  .plat-receipt-attention{grid-template-columns:36px minmax(0,1fr);padding:12px}.plat-receipt-attention-icon{width:36px;height:36px}
+  .plat-receipt-attention-copy>div{grid-template-columns:1fr}.plat-application-info-grid,.plat-provision-summary{grid-template-columns:1fr}
+  .plat-my-request-card{grid-template-columns:35px minmax(0,1fr) auto;padding:10px}.plat-my-request-card-icon{width:35px;height:35px}
+}
+
+/* ========================================================================
+   2026-08-30 — Platform polish batch (7 tasks)
+   ======================================================================== */
+
+/* 1) Full-platform render stability: keep browser anchoring predictable. */
+html { overflow-anchor: none; }
+.plat-content, #plat-page-container { overflow-anchor: none; }
+
+/* 4) Tariffs: narrow cards, ONE feature column, infinite swipe carousel. */
+.plat-user-mode .plat-tariff-carousel {
+  gap: 12px;
+  margin-inline: -10px;
+  padding: 9px 10px 14px;
+  scroll-padding-inline: 10px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.plat-user-mode .plat-tariff-carousel::-webkit-scrollbar { display:none; }
+.plat-user-mode .plat-tariff-carousel-item {
+  flex: 0 0 min(78vw, 350px);
+  max-width: 350px;
+  scroll-snap-align: start;
+}
+.plat-user-mode .plat-tariff-carousel-item.is-clone { pointer-events:auto; }
+.plat-user-mode .plat-tariff-card { min-height: 0; }
+.plat-user-mode .plat-tariff-features {
+  display:flex;
+  flex-direction:column;
+  grid-template-columns:none;
+  gap:8px;
+  min-height:0;
+  margin:0;
+}
+.plat-user-mode .plat-tariff-features li {
+  font-size:10.3px;
+  line-height:1.35;
+  align-items:flex-start;
+}
+.plat-user-mode .plat-tariff-features li span {
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+}
+@media(max-width:374px){
+  .plat-user-mode .plat-tariff-carousel-item{flex-basis:min(82vw,330px)}
+}
+
+/* 2) Payment provider artwork — custom uploaded logo or clean wordmark. */
+.plat-provider-badge b { font-size:10px; letter-spacing:-.25px; }
+.plat-provider-badge.is-click b { font-size:9px; letter-spacing:.2px; }
+.plat-provider-badge.is-payme b { font-size:10px; letter-spacing:-.45px; }
+.plat-provider-badge.is-paynet b { font-size:8px; letter-spacing:-.45px; }
+.plat-provider-badge.is-compact b { font-size:7px; }
+.plat-provider-logo {
+  width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;
+  flex:none;border:1px solid #e0e7f0;border-radius:12px;background:#fff;overflow:hidden;
+  box-shadow:0 3px 9px rgba(30,41,59,.045);
+}
+.plat-provider-logo img { width:100%;height:100%;object-fit:contain;padding:4px; }
+.plat-provider-logo.is-compact { width:23px;height:23px;border-radius:7px;box-shadow:none; }
+.plat-provider-logo.is-compact img { padding:2px; }
+.plat-payment-method-card>.plat-provider-logo{width:36px;height:36px;border-radius:11px}
+.plat-payment-method-choice{cursor:pointer}
+
+/* Shared image uploader for payment logos + automatic messages. */
+.plat-media-upload{margin:10px 0;padding:11px;border:1px solid #dfe7f1;border-radius:13px;background:#fff}
+.plat-media-upload-head b{font-size:10px;color:#34465c}.plat-media-upload-head b em{font-style:normal;font-size:8px;color:#8d99a8}
+.plat-media-upload-head small{display:block;margin-top:2px;font-size:8px;line-height:1.4;color:#8d99a8}
+.plat-media-preview{display:flex;align-items:center;gap:10px;margin-top:9px;padding:9px;border:1px solid #e5eaf1;border-radius:12px;background:#f8fafc}
+.plat-media-preview img{width:92px;height:66px;object-fit:contain;border-radius:9px;background:#fff;border:1px solid #e7ebf1}
+.plat-media-preview.is-logo img{width:82px;height:54px}
+.plat-media-preview>div{display:flex;gap:6px;flex-wrap:wrap}.plat-media-preview button{width:auto;min-height:34px;margin:0;padding:7px 9px;font-size:8.5px}
+.plat-media-upload .is-fallback-url{margin-top:10px}
+.plat-settings-save-wide{width:100%;min-height:46px;margin-top:10px}
+
+/* 3) Four-stage payment/application lifecycle. */
+.plat-request-status-stack{display:flex;align-items:flex-end;gap:4px;flex-direction:column;flex:none}
+.plat-request-secondary-pill{display:inline-flex;padding:3px 7px;border-radius:999px;font-size:7.8px;font-weight:800;white-space:nowrap}
+.plat-request-secondary-pill.is-info{background:#e8f1ff;color:#3973c6}.plat-request-secondary-pill.is-warn{background:#fff4d9;color:#a87318}
+.plat-payment-draft-resume{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;margin-bottom:11px;padding:13px;border:1px solid #d8e4f4;border-radius:17px;background:linear-gradient(145deg,#fbfdff,#f3f7fd)}
+.plat-payment-draft-resume>span{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fff;color:#5680bc}
+.plat-payment-draft-resume h3{margin:0;font-size:11.5px;color:#2a3a50}.plat-payment-draft-resume p{margin:4px 0;font-size:8.8px;line-height:1.45;color:#728197}.plat-payment-draft-resume small{display:block;font-size:8px;color:#8a97a8}
+.plat-payment-draft-resume button{margin-top:9px;min-height:40px}
+.plat-admin-payment-wait .plat-admin-request-note{display:flex;align-items:flex-start;gap:7px;line-height:1.5}
+
+/* 6) Frozen / terminated owner attention. */
+.plat-lifecycle-attention{display:grid;grid-template-columns:44px minmax(0,1fr);gap:11px;margin:0 0 12px;padding:14px;border:1px solid #cfdcef;border-radius:18px;background:linear-gradient(145deg,#fbfdff,#f1f6fd);box-shadow:0 8px 24px rgba(52,76,111,.05)}
+.plat-lifecycle-attention.is-terminated{border-color:#edcaca;background:linear-gradient(145deg,#fffdfd,#fff2f2)}
+.plat-lifecycle-attention-icon{width:44px;height:44px;border-radius:13px;display:flex;align-items:center;justify-content:center;background:#fff;color:#557eb5;box-shadow:0 2px 8px rgba(46,67,95,.07)}
+.plat-lifecycle-attention.is-terminated .plat-lifecycle-attention-icon{color:#b65454}
+.plat-lifecycle-attention-copy h3{margin:2px 0 4px;font-size:13px;color:#27394f}.plat-lifecycle-attention-copy>p{margin:0 0 6px;font-size:9.2px;color:#596d86}
+.plat-lifecycle-message{font-size:9px;line-height:1.55;color:#6e7d90}.plat-lifecycle-attention-copy>small{display:block;margin-top:6px;font-size:7.8px;color:#96a2b1}
+.plat-lifecycle-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.plat-lifecycle-actions:has(>button:only-child){grid-template-columns:1fr}.plat-lifecycle-actions button{min-height:39px;margin:0;padding:8px;font-size:9px}
+.plat-lifecycle-settings textarea{min-height:80px}.plat-lifecycle-settings+.plat-lifecycle-settings{margin-top:10px}
+@media(max-width:374px){.plat-lifecycle-attention{grid-template-columns:38px minmax(0,1fr);padding:12px}.plat-lifecycle-attention-icon{width:38px;height:38px}.plat-lifecycle-actions{grid-template-columns:1fr}}
+
+
+/* SEP 02 — image/media actions: minimal icon-only visual, generous hitbox without bubbles. */
+.plat-upload-zone.is-icon-only{width:38px!important;height:38px!important;padding:6px!important;border:0!important;border-radius:4px!important;background:transparent!important;box-shadow:none!important}
+.plat-upload-zone.is-icon-only>span{width:auto!important;height:auto!important;border-radius:0!important;background:transparent!important;margin:0!important}
+.plat-media-preview>div>button{min-width:34px!important;min-height:34px!important;padding:5px!important;border:0!important;border-radius:4px!important;background:transparent!important;box-shadow:none!important}
+.plat-media-preview>div>button.is-danger{color:#dc2626!important;background:transparent!important}
+
+/* SEP 02 final follow-up — URL is a second source for ordinary content images. */
+.plat-image-url-field{margin-top:9px!important}.plat-image-url-field>span{font-size:8px!important;color:#7f8da0!important}.plat-image-url-field input{width:100%;min-height:38px;border:1px solid #dfe7f1;border-radius:10px;padding:8px 10px;font-size:9px;background:#fff;color:#27394f;outline:0}.plat-image-url-field input:focus{border-color:#8fb3e6;box-shadow:0 0 0 3px rgba(66,127,211,.08)}.plat-inline-error{display:block;min-height:11px;margin-top:4px;font-size:7.8px;line-height:1.3;color:#c84a4a}.plat-url-preview-empty{justify-content:flex-start}.plat-url-preview-empty img[hidden]{display:none}
+
+
+/* SEP 03 — compact shared image source row. */
+.plat-image-source-row{display:flex;align-items:flex-start;gap:7px;width:100%;min-width:0;margin-top:9px}
+.plat-image-source-row>.plat-upload-zone{flex:0 0 38px;margin:0!important}
+.plat-image-source-row>.plat-image-url-field{flex:1;min-width:0;margin:0!important}
+.plat-image-source-row>.plat-image-url-field input{min-height:38px;height:38px}
+.plat-url-preview-empty:empty{display:none}
+@media(max-width:330px){.plat-image-source-row{gap:5px}}
