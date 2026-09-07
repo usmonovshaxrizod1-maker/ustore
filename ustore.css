@@ -5435,3 +5435,61 @@ body.fc-admin-mode .fc-profile-menu,body.fc-admin-mode .fc-card{border-color:#e4
 /* Unified custom confirmation and toast polish */
 .fc-confirm-backdrop{background:rgba(15,23,42,.35)!important;backdrop-filter:blur(3px)}.fc-confirm-box{border:1px solid #e4e9f0!important;border-radius:18px!important;box-shadow:0 20px 50px rgba(16,24,40,.16)!important}.fc-confirm-title{font-size:16px!important;line-height:22px!important;color:#172033!important}.fc-confirm-text{font-size:13px!important;line-height:19px!important;color:#667085!important}
 #action-toast{max-width:min(420px,calc(100vw - 24px));border-radius:12px!important;box-shadow:0 10px 30px rgba(16,24,40,.12)!important}
+
+/* =========================================================
+   POST-DEPLOY FIX 1-8 — ADMIN PREMIUM CONSISTENCY
+   ========================================================= */
+/* Global semantic icon actions: save/apply=soft green, cancel=neutral, danger=soft red. */
+.fc-icon-action-bar{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;padding:10px!important;background:rgba(255,255,255,.96)!important;border:1px solid #e4e9f0!important;border-radius:14px!important;box-shadow:0 10px 30px rgba(16,24,40,.08)!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.fc-action-icon-btn{width:48px;height:46px;min-width:48px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;border:1px solid #e4e7ec;background:#f8fafc;color:#667085;box-shadow:none;transition:background .15s ease,border-color .15s ease,color .15s ease,transform .12s ease}
+.fc-action-icon-btn:active{transform:scale(.97)}.fc-action-icon-btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.fc-action-icon-btn.is-save{background:rgba(236,253,243,.92);border-color:#c6f1d5;color:#16803c}.fc-action-icon-btn.is-save:hover{background:#e1f8ea;border-color:#aee8c2}
+.fc-action-icon-btn.is-cancel{background:rgba(248,250,252,.96);border-color:#e4e7ec;color:#667085}.fc-action-icon-btn.is-cancel:hover{background:#f2f4f7;color:#475467}
+.fc-action-icon-btn.is-danger{background:#fff1ee;border-color:#ffd5cc;color:#c4320a}.fc-action-icon-btn.is-danger:hover{background:#ffe8e3}
+body.fc-admin-mode .fc-settings-sticky-actions,body.fc-admin-mode .fc-delivery-footer,body.fc-admin-mode .fc-design-footer-v2,body.fc-admin-mode .fc-legal-savebar{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom));z-index:20}
+@media(min-width:768px){body.fc-admin-mode .fc-settings-sticky-actions,body.fc-admin-mode .fc-delivery-footer,body.fc-admin-mode .fc-design-footer-v2,body.fc-admin-mode .fc-legal-savebar{bottom:16px}}
+
+/* Store settings root: same compact hierarchy as Payment/Delivery menus. */
+.fc-settings-root{display:flex;flex-direction:column;gap:14px}.fc-settings-root-intro{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;align-items:center;padding:14px 16px;border:1px solid #e4e9f0;border-radius:14px;background:#fff;box-shadow:0 4px 14px rgba(16,24,40,.045)}
+.fc-settings-root-icon,.fc-settings-menu-icon{display:grid;place-items:center;flex-shrink:0;background:#f3f8ff;color:#2684ff;border:1px solid #e3efff}.fc-settings-root-icon{width:40px;height:40px;border-radius:11px}.fc-settings-root-intro b{display:block;font-size:15px;line-height:21px;color:#172033}.fc-settings-root-intro small{display:block;margin-top:3px;font-size:12px;line-height:17px;color:#667085}
+.fc-settings-menu-list{display:flex;flex-direction:column;gap:10px}.fc-settings-menu-row{width:100%;min-height:72px;display:grid;grid-template-columns:42px minmax(0,1fr) auto 18px;align-items:center;gap:12px;padding:12px 14px;border:1px solid #e4e9f0;border-radius:14px;background:#fff;text-align:left;box-shadow:0 4px 14px rgba(16,24,40,.04);transition:border-color .15s ease,box-shadow .15s ease,transform .12s ease}.fc-settings-menu-row:active{transform:scale(.993)}.fc-settings-menu-row:hover{border-color:#d7dee8;box-shadow:0 6px 18px rgba(16,24,40,.055)}
+.fc-settings-menu-icon{width:42px;height:42px;border-radius:12px}.fc-settings-menu-copy{min-width:0;display:flex;flex-direction:column;gap:2px}.fc-settings-menu-copy b{font-size:14px;line-height:20px;font-weight:750;color:#172033}.fc-settings-menu-copy small{font-size:12px;line-height:17px;color:#667085}.fc-settings-menu-status{padding:5px 8px;border-radius:999px;background:#f2f4f7;color:#667085;border:1px solid #e4e7ec;font-size:11px;font-weight:700;white-space:nowrap}.fc-settings-menu-chevron{color:#98a2b3}
+.fc-settings-detail-card{overflow:hidden;border:1px solid #e4e9f0;border-radius:14px;background:#fff;box-shadow:0 4px 14px rgba(16,24,40,.045)}.fc-settings-toggle-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;padding:16px}.fc-pause-note-row{display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:10px;align-items:center;padding:0 16px 16px}.fc-pause-note-row textarea{width:100%;min-height:48px;max-height:96px;resize:vertical;padding:11px 13px;border:1px solid #d7dee8;border-radius:12px;background:#fbfdff;color:#344054;font-size:14px;line-height:20px;outline:none}.fc-pause-note-row textarea::placeholder{color:#98a2b3;font-size:14px}.fc-pause-note-row textarea:focus{background:#fff;border-color:#9dc8ff;box-shadow:0 0 0 3px rgba(38,132,255,.08)}
+.fc-settings-submenu-page{display:flex;flex-direction:column;gap:12px}.fc-settings-submenu-help{margin:0 2px;color:#667085;font-size:12px;line-height:18px}
+
+/* Integration forms: inputs must never touch each other. */
+.fc-integration-form{display:flex;flex-direction:column;gap:12px}.fc-integration-form-help{margin:0 0 2px;color:#667085;font-size:13px;line-height:19px}.fc-integration-input{width:100%;height:46px;padding:0 13px;border:1px solid #d7dee8;border-radius:12px;background:#fff;color:#344054;font-size:14px;outline:none}.fc-integration-input::placeholder{color:#98a2b3}.fc-integration-input:focus{border-color:#9dc8ff;box-shadow:0 0 0 3px rgba(38,132,255,.09)}.fc-integration-primary-action{height:46px;display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid #bcd8ff;border-radius:12px;background:#eef6ff;color:#175cd3;font-size:14px;font-weight:750}.fc-integration-primary-action:active{transform:scale(.99)}
+
+/* Delivery root mirrors Payment root; method detail is isolated. */
+.fc-delivery-menu-list .fc-acquiring-integration-card{min-height:72px;padding:12px 14px;background:#fff;border-color:#e4e9f0;border-radius:14px;box-shadow:0 4px 14px rgba(16,24,40,.04)}.fc-delivery-menu-list .fc-acquiring-integration-icon{width:42px;height:42px;border-radius:12px;background:#f3f8ff;color:#2684ff;border:1px solid #e3efff}.fc-delivery-body-shell{padding:14px;background:#f9fafc;border-color:#edf1f5;border-radius:14px}
+
+/* Softer admin-selected states: avoid large saturated blue surfaces. */
+body.fc-admin-mode .fc-toggle input:checked + .fc-toggle-track{background:#72aef7!important;box-shadow:inset 0 0 0 1px rgba(23,92,211,.08)}
+body.fc-admin-mode .fc-policy-segments button.is-active,body.fc-admin-mode .fc-return-days>button.is-active,body.fc-admin-mode .fc-delivery-kind.is-active,body.fc-admin-mode .fc-warehouse-tab.is-active,body.fc-admin-mode .fc-textzoom-opt.is-active{background:#eaf3ff!important;border-color:#bfd7ff!important;color:#175cd3!important;box-shadow:0 0 0 1px rgba(38,132,255,.04)!important}
+body.fc-admin-mode .fc-policy-segments button.is-active svg,body.fc-admin-mode .fc-delivery-kind.is-active svg,body.fc-admin-mode .fc-warehouse-tab.is-active svg{color:#2684ff!important}
+body.fc-admin-mode .fc-theme-card-v2.is-selected{border-color:#7eb8ff!important;box-shadow:0 0 0 3px rgba(38,132,255,.08)!important}.fc-theme-selected-v2{background:#5d9ff0!important}
+body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn){box-shadow:none!important}
+
+/* Theme custom editor is a dedicated screen; keep preview visible without preset clutter. */
+.fc-design-custom-page{gap:14px}.fc-design-custom-preview-sticky{position:sticky;top:0;z-index:8;padding:0 0 8px;background:linear-gradient(180deg,#f6f8fb 84%,rgba(246,248,251,0));border-radius:16px}.fc-design-custom-preview-sticky .fc-design-preview-shell{box-shadow:0 8px 24px rgba(16,24,40,.08)}
+.fc-design-page-v2.is-root .fc-theme-grid-v2{margin-bottom:2px}.fc-design-page-v2.is-root .fc-design-preview-shell{margin-bottom:2px}
+
+/* Command center: leave a real backdrop escape area + two explicit view actions. */
+.fc-command-backdrop{padding:44px 8px 8px!important}.fc-command-panel{max-height:calc(100dvh - 52px)!important;border-radius:20px 20px 14px 14px!important}.fc-command-header{height:auto!important;min-height:62px;flex-wrap:wrap;padding:10px 16px!important}.fc-command-view-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}.fc-command-view-btn{min-height:40px;padding:0 10px;border-radius:10px;border:1px solid #d7dee8;background:#fff;color:#344054;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:750}.fc-command-view-btn.is-admin{background:#f3f8ff;border-color:#cfe3ff;color:#175cd3}.fc-command-view-btn.is-store{background:#fff;color:#475467}.fc-command-scroll{max-height:calc(100dvh - 154px)!important}
+@media(min-width:768px){.fc-command-backdrop{padding:24px!important}.fc-command-panel{max-height:calc(100vh - 48px)!important}.fc-command-header{flex-wrap:nowrap;padding:10px 24px!important}.fc-command-view-actions{width:auto;grid-template-columns:auto auto}.fc-command-scroll{max-height:calc(100vh - 116px)!important}}
+@media(max-width:370px){.fc-settings-menu-row{grid-template-columns:40px minmax(0,1fr) 16px}.fc-settings-menu-status{grid-column:2/3;justify-self:start}.fc-settings-menu-row>.fc-settings-menu-chevron{grid-column:3;grid-row:1/3}.fc-command-view-btn span{font-size:11px}}
+
+/* FIX8 follow-up: any remaining ADMIN primary-blue control is softened globally.
+   Storefront/user mode is untouched; semantic Save/Cancel/Danger keep their own colors. */
+body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn),
+body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn){
+  background:#eaf3ff!important;
+  border:1px solid #bfd7ff!important;
+  color:#175cd3!important;
+  box-shadow:none!important;
+}
+body.fc-admin-mode button.bg-blue-600.text-white:not(.fc-action-icon-btn){color:#175cd3!important}
+body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn):hover,
+body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn):hover{background:#dcecff!important;border-color:#9fc7ff!important;color:#164caa!important}
+/* Save/confirm actions are semantic green even if legacy utility classes remain. */
+body.fc-admin-mode .fc-btn-success{background:#ecfdf3!important;border:1px solid #c6f1d5!important;color:#16803c!important;box-shadow:none!important}

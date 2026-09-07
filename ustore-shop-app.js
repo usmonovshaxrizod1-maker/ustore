@@ -92,7 +92,10 @@
       const el = document.getElementById('action-toast');
       if (!el) return;
       if (actionToastTimer) { clearTimeout(actionToastTimer); actionToastTimer = null; }
-      el.innerHTML = text || '';
+      // Statusni toastning o'zi icon/rang bilan ko'rsatadi; eski ✅/❌/⚠ emoji
+      // matn boshida qayta takrorlanib premium UI'ni buzmasin.
+      const cleanText = String(text || '').replace(/^(?:✅|❌|⚠️?|⏳|✓|✕)\s*/u, '');
+      el.innerHTML = cleanText;
       el.dataset.state = state;
       el.classList.remove('hidden');
       if (duration > 0) {
@@ -898,7 +901,7 @@
           ${row.error ? `<p class="fc-variant-inline-error">${escapeHtml(row.error)}</p>` : ''}
         </div>`).join('')}</div>
         <button type="button" onclick="addSizeRow(${ci})" class="fc-variant-group-addbtn">+ ${tr("O'lcham qo'shish",'Добавить размер')}</button>
-        <div class="fc-variant-editor-footer"><button type="button" onclick="cancelActiveColorDraft()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button><button type="button" onclick="saveActiveColorDraft()" class="fc-btn fc-btn-primary">${tr('Saqlash','Сохранить')}</button></div>
+        <div class="fc-variant-editor-footer fc-icon-action-bar"><button type="button" onclick="cancelActiveColorDraft()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button type="button" onclick="saveActiveColorDraft()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
       </div>`;
     }
     function renderVariantBuilderHtml() {
@@ -1284,6 +1287,7 @@
     let designSettings = { themeId: 'minimal', colors: {} };
     let designDraft = null;
     let designPreviewMode = 'HOME'; // HOME | PRODUCT | CART
+    let designCustomEditorOpen = false;
     let designAdvancedOpen = false;
     let designHighlightKey = '';
     let designHighlightTimer = null;
@@ -1295,6 +1299,7 @@
     // "Yetkazib berish va to'lov" endi ikkita alohida bo'limga bo'lingan.
     let fulfillmentSettingsSection = 'MENU';
     let fulfillmentDeliveryKind = 'FREE'; // FREE | FIXED | TAXI | POST (faqat DELIVERY bo'limida)
+    let fulfillmentDeliveryPageView = 'MENU'; // MENU | FREE | FIXED | TAXI | POST
     // "To'lov usullari" qayta tashkil qilish round (2026-09-05): eski
     // "hammasi bitta yassi to'r" (fulfillmentExpandedPayment) o'rniga endi
     // 4 ta asosiy bo'lim + Ekvayring ichida Click/Payme uchun ichki
@@ -2587,7 +2592,6 @@
       // shu yerda ham qayta ishlatiladi, yangi holat/mexanizm yaratilmadi.
       if (activePage) closePage(); else render();
       if (isAdminMode) {
-        adminCommandCenterAutoShown = false;
         requestAnimationFrame(() => openAdminCommandCenter(true));
       } else {
         closeAdminCommandCenter();
@@ -3607,12 +3611,14 @@
         case 'STAFF': renderStaffPage(container); break;
         case 'ROLES': renderRolesPage(container); break;
         case 'SETTINGS': renderSettingsPage(container); break;
+        case 'ORDER_PAUSE_SETTINGS': renderOrderPauseSettingsPage(container); break;
         case 'DASHBOARD': renderDashboardPage(container); break;
         case 'FAVORITES': renderFavoritesPage(container); break;
         case 'RECENT': renderRecentPage(container); break;
         case 'BILLZ': renderBillzPage(container); break;
         case 'ORDER_INFO': renderOrderInfoPage(container); break;
         case 'DESIGN_SETTINGS': renderDesignSettingsPage(container); break;
+        case 'DESIGN_CUSTOM': renderDesignCustomEditorPage(container); break;
         case 'DELIVERY_SETTINGS': renderDeliverySettingsPage(container); break;
         case 'PAYMENT_SETTINGS': renderPaymentSettingsPage(container); break;
         case 'ORDER_POLICY_SETTINGS': renderOrderPolicySettingsPage(container); break;
@@ -4982,7 +4988,7 @@
           <div><b>${tr('Umumiy huquqiy shablon','Общий юридический шаблон')}</b><p>${tr("UStorE amaldagi O‘zbekiston qonunchiligiga tayangan umumiy shablonni beradi. Xohlasangiz shu holicha yoqing, xohlasangiz do‘koningizga moslab tahrirlang. Bu individual yuridik xulosa emas; maxsus faoliyat yoki tovarlar bo‘lsa moslashtirish tavsiya etiladi.", "UStorE предоставляет общий шаблон на основе действующего законодательства Узбекистана. Можно включить его как есть или адаптировать под магазин. Это не индивидуальное юридическое заключение; для специальных видов деятельности рекомендуется адаптация.")}</p></div>
         </div>
         <div class="fc-legal-doc-list">${docs.map(legalDocumentCardHtml).join('')}</div>
-        <div class="fc-legal-savebar"><button type="button" onclick="saveLegalSettings()" class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash','Сохранить')}</button></div>
+        <div class="fc-legal-savebar fc-icon-action-bar"><button type="button" onclick="saveLegalSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
       </div>`;
       renderPageShell(container, tr('Huquqiy hujjatlar','Правовые документы'), body, { onBack: "legalDraft=null;openPage('SETTINGS')" });
     }
@@ -5021,27 +5027,29 @@
     // modal bo'lib ochiladi (murakkab mavjud mantiqqa tegilmadi) — yopilganda
     // ostidagi shu sahifa qayta ko'rinadi. Bot /start endi shu yerda, alohida
     // qatordan boshqa joyga ko'chirilmagan.
+    function settingsMenuRowHtml({ icon, title, subtitle = '', status = '', onclick }) {
+      return `<button type="button" onclick="${onclick}" class="fc-settings-menu-row"><span class="fc-settings-menu-icon"><i data-lucide="${icon}" class="w-5 h-5"></i></span><span class="fc-settings-menu-copy"><b>${title}</b>${subtitle ? `<small>${subtitle}</small>` : ''}</span>${status ? `<span class="fc-settings-menu-status">${status}</span>` : ''}<i data-lucide="chevron-right" class="w-4 h-4 fc-settings-menu-chevron"></i></button>`;
+    }
+    function openOrderPauseSettingsPage() { if (isUserAnAdmin && isAdminMode) openPage('ORDER_PAUSE_SETTINGS'); }
+    function closeOrderPauseSettingsPage() { openPage('SETTINGS', 'nav-profile'); }
+    function renderOrderPauseSettingsPage(container) {
+      const noteRow = ordersPaused ? `<div class="fc-pause-note-row"><textarea id="orders-paused-note" rows="2" placeholder="${tr('Ixtiyoriy izoh, masalan: Bugun inventarizatsiya sababli buyurtmalar qabul qilinmaydi.', 'Необязательный комментарий, например: Сегодня заказы не принимаются из-за инвентаризации.')}" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea><button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-action-icon-btn is-save" ${ordersPausedSaving ? 'disabled' : ''} aria-label="${tr('Izohni saqlash','Сохранить комментарий')}" title="${tr('Izohni saqlash','Сохранить комментарий')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>` : '';
+      const body = `<section class="fc-settings-detail-card"><div class="fc-settings-toggle-row"><span class="fc-settings-menu-icon"><i data-lucide="pause-circle" class="w-5 h-5"></i></span><div class="fc-settings-menu-copy"><b>${tr("Buyurtmalarni vaqtincha qabul qilmaslik", "Временно не принимать заказы")}</b><small>${tr("Katalog ko'rinishda qoladi, faqat yangi buyurtma berish vaqtincha to'xtatiladi.", "Каталог остаётся видимым, приостанавливается только оформление новых заказов.")}</small></div><label class="fc-toggle"><input type="checkbox" ${ordersPaused ? 'checked' : ''} onchange="toggleOrdersPaused(this.checked)" ${ordersPausedSaving ? 'disabled' : ''}><span class="fc-toggle-track"></span></label></div>${noteRow}</section>`;
+      renderPageShell(container, tr('Buyurtmalarni qabul qilish','Приём заказов'), body, { onBack:'closeOrderPauseSettingsPage()' });
+    }
+
     function renderSettingsPage(container) {
-      const body = `
-        <div class="space-y-2">
-          <div class="fc-card space-y-2">
-            <div class="flex items-center justify-between gap-2">
-              <div class="min-w-0"><b class="text-xs">${tr("Buyurtmalarni vaqtincha qabul qilmaslik", "Временно не принимать заказы")}</b><p class="text-[10px] text-gray-400 mt-0.5">${tr("Katalog ko'rinishda qoladi, faqat yangi buyurtma berish vaqtincha to'xtatiladi.", "Каталог остаётся видимым, приостанавливается только оформление новых заказов.")}</p></div>
-              <span class="fc-toggle shrink-0"><input type="checkbox" ${ordersPaused ? 'checked' : ''} onchange="toggleOrdersPaused(this.checked)" ${ordersPausedSaving ? 'disabled' : ''}><span class="fc-toggle-track"></span></span>
-            </div>
-            ${ordersPaused ? `<textarea id="orders-paused-note" rows="2" placeholder="${tr('Ixtiyoriy izoh, masalan: Bugun inventarizatsiya sababli buyurtmalar qabul qilinmaydi.', 'Необязательный комментарий, например: Сегодня заказы не принимаются из-за инвентаризации.')}" class="w-full p-2 border rounded-xl text-xs" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea><div class="flex justify-end"><button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-btn fc-btn-primary px-4 py-2" ${ordersPausedSaving ? 'disabled' : ''}><i data-lucide="save" class="w-4 h-4"></i>${tr('Izohni saqlash','Сохранить комментарий')}</button></div>` : ''}
-          </div>
-          <button type="button" onclick="openDeliverySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="truck" class="w-4 h-4"></i>${tr("Yetkazib berish parametrlari", "Параметры доставки")}</span><span>›</span></button>
-          <button type="button" onclick="openPaymentSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr("To'lov parametrlari", "Параметры оплаты")}</span><span>›</span></button>
-          <button type="button" onclick="openOrderPolicySettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr("Qaytarish va bekor qilish", "Возврат и отмена")}</span><span>›</span></button>
-          <button type="button" onclick="openLegalSettingsPage()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="file-lock-2" class="w-4 h-4"></i>${tr("Huquqiy hujjatlar", "Правовые документы")}</span><span>›</span></button>
-          <button type="button" onclick="openDesignSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4"></i>${tr("Dizayn", "Дизайн")}</span><span>›</span></button>
-          <button type="button" onclick="activePopupModal='START_MESSAGE'; render();" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4"></i>${tr("Bot /start xabari", "Сообщение бота /start")}</span><span>›</span></button>
-          ${billzAccessGranted ? `
-            <button type="button" onclick="openBillzSettings()" class="fc-card w-full flex items-center justify-between text-left"><span class="font-bold flex items-center gap-2">🔳 Billz</span><span>›</span></button>
-          ` : ''}
-        </div>
-      `;
+      const rows = [
+        { icon:'pause-circle', title:tr('Buyurtmalarni qabul qilish','Приём заказов'), subtitle:tr('Vaqtincha to‘xtatish va mijozga izoh','Пауза и комментарий для клиента'), status:ordersPaused?tr('To‘xtatilgan','Пауза'):tr('Faol','Активно'), onclick:'openOrderPauseSettingsPage()' },
+        { icon:'truck', title:tr('Yetkazib berish parametrlari','Параметры доставки'), subtitle:tr('Bepul, aniq narx, taksi va pochta','Бесплатно, фиксированно, такси и почта'), onclick:'openDeliverySettingsPage()' },
+        { icon:'credit-card', title:tr("To'lov parametrlari",'Параметры оплаты'), subtitle:tr('Naqd, karta, ekvayring va QR','Наличные, карта, эквайринг и QR'), onclick:'openPaymentSettingsPage()' },
+        { icon:'rotate-ccw', title:tr('Qaytarish va bekor qilish','Возврат и отмена'), subtitle:tr('Bekor qilish va qaytarish qoidalari','Правила отмены и возврата'), onclick:'openOrderPolicySettingsPage()' },
+        { icon:'file-lock-2', title:tr('Huquqiy hujjatlar','Правовые документы'), subtitle:tr('Shartlar va maxfiylik hujjatlari','Условия и конфиденциальность'), onclick:'openLegalSettingsPage()' },
+        { icon:'palette', title:tr('Dizayn','Дизайн'), subtitle:tr('Storefront uslubi va ranglari','Стиль и цвета витрины'), onclick:'openDesignSettings()' },
+        { icon:'bot', title:tr('Bot /start xabari','Сообщение бота /start'), subtitle:tr('Birinchi xabar va rasm','Первое сообщение и изображение'), onclick:"activePopupModal='START_MESSAGE'; render();" },
+      ];
+      if (billzAccessGranted) rows.push({ icon:'scan-line', title:'Billz', subtitle:tr('Sinxronizatsiya sozlamalari','Настройки синхронизации'), onclick:'openBillzSettings()' });
+      const body = `<div class="fc-settings-root"><div class="fc-settings-root-intro"><span class="fc-settings-root-icon"><i data-lucide="settings-2" class="w-5 h-5"></i></span><div><b>${tr("Do'kon boshqaruvi",'Управление магазином')}</b><small>${tr('Asosiy parametrlar bo‘limlarga ajratilgan. Kerakli sozlamani tanlang.','Основные параметры разделены по разделам. Выберите нужную настройку.')}</small></div></div><div class="fc-settings-menu-list">${rows.map(settingsMenuRowHtml).join('')}</div></div>`;
       renderPageShell(container, tr("Do'kon sozlamalari", 'Настройки магазина'), body);
     }
 
@@ -5120,6 +5128,9 @@
       const icons = { primary:'circle-dot', pageBg:'panel-top', cardBg:'square', text:'type', secondaryText:'text', button:'mouse-pointer-2', buttonText:'type', headerBg:'panel-top-open', headerText:'type', bottomNavBg:'panel-bottom', bottomNavText:'type', accent:'sparkles', secondaryButton:'square', panelBg:'layers-3', inputBg:'search', border:'box', mutedText:'align-left' };
       return keys.map(key => `<div class="fc-design-color-row-v2"><button type="button" onclick="highlightDesignToken('${key}')" class="fc-design-color-target" title="${tr("Qayerda ishlatilishini ko'rsatish", 'Показать, где используется')}"><span class="fc-design-color-icon"><i data-lucide="${icons[key]||'palette'}" class="w-4 h-4"></i></span></button><div class="fc-design-color-copy"><b>${DESIGN_COLOR_LABELS[key]}</b><small>${DESIGN_COLOR_HELP[key]||''}</small></div><label class="fc-design-swatch" title="${DESIGN_COLOR_LABELS[key]}"><input type="color" value="${activeColors[key]}" onchange="setDesignColor('${key}',this.value)"><span style="background:${activeColors[key]}"></span></label><input class="fc-design-hex-input-v2" type="text" value="${activeColors[key].toUpperCase()}" maxlength="7" spellcheck="false" onchange="setDesignColor('${key}',this.value)" onkeydown="if(event.key==='Enter')this.blur()" aria-label="${DESIGN_COLOR_LABELS[key]} HEX"></div>`).join('');
     }
+    function renderDesignRootFooterHtml(issues) {
+      return `<div class="fc-design-footer-v2 fc-icon-action-bar"><button onclick="closeDesignSettings()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveDesignSettings()" class="fc-action-icon-btn is-save" ${issues.length?'disabled':''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>`;
+    }
     function renderDesignSettingsPage(container) {
       const draft = designDraft || { themeId: designSettings.themeId || 'minimal', colors: designSettings.colors || {} };
       const activeColors = designColorsWithDefaults(draft.colors, draft.themeId);
@@ -5128,19 +5139,32 @@
         minimal: tr('Toza va universal','Чистая и универсальная'), bright:tr('Yengil, zamonaviy SaaS uslubi','Лёгкий современный стиль'), sport:tr('Kuchli va dinamik','Сильная и динамичная'), elegant:tr('Nafis va premium','Элегантная и премиальная'), dark:tr('Premium qorong‘i ko‘rinish','Премиальный тёмный стиль')
       };
       const presetOrder = ['minimal','bright','sport','elegant','dark'];
-      const body = `<div class="fc-design-page-v2">
+      const body = `<div class="fc-design-page-v2 is-root">
         ${renderDesignPreviewHtml(activeColors)}
         <section class="fc-design-section-v2"><div class="fc-design-section-title-v2"><div><b>${tr('Tayyor dizaynlar','Готовые дизайны')}</b><small>${tr("Tayyor uslubni tanlang yoki o'zingiz yarating.", 'Выберите готовый стиль или создайте свой.')}</small></div></div><div class="fc-theme-grid-v2">
           ${presetOrder.map(id=>{const theme=DESIGN_THEMES[id]; return `<button type="button" onclick="pickDesignTheme('${id}')" class="fc-theme-card-v2 ${draft.themeId===id?'is-selected':''}" style="--theme-primary:${theme.colors.primary};--theme-page:${theme.colors.pageBg};--theme-card:${theme.colors.cardBg};--theme-text:${theme.colors.text};--theme-button:${theme.colors.button}"><div class="fc-theme-mini"><div></div><span></span><article><i></i><b></b><em></em></article></div><div class="fc-theme-meta-v2"><b>${theme.label}</b><small>${descriptions[id]}</small></div>${draft.themeId===id?'<span class="fc-theme-selected-v2"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>':''}</button>`}).join('')}
-          <button type="button" onclick="startCustomDesign()" class="fc-theme-card-v2 is-custom ${draft.themeId==='custom'?'is-selected':''}" style="--theme-primary:${activeColors.primary};--theme-page:#f3f8ff;--theme-card:#fff;--theme-text:#172033;--theme-button:${activeColors.button}"><div class="fc-theme-custom-icon"><i data-lucide="palette" class="w-7 h-7"></i></div><div class="fc-theme-meta-v2"><b>${tr("O'zim yarataman",'Создать самому')}</b><small>${tr("Ranglar va elementlarni o'zingiz sozlang.", 'Настройте цвета и элементы самостоятельно.')}</small></div>${draft.themeId==='custom'?'<span class="fc-theme-selected-v2"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>':''}</button>
+          <button type="button" onclick="startCustomDesign()" class="fc-theme-card-v2 is-custom ${draft.themeId==='custom'?'is-selected':''}" style="--theme-primary:${activeColors.primary};--theme-page:#f3f8ff;--theme-card:#fff;--theme-text:#172033;--theme-button:${activeColors.button}"><div class="fc-theme-custom-icon"><i data-lucide="palette" class="w-7 h-7"></i></div><div class="fc-theme-meta-v2"><b>${tr("O'zim yarataman",'Создать самому')}</b><small>${draft.themeId==='custom'?tr('Mavjud custom dizaynni tahrirlash','Редактировать текущий дизайн'):tr("Ranglar va elementlarni alohida oynada sozlang.", 'Настройте цвета и элементы в отдельном редакторе.')}</small></div>${draft.themeId==='custom'?'<span class="fc-theme-selected-v2"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>':''}</button>
         </div></section>
-        <section class="fc-design-section-v2"><div class="fc-design-section-title-v2"><div><b>${tr('Asosiy sozlamalar','Основные настройки')}</b><small>${tr("Har bir qatordagi nishon tugmasi qaysi joy o'zgarishini previewda ko'rsatadi.", 'Кнопка-мишень показывает в просмотре, что именно изменится.')}</small></div></div><div class="fc-design-color-list-v2">${renderDesignColorRows(DESIGN_SIMPLE_KEYS,activeColors)}</div></section>
-        <section class="fc-design-section-v2"><button type="button" onclick="toggleDesignAdvanced()" class="fc-design-advanced-toggle"><span><i data-lucide="sliders-horizontal" class="w-4 h-4"></i><span><b>${tr('Kengaytirilgan sozlamalar','Расширенные настройки')}</b><small>${tr('Yordamchi panellar, border va xira matnlar','Дополнительные панели, границы и приглушённый текст')}</small></span></span><i data-lucide="${designAdvancedOpen?'chevron-up':'chevron-down'}" class="w-4 h-4"></i></button>${designAdvancedOpen?`<div class="fc-design-color-list-v2 is-advanced">${renderDesignColorRows(DESIGN_ADVANCED_KEYS,activeColors)}</div>`:''}</section>
-        ${issues.length?`<section class="fc-design-contrast-card is-warning"><div class="fc-design-contrast-icon"><i data-lucide="triangle-alert" class="w-5 h-5"></i></div><div class="fc-design-contrast-copy"><b>${tr("Dizaynni tekshirish: o'qilishi qiyin joylar bor", 'Проверка дизайна: есть проблемы читаемости')}</b>${issues.map(i=>`<small>${escapeHtml(i.pair)} · ${i.ratio.toFixed(1)}:1</small>`).join('')}<button type="button" onclick="autoFixDesignContrast()"><i data-lucide="wand-sparkles" class="w-4 h-4"></i>${tr(`${issues.length} ta muammoni avtomatik to'g'rilash`, `Исправить автоматически (${issues.length})`)}</button></div></section>`:`<section class="fc-design-contrast-card is-ok"><div class="fc-design-contrast-icon"><i data-lucide="shield-check" class="w-5 h-5"></i></div><div class="fc-design-contrast-copy"><b>${tr('Dizayn o‘qilishi yaxshi','Хорошая читаемость дизайна')}</b><small>${tr('Asosiy matn, tugma va panellar kontrasti tekshirildi.','Контраст текста, кнопок и панелей проверен.')}</small></div></section>`}
-        <section class="fc-design-reset-actions"><button type="button" onclick="resetDesignDraftToSaved()"><i data-lucide="history" class="w-4 h-4"></i><span><b>${tr('Oxirgi saqlangan holat','Последний сохранённый')}</b><small>${tr("Saqlanmagan o'zgarishlarni bekor qiladi", 'Отменяет несохранённые изменения')}</small></span></button><button type="button" onclick="resetDesignDraftToDefault()" class="is-danger"><i data-lucide="rotate-ccw" class="w-4 h-4"></i><span><b>${tr('Standart holatga qaytarish','Вернуть стандартный')}</b><small>${tr('Minimal dizayn ranglarini tiklaydi','Восстанавливает цвета Minimal')}</small></span></button></section>
-        <div class="fc-design-footer-v2"><button onclick="closeDesignSettings()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button><button onclick="saveDesignSettings()" class="fc-btn fc-btn-primary" ${issues.length?'disabled':''}><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash','Сохранить')}</button></div>
+        ${issues.length?`<section class="fc-design-contrast-card is-warning"><div class="fc-design-contrast-icon"><i data-lucide="triangle-alert" class="w-5 h-5"></i></div><div class="fc-design-contrast-copy"><b>${tr("Tanlangan dizaynda kontrast muammosi bor", 'В выбранном дизайне есть проблема контраста')}</b><small>${tr("O'zim yarataman orqali ranglarni to'g'rilang.",'Исправьте цвета через редактор.')}</small></div></section>`:''}
+        ${renderDesignRootFooterHtml(issues)}
       </div>`;
       renderPageShell(container, tr("Do'kon dizayni", 'Дизайн магазина'), body, { onBack:'closeDesignSettings()' });
+    }
+
+    function renderDesignCustomEditorPage(container) {
+      if (!designDraft) designDraft = { themeId:'custom', colors:{ ...designColorsWithDefaults(designSettings.colors, designSettings.themeId) } };
+      if (designDraft.themeId !== 'custom') designDraft = { themeId:'custom', colors:{ ...designColorsWithDefaults(designDraft.colors, designDraft.themeId) } };
+      const activeColors = designColorsWithDefaults(designDraft.colors, 'custom');
+      const issues = findContrastIssues(activeColors, 'custom');
+      const body = `<div class="fc-design-page-v2 fc-design-custom-page">
+        <div class="fc-design-custom-preview-sticky">${renderDesignPreviewHtml(activeColors)}</div>
+        <section class="fc-design-section-v2"><div class="fc-design-section-title-v2"><div><b>${tr('Asosiy sozlamalar','Основные настройки')}</b><small>${tr("Nishon tugmasi previewda qaysi joy o'zgarishini ko'rsatadi.", 'Кнопка-мишень показывает область изменения в просмотре.')}</small></div></div><div class="fc-design-color-list-v2">${renderDesignColorRows(DESIGN_SIMPLE_KEYS,activeColors)}</div></section>
+        <section class="fc-design-section-v2"><button type="button" onclick="toggleDesignAdvanced()" class="fc-design-advanced-toggle"><span><i data-lucide="sliders-horizontal" class="w-4 h-4"></i><span><b>${tr('Kengaytirilgan sozlamalar','Расширенные настройки')}</b><small>${tr('Yordamchi panellar, border va xira matnlar','Дополнительные панели, границы и приглушённый текст')}</small></span></span><i data-lucide="${designAdvancedOpen?'chevron-up':'chevron-down'}" class="w-4 h-4"></i></button>${designAdvancedOpen?`<div class="fc-design-color-list-v2 is-advanced">${renderDesignColorRows(DESIGN_ADVANCED_KEYS,activeColors)}</div>`:''}</section>
+        ${issues.length?`<section class="fc-design-contrast-card is-warning"><div class="fc-design-contrast-icon"><i data-lucide="triangle-alert" class="w-5 h-5"></i></div><div class="fc-design-contrast-copy"><b>${tr("O'qilishi qiyin joylar bor", 'Есть проблемы читаемости')}</b>${issues.map(i=>`<small>${escapeHtml(i.pair)} · ${i.ratio.toFixed(1)}:1</small>`).join('')}<button type="button" onclick="autoFixDesignContrast()"><i data-lucide="wand-sparkles" class="w-4 h-4"></i>${tr(`${issues.length} ta muammoni avtomatik to'g'rilash`, `Исправить автоматически (${issues.length})`)}</button></div></section>`:`<section class="fc-design-contrast-card is-ok"><div class="fc-design-contrast-icon"><i data-lucide="shield-check" class="w-5 h-5"></i></div><div class="fc-design-contrast-copy"><b>${tr('Dizayn o‘qilishi yaxshi','Хорошая читаемость дизайна')}</b><small>${tr('Asosiy matn, tugma va panellar kontrasti tekshirildi.','Контраст текста, кнопок и панелей проверен.')}</small></div></section>`}
+        <section class="fc-design-reset-actions"><button type="button" onclick="resetDesignDraftToSaved()"><i data-lucide="history" class="w-4 h-4"></i><span><b>${tr('Oxirgi saqlangan holat','Последний сохранённый')}</b><small>${tr("Saqlanmagan o'zgarishlarni bekor qiladi", 'Отменяет несохранённые изменения')}</small></span></button><button type="button" onclick="resetDesignDraftToDefault()" class="is-danger"><i data-lucide="rotate-ccw" class="w-4 h-4"></i><span><b>${tr('Standart holatga qaytarish','Вернуть стандартный')}</b><small>${tr('Minimal dizayn ranglarini tiklaydi','Восстанавливает цвета Minimal')}</small></span></button></section>
+        <div class="fc-design-footer-v2 fc-icon-action-bar"><button onclick="closeDesignCustomEditor()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Orqaga','Назад')}" title="${tr('Orqaga','Назад')}"><i data-lucide="arrow-left" class="w-5 h-5"></i></button><button onclick="saveDesignSettings()" class="fc-action-icon-btn is-save" ${issues.length?'disabled':''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
+      </div>`;
+      renderPageShell(container, tr("O'zim yarataman", 'Создать самому'), body, { onBack:'closeDesignCustomEditor()' });
     }
 
     function renderOrderPolicySettingsPanel() {
@@ -5159,20 +5183,39 @@
       </section>`;
     }
 
+    const DELIVERY_PAGE_META = {
+      FREE: { icon:'badge-check', title:()=>tr('Bepul yetkazib berish','Бесплатная доставка') },
+      FIXED: { icon:'truck', title:()=>tr('Aniq narx','Фиксированная цена') },
+      TAXI: { icon:'car-front', title:()=>tr('Taksi','Такси') },
+      POST: { icon:'package-open', title:()=>tr('Pochta','Почта') },
+    };
+    function deliveryMethodEnabled(kind) {
+      if (kind === 'POST') return fulfillmentDraft?.delivery?.post?.enabled === true;
+      const key = DELIVERY_CONFIG_KEYS[kind]; return !!(key && fulfillmentDraft?.delivery?.[key]?.enabled);
+    }
+    function deliveryMethodStatus(kind) { return deliveryMethodEnabled(kind) ? tr('Faol','Активно') : tr('Faol emas','Не активно'); }
+    function setDeliveryPageView(kind) {
+      if (!DELIVERY_PAGE_META[kind]) return;
+      fulfillmentDeliveryPageView = kind; fulfillmentDeliveryKind = kind; fulfillmentExpandedRegionKey = null; fulfillmentExpandedDistrictKey = null; render();
+    }
+    function closeDeliveryMethodDetail() { fulfillmentDeliveryPageView = 'MENU'; fulfillmentExpandedRegionKey = null; fulfillmentExpandedDistrictKey = null; render(); }
+    function cancelDeliveryMethodDetail() { fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS); closeDeliveryMethodDetail(); }
+    function renderDeliverySettingsMenuHtml() {
+      const kinds = ['FREE','FIXED','TAXI','POST'];
+      return `<div class="fc-acquiring-integration-list fc-delivery-menu-list">${kinds.map(kind=>{const meta=DELIVERY_PAGE_META[kind]; return `<button type="button" onclick="setDeliveryPageView('${kind}')" class="fc-acquiring-integration-card"><span class="fc-acquiring-integration-icon"><i data-lucide="${meta.icon}" class="w-5 h-5"></i></span><span class="fc-acquiring-integration-copy"><b>${meta.title()}</b><small>${deliveryMethodStatus(kind)}</small></span><span class="fc-acquiring-integration-chevron">›</span></button>`}).join('')}</div>`;
+    }
     function renderDeliverySettingsPage(container) {
       if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
       fulfillmentSettingsSection = 'DELIVERY';
-      const body = `
-        <div class="space-y-3 text-xs">
-          <p class="text-[10px] text-gray-500">${TOP_LEVEL_REGIONS.length} ${tr('ta top-level hudud mavjud ro‘yxatdan olindi', 'регионов взято из текущего списка')}</p>
-          <div id="fulfillment-panel">${renderFulfillmentDeliveryPanel()}</div>
-          <div class="grid grid-cols-2 gap-2 sticky bottom-0 fc-delivery-footer">
-            <button onclick="saveFulfillmentSettings()" class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash','Сохранить')}</button>
-            <button onclick="closeFulfillmentSettingsPage()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button>
-          </div>
-        </div>
-      `;
-      renderPageShell(container, tr("Yetkazib berish parametrlari", "Параметры доставки"), body, { onBack: 'closeFulfillmentSettingsPage()' });
+      const view = DELIVERY_PAGE_META[fulfillmentDeliveryPageView] ? fulfillmentDeliveryPageView : 'MENU';
+      if (view === 'MENU') {
+        const body = `<div class="fc-settings-submenu-page"><p class="fc-settings-submenu-help">${tr('Yetkazib berish usulini tanlang va uning hudud/narx sozlamalarini alohida boshqaring.','Выберите способ доставки и настройте регионы/стоимость отдельно.')}</p>${renderDeliverySettingsMenuHtml()}</div>`;
+        renderPageShell(container, tr("Yetkazib berish parametrlari", "Параметры доставки"), body, { onBack:'closeFulfillmentSettingsPage()' });
+        return;
+      }
+      fulfillmentDeliveryKind = view;
+      const body = `<div class="space-y-3 text-xs"><div id="fulfillment-panel"><div id="fulfillment-body" class="fc-delivery-body-shell">${renderFulfillmentDeliveryBody()}</div></div><div class="fc-delivery-footer fc-icon-action-bar"><button onclick="saveFulfillmentSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button><button onclick="cancelDeliveryMethodDetail()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button></div></div>`;
+      renderPageShell(container, DELIVERY_PAGE_META[view].title(), body, { onBack:'closeDeliveryMethodDetail()' });
     }
 
     function renderOrderPolicySettingsPage(container) {
@@ -5213,10 +5256,7 @@
       const body = `
         <div class="space-y-3 text-xs">
           <div id="fulfillment-panel">${renderFulfillmentPaymentsPanel()}</div>
-          <div class="grid grid-cols-2 gap-2 fc-settings-sticky-actions">
-            <button onclick="saveFulfillmentSettings()" class="bg-blue-600 text-white font-black py-3 rounded-xl">✅ ${tr('Saqlash','Сохранить')}</button>
-            <button onclick="closeFulfillmentSettingsPage()" class="bg-gray-100 text-gray-700 font-bold py-3 rounded-xl">${tr('Bekor qilish','Отмена')}</button>
-          </div>
+          <div class="fc-settings-sticky-actions fc-icon-action-bar"><button onclick="saveFulfillmentSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button><button onclick="closeFulfillmentSettingsPage()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button></div>
         </div>
       `;
       const view = PAYMENTS_PAGE_TITLES[paymentsPageView] ? paymentsPageView : 'MENU';
@@ -5293,18 +5333,9 @@
       }
       if (conn.status !== 'CONNECTED') {
         return isClick ? `
-          <p class="text-gray-500">${tr("Click Merchant kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Click Merchant — заказ будет подтверждаться автоматически после оплаты.")}</p>
-          <input type="text" id="click-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="w-full p-2 border rounded-xl font-mono">
-          <input type="text" id="click-service-id-input" autocomplete="off" placeholder="Service ID" class="w-full p-2 border rounded-xl font-mono">
-          <input type="text" id="click-merchant-user-id-input" autocomplete="off" placeholder="Merchant User ID" class="w-full p-2 border rounded-xl font-mono">
-          <input type="password" id="click-secret-key-input" autocomplete="off" placeholder="Secret Key" class="w-full p-2 border rounded-xl font-mono">
-          <button onclick="connectClick()" id="click-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
+          <div class="fc-integration-form"><p class="fc-integration-form-help">${tr("Click Merchant kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Click Merchant — заказ будет подтверждаться автоматически после оплаты.")}</p><input type="text" id="click-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="fc-integration-input font-mono"><input type="text" id="click-service-id-input" autocomplete="off" placeholder="Service ID" class="fc-integration-input font-mono"><input type="text" id="click-merchant-user-id-input" autocomplete="off" placeholder="Merchant User ID" class="fc-integration-input font-mono"><input type="password" id="click-secret-key-input" autocomplete="off" placeholder="Secret Key" class="fc-integration-input font-mono"><button onclick="connectClick()" id="click-connect-btn" class="fc-integration-primary-action"><i data-lucide="plug-zap" class="w-4 h-4"></i>${tr("Ulash", "Подключить")}</button></div>
         ` : `
-          <p class="text-gray-500">${tr("Payme Business kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Payme Business — заказ будет подтверждаться автоматически после оплаты.")}</p>
-          <input type="text" id="payme-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="w-full p-2 border rounded-xl font-mono">
-          <input type="text" id="payme-login-input" autocomplete="off" placeholder="Login" class="w-full p-2 border rounded-xl font-mono">
-          <input type="password" id="payme-password-input" autocomplete="off" placeholder="Password" class="w-full p-2 border rounded-xl font-mono">
-          <button onclick="connectPayme()" id="payme-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
+          <div class="fc-integration-form"><p class="fc-integration-form-help">${tr("Payme Business kabinetingizdagi ma'lumotlarni kiriting — mijozlar to'lagach buyurtma avtomatik tasdiqlanadi.", "Введите данные из вашего кабинета Payme Business — заказ будет подтверждаться автоматически после оплаты.")}</p><input type="text" id="payme-merchant-id-input" autocomplete="off" placeholder="Merchant ID" class="fc-integration-input font-mono"><input type="text" id="payme-login-input" autocomplete="off" placeholder="Login" class="fc-integration-input font-mono"><input type="password" id="payme-password-input" autocomplete="off" placeholder="Password" class="fc-integration-input font-mono"><button onclick="connectPayme()" id="payme-connect-btn" class="fc-integration-primary-action"><i data-lucide="plug-zap" class="w-4 h-4"></i>${tr("Ulash", "Подключить")}</button></div>
         `;
       }
       if (!conn.verified) {
@@ -5988,7 +6019,7 @@
       const orderBuckets = d?.orders || {};
       const loading = adminCommandCenterLoading && !d;
       root.innerHTML = `<div class="fc-command-backdrop" onclick="if(event.target===this) closeAdminCommandCenter()"><section class="fc-command-panel" role="dialog" aria-modal="true" aria-label="${tr('Boshqaruv markazi','Центр управления')}" onclick="event.stopPropagation()">
-        <header class="fc-command-header"><div><span class="fc-command-shop">${escapeHtml(shopDisplayName())}</span><span class="fc-command-kicker">${tr('Boshqaruv markazi','Центр управления')}</span></div><button type="button" onclick="closeAdminCommandCenter(); toggleAdminRole();" class="fc-command-user-view"><i data-lucide="store" class="w-4 h-4"></i>${tr('Do‘konni ko‘rish','Открыть магазин')}</button></header>
+        <header class="fc-command-header"><div><span class="fc-command-shop">${escapeHtml(shopDisplayName())}</span><span class="fc-command-kicker">${tr('Boshqaruv markazi','Центр управления')}</span></div><div class="fc-command-view-actions"><button type="button" onclick="adminCommandCenterOpenAdminPanel()" class="fc-command-view-btn is-admin" title="${tr('Admin sifatida ko‘rish','Открыть как администратор')}"><i data-lucide="layout-dashboard" class="w-4 h-4"></i><span>${tr('Admin sifatida','Как админ')}</span></button><button type="button" onclick="adminCommandCenterOpenStorefront()" class="fc-command-view-btn is-store" title="${tr('User sifatida ko‘rish','Открыть как пользователь')}"><i data-lucide="store" class="w-4 h-4"></i><span>${tr('User sifatida','Как пользователь')}</span></button></div></header>
         <div class="fc-command-scroll">
           <div class="fc-command-intro"><h2>${tr('Xayrli kun','Добрый день')} 👋</h2><p>${tr("Bugungi do'kon holati va e'tiboringizni talab qiladigan ishlar.",'Состояние магазина и задачи, требующие вашего внимания сегодня.')}</p></div>
           ${adminCommandCenterError ? `<div class="fc-command-inline-error"><i data-lucide="wifi-off" class="w-4 h-4"></i><span>${escapeHtml(adminCommandCenterError)}</span><button onclick="loadAdminCommandCenterData(true)">${tr('Qayta urinish','Повторить')}</button></div>`:''}
@@ -6017,15 +6048,30 @@
       adminCommandCenterLoading=false; renderAdminCommandCenterOverlay();
     }
 
+    function adminCommandCenterTodayKey() {
+      try { return new Intl.DateTimeFormat('en-CA',{ timeZone:'Asia/Tashkent', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()); }
+      catch (_) { return new Date().toISOString().slice(0,10); }
+    }
+    function adminCommandCenterAutoStorageKey() { return scopedKey('admin-command-center-auto-day-v1'); }
+    function adminCommandCenterWasAutoShownToday() {
+      try { return localStorage.getItem(adminCommandCenterAutoStorageKey()) === adminCommandCenterTodayKey(); }
+      catch (_) { return adminCommandCenterAutoShown; }
+    }
+    function markAdminCommandCenterAutoShownToday() {
+      adminCommandCenterAutoShown = true;
+      try { localStorage.setItem(adminCommandCenterAutoStorageKey(), adminCommandCenterTodayKey()); } catch (_) {}
+    }
     function openAdminCommandCenter(auto=false) {
       if (!(isAdminMode && isUserAnAdmin)) return;
-      if (auto && adminCommandCenterAutoShown) return;
-      if (auto) adminCommandCenterAutoShown=true;
+      if (auto && adminCommandCenterWasAutoShownToday()) return;
+      if (auto) markAdminCommandCenterAutoShownToday();
       adminCommandCenterOpen=true;
       renderAdminCommandCenterOverlay();
       void loadAdminCommandCenterData(false);
     }
     function closeAdminCommandCenter() { adminCommandCenterOpen=false; const root=document.getElementById('fc-admin-command-center-root'); if(root) root.remove(); }
+    function adminCommandCenterOpenAdminPanel() { closeAdminCommandCenter(); }
+    function adminCommandCenterOpenStorefront() { closeAdminCommandCenter(); if (isAdminMode) toggleAdminRole(); }
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && adminCommandCenterOpen) closeAdminCommandCenter(); });
 
     function adminCommandCenterAction(kind) {
@@ -8191,7 +8237,7 @@
                 <span class="text-green-600">${money(o.payableTotal ?? o.totalPrice)}</span>
                 ${(o.status === 'NEW' && !isReceiptPendingReview(o)) ? `
                   <button onclick="openCancelOrderSheet(${o.id}, event)" class="text-xs fc-bg-danger-soft fc-text-danger border fc-border-danger px-2.5 py-1 rounded-lg font-bold">
-                    ❌ ${tr("Bekor qilish", "Отмена")}
+                    <i data-lucide="x" class="w-3.5 h-3.5 inline-block align-[-2px]"></i> ${tr("Bekor qilish", "Отмена")}
                   </button>
                 ` : ''}
               </div>
@@ -9453,7 +9499,7 @@
     function openDesignSettings() {
       if (!isUserAnAdmin || !isAdminMode) return;
       designDraft = { themeId: designSettings.themeId, colors: { ...designSettings.colors } };
-      designPreviewMode = 'HOME'; designAdvancedOpen = false; designHighlightKey = '';
+      designPreviewMode = 'HOME'; designAdvancedOpen = false; designHighlightKey = ''; designCustomEditorOpen = false;
       openPage('DESIGN_SETTINGS');
     }
     async function closeDesignSettings(force = false) {
@@ -9462,7 +9508,7 @@
         if (!ok) return;
       }
       applyDesignColors(designSettings.colors, designSettings.themeId);
-      designDraft = null; designHighlightKey = ''; designAdvancedOpen = false;
+      designDraft = null; designHighlightKey = ''; designAdvancedOpen = false; designCustomEditorOpen = false;
       closePage();
     }
     function pickDesignTheme(themeId) {
@@ -9474,9 +9520,10 @@
     function startCustomDesign() {
       const current = designDraftNormalized();
       designDraft = { themeId:'custom', colors:{ ...current.colors } };
-      designAdvancedOpen = false;
-      render();
+      designAdvancedOpen = false; designCustomEditorOpen = true;
+      openPage('DESIGN_CUSTOM');
     }
+    function closeDesignCustomEditor() { designCustomEditorOpen = false; openPage('DESIGN_SETTINGS'); }
     function setDesignPreviewMode(mode) {
       if (!['HOME','PRODUCT','CART'].includes(mode)) return;
       designPreviewMode = mode; render();
@@ -9486,7 +9533,7 @@
       designHighlightKey = DESIGN_COLOR_KEYS.includes(key) ? key : '';
       if (designHighlightTimer) clearTimeout(designHighlightTimer);
       render();
-      designHighlightTimer = setTimeout(() => { designHighlightKey=''; if (activePage === 'DESIGN_SETTINGS') render(); }, 1600);
+      designHighlightTimer = setTimeout(() => { designHighlightKey=''; if (activePage === 'DESIGN_SETTINGS' || activePage === 'DESIGN_CUSTOM') render(); }, 1600);
     }
     function setDesignColor(key, value) {
       if (!DESIGN_COLOR_KEYS.includes(key)) return;
@@ -9538,8 +9585,10 @@
       showActionToast(tr('Dizayn saqlanmoqda...', 'Дизайн сохраняется...'), 'saving');
       try {
         const result = await callApi('set_design_settings', { themeId: designDraft.themeId, colors: designColorsWithDefaults(designDraft.colors, designDraft.themeId) });
-        designSettings = result.designSettings;
+        const savedTheme = result?.designSettings || { themeId: designDraft.themeId, colors: designDraft.colors };
+        designSettings = { themeId: savedTheme.themeId || designDraft.themeId || 'custom', colors: designColorsWithDefaults(savedTheme.colors || designDraft.colors, savedTheme.themeId || designDraft.themeId) };
         designDraft = cloneData(designSettings);
+        try { localStorage.setItem(scopedKey('design-settings-cache-v1'), JSON.stringify(designSettings)); } catch (_) {}
         applyDesignColors(designSettings.colors, designSettings.themeId);
         render();
         showActionToast(tr('Dizayn saqlandi', 'Дизайн сохранён'), 'success', 1500);
@@ -9564,6 +9613,7 @@
       if (!isUserAnAdmin || !isAdminMode) return;
       if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
       fulfillmentSettingsSection = 'DELIVERY';
+      fulfillmentDeliveryPageView = 'MENU';
       fulfillmentDeliveryKind = fulfillmentDeliveryKind || 'FREE';
       openPage('DELIVERY_SETTINGS');
     }
@@ -9589,7 +9639,7 @@
     }
 
     function closeFulfillmentSettingsPage() {
-      fulfillmentDraft = null;
+      fulfillmentDraft = null; fulfillmentDeliveryPageView = 'MENU';
       openPage('SETTINGS', 'nav-profile');
     }
 
@@ -9636,11 +9686,7 @@
       rerenderFulfillmentPanel();
     }
 
-    function setFulfillmentDeliveryKind(kind) {
-      fulfillmentDeliveryKind = kind;
-      fulfillmentExpandedRegionKey = null;
-      rerenderFulfillmentPanel();
-    }
+    function setFulfillmentDeliveryKind(kind) { setDeliveryPageView(kind); }
 
     // "To'lov usullari" qayta tashkil qilish round: sahifa ichidagi
     // navigatsiya (4 asosiy qator ↔ Naqd/Karta/QR ↔ Ekvayring ro'yxati ↔
@@ -10140,7 +10186,7 @@
             </div>
             ${decode?.status === 'success' ? `<div class="fc-qr-verified fc-qr-read-ok"><i data-lucide="scan-line" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR muvaffaqiyatli o'qildi", 'QR успешно распознан'))}</div>` : ''}
             ${decode?.status === 'error' ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR kodni o'qib bo'lmadi", 'Не удалось распознать QR'))}</div>` : ''}
-            ${provider.paymentUrl ? `<div class="fc-qr-actions"><button type="button" onclick="testQrProviderPaymentUrl('${provider.id}')" class="fc-btn fc-qr-test-btn" ${loading ? 'disabled' : ''}><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>${tr('Sinab ko‘rish','Проверить')}</button><button type="button" onclick="saveFulfillmentSettings()" class="fc-btn fc-qr-save-btn" ${canSave ? '' : 'disabled'}><i data-lucide="save" class="w-3.5 h-3.5"></i>${tr('Saqlash','Сохранить')}</button></div>` : ''}
+            ${provider.paymentUrl ? `<div class="fc-qr-actions"><button type="button" onclick="testQrProviderPaymentUrl('${provider.id}')" class="fc-btn fc-qr-test-btn" ${loading ? 'disabled' : ''}><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>${tr('Sinab ko‘rish','Проверить')}</button><button type="button" onclick="saveFulfillmentSettings()" class="fc-action-icon-btn is-save" ${canSave ? '' : 'disabled'} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></div>` : ''}
             ${test?.status === 'opened' ? `<div class="fc-qr-test-confirm"><p>${escapeHtml(test.note || tr('To‘lov sahifasi to‘g‘ri ochildimi?', 'Страница оплаты открылась правильно?'))}</p><div><button type="button" onclick="confirmQrProviderTest('${provider.id}',true)" class="is-ok"><i data-lucide="check" class="w-3.5 h-3.5"></i>${tr('To‘g‘ri ishladi','Работает правильно')}</button><button type="button" onclick="confirmQrProviderTest('${provider.id}',false)" class="is-bad"><i data-lucide="x" class="w-3.5 h-3.5"></i>${tr('Noto‘g‘ri','Неверно')}</button></div></div>` : ''}
             ${verified ? `<div class="fc-qr-verified"><i data-lucide="badge-check" class="w-4 h-4"></i>${tr('Tekshirildi — saqlash mumkin','Проверено — можно сохранить')}</div>` : (qrProviderNeedsTest.has(provider.id) && provider.paymentUrl ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${tr('Saqlashdan oldin Sinab ko‘rish tugmasi orqali tekshiring.','Перед сохранением проверьте через кнопку «Проверить».')}</div>` : '')}
           </div>
@@ -10404,7 +10450,7 @@
       const body = `<div class="space-y-3">
         <div class="fc-card"><p class="text-xs text-gray-600">${tr("Bosh sahifada ko'rinadigan kataloglarni va har biriga 6 tagacha mahsulot tanlang.", "Выберите каталоги для главной и до 6 товаров для каждого.")}</p><p class="text-[10px] text-gray-400 mt-1">${featuredCategories.length} / 8 ${tr('katalog tanlandi', 'каталогов выбрано')}</p></div>
         <div class="fc-featured-tree">${renderFeaturedTreeNodes() || `<div class="fc-empty-state"><p>${tr("Kataloglar topilmadi.", "Каталоги не найдены.")}</p></div>`}</div>
-        <button type="button" onclick="saveFeaturedCategories()" class="fc-btn fc-btn-primary w-full" ${featuredCategoriesSaving ? 'disabled' : ''}>${featuredCategoriesSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button>
+        <button type="button" onclick="saveFeaturedCategories()" class="fc-action-icon-btn is-save" ${featuredCategoriesSaving ? 'disabled' : ''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
       </div>`;
       renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body, { onBack: "openMarketingHubPage()" });
     }
@@ -10737,7 +10783,7 @@
             <label class="fc-settings-toggle-row"><span><b>${tr('Faol', 'Активен')}</b><small>${tr("O‘chirilsa, bu sozlama umuman ishlamaydi","Если выключено, эта настройка не работает вовсе")}</small></span><span class="fc-toggle"><input type="checkbox" id="banner-f-active" ${d.isActive ? 'checked' : ''}><span class="fc-toggle-track"></span></span></label>
           </div>
           <div class="fc-sheet-footer">
-            <button type="button" onclick="saveBannerForm()" class="fc-btn fc-btn-primary w-full" ${bannerSaving ? 'disabled' : ''}>${bannerSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button>
+            <button type="button" onclick="saveBannerForm()" class="fc-action-icon-btn is-save" ${bannerSaving ? 'disabled' : ''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
           </div>
         </div>
       </div>`;
@@ -11153,7 +11199,7 @@
             </div>
             <label class="fc-settings-toggle-row"><span><b>${tr('Faol', 'Активен')}</b><small>${tr("O‘chirilsa, bu sozlama umuman ishlamaydi","Если выключено, эта настройка не работает вовсе")}</small></span><span class="fc-toggle"><input type="checkbox" id="bundle-f-active" ${d.isActive ? 'checked' : ''}><span class="fc-toggle-track"></span></span></label>
           </div>
-          <div class="fc-sheet-footer"><button type="button" onclick="saveBundleForm()" class="fc-btn fc-btn-primary w-full" ${bundleSaving ? 'disabled' : ''}>${bundleSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button></div>
+          <div class="fc-sheet-footer"><button type="button" onclick="saveBundleForm()" ${bundleSaving ? 'disabled' : ''} class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
         </div>
       </div>`;
       safeCreateIcons();
@@ -11481,7 +11527,7 @@
             <label class="fc-settings-toggle-row"><span><b>${tr('Promo-kod bilan birga ishlatishga ruxsat', 'Разрешить вместе с промокодом')}</b><small>${tr('Yoqilsa, mijoz mos promo-kod va ushbu chegirmani bir buyurtmada ishlata oladi', 'Если включено, клиент сможет применить обе скидки в одном заказе')}</small></span><span class="fc-toggle"><input type="checkbox" id="tier-f-stacking" ${d.allowStacking ? 'checked' : ''}><span class="fc-toggle-track"></span></span></label>
             <div class="fc-mini-field"><span>${tr('Holati', 'Статус')}</span><div class="fc-tabs"><button type="button" onclick="setTierDraftActive(true)" class="fc-tab ${d.isActive ? 'fc-tab-active' : ''}">${tr('Faol', 'Активна')}</button><button type="button" onclick="setTierDraftActive(false)" class="fc-tab ${!d.isActive ? 'fc-tab-active' : ''}">${tr('Nofaol', 'Неактивна')}</button></div></div>
           </div>
-          <div class="fc-sheet-footer"><button type="button" onclick="saveTierGroupForm()" class="fc-btn fc-btn-primary w-full" ${tierSaving ? 'disabled' : ''}>${tierSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button></div>
+          <div class="fc-sheet-footer"><button type="button" onclick="saveTierGroupForm()" ${tierSaving ? 'disabled' : ''} class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
         </div>
       </div>`;
       safeCreateIcons();
@@ -11745,7 +11791,7 @@
         <div class="fc-form-section-title">${tr('Muddat va limitlar', 'Срок и лимиты')}</div>
         <label class="fc-mini-field"><span>${tr('Kupon necha kun amal qiladi', 'Срок действия купона, дней')}</span><input id="coupon-days" type="number" min="1" value="${escapeHtml(String(existing?.codeExpiryDays || 30))}"></label>
         <label class="fc-mini-field"><span>${tr('Promo-kodni kim ishlata oladi?', 'Кто может использовать промокод?')}</span><select id="coupon-transferable"><option value="0" ${!existing?.transferable ? 'selected' : ''}>${tr('Faqat promo berilgan mijoz', 'Только тот, кому выдан')}</option><option value="1" ${existing?.transferable ? 'selected' : ''}>${tr('Boshqa odamga ham berish mumkin', 'Можно передать другому')}</option></select></label>
-      </div><div class="fc-sheet-footer"><button type="button" onclick="saveCouponRewardRule('${existing?.id || ''}')" class="fc-btn fc-btn-primary w-full">${tr('Saqlash', 'Сохранить')}</button></div></div></div>`;
+      </div><div class="fc-sheet-footer"><button type="button" onclick="saveCouponRewardRule('${existing?.id || ''}')" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div></div></div>`;
       safeCreateIcons();
     }
     async function saveCouponRewardRule(id) {
@@ -11850,7 +11896,7 @@
             <div class="fc-form-section-title">${tr('Preview', 'Предпросмотр')}</div>
             <div class="fc-gift-agar-unda"><div class="is-agar"><span>AGAR</span><p>${agarPreview || tr('Shartni to‘ldiring', 'Заполните условие')}</p></div><div class="is-unda"><span>UNDA</span><p>${undaPreview || tr('Sovg‘ani tanlang', 'Выберите подарок')}</p></div></div>
           </div>
-          <div class="fc-sheet-footer"><button type="button" onclick="saveRewardRuleForm()" class="fc-btn fc-btn-primary w-full" ${rewardRuleSaving ? 'disabled' : ''}>${rewardRuleSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button></div>
+          <div class="fc-sheet-footer"><button type="button" onclick="saveRewardRuleForm()" ${rewardRuleSaving ? 'disabled' : ''} class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
         </div>
       </div>`;
       safeCreateIcons();
@@ -12304,7 +12350,7 @@
               <p>${d.startsAt || d.endsAt ? `${d.startsAt || '…'} – ${d.endsAt || '…'}` : tr('Muddatsiz', 'Бессрочно')}</p>
             </div>
           </div>
-          <div class="fc-sheet-footer"><button type="button" onclick="savePersonalDiscountForm()" class="fc-btn fc-btn-primary w-full" ${personalDiscountSaving ? 'disabled' : ''}>${personalDiscountSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button></div>
+          <div class="fc-sheet-footer"><button type="button" onclick="savePersonalDiscountForm()" ${personalDiscountSaving ? 'disabled' : ''} class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
         </div>
       </div>`;
       safeCreateIcons();
@@ -12842,7 +12888,7 @@
             <label class="fc-settings-toggle-row"><span><b>${tr('Faol', 'Активен')}</b><small>${tr("O'chirilsa, kod umuman ishlamaydi","Если выключено, код не работает вовсе")}</small></span><span class="fc-toggle"><input type="checkbox" id="promo-f-active" ${d.isActive ? 'checked' : ''}><span class="fc-toggle-track"></span></span></label>
           </div>
           <div class="fc-sheet-footer">
-            <button type="button" onclick="savePromoForm()" class="fc-btn fc-btn-primary w-full" ${promoSaving ? 'disabled' : ''}>${promoSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Saqlash', 'Сохранить')}</button>
+            <button type="button" onclick="savePromoForm()" ${promoSaving ? 'disabled' : ''} class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
           </div>
         </div>
       </div>`;
@@ -13110,7 +13156,7 @@
                     <input type="checkbox" data-role-id="${escapeHtml(String(r.id))}" ${currentRoleIds.has(String(r.id)) ? 'checked' : ''}>
                   </label>`).join('') || `<p class="text-xs text-gray-400">${tr("Hali rol yaratilmagan.", 'Роли ещё не созданы.')}</p>`}
               </div>
-              <button type="button" onclick="saveStaffRoles('${escapeHtml(m.tgId)}')" class="fc-btn fc-btn-primary w-full">${tr('Rollarni saqlash', 'Сохранить роли')}</button>
+              <div class="fc-icon-action-bar"><button type="button" onclick="saveStaffRoles('${escapeHtml(m.tgId)}')" class="fc-action-icon-btn is-save" aria-label="${tr('Rollarni saqlash','Сохранить роли')}" title="${tr('Rollarni saqlash','Сохранить роли')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
               <div class="grid grid-cols-2 gap-2 pt-2">
                 <button type="button" onclick="toggleStaffBlocked('${escapeHtml(m.tgId)}', ${m.status !== 'DISABLED'})" class="fc-btn fc-btn-secondary">${m.status === 'DISABLED' ? tr('Blokdan chiqarish', 'Разблокировать') : tr('Bloklash', 'Заблокировать')}</button>
                 <button type="button" onclick="removeStaffMember('${escapeHtml(m.tgId)}')" class="fc-btn fc-btn-danger">${tr("O'chirish", 'Удалить')}</button>
@@ -13371,7 +13417,7 @@
               </div>
             `).join('')}
           </div>
-          <div class="fc-sheet-footer"><button type="button" onclick="saveRoleForm()" class="fc-btn fc-btn-primary w-full">${tr('Saqlash', 'Сохранить')}</button></div>
+          <div class="fc-sheet-footer"><button type="button" onclick="saveRoleForm()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
         </div>
       </div>`;
       safeCreateIcons();
@@ -15228,10 +15274,7 @@
                 <p class="fc-shop-info-note"><i data-lucide="info" class="w-4 h-4"></i><span>${tr("Bo'sh qoldirilgan maydonlar foydalanuvchiga ko'rsatilmaydi.", "Пустые поля не показываются пользователю.")}</span></p>
               </div>
 
-              <div class="fc-sheet-footer fc-shop-info-footer">
-                <button type="button" onclick="closeShopInfoModal()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
-                <button id="shop-info-save-btn" type="button" onclick="saveShopContact()" class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${tr('Saqlash', 'Сохранить')}</button>
-              </div>
+              <div class="fc-sheet-footer fc-shop-info-footer fc-icon-action-bar"><button type="button" onclick="closeShopInfoModal()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button id="shop-info-save-btn" type="button" onclick="saveShopContact()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
             </div>
           </div>
         `;
@@ -15257,9 +15300,8 @@
                 <label class="fc-startmsg-label" for="sm-text">${tr("Xabar matni", "Текст сообщения")}</label>
                 <textarea id="sm-text" rows="9" placeholder="${tr('Standart matn ishlatiladi...', 'Используется стандартный текст...')}" class="fc-startmsg-textarea">${escapeHtml(currentStartMessage)}</textarea>
                 <p class="fc-startmsg-help">${tr("Bo'sh qoldirilsa, standart xabar matni ishlatiladi. HTML teglar (masalan <b>...</b>) qo'llab-quvvatlanadi.", "Если оставить пустым, используется стандартный текст. Поддерживаются HTML-теги (например <b>...</b>).")}</p>
-                <button onclick="saveStartMessage()" class="fc-btn fc-btn-primary w-full"><i data-lucide="save" class="w-4 h-4"></i>${tr("Matnni saqlash", "Сохранить текст")}</button>
+                <div class="fc-icon-action-bar"><button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveStartMessage()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
                 <button onclick="setupBotWebhook()" class="fc-startmsg-webhook"><span><i data-lucide="link-2" class="w-5 h-5"></i></span><div><b>${tr("Webhookni ulash", "Подключить webhook")}</b><small>${tr("Botni Supabase'ga ulash uchun bir marta bosish yetarli.", "Для подключения бота к Supabase достаточно нажать один раз.")}</small></div><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
-                <button onclick="activePopupModal=null; render();" class="fc-btn fc-btn-secondary w-full">${tr("Yopish", "Закрыть")}</button>
               </div>
             </div>
           </div>
@@ -15300,10 +15342,7 @@
                 </div>
                 <div class="fc-stock-adjust-preview"><span>${current}</span><i data-lucide="arrow-right" class="w-4 h-4"></i><strong>${draft}</strong></div>
               </div>
-              <div class="fc-sheet-footer fc-stock-adjust-footer">
-                <button type="button" onclick="closeWarehouseStockAdjust()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button>
-                <button type="button" onclick="saveWarehouseStockAdjust()" ${warehouseStockAdjustSaving?'disabled':''} class="fc-btn fc-btn-primary"><i data-lucide="save" class="w-4 h-4"></i>${warehouseStockAdjustSaving?tr('Saqlanmoqda...','Сохранение...'):tr('Saqlash','Сохранить')}</button>
-              </div>
+              <div class="fc-sheet-footer fc-stock-adjust-footer fc-icon-action-bar"><button type="button" onclick="closeWarehouseStockAdjust()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button type="button" onclick="saveWarehouseStockAdjust()" ${warehouseStockAdjustSaving?'disabled':''} class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}">${warehouseStockAdjustSaving?'<span class="fc-spinner fc-spinner-xs"></span>':'<i data-lucide="check" class="w-5 h-5"></i>'}</button></div>
             </div>
           </div>`;
         return;
@@ -15374,7 +15413,7 @@
                 <div class="fc-image-source-row mt-1"><button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="m-cat-image-url" type="url" value="" placeholder="https://..." oninput="onImageUrlInput(this.value,'m-cat-prev','m-cat-image-url-error','m-cat-image-button')"><p id="m-cat-image-url-error" class="hidden"></p></div></div>
               </div>
               <div class="flex space-x-2 pt-2">
-                <button onclick="saveCategoryFromModal()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
+                <button onclick="saveCategoryFromModal()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
                 <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
               </div>
             </div>
@@ -15401,7 +15440,7 @@
                 <div class="fc-image-source-row mt-1"><button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="ec-image-url" type="url" value="${escapeHtml(c.img || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'ec-img-prev','ec-image-url-error','ec-image-button')"><p id="ec-image-url-error" class="hidden"></p></div></div>
               </div>
               <div class="flex space-x-2 pt-2">
-                <button onclick="saveCategoryEdit('${c.id}')" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
+                <button onclick="saveCategoryEdit('${c.id}')" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
                 <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
               </div>
             </div>
@@ -15632,10 +15671,7 @@
 
               ${(field === 'variants' || field === 'sizes') ? renderVariantBuilderHtml() : ''}
 
-              <div class="flex space-x-2 pt-2">
-                <button onclick="saveFieldEdit('${p.id}', '${field}')" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
-                <button onclick="cancelProductEditor()" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
-              </div>
+              <div class="fc-icon-action-bar"><button onclick="cancelProductEditor()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveFieldEdit('${p.id}', '${field}')" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
             </div>
           </div>
         `;
@@ -15655,10 +15691,7 @@
                 <input type="number" min="0" step="1" id="low-stock-threshold-input" value="${escapeHtml(String(shopLowStockThreshold))}" class="w-full mt-1 p-2 border rounded-xl font-mono">
                 <p class="text-[9px] text-gray-400 mt-1">${tr("Masalan: 5 — qoldiq 5 yoki undan kam bo'lsa \"Kam qolgan\"ga tushadi. Faqat shu do'kon uchun amal qiladi.", "Например: 5 — товар считается «заканчивается» при остатке 5 и менее. Действует только для этого магазина.")}</p>
               </div>
-              <div class="flex space-x-2 pt-2">
-                <button onclick="saveLowStockThreshold()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
-              </div>
+              <div class="fc-icon-action-bar"><button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveLowStockThreshold()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
             </div>
           </div>
         `;
@@ -15710,7 +15743,7 @@
                   </select>
                 </div>
                 <p class="text-[9px] text-gray-400">${tr("Bu tanlovlar keyingi bosqichlarda (sotuvlarni Billz'ga yuborish) ishlatiladi.", "Эти настройки будут использоваться на следующих этапах (отправка продаж в Billz).")}</p>
-                <button onclick="saveBillzSaleConfig()" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Saqlash", "Сохранить")}</button>
+                <div class="fc-icon-action-bar"><button type="button" onclick="saveBillzSaleConfig()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
                 <button onclick="disconnectBillz()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
               `}
               <button onclick="activePopupModal=null; billzConnectionStatus=null; billzConfigOptions=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
@@ -15862,10 +15895,7 @@
                   <span id="wordmark-header-preview">${renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, { textColor: wordmarkDraftTextColor, bgColor: wordmarkDraftBgColor })}</span>
                 </div>
               </div>
-              <div class="grid grid-cols-2 gap-2 pt-1">
-                <button onclick="saveWordmarkLogo()" class="fc-btn fc-btn-primary">${tr('Saqlash', 'Сохранить')}</button>
-                <button onclick="closeWordmarkGenerator()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
-              </div>
+              <div class="fc-icon-action-bar"><button onclick="closeWordmarkGenerator()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveWordmarkLogo()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
             </div>
           </div>
         `;
@@ -16299,7 +16329,7 @@
               <div class="fc-order-modal-head"><div><h3>${tr('Buyurtma','Заказ')} #${o.id}</h3><p>${escapeHtml(o.date)}</p></div><span class="fc-order-status ${statusColorClass(orderDisplayStatus(o))}">${statusLabel(orderDisplayStatus(o))}</span></div>
               ${(isAdminMode && isUserAnAdmin) ? renderAdminOrderNextActionHtml(o) + renderAdminOrderProgressHtml(o) : ''}
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="user-round" class="w-4 h-4"></i>${tr('Mijoz','Клиент')}</div><div class="fc-order-kv"><span>${tr('Ism','Имя')}</span><b>${escapeHtml(o.user)}</b></div><div class="fc-order-kv"><span>${tr('Telefon','Телефон')}</span><b>${escapeHtml(o.phone)}</b></div></section>
-              ${canManageOrders() ? `<section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="sticky-note" class="w-4 h-4"></i>${tr("Ichki izoh (faqat xodimlar ko'radi)", "Внутренняя заметка (видна только сотрудникам)")}</div><textarea id="order-internal-note-${o.id}" rows="2" placeholder="${tr('Masalan: mijoz 18:00 dan keyin yetkazishni so\'radi','Например: клиент просил доставить после 18:00')}" class="w-full p-2 border rounded-xl text-xs" onclick="event.stopPropagation()">${escapeHtml(o.internalNote || '')}</textarea><button type="button" onclick="event.stopPropagation(); saveOrderInternalNote(${o.id})" class="fc-btn fc-btn-secondary w-full"><i data-lucide="save" class="w-3.5 h-3.5"></i>${tr('Saqlash','Сохранить')}</button></section>` : ''}
+              ${canManageOrders() ? `<section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="sticky-note" class="w-4 h-4"></i>${tr("Ichki izoh (faqat xodimlar ko'radi)", "Внутренняя заметка (видна только сотрудникам)")}</div><textarea id="order-internal-note-${o.id}" rows="2" placeholder="${tr('Masalan: mijoz 18:00 dan keyin yetkazishni so\'radi','Например: клиент просил доставить после 18:00')}" class="w-full p-2 border rounded-xl text-xs" onclick="event.stopPropagation()">${escapeHtml(o.internalNote || '')}</textarea><button type="button" onclick="event.stopPropagation(); saveOrderInternalNote(${o.id})" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></section>` : ''}
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${escapeHtml(deliveryTariffLabel(o.delivery))}</span><b>${escapeHtml(deliveryTariffValue(o.delivery, o.deliveryFee))}</b></div><div class="fc-order-kv"><span>${tr('Hudud:','Регион:')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div><div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku && isAdminMode && isUserAnAdmin) ? `<span class="text-gray-400 font-mono">(ID: ${escapeHtml(i.sku)})</span>` : ''} ${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
@@ -16329,7 +16359,7 @@
                   <input id="shipment-phone" value="${escapeHtml(o.shipment?.driverPhone || '')}" placeholder="+998 90 123 45 67" class="w-full p-2 border rounded-xl font-mono">
                   <input id="shipment-driver" value="${escapeHtml(o.shipment?.driverName || '')}" placeholder="${tr('Haydovchi ismi (ixtiyoriy)','Имя водителя (необязательно)')}" class="w-full p-2 border rounded-xl">
                   <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50">${o.shipment?.status === 'READY' || !o.shipment?.status ? `<option value="READY" selected disabled hidden>${tr('— Hali harakat qilinmagan —','— Действие ещё не выполнено —')}</option>` : ''}<option value="TAXI_ASSIGNED" ${o.shipment?.status === 'TAXI_ASSIGNED' ? 'selected' : ''}>${tr('Taksi biriktirildi','Такси назначено')}</option><option value="IN_TRANSIT" ${o.shipment?.status === 'IN_TRANSIT' ? 'selected' : ''}>${tr("Yo'lga chiqdi",'В пути')}</option><option value="DELIVERED" ${o.shipment?.status === 'DELIVERED' ? 'selected' : ''}>${tr('Yetkazildi','Доставлено')}</option></select>
-                  <button onclick="saveShipmentForOrder(${o.id})" class="w-full bg-blue-600 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5"><i data-lucide="save" class="w-4 h-4"></i>${tr('Jo‘natmani saqlash','Сохранить отправление')}</button>
+                  <div class="fc-icon-action-bar"><button type="button" onclick="saveShipmentForOrder(${o.id})" class="fc-action-icon-btn is-save" aria-label="${tr('Jo‘natmani saqlash','Сохранить отправление')}" title="${tr('Jo‘natmani saqlash','Сохранить отправление')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
                 </div>` : ''}
 
               ${(canManageOrders() && o.delivery?.kind === 'POST' && o.status !== 'CANCELLED') ? `
@@ -16338,7 +16368,7 @@
                   ${o.delivery.branchName ? `<p class="text-[11px] text-gray-600">${tr('Mijoz tanlagan filial','Филиал, выбранный клиентом')}: <b>${escapeHtml(o.delivery.branchName)}</b></p>` : ''}
                   <input id="shipment-tracking" value="${escapeHtml(o.shipment?.trackingNumber || '')}" placeholder="${tr("Tracking/jo'natma raqami",'Трек-номер')}" class="w-full p-2 border rounded-xl font-mono">
                   <select id="shipment-status" class="w-full p-2 border rounded-xl bg-gray-50">${o.shipment?.status === 'READY' || !o.shipment?.status ? `<option value="READY" selected disabled hidden>${tr('— Hali harakat qilinmagan —','— Действие ещё не выполнено —')}</option>` : ''}<option value="HANDED_TO_CARRIER" ${o.shipment?.status === 'HANDED_TO_CARRIER' ? 'selected' : ''}>${tr('Pochtaga topshirildi','Передано почте')}</option></select>
-                  <button onclick="saveShipmentForOrder(${o.id})" class="w-full bg-blue-600 text-white py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5"><i data-lucide="save" class="w-4 h-4"></i>${tr('Jo‘natmani saqlash','Сохранить отправление')}</button>
+                  <div class="fc-icon-action-bar"><button type="button" onclick="saveShipmentForOrder(${o.id})" class="fc-action-icon-btn is-save" aria-label="${tr('Jo‘natmani saqlash','Сохранить отправление')}" title="${tr('Jo‘natmani saqlash','Сохранить отправление')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
                 </div>` : ''}
 
               ${o.status === 'CANCELLED' && o.cancelReason ? `
