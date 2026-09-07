@@ -5378,7 +5378,7 @@ button[onclick*="openImagePickerSheet"]:active{transform:scale(.94)}
 /* =========================================================
    SHOP APP 2.0 — ADMIN COMMAND CENTER + ADMIN SHELL
    ========================================================= */
-body.fc-admin-mode{--ustore-page-bg:#f6f8fb;--ustore-card-bg:#fff;--ustore-panel-bg:#f9fafc;--ustore-input-bg:#fff;--ustore-header-bg:#fff;--ustore-header-text:#172033;--ustore-bottom-nav-bg:#fff;--ustore-bottom-nav-text:#667085;--ustore-border:#e4e9f0;--ustore-text:#172033;--ustore-secondary-text:#667085;--ustore-muted-text:#98a2b3;--ustore-primary:#2684ff;--ustore-accent:#eaf3ff;--ustore-button:#2684ff;--ustore-button-text:#fff;--ustore-secondary-button:#fff;--ustore-success:#16803c;--ustore-warning:#b54708;--ustore-danger:#c4320a;background:#f6f8fb!important}
+body.fc-admin-mode{background:var(--ustore-page-bg)!important;color:var(--ustore-text)!important}
 @media(min-width:1024px){body.fc-admin-mode #app-content{max-width:1100px!important;padding-left:24px!important;padding-right:24px!important}body.fc-admin-mode #page-container>.fc-page-shell.fc-page-wide{max-width:1180px!important}}
 .fc-admin-home-launcher{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #cfe3ff;border-radius:14px;background:#f3f8ff;box-shadow:0 4px 14px rgba(16,24,40,.045)}
 .fc-admin-home-launcher>div{display:flex;flex-direction:column;min-width:0}.fc-admin-home-launcher span{font-size:12px;color:#667085}.fc-admin-home-launcher b{font-size:14px;color:#172033}.fc-admin-home-launcher button{height:40px;padding:0 13px;display:flex;align-items:center;gap:7px;border:1px solid #cfe3ff;border-radius:10px;background:#fff;color:#175cd3;font-size:13px;font-weight:700}
@@ -5450,8 +5450,8 @@ body.fc-admin-mode .fc-settings-sticky-actions,body.fc-admin-mode .fc-delivery-f
 @media(min-width:768px){body.fc-admin-mode .fc-settings-sticky-actions,body.fc-admin-mode .fc-delivery-footer,body.fc-admin-mode .fc-design-footer-v2,body.fc-admin-mode .fc-legal-savebar{bottom:16px}}
 
 /* Store settings root: same compact hierarchy as Payment/Delivery menus. */
-.fc-settings-root{display:flex;flex-direction:column;gap:14px}.fc-settings-root-intro{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;align-items:center;padding:14px 16px;border:1px solid #e4e9f0;border-radius:14px;background:#fff;box-shadow:0 4px 14px rgba(16,24,40,.045)}
-.fc-settings-root-icon,.fc-settings-menu-icon{display:grid;place-items:center;flex-shrink:0;background:#f3f8ff;color:#2684ff;border:1px solid #e3efff}.fc-settings-root-icon{width:40px;height:40px;border-radius:11px}.fc-settings-root-intro b{display:block;font-size:15px;line-height:21px;color:#172033}.fc-settings-root-intro small{display:block;margin-top:3px;font-size:12px;line-height:17px;color:#667085}
+.fc-settings-root{display:flex;flex-direction:column;gap:14px}.fc-settings-root-intro{display:flex;flex-direction:column;gap:3px;padding:2px 2px 0;background:transparent;border:0;box-shadow:none}
+.fc-settings-root-icon,.fc-settings-menu-icon{display:grid;place-items:center;flex-shrink:0;background:color-mix(in srgb,var(--ustore-primary) 7%,var(--ustore-card-bg));color:var(--ustore-primary);border:1px solid color-mix(in srgb,var(--ustore-primary) 14%,var(--ustore-border))}.fc-settings-root-icon{display:none}.fc-settings-root-intro b{display:block;font-size:16px;line-height:22px;color:var(--ustore-text)}.fc-settings-root-intro small{display:block;font-size:12px;line-height:17px;color:var(--ustore-secondary-text)}
 .fc-settings-menu-list{display:flex;flex-direction:column;gap:10px}.fc-settings-menu-row{width:100%;min-height:72px;display:grid;grid-template-columns:42px minmax(0,1fr) auto 18px;align-items:center;gap:12px;padding:12px 14px;border:1px solid #e4e9f0;border-radius:14px;background:#fff;text-align:left;box-shadow:0 4px 14px rgba(16,24,40,.04);transition:border-color .15s ease,box-shadow .15s ease,transform .12s ease}.fc-settings-menu-row:active{transform:scale(.993)}.fc-settings-menu-row:hover{border-color:#d7dee8;box-shadow:0 6px 18px rgba(16,24,40,.055)}
 .fc-settings-menu-icon{width:42px;height:42px;border-radius:12px}.fc-settings-menu-copy{min-width:0;display:flex;flex-direction:column;gap:2px}.fc-settings-menu-copy b{font-size:14px;line-height:20px;font-weight:750;color:#172033}.fc-settings-menu-copy small{font-size:12px;line-height:17px;color:#667085}.fc-settings-menu-status{padding:5px 8px;border-radius:999px;background:#f2f4f7;color:#667085;border:1px solid #e4e7ec;font-size:11px;font-weight:700;white-space:nowrap}.fc-settings-menu-chevron{color:#98a2b3}
 .fc-settings-detail-card{overflow:hidden;border:1px solid #e4e9f0;border-radius:14px;background:#fff;box-shadow:0 4px 14px rgba(16,24,40,.045)}.fc-settings-toggle-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;padding:16px}.fc-pause-note-row{display:grid;grid-template-columns:minmax(0,1fr) 48px;gap:10px;align-items:center;padding:0 16px 16px}.fc-pause-note-row textarea{width:100%;min-height:48px;max-height:96px;resize:vertical;padding:11px 13px;border:1px solid #d7dee8;border-radius:12px;background:#fbfdff;color:#344054;font-size:14px;line-height:20px;outline:none}.fc-pause-note-row textarea::placeholder{color:#98a2b3;font-size:14px}.fc-pause-note-row textarea:focus{background:#fff;border-color:#9dc8ff;box-shadow:0 0 0 3px rgba(38,132,255,.08)}
@@ -5493,3 +5493,39 @@ body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn):hover,
 body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn):hover{background:#dcecff!important;border-color:#9fc7ff!important;color:#164caa!important}
 /* Save/confirm actions are semantic green even if legacy utility classes remain. */
 body.fc-admin-mode .fc-btn-success{background:#ecfdf3!important;border:1px solid #c6f1d5!important;color:#16803c!important;box-shadow:none!important}
+
+
+/* POST-DEPLOY SIX FIXES — compact custom theme editor */
+.fc-design-preview-shell.is-compact{padding:8px;border-radius:13px}
+.fc-design-preview-shell.is-compact .fc-design-preview-tabs{margin:0 0 7px;min-height:32px}
+.fc-design-preview-shell.is-compact .fc-design-preview-tabs button{min-height:32px;padding:0 8px;font-size:11px}
+.fc-design-preview-shell.is-compact .fc-design-live-preview{max-width:360px;margin:0 auto}
+.fc-design-preview-shell.is-compact .fc-dp-header{min-height:32px;height:32px;padding:0 10px}
+.fc-design-preview-shell.is-compact .fc-dp-page{min-height:126px;padding:8px 10px}
+.fc-design-preview-shell.is-compact .fc-dp-nav{min-height:34px;height:34px;padding:2px 8px}
+.fc-design-preview-shell.is-compact .fc-dp-nav span{font-size:10px;gap:0}.fc-design-preview-shell.is-compact .fc-dp-nav small{font-size:7.5px}
+.fc-design-preview-shell.is-compact .fc-dp-product{gap:5px}.fc-design-preview-shell.is-compact .fc-dp-product-image{height:54px}.fc-design-preview-shell.is-compact .fc-dp-product button{height:30px}
+.fc-design-preview-shell.is-compact .fc-dp-cart{gap:6px}.fc-design-preview-shell.is-compact .fc-dp-cart-row{min-height:44px}.fc-design-preview-shell.is-compact .fc-dp-cart button{height:30px}
+.fc-design-preview-shell.is-compact .fc-dp-search{height:28px}.fc-design-preview-shell.is-compact .fc-dp-grid article{min-height:72px}.fc-design-preview-shell.is-compact .fc-dp-grid article>div{height:30px}
+.fc-design-custom-preview-sticky{padding-bottom:5px;background:linear-gradient(180deg,var(--ustore-page-bg) 88%,color-mix(in srgb,var(--ustore-page-bg) 0%,transparent));border-radius:13px}
+
+/* The selected shop theme now belongs to both storefront and admin. Keep
+   semantic states predictable, but derive ordinary admin surfaces/states from
+   the saved theme instead of forcing the old blue/white admin palette. */
+body.fc-admin-mode .fc-settings-menu-row,body.fc-admin-mode .fc-settings-detail-card,body.fc-admin-mode .fc-profile-menu,body.fc-admin-mode .fc-card,body.fc-admin-mode .fc-admin-orders-filter-card,body.fc-admin-mode .fc-admin-orders-table-wrap{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important;color:var(--ustore-text)!important}
+body.fc-admin-mode .fc-settings-menu-copy b,body.fc-admin-mode .fc-settings-root-intro b{color:var(--ustore-text)!important}
+body.fc-admin-mode .fc-settings-menu-copy small,body.fc-admin-mode .fc-settings-root-intro small,body.fc-admin-mode .fc-settings-menu-status{color:var(--ustore-secondary-text)!important}
+body.fc-admin-mode .fc-settings-menu-icon{background:color-mix(in srgb,var(--ustore-primary) 8%,var(--ustore-card-bg))!important;border-color:color-mix(in srgb,var(--ustore-primary) 18%,var(--ustore-border))!important;color:var(--ustore-primary)!important}
+body.fc-admin-mode .fc-toggle input:checked + .fc-toggle-track{background:color-mix(in srgb,var(--ustore-primary) 72%,#ffffff)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ustore-primary) 28%,transparent)!important}
+body.fc-admin-mode .fc-policy-segments button.is-active,body.fc-admin-mode .fc-return-days>button.is-active,body.fc-admin-mode .fc-delivery-kind.is-active,body.fc-admin-mode .fc-warehouse-tab.is-active,body.fc-admin-mode .fc-textzoom-opt.is-active{background:color-mix(in srgb,var(--ustore-primary) 10%,var(--ustore-card-bg))!important;border-color:color-mix(in srgb,var(--ustore-primary) 34%,var(--ustore-border))!important;color:var(--ustore-primary)!important}
+body.fc-admin-mode .fc-theme-card-v2.is-selected{border-color:color-mix(in srgb,var(--ustore-primary) 62%,var(--ustore-border))!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--ustore-primary) 10%,transparent)!important}.fc-theme-selected-v2{background:var(--ustore-primary)!important}
+
+/* Orders: one obvious compact status control left of calendar in both modes. */
+.fc-orders-filter-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%}
+.fc-orders-status-select{position:relative;min-width:0;flex:1;max-width:250px;height:46px;display:grid;grid-template-columns:18px minmax(0,1fr) 16px;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--ustore-border,#e4e9f0);border-radius:13px;background:var(--ustore-card-bg,#fff);color:var(--ustore-secondary-text,#667085);box-shadow:0 2px 8px rgba(16,24,40,.035)}
+.fc-orders-status-select.is-active{border-color:color-mix(in srgb,var(--ustore-primary) 36%,var(--ustore-border));background:color-mix(in srgb,var(--ustore-primary) 7%,var(--ustore-card-bg));color:var(--ustore-primary)}
+.fc-orders-status-select>svg:first-child{color:var(--ustore-primary);pointer-events:none}.fc-orders-status-chevron{color:var(--ustore-muted-text);pointer-events:none}
+.fc-orders-status-select select{appearance:none;-webkit-appearance:none;width:100%;height:100%;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;outline:0;font-size:13px;font-weight:750;color:var(--ustore-text)!important;cursor:pointer;min-width:0}
+.fc-orders-status-select select:focus{outline:0;box-shadow:none!important}.fc-orders-calendar-trigger{flex:0 0 46px;width:46px;height:46px;border-radius:13px}
+.fc-admin-orders-filter-card{display:flex;flex-direction:column;gap:10px}
+@media(max-width:360px){.fc-orders-status-select{max-width:none}.fc-orders-status-select select{font-size:12px}}

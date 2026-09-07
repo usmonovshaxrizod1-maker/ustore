@@ -3463,7 +3463,41 @@
       }
     });
 
+    let lastRenderedUiKey = null;
+    function currentShopUiKey() {
+      return [isAdminMode&&isUserAnAdmin?'ADMIN':'USER', currentTab||'', activePage||'', activePopupModal||''].join('|');
+    }
+    function captureShopRenderState() {
+      const active = document.activeElement;
+      const focus = active && active !== document.body && active !== document.documentElement ? {
+        id: active.id || null, name: active.getAttribute?.('name') || null,
+        selectionStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+        selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
+      } : null;
+      const scrollSelectors = ['#page-container','#app-content','#modal-container .overflow-y-auto','#modal-container .fc-modal-scroll','.fc-orders-status-menu','.fc-catalog-breadcrumb'];
+      const scrolls = scrollSelectors.flatMap((selector) => Array.from(document.querySelectorAll(selector)).map((el,index)=>({selector,index,top:el.scrollTop,left:el.scrollLeft})));
+      const fields = Array.from(document.querySelectorAll('#app-content input,#app-content textarea,#app-content select,#page-container input,#page-container textarea,#page-container select,#modal-container input,#modal-container textarea,#modal-container select')).map((el)=>{
+        const type=String(el.getAttribute('type')||'').toLowerCase();
+        const key=el.id||el.getAttribute('name')||'';
+        const fingerprint=`${key} ${el.getAttribute('autocomplete')||''} ${el.getAttribute('placeholder')||''}`.toLowerCase();
+        if(!key||['password','file','hidden'].includes(type)||/(token|secret|password|credential|api[-_ ]?key)/i.test(fingerprint)) return null;
+        return {key,value:'value' in el?String(el.value??''):'',checked:'checked' in el?!!el.checked:null};
+      }).filter(Boolean);
+      return {focus,scrolls,fields};
+    }
+    function restoreShopRenderState(snapshot) {
+      if(!snapshot) return;
+      const apply=()=>{
+        (snapshot.fields||[]).forEach(st=>{const el=document.getElementById(st.key)||document.querySelector(`[name="${String(st.key).replace(/"/g,'\\"')}"]`);if(!el)return;if(st.checked!==null&&'checked' in el)el.checked=st.checked;if('value' in el)el.value=st.value;});
+        (snapshot.scrolls||[]).forEach(st=>{const el=document.querySelectorAll(st.selector)[st.index];if(el){el.scrollTop=st.top;el.scrollLeft=st.left;}});
+        if(snapshot.focus){const el=(snapshot.focus.id&&document.getElementById(snapshot.focus.id))||(snapshot.focus.name&&document.querySelector(`[name="${String(snapshot.focus.name).replace(/"/g,'\\"')}"]`));if(el?.focus){try{el.focus({preventScroll:true});}catch(_){try{el.focus();}catch(_){}}if(snapshot.focus.selectionStart!==null&&typeof el.setSelectionRange==='function'){try{el.setSelectionRange(snapshot.focus.selectionStart,snapshot.focus.selectionEnd);}catch(_){}}}}
+      };
+      requestAnimationFrame(()=>{apply();requestAnimationFrame(apply);});setTimeout(apply,60);
+    }
+
     function render() {
+      const uiKeyBeforeRender = currentShopUiKey();
+      const preserveSnapshot = lastRenderedUiKey === uiKeyBeforeRender ? captureShopRenderState() : null;
       if (authReady) document.body.dataset.appReady = 'true';
       document.body.classList.toggle('fc-admin-mode', !!(isAdminMode && isUserAnAdmin));
       updateCartBadge();
@@ -3535,6 +3569,8 @@
       renderModalContainer();
       safeCreateIcons();
       requestAnimationFrame(() => applyVisibleTextScale());
+      lastRenderedUiKey = currentShopUiKey();
+      if (preserveSnapshot && lastRenderedUiKey === uiKeyBeforeRender) restoreShopRenderState(preserveSnapshot);
     }
 
     // 38-band: yagona custom tasdiqlash dialogi —
@@ -5049,7 +5085,7 @@
         { icon:'bot', title:tr('Bot /start xabari','Сообщение бота /start'), subtitle:tr('Birinchi xabar va rasm','Первое сообщение и изображение'), onclick:"activePopupModal='START_MESSAGE'; render();" },
       ];
       if (billzAccessGranted) rows.push({ icon:'scan-line', title:'Billz', subtitle:tr('Sinxronizatsiya sozlamalari','Настройки синхронизации'), onclick:'openBillzSettings()' });
-      const body = `<div class="fc-settings-root"><div class="fc-settings-root-intro"><span class="fc-settings-root-icon"><i data-lucide="settings-2" class="w-5 h-5"></i></span><div><b>${tr("Do'kon boshqaruvi",'Управление магазином')}</b><small>${tr('Asosiy parametrlar bo‘limlarga ajratilgan. Kerakli sozlamani tanlang.','Основные параметры разделены по разделам. Выберите нужную настройку.')}</small></div></div><div class="fc-settings-menu-list">${rows.map(settingsMenuRowHtml).join('')}</div></div>`;
+      const body = `<div class="fc-settings-root"><div class="fc-settings-root-intro"><b>${tr("Do'kon boshqaruvi",'Управление магазином')}</b><small>${tr('Asosiy parametrlar bo‘limlarga ajratilgan. Kerakli sozlamani tanlang.','Основные параметры разделены по разделам. Выберите нужную настройку.')}</small></div><div class="fc-settings-menu-list">${rows.map(settingsMenuRowHtml).join('')}</div></div>`;
       renderPageShell(container, tr("Do'kon sozlamalari", 'Настройки магазина'), body);
     }
 
@@ -5110,7 +5146,7 @@
         `<p class="text-gray-400 text-center py-8 text-xs">${tr("Bu bo'lim tez orada qo'shiladi.", "Этот раздел скоро будет добавлен.")}</p>`);
     }
 
-    function renderDesignPreviewHtml(colors) {
+    function renderDesignPreviewHtml(colors, compact = false) {
       const c = colors;
       const style = `--dp-primary:${c.primary};--dp-accent:${c.accent};--dp-button:${c.button};--dp-button-text:${c.buttonText};--dp-page:${c.pageBg};--dp-panel:${c.panelBg};--dp-card:${c.cardBg};--dp-input:${c.inputBg};--dp-header:${c.headerBg};--dp-header-text:${c.headerText};--dp-nav:${c.bottomNavBg};--dp-nav-text:${c.bottomNavText};--dp-border:${c.border};--dp-text:${c.text};--dp-secondary:${c.secondaryText};--dp-muted:${c.mutedText};`;
       const modeTabs = [['HOME',tr('Bosh sahifa','Главная')],['PRODUCT',tr('Mahsulot','Товар')],['CART',tr('Savatcha','Корзина')]];
@@ -5122,7 +5158,7 @@
       } else {
         content = `<div class="fc-dp-search" data-role="inputBg"><span></span><em data-role="secondaryText">${tr('Mahsulot qidirish','Поиск товаров')}</em></div><div class="fc-dp-chips"><i></i><i></i><i></i></div><div class="fc-dp-grid"><article data-role="cardBg"><div></div><b data-role="text">Whey Protein</b><small data-role="secondaryText">450 000 so'm</small><button data-role="button">+</button></article><article data-role="cardBg"><div></div><b data-role="text">Creatine</b><small data-role="secondaryText">180 000 so'm</small><button data-role="button">+</button></article></div>`;
       }
-      return `<section class="fc-design-preview-shell"><div class="fc-design-preview-head"><div><b>${tr('Jonli preview','Живой просмотр')}</b><small>${tr("Rang o'zgarsa shu yerda darhol ko'rinadi. Saqlamaguncha real do'konga ta'sir qilmaydi.", 'Изменения видны сразу и не влияют на магазин до сохранения.')}</small></div><span class="fc-design-preview-safe"><i data-lucide="eye" class="w-4 h-4"></i>${tr('Preview','Просмотр')}</span></div><div class="fc-design-preview-tabs">${modeTabs.map(([id,label])=>`<button type="button" onclick="setDesignPreviewMode('${id}')" class="${designPreviewMode===id?'is-active':''}">${label}</button>`).join('')}</div><div class="fc-design-live-preview" data-highlight="${escapeHtml(designHighlightKey)}" style="${style}"><div class="fc-dp-header" data-role="headerBg"><b data-role="headerText">FITCORE</b><span data-role="headerText">•••</span></div><div class="fc-dp-page" data-role="pageBg">${content}</div><div class="fc-dp-nav" data-role="bottomNavBg"><span class="is-active">⌂<small>${tr('Bosh','Главная')}</small></span><span>▦<small>${tr('Katalog','Каталог')}</small></span><span>▣<small>${tr('Savat','Корзина')}</small></span><span>○<small>${tr('Profil','Профиль')}</small></span></div></div></section>`;
+      return `<section class="fc-design-preview-shell ${compact?'is-compact':''}">${compact?'':`<div class="fc-design-preview-head"><div><b>${tr('Jonli preview','Живой просмотр')}</b><small>${tr("Rang o'zgarsa shu yerda darhol ko'rinadi. Saqlamaguncha real do'konga ta'sir qilmaydi.", 'Изменения видны сразу и не влияют на магазин до сохранения.')}</small></div><span class="fc-design-preview-safe"><i data-lucide="eye" class="w-4 h-4"></i>${tr('Preview','Просмотр')}</span></div>`}<div class="fc-design-preview-tabs">${modeTabs.map(([id,label])=>`<button type="button" onclick="setDesignPreviewMode('${id}')" class="${designPreviewMode===id?'is-active':''}">${label}</button>`).join('')}</div><div class="fc-design-live-preview" data-highlight="${escapeHtml(designHighlightKey)}" style="${style}"><div class="fc-dp-header" data-role="headerBg"><b data-role="headerText">FITCORE</b><span data-role="headerText">•••</span></div><div class="fc-dp-page" data-role="pageBg">${content}</div><div class="fc-dp-nav" data-role="bottomNavBg"><span class="is-active">⌂<small>${tr('Bosh','Главная')}</small></span><span>▦<small>${tr('Katalog','Каталог')}</small></span><span>▣<small>${tr('Savat','Корзина')}</small></span><span>○<small>${tr('Profil','Профиль')}</small></span></div></div></section>`;
     }
     function renderDesignColorRows(keys, activeColors) {
       const icons = { primary:'circle-dot', pageBg:'panel-top', cardBg:'square', text:'type', secondaryText:'text', button:'mouse-pointer-2', buttonText:'type', headerBg:'panel-top-open', headerText:'type', bottomNavBg:'panel-bottom', bottomNavText:'type', accent:'sparkles', secondaryButton:'square', panelBg:'layers-3', inputBg:'search', border:'box', mutedText:'align-left' };
@@ -5157,7 +5193,7 @@
       const activeColors = designColorsWithDefaults(designDraft.colors, 'custom');
       const issues = findContrastIssues(activeColors, 'custom');
       const body = `<div class="fc-design-page-v2 fc-design-custom-page">
-        <div class="fc-design-custom-preview-sticky">${renderDesignPreviewHtml(activeColors)}</div>
+        <div class="fc-design-custom-preview-sticky">${renderDesignPreviewHtml(activeColors, true)}</div>
         <section class="fc-design-section-v2"><div class="fc-design-section-title-v2"><div><b>${tr('Asosiy sozlamalar','Основные настройки')}</b><small>${tr("Nishon tugmasi previewda qaysi joy o'zgarishini ko'rsatadi.", 'Кнопка-мишень показывает область изменения в просмотре.')}</small></div></div><div class="fc-design-color-list-v2">${renderDesignColorRows(DESIGN_SIMPLE_KEYS,activeColors)}</div></section>
         <section class="fc-design-section-v2"><button type="button" onclick="toggleDesignAdvanced()" class="fc-design-advanced-toggle"><span><i data-lucide="sliders-horizontal" class="w-4 h-4"></i><span><b>${tr('Kengaytirilgan sozlamalar','Расширенные настройки')}</b><small>${tr('Yordamchi panellar, border va xira matnlar','Дополнительные панели, границы и приглушённый текст')}</small></span></span><i data-lucide="${designAdvancedOpen?'chevron-up':'chevron-down'}" class="w-4 h-4"></i></button>${designAdvancedOpen?`<div class="fc-design-color-list-v2 is-advanced">${renderDesignColorRows(DESIGN_ADVANCED_KEYS,activeColors)}</div>`:''}</section>
         ${issues.length?`<section class="fc-design-contrast-card is-warning"><div class="fc-design-contrast-icon"><i data-lucide="triangle-alert" class="w-5 h-5"></i></div><div class="fc-design-contrast-copy"><b>${tr("O'qilishi qiyin joylar bor", 'Есть проблемы читаемости')}</b>${issues.map(i=>`<small>${escapeHtml(i.pair)} · ${i.ratio.toFixed(1)}:1</small>`).join('')}<button type="button" onclick="autoFixDesignContrast()"><i data-lucide="wand-sparkles" class="w-4 h-4"></i>${tr(`${issues.length} ta muammoni avtomatik to'g'rilash`, `Исправить автоматически (${issues.length})`)}</button></div></section>`:`<section class="fc-design-contrast-card is-ok"><div class="fc-design-contrast-icon"><i data-lucide="shield-check" class="w-5 h-5"></i></div><div class="fc-design-contrast-copy"><b>${tr('Dizayn o‘qilishi yaxshi','Хорошая читаемость дизайна')}</b><small>${tr('Asosiy matn, tugma va panellar kontrasti tekshirildi.','Контраст текста, кнопок и панелей проверен.')}</small></div></section>`}
@@ -6001,6 +6037,7 @@
 
     function renderAdminCommandCenterOverlay() {
       let root = document.getElementById('fc-admin-command-center-root');
+      const previousScrollTop = root?.querySelector('.fc-command-scroll')?.scrollTop || 0;
       if (!adminCommandCenterOpen || !(isAdminMode && isUserAnAdmin)) { if (root) root.remove(); return; }
       if (!root) { root = document.createElement('div'); root.id='fc-admin-command-center-root'; document.body.appendChild(root); }
       const c = adminActionCenter || {};
@@ -6032,7 +6069,11 @@
         </div>
       </section></div>`;
       safeCreateIcons();
-      requestAnimationFrame(()=>applyVisibleTextScale(root));
+      requestAnimationFrame(()=>{
+        applyVisibleTextScale(root);
+        const scroller=root.querySelector('.fc-command-scroll'); if(scroller) scroller.scrollTop=previousScrollTop;
+      });
+      setTimeout(()=>{const scroller=root.querySelector('.fc-command-scroll');if(scroller)scroller.scrollTop=previousScrollTop;},50);
     }
 
     async function loadAdminCommandCenterData(force=false) {
@@ -8074,6 +8115,11 @@
       return `<div class="fc-orders-calendar-card"><div class="fc-orders-calendar-top"><div class="fc-orders-calendar-title"><span class="fc-orders-calendar-title-icon"><i data-lucide="calendar-days" class="w-4 h-4"></i></span><div><b>${tr('Buyurtmalar sanasi','Дата заказов')}</b><small>${escapeHtml(rangeText)}</small></div></div>${(ordersCalendarDraftFrom||ordersCalendarDraftTo)?`<button type="button" onclick="clearOrdersDateRange()" class="fc-orders-calendar-clear" aria-label="${tr('Tozalash','Сбросить')}"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>`:''}</div><div class="fc-orders-calendar-scroll"><div class="fc-orders-calendar-monthbar"><button type="button" onclick="changeOrdersCalendarMonth(-1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-left" class="w-4 h-4"></i></button><div class="fc-orders-calendar-period"><button type="button" onclick="setOrdersCalendarPickerMode('months')">${escapeHtml(monthNames[month])}</button><button type="button" onclick="setOrdersCalendarPickerMode('years')">${year}</button></div><button type="button" onclick="changeOrdersCalendarMonth(1)" class="fc-orders-calendar-nav" ${ordersCalendarPickerMode==='days'?'':'style="visibility:hidden"'}><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div>${body}</div>${ordersCalendarDraftFrom?`<div class="fc-orders-calendar-actions"><button type="button" onclick="cancelOrdersCalendarSelection()" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-4 h-4"></i></button><button type="button" onclick="applyOrdersCalendarSelection()" ${ordersCalendarDraftTo?'':'disabled'} class="is-primary" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></div>`:''}</div>`;
     }
 
+    function renderOrderStatusCompactFilter(value, onchangeJs) {
+      const options = [['ALL',tr('Barchasi','Все')],['NEW',statusLabel('NEW')],['PROCESSING',statusLabel('PROCESSING')],['DELIVERED',statusLabel('DELIVERED')],['CANCELLED',statusLabel('CANCELLED')]];
+      return `<label class="fc-orders-status-select ${value!=='ALL'?'is-active':''}" title="${tr('Buyurtma maqomini tanlang','Выберите статус заказа')}"><i data-lucide="list-filter" class="w-4 h-4"></i><select aria-label="${tr('Buyurtma maqomi','Статус заказа')}" onchange="${onchangeJs}">${options.map(([id,label])=>`<option value="${id}" ${value===id?'selected':''}>${escapeHtml(label)}</option>`).join('')}</select><i data-lucide="chevron-down" class="w-4 h-4 fc-orders-status-chevron"></i></label>`;
+    }
+
     function renderOrdersDateFilterHtml() {
       const explicit=!!(ordersDateFrom&&ordersDateTo);
       return `<button type="button" onclick="openOrdersCalendarModal(event)" class="fc-orders-calendar-trigger ${explicit?'is-active':''}" aria-label="${tr('Kalendar','Календарь')}" title="${tr('Kalendar','Календарь')}"><i data-lucide="calendar-days" class="w-5 h-5"></i></button>`;
@@ -8154,16 +8200,8 @@
             <div class="fc-orders-ops-summary"><button onclick="setAdminStatusFilter('NEW')"><span>${tr('Yangi','Новые')}</span><b>${periodOrders.filter(o=>o.status==='NEW').length}</b></button><button onclick="adminOrderFilters.status='ALL'; ordersPage=1; render();"><span>${tr('Chek kutilmoqda','Чеки')}</span><b>${periodOrders.filter(isReceiptPendingReview).length}</b></button><button onclick="setAdminStatusFilter('PROCESSING')"><span>${tr('Jarayonda','В работе')}</span><b>${periodOrders.filter(o=>o.status==='PROCESSING').length}</b></button></div>
 
             <div class="fc-admin-orders-filter-card">
-              <div class="fc-orders-search-calendar-row"><input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Buyurtma #, mijoz yoki telefon...','Заказ #, клиент или телефон...')}" value="${escapeHtml(adminOrderFilters.search)}" class="fc-order-search-input ${adminOrderFilters.search ? 'is-active' : ''} p-2 border rounded-xl">${renderOrdersDateFilterHtml()}</div>
-
-              <div class="flex gap-1 flex-wrap">
-                <button onclick="setAdminStatusFilter('ALL')" class="fc-orders-all-filter fc-order-filter-chip px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === 'ALL' ? 'is-active' : ''}">${adminOrderFilters.status === 'ALL' ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${tr("Barchasi", "Все")}</button>
-                ${['NEW', 'PROCESSING', 'DELIVERED', 'CANCELLED'].map(st => `
-                  <button onclick="setAdminStatusFilter('${st}')" class="fc-order-filter-chip px-2.5 py-1 rounded-lg font-bold text-[10px] ${adminOrderFilters.status === st ? statusColorClass(st) + ' is-active' : 'bg-gray-100 text-gray-500'}">
-                    ${adminOrderFilters.status === st ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${statusLabel(st)}
-                  </button>
-                `).join('')}
-              </div>
+              <div class="fc-orders-filter-toolbar">${renderOrderStatusCompactFilter(adminOrderFilters.status, "setAdminStatusFilter(this.value)")}${renderOrdersDateFilterHtml()}</div>
+              <input type="text" id="adm-ord-search" oninput="adminOrderFilters.search = this.value; render();" placeholder="${tr('Buyurtma #, mijoz yoki telefon...','Заказ #, клиент или телефон...')}" value="${escapeHtml(adminOrderFilters.search)}" class="fc-order-search-input ${adminOrderFilters.search ? 'is-active' : ''} p-2 border rounded-xl">
 
               <div class="grid grid-cols-2 gap-2">
                 <select onchange="adminOrderFilters.region = this.value; render();" class="fc-order-filter-select ${adminOrderFilters.region !== 'ALL' ? 'is-active' : ''} p-2 border rounded-xl bg-gray-50 font-bold">
@@ -8202,14 +8240,8 @@
 
       container.innerHTML = `
         <div class="space-y-3">
-          <div class="flex items-center justify-between gap-2"><h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>${renderOrdersDateFilterHtml()}</div>
-
-          <div class="flex space-x-1 overflow-x-auto pb-1 text-xs">
-            <button onclick="userOrderFilter='ALL'; render();" class="fc-orders-all-filter fc-order-filter-chip px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === 'ALL' ? 'is-active' : ''}">${userOrderFilter === 'ALL' ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${tr("Barchasi", "Все")}</button>
-            ${['NEW', 'PROCESSING', 'DELIVERED', 'CANCELLED'].map(st => `
-              <button onclick="userOrderFilter='${st}'; render();" class="fc-order-filter-chip px-2.5 py-1 rounded-xl font-bold ${userOrderFilter === st ? statusColorClass(st) + ' is-active' : 'bg-white border text-gray-500'}">${userOrderFilter === st ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}${statusLabel(st)}</button>
-            `).join('')}
-          </div>
+          <h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>
+          <div class="fc-orders-filter-toolbar">${renderOrderStatusCompactFilter(userOrderFilter, "userOrderFilter=this.value; ordersPage=1; render();")}${renderOrdersDateFilterHtml()}</div>
 
           ${userOrders.length === 0 ? `<p class="text-xs text-gray-500 bg-white p-4 rounded-xl text-center">${tr("Buyurtmalar topilmadi", "Заказы не найдены")}</p>` : ''}
           ${userOrders.map(o => `
@@ -8317,6 +8349,7 @@
 
     function setAdminStatusFilter(st) {
       adminOrderFilters.status = st;
+      ordersPage = 1;
       render();
     }
 
@@ -9342,18 +9375,12 @@
     const DESIGN_THEMES = {
       minimal: { label: tr('Minimal', 'Минимал'), colors: { primary:'#2563eb', accent:'#0ea5e9', button:'#2563eb', buttonText:'#ffffff', secondaryButton:'#eef2f7', pageBg:'#f6f8fb', panelBg:'#f1f5f9', cardBg:'#ffffff', inputBg:'#fbfdff', headerBg:'#ffffff', headerText:'#172033', bottomNavBg:'#ffffff', bottomNavText:'#526174', border:'#e2e8f0', text:'#1f2937', secondaryText:'#526174', mutedText:'#7c8a9e', success:'#16a34a', warning:'#d97706', danger:'#dc2626' } },
       dark: { label: tr('Dark', 'Тёмная'), colors: { primary:'#60a5fa', accent:'#38bdf8', button:'#2f6fed', buttonText:'#ffffff', secondaryButton:'#29415f', pageBg:'#15253c', panelBg:'#192d48', cardBg:'#203652', inputBg:'#182b45', headerBg:'#10243b', headerText:'#f8fafc', bottomNavBg:'#10243b', bottomNavText:'#c7d5e6', border:'#3a5574', text:'#f8fafc', secondaryText:'#c8d5e5', mutedText:'#98abc1', success:'#35c96f', warning:'#f2ad42', danger:'#f05b61' } },
-      sport: { label: tr('Sport', 'Спорт'), colors: { primary:'#1d4ed8', accent:'#f97316', button:'#2563eb', buttonText:'#ffffff', secondaryButton:'#eaf0f8', pageBg:'#f5f8fc', panelBg:'#eef4fb', cardBg:'#ffffff', inputBg:'#f8fbff', headerBg:'#ffffff', headerText:'#172033', bottomNavBg:'#ffffff', bottomNavText:'#526174', border:'#dbe5f0', text:'#172033', secondaryText:'#526174', mutedText:'#7b8ca1', success:'#16a34a', warning:'#d97706', danger:'#dc2626' } },
+      sport: { label: tr('Sport', 'Спорт'), colors: { primary:'#16a34a', accent:'#84cc16', button:'#111827', buttonText:'#ffffff', secondaryButton:'#e9f1e8', pageBg:'#f3f6f2', panelBg:'#e9f0e8', cardBg:'#ffffff', inputBg:'#f8faf7', headerBg:'#111827', headerText:'#f8fafc', bottomNavBg:'#111827', bottomNavText:'#cbd5e1', border:'#d5dfd4', text:'#172033', secondaryText:'#52606d', mutedText:'#7b8794', success:'#15803d', warning:'#c96a12', danger:'#c4320a' } },
       elegant: { label: tr('Elegant', 'Элегант'), colors: { primary:'#6d28d9', accent:'#c084fc', button:'#7c3aed', buttonText:'#ffffff', secondaryButton:'#f0e8fb', pageBg:'#faf7ff', panelBg:'#f5effc', cardBg:'#ffffff', inputBg:'#fcfaff', headerBg:'#ffffff', headerText:'#2e1065', bottomNavBg:'#ffffff', bottomNavText:'#65547b', border:'#e8ddf3', text:'#2e1065', secondaryText:'#65547b', mutedText:'#8f7ca5', success:'#15803d', warning:'#b45309', danger:'#b91c1c' } },
       bright: { label: tr('Modern', 'Современная'), colors: { primary:'#2563eb', accent:'#60a5fa', button:'#2563eb', buttonText:'#ffffff', secondaryButton:'#eef4ff', pageBg:'#f4f7fb', panelBg:'#f1f5fb', cardBg:'#ffffff', inputBg:'#f8fbff', headerBg:'#ffffff', headerText:'#101828', bottomNavBg:'#ffffff', bottomNavText:'#667085', border:'#dde5ef', text:'#101828', secondaryText:'#667085', mutedText:'#8793a5', success:'#16803c', warning:'#b54708', danger:'#c4320a' } },
     };
 
 
-    const ADMIN_THEME_COLORS = {
-      primary:'#2684ff', accent:'#5aa7ff', button:'#2684ff', buttonText:'#ffffff', secondaryButton:'#f2f4f7',
-      pageBg:'#f6f8fb', panelBg:'#f9fafc', cardBg:'#ffffff', inputBg:'#ffffff', headerBg:'#ffffff', headerText:'#172033',
-      bottomNavBg:'#ffffff', bottomNavText:'#667085', border:'#e4e9f0', text:'#172033', secondaryText:'#667085', mutedText:'#98a2b3',
-      success:'#16803c', warning:'#b54708', danger:'#c4320a'
-    };
     const DESIGN_SIMPLE_KEYS = ['primary','pageBg','cardBg','text','secondaryText','button','buttonText','headerBg','headerText','bottomNavBg','bottomNavText'];
     const DESIGN_ADVANCED_KEYS = ['accent','secondaryButton','panelBg','inputBg','border','mutedText'];
     const DESIGN_COLOR_HELP = {
@@ -9476,14 +9503,13 @@
       root.setProperty('--ustore-warning', c.warning);
       root.setProperty('--ustore-danger', c.danger);
       const dark = (relLuminance(c.pageBg) ?? 1) < 0.18;
-      document.documentElement.classList.toggle('ustore-dark-theme', dark && !(isAdminMode && isUserAnAdmin));
+      document.documentElement.classList.toggle('ustore-dark-theme', dark);
     }
     function applyDesignColors(colors, themeId = null) {
       const storefront = designColorsWithDefaults(colors, themeId);
-      // Admin UI is deliberately independent from the storefront theme. A shop
-      // can be pink/dark/green while operational success/warning/danger colors
-      // remain predictable and professional in admin mode.
-      writeDesignColorsToRoot((isAdminMode && isUserAnAdmin) ? ADMIN_THEME_COLORS : storefront);
+      // One saved shop identity across both storefront and admin. Operational
+      // semantic success/warning/danger colors remain separate theme tokens.
+      writeDesignColorsToRoot(storefront);
     }
 
     function designDraftNormalized() {
