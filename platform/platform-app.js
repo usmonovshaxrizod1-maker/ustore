@@ -283,10 +283,10 @@
   let attachingMyRequestReceipt = false;
   let newShopName = '';
   let newShopOwnerTelegramId = '';
-  // Bot nomi/bio/rasmi — IXTIYORIY, faqat "taklif" sifatida saqlanadi
-  // (admin botni @BotFather orqali qo'lda yaratayotganda foydalanadi —
-  // bot rasmini dastur ichidan o'zgartirish Telegram'da umuman mumkin
-  // emas, shuning uchun bu yerda hech qanday Telegram API chaqirilmaydi).
+  // Bot nomi/bio/rasmi — ixtiyoriy. Request bilan draft/final holatda
+  // saqlanadi; Super Admin bot tokenini ulagach Platform Telegram Bot API
+  // orqali nom/bio/description/profile rasmini avtomatik qo'llaydi. Username
+  // ataylab o'zgartirilmaydi.
   let newShopBotName = '';
   let newShopBotBio = '';
   let newShopBotPhotoFile = null;
@@ -646,7 +646,16 @@
     // bug'i, v32 deploy qilingandan keyin ham davom etgan).
     const scrollables = Array.from(document.querySelectorAll('.plat-page-body,.plat-carousel,.plat-admin-request-subfilters,.plat-filter-row,.plat-payment-method-grid'))
       .map((el, index) => ({ index, left: el.scrollLeft, top: el.scrollTop }));
-    return { x: window.scrollX || 0, y: window.scrollY || 0, focus, scrollables };
+    // Preserve safe, user-entered values across same-view rerenders. Never
+    // snapshot credentials, passwords, file inputs or hidden values.
+    const fields = Array.from(document.querySelectorAll('#app input,#app textarea,#app select')).map((el) => {
+      const type = String(el.getAttribute('type') || '').toLowerCase();
+      const key = el.id || el.getAttribute('name') || '';
+      const fingerprint = `${key} ${el.getAttribute('autocomplete')||''} ${el.getAttribute('placeholder')||''}`.toLowerCase();
+      if (!key || ['password','file','hidden'].includes(type) || /(token|secret|password|credential|api[-_ ]?key)/i.test(fingerprint)) return null;
+      return { key, tag:el.tagName, type, value:'value' in el ? String(el.value ?? '') : '', checked:'checked' in el ? !!el.checked : null };
+    }).filter(Boolean);
+    return { x: window.scrollX || 0, y: window.scrollY || 0, focus, scrollables, fields };
   }
   function findRenderFocusTarget(focus) {
     if (!focus) return null;
@@ -666,6 +675,12 @@
   function restorePlatformUiState(snapshot) {
     if (!snapshot) return;
     const apply = () => {
+      (snapshot.fields || []).forEach((st) => {
+        const el = document.getElementById(st.key) || document.querySelector(`[name="${String(st.key).replace(/"/g,'\\"')}"]`);
+        if (!el) return;
+        if (st.checked !== null && 'checked' in el) el.checked = st.checked;
+        if ('value' in el) el.value = st.value;
+      });
       const scrollables = Array.from(document.querySelectorAll('.plat-page-body,.plat-carousel,.plat-admin-request-subfilters,.plat-filter-row,.plat-payment-method-grid'));
       (snapshot.scrollables || []).forEach((st) => {
         const el = scrollables[st.index];
@@ -1226,11 +1241,33 @@
     const id = tg?.initDataUnsafe?.user?.id;
     return id === undefined || id === null ? '' : String(id);
   }
+  const NEW_SHOP_FORM_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+  function newShopFormDraftStorageKey() { return `ustore-platform:${currentTelegramUserId() || 'anon'}:new-shop-form-draft-v1`; }
+  function loadNewShopLocalDraft() {
+    try {
+      const raw = localStorage.getItem(newShopFormDraftStorageKey());
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      if (!d || Date.now() - Number(d.savedAt || 0) > NEW_SHOP_FORM_DRAFT_TTL_MS) { localStorage.removeItem(newShopFormDraftStorageKey()); return null; }
+      return d;
+    } catch (_) { return null; }
+  }
+  function saveNewShopLocalDraft() {
+    try {
+      localStorage.setItem(newShopFormDraftStorageKey(), JSON.stringify({
+        savedAt: Date.now(), shopName:newShopName, ownerTelegramId:newShopOwnerTelegramId,
+        botName:newShopBotName, botBio:newShopBotBio,
+      }));
+    } catch (_) {}
+  }
+  function clearNewShopLocalDraft() { try { localStorage.removeItem(newShopFormDraftStorageKey()); } catch (_) {} }
+
   function prepareNewShopIdentity() {
-    newShopName = '';
-    newShopOwnerTelegramId = currentTelegramUserId();
-    newShopBotName = '';
-    newShopBotBio = '';
+    const draft = loadNewShopLocalDraft();
+    newShopName = String(draft?.shopName || '');
+    newShopOwnerTelegramId = String(draft?.ownerTelegramId || currentTelegramUserId() || '');
+    newShopBotName = String(draft?.botName || '');
+    newShopBotBio = String(draft?.botBio || '');
     clearNewShopBotPhoto();
   }
   function clearNewShopBotPhoto() {
@@ -1243,16 +1280,39 @@
   // actually wired to the "remove photo" button's onclick, since THAT click
   // must also re-render the (already-open) form.
   function removeNewShopBotPhoto() { clearNewShopBotPhoto(); rerenderActivePage(); }
-  function onNewShopBotPhotoPicked(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { connectError = "Faqat JPG, PNG yoki WebP rasm qabul qilinadi."; render(); return; }
-    if (file.size > 6 * 1024 * 1024) { connectError = "Rasm hajmi 6MB dan katta bo'lmasin."; render(); return; }
-    connectError = null;
-    newShopBotPhotoFile = file;
-    if (newShopBotPhotoPreviewUrl) { try { URL.revokeObjectURL(newShopBotPhotoPreviewUrl); } catch (_) {} }
-    newShopBotPhotoPreviewUrl = URL.createObjectURL(file);
-    rerenderActivePage();
+  async function normalizeBotProfilePhotoToJpeg(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const el = document.createElement('img'); el.onload = () => resolve(el); el.onerror = () => reject(new Error("Rasmni o'qib bo'lmadi.")); el.src = url;
+      });
+      const size = 640, padding = 28;
+      const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error("Rasmni tayyorlab bo'lmadi.");
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,size,size);
+      const scale = Math.min((size-padding*2)/img.naturalWidth, (size-padding*2)/img.naturalHeight);
+      const w = Math.max(1, Math.round(img.naturalWidth*scale)), h = Math.max(1, Math.round(img.naturalHeight*scale));
+      ctx.drawImage(img, Math.round((size-w)/2), Math.round((size-h)/2), w, h);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', .9));
+      if (!blob) throw new Error("Rasmni JPG formatga o'tkazib bo'lmadi.");
+      return new window.File([blob], 'bot-profile.jpg', { type:'image/jpeg', lastModified:Date.now() });
+    } finally { URL.revokeObjectURL(url); }
+  }
+  async function onNewShopBotPhotoPicked(event) {
+    const sourceFile = event.target.files && event.target.files[0];
+    if (!sourceFile) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(sourceFile.type)) { connectError = "Faqat JPG, PNG yoki WebP rasm qabul qilinadi."; render(); return; }
+    if (sourceFile.size > 6 * 1024 * 1024) { connectError = "Rasm hajmi 6MB dan katta bo'lmasin."; render(); return; }
+    try {
+      connectError = null;
+      newShopBotPhotoFile = await normalizeBotProfilePhotoToJpeg(sourceFile);
+      if (newShopBotPhotoPreviewUrl) { try { URL.revokeObjectURL(newShopBotPhotoPreviewUrl); } catch (_) {} }
+      newShopBotPhotoPreviewUrl = URL.createObjectURL(newShopBotPhotoFile);
+      rerenderActivePage();
+    } catch (e) {
+      connectError = e?.message || "Bot rasmini tayyorlab bo'lmadi.";
+      render();
+    }
   }
 
   function resetSubscriptionFlow() {
@@ -1422,6 +1482,8 @@
         billingPeriod: tariffBillingPeriod,
         shopName: String(newShopName || '').trim() || undefined,
         ownerTelegramId: String(newShopOwnerTelegramId || currentTelegramUserId() || '') || undefined,
+        botName: String(newShopBotName || '').trim() || undefined,
+        botBio: String(newShopBotBio || '').trim() || undefined,
         requesterUsername: (tg?.initDataUnsafe?.user?.username) || null,
         requesterFirstName: (tg?.initDataUnsafe?.user?.first_name) || null,
       });
@@ -1474,6 +1536,9 @@
     tariffBillingPeriod = r.billingPeriod === 'ANNUAL' ? 'annual' : 'monthly';
     newShopName = r.requestedShopName || '';
     newShopOwnerTelegramId = String(r.ownerTelegramId || currentTelegramUserId() || '');
+    newShopBotName = r.requestedBotName || '';
+    newShopBotBio = r.requestedBotBio || '';
+    saveNewShopLocalDraft();
     preparedNewShopRequestId = r.id;
     preparedNewShopPaymentDeadlineAt = r.paymentDeadlineAt || null;
     selectedMyRequestId = r.id;
@@ -1592,8 +1657,8 @@
         ${detectedId ? `<div class="plat-owner-id-hint is-ok">${pIcon('check',14)} <span><b>${escapeHtml(detectedId)}</b> — Bu sizning Telegram ID'ingiz. Fieldni boshqa owner ID'siga o'zgartirish mumkin.</span></div>` : `<div class="plat-owner-id-hint is-warn">${pIcon('info',14)}<span><b>Telegram ID avtomatik aniqlanmadi.</b> ID'ingizni qo'lda kiriting. Agar ID'ingizni bilmasangiz, UStorE botga <b>/id</b> yuboring.</span><button type="button" onclick="detectMyTelegramId()">ID'imni aniqlash</button></div>`}
         <div id="plat-owner-confirm" class="plat-owner-confirm ${ownerValid ? '' : 'is-invalid'}">${pIcon('user',15)} <span>Do'kon quyidagi Telegram ID egasiga biriktiriladi: <b>${escapeHtml(ownerId || '—')}</b></span></div>
         <div class="plat-payment-section-title" style="margin-top:14px"><span>${pIcon('chat',18)}</span><div><b>Bot ma'lumotlari</b><small>Ixtiyoriy — botingiz shu nom/bio/rasm bilan sozlanadi.</small></div></div>
-        <label class="plat-field-pro"><span>Bot nomi (ixtiyoriy)</span><input id="plat-new-shop-bot-name" type="text" maxlength="64" value="${escapeHtml(newShopBotName)}" placeholder="Masalan: FITCORE Shop"></label>
-        <label class="plat-field-pro"><span>Bot bio/tavsifi (ixtiyoriy)</span><textarea id="plat-new-shop-bot-bio" maxlength="500" rows="2" placeholder="Botingiz haqida qisqa matn">${escapeHtml(newShopBotBio)}</textarea></label>
+        <label class="plat-field-pro"><span>Bot nomi (ixtiyoriy)</span><input id="plat-new-shop-bot-name" type="text" maxlength="64" value="${escapeHtml(newShopBotName)}" placeholder="Masalan: FITCORE Shop" oninput="updateNewShopRequestIdentity()"></label>
+        <label class="plat-field-pro"><span>Bot bio/tavsifi (ixtiyoriy)</span><textarea id="plat-new-shop-bot-bio" maxlength="500" rows="2" placeholder="Botingiz haqida qisqa matn" oninput="updateNewShopRequestIdentity()">${escapeHtml(newShopBotBio)}</textarea></label>
         <input type="file" id="plat-new-shop-bot-photo-file" class="hidden" onchange="onNewShopBotPhotoPicked(event)">
         ${newShopBotPhotoFile
           ? `<div class="plat-upload-selected">${newShopBotPhotoPreviewUrl ? `<img src="${newShopBotPhotoPreviewUrl}" alt="Bot rasmi preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(newShopBotPhotoFile.name)}</b><small>${Math.max(1, Math.round(newShopBotPhotoFile.size / 1024))} KB</small></div><button class="secondary" onclick="document.getElementById('plat-new-shop-bot-photo-file').click()" aria-label="Almashtirish" title="Almashtirish">${pIcon('upload',14)}</button><button class="plat-upload-remove" onclick="removeNewShopBotPhoto()" aria-label="Rasmni olib tashlash">×</button></div>`
@@ -1605,6 +1670,10 @@
     const ownerEl = document.getElementById('plat-new-shop-owner');
     if (nameEl) newShopName = String(nameEl.value || '').trimStart().slice(0,80);
     if (ownerEl) newShopOwnerTelegramId = String(ownerEl.value || '').replace(/\D/g,'').slice(0,15);
+    const botNameEl = document.getElementById('plat-new-shop-bot-name');
+    const botBioEl = document.getElementById('plat-new-shop-bot-bio');
+    if (botNameEl) newShopBotName = String(botNameEl.value || '').trimStart().slice(0,64);
+    if (botBioEl) newShopBotBio = String(botBioEl.value || '').slice(0,500);
     if (ownerEl && ownerEl.value !== newShopOwnerTelegramId) ownerEl.value = newShopOwnerTelegramId;
     const confirmEl = document.getElementById('plat-owner-confirm');
     const ownerValid = /^\d{5,15}$/.test(newShopOwnerTelegramId);
@@ -1621,6 +1690,7 @@
       btn.classList.toggle('plat-btn-dimmed', !ready);
       if (ready) btn.setAttribute('onclick','submitSubscriptionRequest()'); else btn.removeAttribute('onclick');
     }
+    saveNewShopLocalDraft();
     scheduleNewShopDraftSync();
   }
   function detectMyTelegramId() {
@@ -1888,6 +1958,7 @@
       }
 
       receiptFile = null;
+      if (flowKind === 'NEW_SHOP') clearNewShopLocalDraft();
       if (receiptPreviewUrl) { try { URL.revokeObjectURL(receiptPreviewUrl); } catch (_) {} }
       receiptPreviewUrl = null;
       try { await loadMyRequests(false); } catch (_) {}
@@ -4123,9 +4194,10 @@
         <div><small>To'langan summa</small><b>${money(r.tariffPrice)}</b></div><div><small>Obuna muddati</small><b>${escapeHtml(String(r.durationDays || 30))} kun</b></div>
         <div><small>Bonus kunlar</small><b>+7 kun</b></div><div><small>Ariza ID</small><b class="is-code">${escapeHtml(r.id)}</b></div>
       </section>
-      <section class="plat-provision-token-card"><div class="plat-application-section-title"><span>${pIcon('lock',17)}</span><div><b>Telegram bot tokeni</b><small>Do'kon botini ulash uchun mavjud xavfsiz provisioning tokeni kerak.</small></div></div><label class="plat-field-pro"><span>Bot token</span><input type="password" id="plat-provision-bot-token" autocomplete="off" placeholder="123456789:AA..."></label></section>
+      <section class="plat-provision-token-card"><div class="plat-application-section-title"><span>${pIcon('bot',17)}</span><div><b>Bot profili avtomatik sozlanadi</b><small>Token tekshirilgach nom, bio/description va JPG profil rasmi Telegram botga avtomatik qo'llanadi. @username o'zgarmaydi.</small></div></div><div class="plat-provision-bot-profile"><div><small>Bot nomi</small><b>${escapeHtml(r.requestedBotName || 'Kiritilmagan')}</b></div><div><small>Bio / tavsif</small><b>${escapeHtml(r.requestedBotBio || 'Kiritilmagan')}</b></div>${r.hasBotPhoto?`<button type="button" class="secondary" onclick="viewBotPhoto('${r.id}')">${pIcon('image',15)} Rasmni ko'rish</button>`:`<small>Profil rasmi kiritilmagan</small>`}</div></section>
+      <section class="plat-provision-token-card"><div class="plat-application-section-title"><span>${pIcon('lock',17)}</span><div><b>Telegram bot tokeni</b><small>Token botni tekshirish, ulash va yuqoridagi profilni avtomatik qo'llash uchun ishlatiladi.</small></div></div><label class="plat-field-pro"><span>Bot token</span><input type="password" id="plat-provision-bot-token" autocomplete="off" placeholder="123456789:AA..."></label></section>
       ${provisioningError ? `<div class="notice error">${escapeHtml(provisioningError)}</div>` : ''}
-      <button class="primary plat-provision-submit ${provisioningSubmitting?'plat-btn-dimmed':''}" ${provisioningSubmitting?'disabled':''} onclick="submitRequestProvisioning()">${provisioningSubmitting?'<span class="spinner"></span> Yaratilmoqda...':`${pIcon('shop',17)} Do'konni yaratish`}</button>`;
+      <button class="primary plat-provision-submit ${provisioningSubmitting?'plat-btn-dimmed':''}" ${provisioningSubmitting?'disabled':''} onclick="submitRequestProvisioning()">${provisioningSubmitting?'<span class="spinner"></span> Yaratilmoqda...':`${pIcon('shop',17)} Ulanish va sozlash`}</button>`;
   }
   async function submitRequestProvisioning() {
     if (provisioningSubmitting || !provisioningRequestId) return;
@@ -4140,6 +4212,8 @@
       }
       const requestId = provisioningRequestId;
       provisioningSuccess = result;
+      if (result?.botProfilePhotoSkipped) showToast("Bot ulandi. Eski arizadagi profil rasmi JPG emasligi sabab rasm avtomatik qo'llanmadi; nom va bio sozlandi.", 'warning');
+      else showToast("Bot ulandi va profil ma'lumotlari avtomatik sozlandi.", 'success');
       await loadRequests();
       await reloadAdminShops();
       await loadRequestHistory(requestId, false);

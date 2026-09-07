@@ -2159,3 +2159,12 @@ html { overflow-anchor: none; }
 .plat-image-source-row>.plat-image-url-field input{min-height:38px;height:38px}
 .plat-url-preview-empty:empty{display:none}
 @media(max-width:330px){.plat-image-source-row{gap:5px}}
+
+/* SEP 07 — provisioning: requested bot profile is an explicit automatic step. */
+.plat-provision-bot-profile{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
+.plat-provision-bot-profile>div{min-width:0;padding:9px 10px;border:1px solid var(--c-border);border-radius:11px;background:#f8fafc}
+.plat-provision-bot-profile small{display:block;font-size:11px;line-height:15px;color:var(--c-text-secondary)}
+.plat-provision-bot-profile b{display:block;margin-top:3px;font-size:12px;line-height:17px;color:var(--c-heading);word-break:break-word}
+.plat-provision-bot-profile>button,.plat-provision-bot-profile>small{grid-column:1/-1}
+.plat-provision-bot-profile>button{min-height:38px;margin:0;display:flex;align-items:center;justify-content:center;gap:7px}
+@media(max-width:374px){.plat-provision-bot-profile{grid-template-columns:1fr}}
