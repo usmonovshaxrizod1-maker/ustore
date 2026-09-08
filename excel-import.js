@@ -113,20 +113,50 @@
     return typeof webApp.isVersionAtLeast!=='function'||webApp.isVersionAtLeast('8.0');
   }
   function browserDownload(url,fileName,pendingWindow) {
-    if(pendingWindow&&!pendingWindow.closed){pendingWindow.location.replace(url);return;}
-    const a=document.createElement('a');a.href=url;a.download=fileName;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();
+    if(pendingWindow&&!pendingWindow.closed){pendingWindow.location.replace(url);return true;}
+    const a=document.createElement('a');a.href=url;a.download=fileName;a.target='_blank';a.rel='noopener';document.body.appendChild(a);a.click();a.remove();return true;
+  }
+  function telegramOpenLink(url) {
+    const webApp=window.Telegram?.WebApp;
+    if(!webApp||typeof webApp.openLink!=='function')return false;
+    try{webApp.openLink(url,{try_instant_view:false});return true;}catch(error){console.warn('Telegram openLink fallback failed',error);return false;}
+  }
+  function fallbackTemplateDownload(url,fileName,pendingWindow) {
+    // Agar foydalanuvchi bosgan paytda oldindan oyna ochilgan bo‘lsa undan
+    // foydalanamiz. Telegram WebView ichida esa openLink popup-blockerga
+    // tushmaydigan eng ishonchli fallback; oddiy brauzerda <a download>.
+    if(pendingWindow&&!pendingWindow.closed){browserDownload(url,fileName,pendingWindow);return 'browser';}
+    if(telegramOpenLink(url))return 'telegram-link';
+    browserDownload(url,fileName,null);return 'browser';
   }
   function startTemplateDownload(url,fileName,pendingWindow) {
     if(!/^https:\/\//i.test(url))throw new Error(xl('Server xavfsiz HTTPS download URL qaytarmadi.','Сервер не вернул безопасный HTTPS URL.'));
     if(canUseTelegramDownload()){
       try{
-        window.Telegram.WebApp.downloadFile({url,file_name:fileName},accepted=>{
-          if(accepted===false){state.templateStatus={type:'info',message:xl('Yuklab olish bekor qilindi.','Загрузка отменена.')};rerender();}
+        const result=window.Telegram.WebApp.downloadFile({url,file_name:fileName},accepted=>{
+          if(accepted===false){
+            try{
+              const mode=fallbackTemplateDownload(url,fileName,pendingWindow);
+              state.templateStatus={type:'success',message:mode==='telegram-link'?xl('Shablon Telegram orqali ochildi.','Шаблон открыт через Telegram.'):xl('Shablonni yuklab olish boshlandi.','Загрузка шаблона началась.')};
+            }catch(error){
+              console.error('Excel template fallback download failed',error);
+              state.templateStatus={type:'error',message:xl('Shablonni yuklab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось скачать шаблон. Попробуйте ещё раз.')};
+            }
+            rerender();
+          }
         });
+        if(result&&typeof result.then==='function'){
+          result.catch(error=>{
+            console.warn('Telegram native download promise failed, using fallback',error);
+            try{fallbackTemplateDownload(url,fileName,pendingWindow);state.templateStatus={type:'success',message:xl('Shablonni yuklab olish boshlandi.','Загрузка шаблона началась.')};}
+            catch(fallbackError){state.templateStatus={type:'error',message:xl('Shablonni yuklab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось скачать шаблон. Попробуйте ещё раз.')};}
+            rerender();
+          });
+        }
         return 'telegram';
       }catch(error){console.warn('Telegram native download failed, using browser fallback',error);}
     }
-    browserDownload(url,fileName,pendingWindow);return 'browser';
+    return fallbackTemplateDownload(url,fileName,pendingWindow);
   }
   async function downloadTemplate() {
     if(state.busy)return;
@@ -138,7 +168,7 @@
       const data=await callApi('get_excel_template_url',{});
       const url=String(data?.url||'');const fileName=String(data?.fileName||'Tovar_import_shablon.xlsx');
       const mode=startTemplateDownload(url,fileName,pendingWindow);
-      state.templateStatus={type:'success',message:mode==='telegram'?xl('Telegram yuklab olish oynasi ochildi.','Открыто окно загрузки Telegram.'):xl('Shablonni yuklab olish boshlandi.','Загрузка шаблона началась.')};
+      state.templateStatus={type:'success',message:mode==='telegram'?xl('Telegram yuklab olish oynasi ochildi.','Открыто окно загрузки Telegram.'):(mode==='telegram-link'?xl('Shablon Telegram orqali ochildi.','Шаблон открыт через Telegram.'):xl('Shablonni yuklab olish boshlandi.','Загрузка шаблона началась.'))};
     }catch(e){
       if(pendingWindow&&!pendingWindow.closed)pendingWindow.close();
       console.error(e);state.templateStatus={type:'error',message:xl('Shablonni tayyorlab bo‘lmadi: ','Не удалось подготовить шаблон: ')+(e.message||e)};
@@ -994,5 +1024,5 @@
     catch(e){console.warn('Last import batch unavailable',e);}
     return true;
   }
-  window.UstoreExcel={prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,doImport,rollbackBatch,reset,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId}};
+  window.UstoreExcel={prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,doImport,rollbackBatch,reset,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload}};
 })();

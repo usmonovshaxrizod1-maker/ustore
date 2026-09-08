@@ -129,7 +129,7 @@
     function showAppNotice(message, preferredState = '') {
       const raw = String(message ?? '');
       const state = preferredState || (/^(✅|✓)/.test(raw) ? 'success' : /^(⚠|⏳)/.test(raw) ? 'saving' : 'error');
-      const duration = state === 'success' ? 1800 : state === 'saving' ? 2400 : 3200;
+      const duration = state === 'success' ? 3000 : state === 'saving' ? 2800 : 4000;
       showActionToast(escapeHtml(raw).replace(/\n/g, '<br>'), state, duration);
     }
     async function appConfirm(message, opts = {}) {
@@ -972,6 +972,8 @@
     let ordersPaused = false;
     let ordersPausedNote = '';
     let ordersPausedSaving = false;
+    let ordersPausedSaveChain = Promise.resolve();
+    let ordersPausedMutationVersion = 0;
     // Banner tizimi (Online Do'kon yaxshilashlari, 17-band).
     let activeBanners = [];
     // Bosh sahifa — tanlangan kataloglar qatori: [{categoryId, productIds}].
@@ -983,11 +985,15 @@
     let returnWindowDays = 7;
     let returnPolicyText = '';
     let orderPoliciesSaving = false;
+    let orderPoliciesSaveChain = Promise.resolve();
+    let orderPoliciesMutationVersion = 0;
     // 042-band: promo-kod/bosqichli/shaxsiy(VIP) chegirmalarni birga
     // ishlatish sozlamasi — Marketing -> Marketing sozlamalari.
     let allowDiscountCombining = false;
     let maxCombinedDiscountPercent = null;
     let marketingSettingsSaving = false;
+    let marketingSettingsSaveChain = Promise.resolve();
+    let marketingSettingsMutationVersion = 0;
     // Mijozning checkout'dagi o'z shaxsiy (VIP) chegirmasini yoqish/o'chirish
     // tanlovi — standart holatda YOQILGAN (avtomatik qo'llanadi), lekin
     // mijoz o'zi belgilab o'chira oladi. Har sessiyada YANGIDAN yoqilgan
@@ -1282,6 +1288,7 @@
     let billzBrowsePageSize = 10;
     let fulfillmentConfig = commerce.defaultConfig(TOP_LEVEL_REGION_IDS);
     let fulfillmentDraft = null;
+    let fulfillmentSavePending = false;
 
     // ---- Block 4: store design/theme ----
     let designSettings = { themeId: 'minimal', colors: {} };
@@ -1618,7 +1625,7 @@
           el.dataset.fcBaseFontSize = String(size);
         }
         const base = Number.parseFloat(el.dataset.fcBaseFontSize);
-        if (Number.isFinite(base)) el.style.fontSize = `${(base * scale).toFixed(2)}px`;
+        if (Number.isFinite(base)) el.style.setProperty('font-size', `${(base * scale).toFixed(2)}px`, 'important');
       }
     }
     // 2026-08-27: pinch-zoom "Marketing ichidagi" (aksiya/promo/sovg'a detail
@@ -1635,12 +1642,26 @@
     // ortiqcha ishlamaydi, faqat body'ga to'g'ridan-to'g'ri appendChild
     // qilingan sheet/modal root'lar uchun ishlaydi).
     new MutationObserver((mutations) => {
+      // Marketing sheetlari ko'pincha bo'sh root'ni body'ga append qilib,
+      // keyin root.innerHTML'ni to'ldiradi. Shuning uchun faqat body direct
+      // child'larini kuzatish yetmaydi. Zoom 0 bo'lganda mutatsiyalarni
+      // umuman qayta o'lchamaymiz; zoom faol bo'lsa esa qo'shilgan eng yuqori
+      // root'largina scale qilinadi — bir mutatsiyada yuzlab child uchun
+      // takroriy ish bo'lmaydi.
+      if (textZoomLevel === 0) return;
+      const roots = [];
       for (const m of mutations) {
         for (const node of m.addedNodes) {
-          if (node instanceof HTMLElement) applyVisibleTextScale(node);
+          if (!(node instanceof HTMLElement)) continue;
+          if (roots.some(parent => parent.contains(node))) continue;
+          for (let i = roots.length - 1; i >= 0; i--) {
+            if (node.contains(roots[i])) roots.splice(i, 1);
+          }
+          roots.push(node);
         }
       }
-    }).observe(document.body, { childList: true });
+      for (const root of roots) applyVisibleTextScale(root);
+    }).observe(document.body, { childList: true, subtree: true });
     applyTextZoom(textZoomLevel);
     function setTextZoom(level) {
       applyTextZoom(level);
@@ -1749,7 +1770,7 @@
     }
     // Admin kiritgan tovar nomi/tavsifi — ruscha tarjimasi bo'lsa va til
     // ruscha tanlangan bo'lsa o'shani, aks holda o'zbekchasini ko'rsatadi.
-    function productName(p) { return (uiLang === 'ru' && p.nameRu) ? p.nameRu : p.name; }
+    function productName(p) { if (!p) return ''; return (uiLang === 'ru' && p.nameRu) ? p.nameRu : (p.name || ''); }
     // 5-band: buyurtma ichidagi item — order yaratilganda snapshot qilingan
     // nameRu (create_order action) bo'lsa o'shani, bo'lmasa (eski buyurtmalar)
     // o'zbekchasini ko'rsatadi.
@@ -1862,7 +1883,7 @@
       return totals;
     }
     function getMissingImageProducts() {
-      return products.filter(p => p.status !== 'DELETED' && !hasProductImage(p));
+      return products.filter(p => p && p.id !== null && p.id !== undefined && p.status !== 'DELETED' && !hasProductImage(p));
     }
     function categoryPathForProduct(product) {
       const byId = new Map(categories.map(c => [String(c.id), c]));
@@ -1946,42 +1967,18 @@
     // o'sha token bilan initData'ni tasdiqlaydi — shundan keyingina haqiqiy
     // ctx.shopId hosil bo'ladi. BOT_ID'ni frontendda "ishonch" sifatida
     // umuman ishlatilmaydi.
-    let visibleMutationCount = 0;
-    let visibleMutationTimer = null;
+    // Mutation requests are deliberately NON-BLOCKING. Individual actions
+    // own their optimistic UI + contextual success/error toast; callApi()
+    // never shows a generic "Amal bajarilmoqda..." overlay/toast.
     function apiActionNeedsProgress(action) {
-      // send_support_message: excluded because submitSupportComposer()/
-      // submitAdminSupportReply()/retrySupportMessage() already show their
-      // OWN dedicated optimistic "Yuborilmoqda..." bubble inline in the
-      // thread the instant the user sends — a SECOND, generic "Amal
-      // bajarilmoqda..." toast popping up (after 350ms) on top of that was
-      // redundant, visually competing feedback that read as the chat
-      // "getting stuck", per direct user report.
-      return !(action === 'boot' || action.startsWith('get_') || action.endsWith('_list') || action === 'marketing_summary'
-        || ['save_cart_snapshot','record_product_view','mark_support_read','search_delivery_branches','send_support_message'].includes(action));
+      if (action === 'send_support_message') return false;
+      return false;
     }
-    function beginVisibleMutation() {
-      visibleMutationCount += 1;
-      if (visibleMutationCount !== 1) return;
-      clearTimeout(visibleMutationTimer);
-      visibleMutationTimer = setTimeout(() => {
-        const el=document.getElementById('action-toast');
-        if(!el)return;
-        el.dataset.autoBusy='true'; el.dataset.state='saving';
-        el.innerHTML=`<span class="fc-spinner fc-spinner-xs"></span> ${tr('Amal bajarilmoqda...','Выполняется...')}`;
-        el.classList.remove('hidden');
-      },350);
-    }
-    function endVisibleMutation() {
-      visibleMutationCount=Math.max(0,visibleMutationCount-1);
-      if(visibleMutationCount)return;
-      clearTimeout(visibleMutationTimer); visibleMutationTimer=null;
-      const el=document.getElementById('action-toast');
-      if(el?.dataset.autoBusy==='true'){delete el.dataset.autoBusy;el.classList.add('hidden');}
-    }
+    function beginVisibleMutation() {}
+    function endVisibleMutation() {}
     async function callApi(action, payload) {
       const perfStarted = performance.now();
-      const showAutomaticProgress = apiActionNeedsProgress(action);
-      if (showAutomaticProgress) beginVisibleMutation();
+      const showAutomaticProgress = false;
       const initData = tg?.initData || '';
       const controller = new AbortController();
       const timeoutMs = action === 'bulk_import_products' ? 45000
@@ -2017,7 +2014,6 @@
         }
         throw e;
       } finally {
-        if (showAutomaticProgress) endVisibleMutation();
         clearTimeout(timeoutId);
         const ms = Math.round(performance.now() - perfStarted);
         if (ms >= 500) console.info(`[USTORE perf] Edge ${action}: ${ms}ms`);
@@ -4986,19 +4982,45 @@
       legalDraft = JSON.parse(JSON.stringify(legalDocuments || []));
       openPage('LEGAL_SETTINGS');
     }
+    function legalDraftIsDirty() {
+      if (!legalDraft) return false;
+      try { return JSON.stringify(legalDraft) !== JSON.stringify(legalDocuments || []); }
+      catch (_) { return true; }
+    }
+    function syncLegalActionVisibility() {
+      const actions = document.getElementById('legal-dirty-actions');
+      if (actions) actions.classList.toggle('hidden', !legalDraftIsDirty());
+    }
+    function cancelLegalDraftChanges() {
+      legalDraft = JSON.parse(JSON.stringify(legalDocuments || []));
+      render();
+    }
     function setLegalDocumentEnabled(type, enabled) {
       const doc = (legalDraft || []).find(d => d.type === type);
-      if (doc) doc.enabled = !!enabled;
-      render();
+      if (!doc) return;
+      doc.enabled = !!enabled;
+      // Toggle faqat o'z kartasini yangilaydi. Butun sahifani render() qilish
+      // scroll/focusni tepaga uloqtirar va switchni "qotgandek" ko'rsatardi.
+      const card = document.querySelector(`[data-legal-doc-type="${CSS.escape(String(type))}"]`);
+      if (!card) return;
+      card.classList.toggle('is-enabled', doc.enabled);
+      const state = card.querySelector('.fc-legal-doc-state');
+      if (state) {
+        state.classList.toggle('is-on', doc.enabled);
+        state.innerHTML = `<i data-lucide="${doc.enabled ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>${doc.enabled ? tr('Ro‘yxatdan o‘tishda foydalanuvchiga ko‘rinadi va rozilik majburiy.','Показывается при регистрации, согласие обязательно.') : tr('O‘chirilgan — foydalanuvchiga ko‘rinmaydi.','Выключено — пользователю не показывается.')}`;
+      }
+      syncLegalActionVisibility();
+      safeCreateIcons();
     }
     function setLegalDocumentContent(type, lang, value) {
       const doc = (legalDraft || []).find(d => d.type === type);
       if (!doc) return;
       if (lang === 'ru') doc.contentRu = String(value ?? ''); else doc.contentUz = String(value ?? '');
+      syncLegalActionVisibility();
     }
     function legalDocumentCardHtml(doc) {
       const enabled = doc?.enabled === true;
-      return `<section class="fc-legal-doc-card ${enabled ? 'is-enabled' : ''}">
+      return `<section class="fc-legal-doc-card ${enabled ? 'is-enabled' : ''}" data-legal-doc-type="${escapeHtml(doc.type)}">
         <div class="fc-legal-doc-head">
           <span class="fc-legal-doc-icon"><i data-lucide="${doc.type === 'PRIVACY' ? 'shield-check' : 'file-signature'}" class="w-5 h-5"></i></span>
           <div class="min-w-0"><b>${escapeHtml(legalDocTitle(doc))}</b><small>${tr(`Versiya ${Number(doc.version)||1}`, `Версия ${Number(doc.version)||1}`)}</small></div>
@@ -5024,7 +5046,7 @@
           <div><b>${tr('Umumiy huquqiy shablon','Общий юридический шаблон')}</b><p>${tr("UStorE amaldagi O‘zbekiston qonunchiligiga tayangan umumiy shablonni beradi. Xohlasangiz shu holicha yoqing, xohlasangiz do‘koningizga moslab tahrirlang. Bu individual yuridik xulosa emas; maxsus faoliyat yoki tovarlar bo‘lsa moslashtirish tavsiya etiladi.", "UStorE предоставляет общий шаблон на основе действующего законодательства Узбекистана. Можно включить его как есть или адаптировать под магазин. Это не индивидуальное юридическое заключение; для специальных видов деятельности рекомендуется адаптация.")}</p></div>
         </div>
         <div class="fc-legal-doc-list">${docs.map(legalDocumentCardHtml).join('')}</div>
-        <div class="fc-legal-savebar fc-icon-action-bar"><button type="button" onclick="saveLegalSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
+        <div id="legal-dirty-actions" class="fc-legal-savebar fc-icon-action-bar ${legalDraftIsDirty() ? '' : 'hidden'}"><button type="button" onclick="saveLegalSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-[18px] h-[18px]"></i></button><button type="button" onclick="cancelLegalDraftChanges()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-[18px] h-[18px]"></i></button></div>
       </div>`;
       renderPageShell(container, tr('Huquqiy hujjatlar','Правовые документы'), body, { onBack: "legalDraft=null;openPage('SETTINGS')" });
     }
@@ -5033,17 +5055,15 @@
       for (const d of docs) {
         if (d.contentUz.length < 200) return showAppNotice(tr('Har bir hujjatning o‘zbekcha matni yetarlicha to‘liq bo‘lishi kerak.','Узбекский текст каждого документа должен быть заполнен.'));
       }
-      showActionToast(tr('Huquqiy hujjatlar saqlanmoqda...','Сохранение правовых документов...'),'saving');
       try {
         const result = await callApi('set_legal_documents', { documents: docs });
         legalDocuments = Array.isArray(result.legalDocuments) ? result.legalDocuments : legalDocuments;
         legalDraft = JSON.parse(JSON.stringify(legalDocuments));
-        showActionToast(tr('Huquqiy hujjatlar saqlandi','Правовые документы сохранены'),'success',1600);
+        showActionToast(tr('Huquqiy hujjatlar saqlandi','Правовые документы сохранены'),'success',3000);
         render();
       } catch (e) {
         console.error(e);
-        showActionToast(tr('Hujjatlar saqlanmadi','Документы не сохранены'),'error',1800);
-        showAppNotice(tr('Saqlashda xatolik: ','Ошибка сохранения: ') + (e.message || e));
+        showActionToast(tr('Huquqiy hujjatlarni saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить правовые документы. Попробуйте ещё раз.'),'error',4000);
       }
     }
     function renderRegistrationLegalConsentsHtml() {
@@ -5068,10 +5088,19 @@
     }
     function openOrderPauseSettingsPage() { if (isUserAnAdmin && isAdminMode) openPage('ORDER_PAUSE_SETTINGS'); }
     function closeOrderPauseSettingsPage() { openPage('SETTINGS', 'nav-profile'); }
+    function orderPauseDetailCardHtml() {
+      const noteRow = ordersPaused ? `<div class="fc-pause-note-row"><textarea id="orders-paused-note" rows="2" placeholder="${tr('Ixtiyoriy izoh, masalan: Bugun inventarizatsiya sababli buyurtmalar qabul qilinmaydi.', 'Необязательный комментарий, например: Сегодня заказы не принимаются из-за инвентаризации.')}" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea><button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-action-icon-btn is-save" aria-label="${tr('Izohni saqlash','Сохранить комментарий')}" title="${tr('Izohni saqlash','Сохранить комментарий')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>` : '';
+      return `<section class="fc-settings-detail-card"><div class="fc-settings-toggle-row"><span class="fc-settings-menu-icon"><i data-lucide="pause-circle" class="w-5 h-5"></i></span><div class="fc-settings-menu-copy"><b>${tr("Buyurtmalarni vaqtincha qabul qilmaslik", "Временно не принимать заказы")}</b><small>${tr("Katalog ko'rinishda qoladi, faqat yangi buyurtma berish vaqtincha to'xtatiladi.", "Каталог остаётся видимым, приостанавливается только оформление новых заказов.")}</small></div><label class="fc-toggle"><input type="checkbox" ${ordersPaused ? 'checked' : ''} onchange="toggleOrdersPaused(this.checked)"><span class="fc-toggle-track"></span></label></div>${noteRow}</section>`;
+    }
+    function rerenderOrderPauseDetailCard() {
+      const current = document.querySelector('.fc-settings-detail-card');
+      if (!current || activePage !== 'ORDER_PAUSE_SETTINGS') return;
+      const holder = document.createElement('div'); holder.innerHTML = orderPauseDetailCardHtml();
+      if (holder.firstElementChild) current.replaceWith(holder.firstElementChild);
+      safeCreateIcons();
+    }
     function renderOrderPauseSettingsPage(container) {
-      const noteRow = ordersPaused ? `<div class="fc-pause-note-row"><textarea id="orders-paused-note" rows="2" placeholder="${tr('Ixtiyoriy izoh, masalan: Bugun inventarizatsiya sababli buyurtmalar qabul qilinmaydi.', 'Необязательный комментарий, например: Сегодня заказы не принимаются из-за инвентаризации.')}" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea><button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-action-icon-btn is-save" ${ordersPausedSaving ? 'disabled' : ''} aria-label="${tr('Izohni saqlash','Сохранить комментарий')}" title="${tr('Izohni saqlash','Сохранить комментарий')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>` : '';
-      const body = `<section class="fc-settings-detail-card"><div class="fc-settings-toggle-row"><span class="fc-settings-menu-icon"><i data-lucide="pause-circle" class="w-5 h-5"></i></span><div class="fc-settings-menu-copy"><b>${tr("Buyurtmalarni vaqtincha qabul qilmaslik", "Временно не принимать заказы")}</b><small>${tr("Katalog ko'rinishda qoladi, faqat yangi buyurtma berish vaqtincha to'xtatiladi.", "Каталог остаётся видимым, приостанавливается только оформление новых заказов.")}</small></div><label class="fc-toggle"><input type="checkbox" ${ordersPaused ? 'checked' : ''} onchange="toggleOrdersPaused(this.checked)" ${ordersPausedSaving ? 'disabled' : ''}><span class="fc-toggle-track"></span></label></div>${noteRow}</section>`;
-      renderPageShell(container, tr('Buyurtmalarni qabul qilish','Приём заказов'), body, { onBack:'closeOrderPauseSettingsPage()' });
+      renderPageShell(container, tr('Buyurtmalarni qabul qilish','Приём заказов'), orderPauseDetailCardHtml(), { onBack:'closeOrderPauseSettingsPage()' });
     }
 
     function renderSettingsPage(container) {
@@ -5089,50 +5118,85 @@
       renderPageShell(container, tr("Do'kon sozlamalari", 'Настройки магазина'), body);
     }
 
+    function rerenderOrderPolicyPanel() {
+      const current = document.querySelector('.fc-order-policy-panel');
+      if (!current) return;
+      const holder = document.createElement('div');
+      holder.innerHTML = renderOrderPolicySettingsPanel();
+      const next = holder.firstElementChild;
+      if (next) current.replaceWith(next);
+      safeCreateIcons();
+    }
+    function applyOrderPolicyPatch(patch) {
+      if (patch.customerCancelCutoff !== undefined) customerCancelCutoff = String(patch.customerCancelCutoff || 'BEFORE_SHIPPED');
+      if (patch.returnRequestsEnabled !== undefined) returnRequestsEnabled = !!patch.returnRequestsEnabled;
+      if (patch.returnWindowDays !== undefined) returnWindowDays = Math.max(1, Math.min(365, Number(patch.returnWindowDays) || 7));
+      if (patch.returnPolicyText !== undefined) returnPolicyText = String(patch.returnPolicyText || '');
+    }
+    function orderPolicyToastFor(patch) {
+      if (patch.returnWindowDays !== undefined) return tr(`Qaytarish muddati ${returnWindowDays} kunga o‘zgartirildi`, `Срок возврата изменён на ${returnWindowDays} дн.`);
+      if (patch.returnRequestsEnabled !== undefined) return patch.returnRequestsEnabled ? tr('Qaytarish yoqildi','Возврат включён') : tr('Qaytarish o‘chirildi','Возврат выключен');
+      if (patch.customerCancelCutoff !== undefined) return tr('Bekor qilish sharti o‘zgartirildi','Условие отмены изменено');
+      if (patch.returnPolicyText !== undefined) return tr('Qaytarish qoidasi saqlandi','Правило возврата сохранено');
+      return tr('Sozlama saqlandi','Настройка сохранена');
+    }
     async function saveOrderPolicies(patch) {
-      orderPoliciesSaving = true;
-      render();
+      const normalized = { ...patch };
+      if (normalized.returnWindowDays !== undefined) normalized.returnWindowDays = Math.max(1, Math.min(365, Number(normalized.returnWindowDays) || 7));
+      const before = {
+        customerCancelCutoff, returnRequestsEnabled, returnWindowDays, returnPolicyText,
+      };
+      const version = ++orderPoliciesMutationVersion;
+      applyOrderPolicyPatch(normalized);
+      rerenderOrderPolicyPanel();
+      const task = orderPoliciesSaveChain.catch(() => {}).then(() => callApi('set_order_policies', normalized));
+      orderPoliciesSaveChain = task.catch(() => {});
       try {
-        await callApi('set_order_policies', patch);
-        if (patch.customerCancelCutoff !== undefined) customerCancelCutoff = patch.customerCancelCutoff;
-        if (patch.returnRequestsEnabled !== undefined) returnRequestsEnabled = patch.returnRequestsEnabled;
-        if (patch.returnWindowDays !== undefined) returnWindowDays = Math.max(1, Number(patch.returnWindowDays) || 7);
-        if (patch.returnPolicyText !== undefined) returnPolicyText = String(patch.returnPolicyText || '');
+        await task;
+        if (version === orderPoliciesMutationVersion) showActionToast(orderPolicyToastFor(normalized), 'success', 3000);
       } catch (e) {
-        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
-      } finally {
-        orderPoliciesSaving = false;
-        render();
+        if (version === orderPoliciesMutationVersion) {
+          const rollback = {};
+          Object.keys(normalized).forEach(key => { rollback[key] = before[key]; });
+          applyOrderPolicyPatch(rollback);
+          rerenderOrderPolicyPanel();
+          showActionToast(tr('Saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить. Попробуйте ещё раз.'), 'error', 4000);
+        }
       }
     }
 
     async function toggleOrdersPaused(checked) {
-      ordersPausedSaving = true;
-      render();
+      const previous = ordersPaused;
+      const version = ++ordersPausedMutationVersion;
+      ordersPaused = !!checked;
+      // Toggle o‘zi allaqachon yangi holatga o‘tdi. Qo‘shimcha UI (izoh maydoni)
+      // kerak bo‘lsa sahifani darhol yangilaymiz, server javobini kutmaymiz.
+      if (activePage === 'ORDER_PAUSE_SETTINGS') rerenderOrderPauseDetailCard();
+      const task = ordersPausedSaveChain.catch(() => {}).then(() => callApi('set_orders_paused', { paused: !!checked, note: ordersPausedNote }));
+      ordersPausedSaveChain = task.catch(() => {});
       try {
-        await callApi('set_orders_paused', { paused: checked, note: ordersPausedNote });
-        ordersPaused = checked;
+        await task;
+        if (version === ordersPausedMutationVersion) showActionToast(checked ? tr('Buyurtmalarni qabul qilish to‘xtatildi','Приём заказов приостановлен') : tr('Buyurtmalarni qabul qilish yoqildi','Приём заказов включён'), 'success', 3000);
       } catch (e) {
-        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
-      } finally {
-        ordersPausedSaving = false;
-        render();
+        if (version === ordersPausedMutationVersion) {
+          ordersPaused = previous;
+          if (activePage === 'ORDER_PAUSE_SETTINGS') rerenderOrderPauseDetailCard();
+          showActionToast(tr('Saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить. Попробуйте ещё раз.'), 'error', 4000);
+        }
       }
     }
     async function saveOrdersPausedNote(value) {
       const old = ordersPausedNote;
-      ordersPausedNote = String(value || '').slice(0, 500);
-      ordersPausedSaving = true;
-      render();
+      const next = String(value || '').slice(0, 500);
+      ordersPausedNote = next;
       try {
-        await callApi('set_orders_paused', { paused: true, note: ordersPausedNote });
-        showActionToast(tr("✅ Izoh saqlandi", "✅ Комментарий сохранён"), 'success', 1400);
+        await callApi('set_orders_paused', { paused: true, note: next });
+        showActionToast(tr('Izoh saqlandi','Комментарий сохранён'), 'success', 3000);
       } catch (e) {
         ordersPausedNote = old;
-        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
-      } finally {
-        ordersPausedSaving = false;
-        render();
+        const textarea = document.getElementById('orders-paused-note');
+        if (textarea) textarea.value = old;
+        showActionToast(tr('Saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить. Попробуйте ещё раз.'), 'error', 4000);
       }
     }
 
@@ -5164,8 +5228,9 @@
       const icons = { primary:'circle-dot', pageBg:'panel-top', cardBg:'square', text:'type', secondaryText:'text', button:'mouse-pointer-2', buttonText:'type', headerBg:'panel-top-open', headerText:'type', bottomNavBg:'panel-bottom', bottomNavText:'type', accent:'sparkles', secondaryButton:'square', panelBg:'layers-3', inputBg:'search', border:'box', mutedText:'align-left' };
       return keys.map(key => `<div class="fc-design-color-row-v2"><button type="button" onclick="highlightDesignToken('${key}')" class="fc-design-color-target" title="${tr("Qayerda ishlatilishini ko'rsatish", 'Показать, где используется')}"><span class="fc-design-color-icon"><i data-lucide="${icons[key]||'palette'}" class="w-4 h-4"></i></span></button><div class="fc-design-color-copy"><b>${DESIGN_COLOR_LABELS[key]}</b><small>${DESIGN_COLOR_HELP[key]||''}</small></div><label class="fc-design-swatch" title="${DESIGN_COLOR_LABELS[key]}"><input type="color" value="${activeColors[key]}" onchange="setDesignColor('${key}',this.value)"><span style="background:${activeColors[key]}"></span></label><input class="fc-design-hex-input-v2" type="text" value="${activeColors[key].toUpperCase()}" maxlength="7" spellcheck="false" onchange="setDesignColor('${key}',this.value)" onkeydown="if(event.key==='Enter')this.blur()" aria-label="${DESIGN_COLOR_LABELS[key]} HEX"></div>`).join('');
     }
+    function cancelDesignDraftChanges() { designDraft = cloneData(designSettings); applyDesignColors(designSettings.colors, designSettings.themeId); render(); }
     function renderDesignRootFooterHtml(issues) {
-      return `<div class="fc-design-footer-v2 fc-icon-action-bar"><button onclick="closeDesignSettings()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveDesignSettings()" class="fc-action-icon-btn is-save" ${issues.length?'disabled':''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>`;
+      return `<div class="fc-design-footer-v2 fc-icon-action-bar ${designDraftIsDirty() ? '' : 'hidden'}"><button onclick="cancelDesignDraftChanges()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveDesignSettings()" class="fc-action-icon-btn is-save" ${issues.length?'disabled':''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>`;
     }
     function renderDesignSettingsPage(container) {
       const draft = designDraft || { themeId: designSettings.themeId || 'minimal', colors: designSettings.colors || {} };
@@ -5198,7 +5263,7 @@
         <section class="fc-design-section-v2"><button type="button" onclick="toggleDesignAdvanced()" class="fc-design-advanced-toggle"><span><i data-lucide="sliders-horizontal" class="w-4 h-4"></i><span><b>${tr('Kengaytirilgan sozlamalar','Расширенные настройки')}</b><small>${tr('Yordamchi panellar, border va xira matnlar','Дополнительные панели, границы и приглушённый текст')}</small></span></span><i data-lucide="${designAdvancedOpen?'chevron-up':'chevron-down'}" class="w-4 h-4"></i></button>${designAdvancedOpen?`<div class="fc-design-color-list-v2 is-advanced">${renderDesignColorRows(DESIGN_ADVANCED_KEYS,activeColors)}</div>`:''}</section>
         ${issues.length?`<section class="fc-design-contrast-card is-warning"><div class="fc-design-contrast-icon"><i data-lucide="triangle-alert" class="w-5 h-5"></i></div><div class="fc-design-contrast-copy"><b>${tr("O'qilishi qiyin joylar bor", 'Есть проблемы читаемости')}</b>${issues.map(i=>`<small>${escapeHtml(i.pair)} · ${i.ratio.toFixed(1)}:1</small>`).join('')}<button type="button" onclick="autoFixDesignContrast()"><i data-lucide="wand-sparkles" class="w-4 h-4"></i>${tr(`${issues.length} ta muammoni avtomatik to'g'rilash`, `Исправить автоматически (${issues.length})`)}</button></div></section>`:`<section class="fc-design-contrast-card is-ok"><div class="fc-design-contrast-icon"><i data-lucide="shield-check" class="w-5 h-5"></i></div><div class="fc-design-contrast-copy"><b>${tr('Dizayn o‘qilishi yaxshi','Хорошая читаемость дизайна')}</b><small>${tr('Asosiy matn, tugma va panellar kontrasti tekshirildi.','Контраст текста, кнопок и панелей проверен.')}</small></div></section>`}
         <section class="fc-design-reset-actions"><button type="button" onclick="resetDesignDraftToSaved()"><i data-lucide="history" class="w-4 h-4"></i><span><b>${tr('Oxirgi saqlangan holat','Последний сохранённый')}</b><small>${tr("Saqlanmagan o'zgarishlarni bekor qiladi", 'Отменяет несохранённые изменения')}</small></span></button><button type="button" onclick="resetDesignDraftToDefault()" class="is-danger"><i data-lucide="rotate-ccw" class="w-4 h-4"></i><span><b>${tr('Standart holatga qaytarish','Вернуть стандартный')}</b><small>${tr('Minimal dizayn ranglarini tiklaydi','Восстанавливает цвета Minimal')}</small></span></button></section>
-        <div class="fc-design-footer-v2 fc-icon-action-bar"><button onclick="closeDesignCustomEditor()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Orqaga','Назад')}" title="${tr('Orqaga','Назад')}"><i data-lucide="arrow-left" class="w-5 h-5"></i></button><button onclick="saveDesignSettings()" class="fc-action-icon-btn is-save" ${issues.length?'disabled':''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
+        ${renderDesignRootFooterHtml(issues)}
       </div>`;
       renderPageShell(container, tr("O'zim yarataman", 'Создать самому'), body, { onBack:'closeDesignCustomEditor()' });
     }
@@ -5213,7 +5278,7 @@
       return `<section class="fc-order-policy-panel">
         <div class="fc-order-policy-head"><span class="fc-shop-settings-icon"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></span><div><b>${tr('Qaytarish va bekor qilish','Возврат и отмена')}</b><small>${tr('Bekor qilish va qaytarish muddatlarini boshqaring.','Настройте отмену и срок возврата.')}</small></div></div>
         <div class="fc-order-policy-row"><div><b>${tr('Mijoz qachongacha bekor qila oladi','До какого момента клиент может отменить')}</b></div><div class="fc-policy-segments">${cancelOptions.map(([id,label])=>`<button type="button" onclick="saveOrderPolicies({customerCancelCutoff:'${id}'})" class="${customerCancelCutoff===id?'is-active':''}">${label}</button>`).join('')}</div></div>
-        <div class="fc-order-policy-row is-toggle"><div><b>${tr('Qaytarishni yoqish','Разрешить возврат')}</b><small>${tr('Oddiy muammo/support murojaati bundan mustaqil ishlaydi.','Обычная поддержка работает независимо.')}</small></div><label class="fc-toggle"><input type="checkbox" ${returnRequestsEnabled?'checked':''} onchange="saveOrderPolicies({returnRequestsEnabled:this.checked})" ${orderPoliciesSaving?'disabled':''}><span class="fc-toggle-track"></span></label></div>
+        <div class="fc-order-policy-row is-toggle"><div><b>${tr('Qaytarishni yoqish','Разрешить возврат')}</b><small>${tr('Oddiy muammo/support murojaati bundan mustaqil ishlaydi.','Обычная поддержка работает независимо.')}</small></div><label class="fc-toggle"><input type="checkbox" ${returnRequestsEnabled?'checked':''} onchange="saveOrderPolicies({returnRequestsEnabled:this.checked})"><span class="fc-toggle-track"></span></label></div>
         ${returnRequestsEnabled ? `<div class="fc-order-policy-row"><div><b>${tr('Qaytarish muddati','Срок возврата')}</b><small>${tr('Yetkazilgan vaqtdan boshlab hisoblanadi.','Считается с момента доставки.')}</small></div><div class="fc-return-days">${dayOptions.map(d=>`<button type="button" onclick="saveOrderPolicies({returnWindowDays:${d}})" class="${Number(returnWindowDays)===d?'is-active':''}">${d}</button>`).join('')}<label><input type="number" min="1" max="365" value="${escapeHtml(String(returnWindowDays))}" onchange="saveOrderPolicies({returnWindowDays:this.value})"><span>${tr('kun','дн.')}</span></label></div></div>
         <label class="fc-order-policy-text"><span>${tr('Qaytarish bo‘yicha qoida / izoh','Правила / инструкция возврата')}</span><textarea rows="2" maxlength="1200" placeholder="${tr('Masalan: mahsulot va qadoq holati...','Например: состояние товара и упаковки...')}" onchange="saveOrderPolicies({returnPolicyText:this.value})">${escapeHtml(returnPolicyText)}</textarea></label>` : ''}
       </section>`;
@@ -5240,6 +5305,31 @@
       const kinds = ['FREE','FIXED','TAXI','POST'];
       return `<div class="fc-acquiring-integration-list fc-delivery-menu-list">${kinds.map(kind=>{const meta=DELIVERY_PAGE_META[kind]; return `<button type="button" onclick="setDeliveryPageView('${kind}')" class="fc-acquiring-integration-card"><span class="fc-acquiring-integration-icon"><i data-lucide="${meta.icon}" class="w-5 h-5"></i></span><span class="fc-acquiring-integration-copy"><b>${meta.title()}</b><small>${deliveryMethodStatus(kind)}</small></span><span class="fc-acquiring-integration-chevron">›</span></button>`}).join('')}</div>`;
     }
+    function fulfillmentDraftDirty() {
+      if (!fulfillmentDraft) return false;
+      try { return JSON.stringify(fulfillmentDraft) !== JSON.stringify(fulfillmentConfig); }
+      catch (_) { return true; }
+    }
+    function fulfillmentDraftActionHtml(extraClass = '') {
+      return `<div id="fulfillment-dirty-actions" class="${extraClass} fc-icon-action-bar ${fulfillmentDraftDirty() ? '' : 'hidden'}"><button type="button" onclick="saveFulfillmentSettings()" class="fc-action-icon-btn is-save" ${fulfillmentSavePending ? 'disabled' : ''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-[18px] h-[18px]"></i></button><button type="button" onclick="cancelFulfillmentDraftChanges()" class="fc-action-icon-btn is-cancel" ${fulfillmentSavePending ? 'disabled' : ''} aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-[18px] h-[18px]"></i></button></div>`;
+    }
+    function paymentViewUsesFulfillmentDraftActions() {
+      if (['CASH','CARD','QR'].includes(paymentsPageView)) return true;
+      if (paymentsPageView === 'ACQUIRING_CLICK') return clickConnectionStatus?.status === 'CONNECTED' && clickConnectionStatus?.verified === true;
+      if (paymentsPageView === 'ACQUIRING_PAYME') return paymeConnectionStatus?.status === 'CONNECTED' && paymeConnectionStatus?.verified === true;
+      return false;
+    }
+    function syncFulfillmentActionVisibility() {
+      const el = document.getElementById('fulfillment-dirty-actions');
+      if (!el) return;
+      el.classList.toggle('hidden', !fulfillmentDraftDirty());
+    }
+    function cancelFulfillmentDraftChanges() {
+      if (fulfillmentSavePending) return;
+      fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
+      rerenderFulfillmentBody();
+      syncFulfillmentActionVisibility();
+    }
     function renderDeliverySettingsPage(container) {
       if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
       fulfillmentSettingsSection = 'DELIVERY';
@@ -5250,7 +5340,7 @@
         return;
       }
       fulfillmentDeliveryKind = view;
-      const body = `<div class="space-y-3 text-xs"><div id="fulfillment-panel"><div id="fulfillment-body" class="fc-delivery-body-shell">${renderFulfillmentDeliveryBody()}</div></div><div class="fc-delivery-footer fc-icon-action-bar"><button onclick="saveFulfillmentSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button><button onclick="cancelDeliveryMethodDetail()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button></div></div>`;
+      const body = `<div class="space-y-3 text-xs"><div id="fulfillment-panel"><div id="fulfillment-body" class="fc-delivery-body-shell">${renderFulfillmentDeliveryBody()}</div></div>${fulfillmentDraftActionHtml('fc-delivery-footer')}</div>`;
       renderPageShell(container, DELIVERY_PAGE_META[view].title(), body, { onBack:'closeDeliveryMethodDetail()' });
     }
 
@@ -5292,7 +5382,7 @@
       const body = `
         <div class="space-y-3 text-xs">
           <div id="fulfillment-panel">${renderFulfillmentPaymentsPanel()}</div>
-          <div class="fc-settings-sticky-actions fc-icon-action-bar"><button onclick="saveFulfillmentSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button><button onclick="closeFulfillmentSettingsPage()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button></div>
+          ${paymentViewUsesFulfillmentDraftActions() ? fulfillmentDraftActionHtml('fc-settings-sticky-actions') : ''}
         </div>
       `;
       const view = PAYMENTS_PAGE_TITLES[paymentsPageView] ? paymentsPageView : 'MENU';
@@ -6037,9 +6127,11 @@
 
     function renderAdminCommandCenterOverlay() {
       let root = document.getElementById('fc-admin-command-center-root');
+      const wasAlreadyOpen = !!root;
       const previousScrollTop = root?.querySelector('.fc-command-scroll')?.scrollTop || 0;
       if (!adminCommandCenterOpen || !(isAdminMode && isUserAnAdmin)) { if (root) root.remove(); return; }
       if (!root) { root = document.createElement('div'); root.id='fc-admin-command-center-root'; document.body.appendChild(root); }
+      root.toggleAttribute('data-refreshing', wasAlreadyOpen);
       const c = adminActionCenter || {};
       const d = dashboardLiteData;
       const salesToday = Number(d?.sales?.today || 0);
@@ -6054,8 +6146,8 @@
       const latest = [...orders].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).slice(0,5);
       const attention = adminAttentionRows();
       const orderBuckets = d?.orders || {};
-      const loading = adminCommandCenterLoading && !d;
-      root.innerHTML = `<div class="fc-command-backdrop" onclick="if(event.target===this) closeAdminCommandCenter()"><section class="fc-command-panel" role="dialog" aria-modal="true" aria-label="${tr('Boshqaruv markazi','Центр управления')}" onclick="event.stopPropagation()">
+      const loading = !d;
+      const nextMarkup = `<div class="fc-command-backdrop" onclick="if(event.target===this) closeAdminCommandCenter()"><section class="fc-command-panel" role="dialog" aria-modal="true" aria-label="${tr('Boshqaruv markazi','Центр управления')}" onclick="event.stopPropagation()">
         <header class="fc-command-header"><div><span class="fc-command-shop">${escapeHtml(shopDisplayName())}</span><span class="fc-command-kicker">${tr('Boshqaruv markazi','Центр управления')}</span></div><div class="fc-command-view-actions"><button type="button" onclick="adminCommandCenterOpenAdminPanel()" class="fc-command-view-btn is-admin" title="${tr('Admin sifatida ko‘rish','Открыть как администратор')}"><i data-lucide="layout-dashboard" class="w-4 h-4"></i><span>${tr('Admin sifatida','Как админ')}</span></button><button type="button" onclick="adminCommandCenterOpenStorefront()" class="fc-command-view-btn is-store" title="${tr('User sifatida ko‘rish','Открыть как пользователь')}"><i data-lucide="store" class="w-4 h-4"></i><span>${tr('User sifatida','Как пользователь')}</span></button></div></header>
         <div class="fc-command-scroll">
           <div class="fc-command-intro"><h2>${tr('Xayrli kun','Добрый день')} 👋</h2><p>${tr("Bugungi do'kon holati va e'tiboringizni talab qiladigan ishlar.",'Состояние магазина и задачи, требующие вашего внимания сегодня.')}</p></div>
@@ -6068,6 +6160,29 @@
           <section class="fc-command-section"><div class="fc-command-section-head"><div><span class="fc-command-kicker">${tr('Tezkor','Быстро')}</span><h3>${tr('Yaratish','Создать')}</h3></div></div><div class="fc-command-quick-grid"><button onclick="adminQuickCreate('PRODUCT')"><i data-lucide="package-plus"></i><span>${tr('Mahsulot','Товар')}</span></button><button onclick="adminQuickCreate('CATEGORY')"><i data-lucide="folder-plus"></i><span>${tr('Katalog','Каталог')}</span></button><button onclick="adminQuickCreate('BANNER')"><i data-lucide="panels-top-left"></i><span>${tr('Banner','Баннер')}</span></button><button onclick="adminQuickCreate('PROMO')"><i data-lucide="ticket-percent"></i><span>${tr('Promo-kod','Промокод')}</span></button></div></section>
         </div>
       </section></div>`;
+      // Background ma'lumotlar kelganda mavjud panel elementining o'zini
+      // saqlab qolamiz. Faqat ichki header/scroll kontenti yangilanadi; shu
+      // sabab panelning open animation'i, backdrop va scroll konteyneri
+      // qaytadan yaratilmaydi va foydalanuvchiga reload bo'lib ko'rinmaydi.
+      if (wasAlreadyOpen) {
+        const holder = document.createElement('div');
+        holder.innerHTML = nextMarkup;
+        const nextPanel = holder.querySelector('.fc-command-panel');
+        const currentPanel = root.querySelector('.fc-command-panel');
+        const currentHeader = currentPanel?.querySelector('.fc-command-header');
+        const currentScroller = currentPanel?.querySelector('.fc-command-scroll');
+        const nextHeader = nextPanel?.querySelector('.fc-command-header');
+        const nextScroller = nextPanel?.querySelector('.fc-command-scroll');
+        if (currentPanel && nextPanel && currentScroller && nextScroller) {
+          if (currentHeader && nextHeader) currentHeader.innerHTML = nextHeader.innerHTML;
+          currentScroller.innerHTML = nextScroller.innerHTML;
+          currentScroller.scrollTop = previousScrollTop;
+        } else {
+          root.innerHTML = nextMarkup;
+        }
+      } else {
+        root.innerHTML = nextMarkup;
+      }
       safeCreateIcons();
       requestAnimationFrame(()=>{
         applyVisibleTextScale(root);
@@ -6078,7 +6193,7 @@
 
     async function loadAdminCommandCenterData(force=false) {
       if (!(isAdminMode && isUserAnAdmin) || adminCommandCenterLoading) return;
-      adminCommandCenterLoading = true; adminCommandCenterError=''; renderAdminCommandCenterOverlay();
+      adminCommandCenterLoading = true; adminCommandCenterError='';
       const jobs = [];
       if (hasPermission('reports.view')) jobs.push(loadAdminActionCenterLazy(force));
       if (hasPermission('reports.view')) jobs.push(callApi('get_dashboard_lite',{period:'all'}).then(d=>{dashboardLiteData=d;if(d?.customers?.all){usersSummary=d.customers.all;usersLoaded=true;}}));
@@ -6197,8 +6312,6 @@
           </div>
 
           ${renderBannerCarouselHtml()}
-          <div id="home-recent-root">${renderRecentHomeHtml()}</div>
-
           <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
           ${renderFeaturedCategoryBlocksHtml()}
         </div>
@@ -9608,7 +9721,6 @@
         showActionToast(tr("Avval kontrast muammolarini to'g'rilang", 'Сначала исправьте проблемы контраста'), 'error', 2000);
         return;
       }
-      showActionToast(tr('Dizayn saqlanmoqda...', 'Дизайн сохраняется...'), 'saving');
       try {
         const result = await callApi('set_design_settings', { themeId: designDraft.themeId, colors: designColorsWithDefaults(designDraft.colors, designDraft.themeId) });
         const savedTheme = result?.designSettings || { themeId: designDraft.themeId, colors: designDraft.colors };
@@ -9703,6 +9815,7 @@
         el.innerHTML = renderFulfillmentDeliveryBody();
       }
       safeCreateIcons();
+      syncFulfillmentActionVisibility();
     }
 
     function setFulfillmentSettingsSection(section) {
@@ -9713,6 +9826,13 @@
     }
 
     function setFulfillmentDeliveryKind(kind) { setDeliveryPageView(kind); }
+
+    document.addEventListener('input', (event) => {
+      if ((activePage === 'DELIVERY_SETTINGS' || activePage === 'PAYMENT_SETTINGS') && event.target?.closest?.('#page-container, #app-content')) requestAnimationFrame(syncFulfillmentActionVisibility);
+    });
+    document.addEventListener('change', (event) => {
+      if ((activePage === 'DELIVERY_SETTINGS' || activePage === 'PAYMENT_SETTINGS') && event.target?.closest?.('#page-container, #app-content')) requestAnimationFrame(syncFulfillmentActionVisibility);
+    });
 
     // "To'lov usullari" qayta tashkil qilish round: sahifa ichidagi
     // navigatsiya (4 asosiy qator ↔ Naqd/Karta/QR ↔ Ekvayring ro'yxati ↔
@@ -10212,7 +10332,7 @@
             </div>
             ${decode?.status === 'success' ? `<div class="fc-qr-verified fc-qr-read-ok"><i data-lucide="scan-line" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR muvaffaqiyatli o'qildi", 'QR успешно распознан'))}</div>` : ''}
             ${decode?.status === 'error' ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR kodni o'qib bo'lmadi", 'Не удалось распознать QR'))}</div>` : ''}
-            ${provider.paymentUrl ? `<div class="fc-qr-actions"><button type="button" onclick="testQrProviderPaymentUrl('${provider.id}')" class="fc-btn fc-qr-test-btn" ${loading ? 'disabled' : ''}><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>${tr('Sinab ko‘rish','Проверить')}</button><button type="button" onclick="saveFulfillmentSettings()" class="fc-action-icon-btn is-save" ${canSave ? '' : 'disabled'} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></div>` : ''}
+            ${provider.paymentUrl ? `<div class="fc-qr-actions"><button type="button" onclick="testQrProviderPaymentUrl('${provider.id}')" class="fc-btn fc-qr-test-btn" ${loading ? 'disabled' : ''}><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>${tr('Sinab ko‘rish','Проверить')}</button></div>` : ''}
             ${test?.status === 'opened' ? `<div class="fc-qr-test-confirm"><p>${escapeHtml(test.note || tr('To‘lov sahifasi to‘g‘ri ochildimi?', 'Страница оплаты открылась правильно?'))}</p><div><button type="button" onclick="confirmQrProviderTest('${provider.id}',true)" class="is-ok"><i data-lucide="check" class="w-3.5 h-3.5"></i>${tr('To‘g‘ri ishladi','Работает правильно')}</button><button type="button" onclick="confirmQrProviderTest('${provider.id}',false)" class="is-bad"><i data-lucide="x" class="w-3.5 h-3.5"></i>${tr('Noto‘g‘ri','Неверно')}</button></div></div>` : ''}
             ${verified ? `<div class="fc-qr-verified"><i data-lucide="badge-check" class="w-4 h-4"></i>${tr('Tekshirildi — saqlash mumkin','Проверено — можно сохранить')}</div>` : (qrProviderNeedsTest.has(provider.id) && provider.paymentUrl ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${tr('Saqlashdan oldin Sinab ko‘rish tugmasi orqali tekshiring.','Перед сохранением проверьте через кнопку «Проверить».')}</div>` : '')}
           </div>
@@ -10334,21 +10454,31 @@
         if (first.code === 'QR_PROVIDER_REQUIRED') return showAppNotice(tr("Kamida bitta QR provayderni yoqing va QR rasmini muvaffaqiyatli o'qiting.", "Включите хотя бы один QR-провайдер и успешно распознайте QR."));
         return showAppNotice(`${first.regionId === null ? tr('Umumiy qiymat', 'Общее значение') : topLevelRegionLabel(first.regionId)}: ${tr('taksi min/max diapazonini tekshiring.', 'проверьте диапазон такси min/max.')}`);
       }
-      const old = fulfillmentConfig;
-      fulfillmentConfig = checked.config;
-      fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
-      showActionToast(tr('⏳ Sozlamalar saqlanmoqda...', '⏳ Сохранение настроек...'), 'saving');
+      if (fulfillmentSavePending) return;
+      const draftToSave = commerce.normalizeConfig(cloneData(checked.config), TOP_LEVEL_REGION_IDS);
+      const submittedSignature = JSON.stringify(draftToSave);
+      fulfillmentSavePending = true;
+      syncFulfillmentActionVisibility();
       try {
-        const result = await callApi('set_fulfillment_config', { config: fulfillmentConfig });
+        const result = await callApi('set_fulfillment_config', { config: draftToSave });
+        const currentDraft = fulfillmentDraft ? commerce.normalizeConfig(cloneData(fulfillmentDraft), TOP_LEVEL_REGION_IDS) : null;
+        const editedWhileSaving = currentDraft && JSON.stringify(currentDraft) !== submittedSignature;
         fulfillmentConfig = commerce.normalizeConfig(result.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
-        fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
-        render();
-        showActionToast(tr('✅ Yetkazib berish va to‘lov sozlamalari saqlandi', '✅ Настройки доставки и оплаты сохранены'), 'success', 1600);
+        // Admin save davomida boshqa fieldni o‘zgartirgan bo‘lsa, yangi draftni
+        // server javobi bilan bosib yubormaymiz. Baseline yangilanadi, draft esa
+        // keyingi ✓ uchun dirty bo‘lib qoladi.
+        fulfillmentDraft = editedWhileSaving ? currentDraft : commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
+        rerenderFulfillmentBody();
+        syncFulfillmentActionVisibility();
+        const sectionLabel = fulfillmentSettingsSection === 'DELIVERY' ? tr('Yetkazib berish sozlamalari saqlandi','Настройки доставки сохранены') : tr("To'lov sozlamalari saqlandi",'Настройки оплаты сохранены');
+        showActionToast(sectionLabel, 'success', 3000);
       } catch (e) {
-        fulfillmentConfig = old;
-        render();
-        showActionToast(tr('❌ Sozlamalar saqlanmadi', '❌ Настройки не сохранены'), 'error', 1800);
-        showAppNotice(tr('Sozlamalarni saqlashda xato: ', 'Ошибка сохранения настроек: ') + (e.message || e));
+        console.error('[fulfillment-save]', e);
+        // Draft stays intact so the admin can retry; saved baseline is untouched.
+        showActionToast(tr('Saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить. Попробуйте ещё раз.'), 'error', 4000);
+      } finally {
+        fulfillmentSavePending = false;
+        syncFulfillmentActionVisibility();
       }
     }
 
@@ -10737,7 +10867,7 @@
       } : { mode: 'IMAGE', title: '', subtitle: '', ctaText: '', imageUrl: '', targetType: 'NONE', targetProductId: '', targetCategoryId: '', targetUrl: '', targetBundleId: '', targetPromotionId: '', startsAt: '', endsAt: '', isActive: true };
       renderBannerFormSheet();
       Promise.all([loadBundleListLazy(), loadPromoListLazy()]).then(() => {
-        if (document.getElementById('fc-banner-form-root')) { syncBannerDraftFromDom(); renderBannerFormSheet(); }
+        if (document.getElementById('fc-banner-form-root')) { syncBannerDraftFromDom(); rerenderSheetPreserveUiState('fc-banner-form-root', renderBannerFormSheet); }
       });
     }
 
@@ -10746,6 +10876,36 @@
       if (root) root.remove();
       bannerDraft = null;
       clearTempImageSelection();
+    }
+
+    // Local form state changes must never throw a sheet back to the top.
+    // This helper preserves the sheet body's vertical position plus the
+    // active field/cursor while an existing render*FormSheet() is reused.
+    function rerenderSheetPreserveUiState(rootId, renderFn) {
+      const root = document.getElementById(rootId);
+      const body = root?.querySelector('.fc-sheet-body');
+      const scrollTop = body?.scrollTop ?? 0;
+      const scrollLeft = body?.scrollLeft ?? 0;
+      const active = document.activeElement;
+      const activeId = active && root?.contains(active) ? active.id : '';
+      const activeName = active && root?.contains(active) ? active.getAttribute?.('name') || '' : '';
+      const start = active && typeof active.selectionStart === 'number' ? active.selectionStart : null;
+      const end = active && typeof active.selectionEnd === 'number' ? active.selectionEnd : null;
+      renderFn();
+      requestAnimationFrame(() => {
+        const nextRoot = document.getElementById(rootId);
+        // Local sheet rerenderlari global render()dan o'tmaydi. Joriy matn
+        // zoomi shu yangi DOM'ga ham darhol qo'llansin.
+        if (nextRoot) applyVisibleTextScale(nextRoot);
+        const nextBody = nextRoot?.querySelector('.fc-sheet-body');
+        if (nextBody) { nextBody.scrollTop = scrollTop; nextBody.scrollLeft = scrollLeft; }
+        let nextActive = activeId ? nextRoot?.querySelector(`#${CSS.escape(activeId)}`) : null;
+        if (!nextActive && activeName) nextActive = nextRoot?.querySelector(`[name="${CSS.escape(activeName)}"]`);
+        if (nextActive) {
+          try { nextActive.focus({ preventScroll: true }); } catch (_) { try { nextActive.focus(); } catch (_) {} }
+          if (start !== null && typeof nextActive.setSelectionRange === 'function') { try { nextActive.setSelectionRange(start, end ?? start); } catch (_) {} }
+        }
+      });
     }
 
     function syncBannerDraftFromDom() {
@@ -10760,7 +10920,7 @@
       if(document.getElementById('banner-f-ends'))bannerDraft.endsAt=val('banner-f-ends')||'';
       if(document.getElementById('banner-f-active'))bannerDraft.isActive=!!document.getElementById('banner-f-active').checked;
     }
-    function setBannerDraftTarget(type) { syncBannerDraftFromDom(); bannerDraft.targetType = type; renderBannerFormSheet(); }
+    function setBannerDraftTarget(type) { syncBannerDraftFromDom(); bannerDraft.targetType = type; rerenderSheetPreserveUiState('fc-banner-form-root', renderBannerFormSheet); }
 
     function renderBannerFormSheet() {
       let root = document.getElementById('fc-banner-form-root');
@@ -11104,6 +11264,7 @@
       if (context.startsWith('TIER_')) syncTierDraftFromDom();
       if (context.startsWith('REWARD_')) syncRewardRuleDraftFromDom();
       if (context === 'BUNDLE_PRODUCTS') syncBundleDraftFromDom();
+      if (context.startsWith('BANNER_')) syncBannerDraftFromDom();
       const categoryMode = context.endsWith('CATEGORY');
       const multi = ['PROMO_CATEGORY','PROMO_PRODUCT','TIER_CATEGORY','TIER_PRODUCT','BUNDLE_PRODUCTS','REWARD_PRODUCTS'].includes(context);
       let initial=[];
@@ -11118,7 +11279,7 @@
     function closeMarketingCatalogPicker(){document.getElementById('fc-marketing-picker-root')?.remove();marketingPicker=null;}
     function enterMarketingPickerCategory(id){marketingPicker.parentId=id||null;renderMarketingCatalogPicker();}
     function marketingPickerBack(){const c=categories.find(x=>String(x.id)===String(marketingPicker.parentId));marketingPicker.parentId=c?.parentId||null;renderMarketingCatalogPicker();}
-    function toggleMarketingPickerItem(id){const key=String(id);if(marketingPicker.multi){if(marketingPicker.selected.has(key))marketingPicker.selected.delete(key);else marketingPicker.selected.add(key);}else{marketingPicker.selected=new Set([key]);}renderMarketingCatalogPicker();}
+    function toggleMarketingPickerItem(id){const key=String(id);if(marketingPicker.multi){if(marketingPicker.selected.has(key))marketingPicker.selected.delete(key);else marketingPicker.selected.add(key);}else{marketingPicker.selected=new Set([key]);}rerenderSheetPreserveUiState('fc-marketing-picker-root',renderMarketingCatalogPicker);}
     function applyMarketingCatalogPicker(){
       const ids=[...marketingPicker.selected],ctx=marketingPicker.context;
       if(ctx==='PROMO_CATEGORY')promoDraft.categoryIds=ids;if(ctx==='PROMO_PRODUCT')promoDraft.productIds=ids;
@@ -11128,7 +11289,7 @@
       if(ctx==='REWARD_CATEGORY')rewardRuleDraft.targetCategoryId=ids[0]||'';if(ctx==='REWARD_PRODUCT')rewardRuleDraft.targetProductId=ids[0]||'';if(ctx==='REWARD_GIFT')rewardRuleDraft.giftProductId=ids[0]||'';
       if(ctx==='REWARD_PRODUCTS')rewardRuleDraft.targetProductIds=ids;
       closeMarketingCatalogPicker();
-      if(ctx.startsWith('PROMO_'))renderPromoFormSheet();else if(ctx.startsWith('TIER_'))renderTierFormSheet();else if(ctx.startsWith('REWARD_'))renderRewardRuleFormSheet();else if(ctx==='BUNDLE_PRODUCTS')renderBundleFormSheet();else if(ctx.startsWith('BANNER_'))renderBannerFormSheet();
+      if(ctx.startsWith('PROMO_'))rerenderSheetPreserveUiState('fc-promo-form-root',renderPromoFormSheet);else if(ctx.startsWith('TIER_'))rerenderSheetPreserveUiState('fc-tier-form-root',renderTierFormSheet);else if(ctx.startsWith('REWARD_'))rerenderSheetPreserveUiState('fc-reward-form-root',renderRewardRuleFormSheet);else if(ctx==='BUNDLE_PRODUCTS')rerenderSheetPreserveUiState('fc-bundle-form-root',renderBundleFormSheet);else if(ctx.startsWith('BANNER_'))rerenderSheetPreserveUiState('fc-banner-form-root',renderBannerFormSheet);
     }
     function renderMarketingCatalogPicker(){
       let root=document.getElementById('fc-marketing-picker-root');if(!root){root=document.createElement('div');root.id='fc-marketing-picker-root';document.body.appendChild(root);}
@@ -11150,7 +11311,7 @@
       const idx = bundleDraft.items.findIndex(i => i.productId === productId);
       if (idx >= 0) bundleDraft.items.splice(idx, 1);
       else bundleDraft.items.push({ productId, qty: 1 });
-      renderBundleFormSheet();
+      rerenderSheetPreserveUiState('fc-bundle-form-root', renderBundleFormSheet);
     }
     function setBundleDraftProductQty(productId, qty) {
       const item = bundleDraft.items.find(i => i.productId === productId);
@@ -11290,11 +11451,18 @@
       const b = bundleList.find(x => String(x.id) === String(id));
       if (!b) return;
       if (checked && b.pauseReason) return resumeBundleAfterPause(id);
+      const previous = !!b.isActive;
+      b.isActive = !!checked;
       try {
-        await callApi('bundle_update', { ...b, id: b.id, isActive: checked });
-        b.isActive = checked; marketingCampaignsLoaded = false; render();
+        await callApi('bundle_update', { ...b, id: b.id, isActive: !!checked });
+        marketingCampaignsLoaded = false;
+        showActionToast(checked ? tr('Aksiya yoqildi','Акция включена') : tr('Aksiya o‘chirildi','Акция выключена'), 'success', 3000);
         loadMarketingSummaryLazy();
-      } catch (e) { render(); showActionToast(tr("O'zgartirib bo'lmadi", 'Не удалось изменить'), 'error', 1500); }
+      } catch (e) {
+        b.isActive = previous;
+        render();
+        showActionToast(tr('Saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить. Попробуйте ещё раз.'), 'error', 4000);
+      }
     }
 
     // ==================== BOSQICHLI CHEGIRMA (tier) ====================
@@ -11476,11 +11644,11 @@
       if (root) root.remove();
       tierDraft = null;
     }
-    function setTierDraftScope(type) { syncTierDraftFromDom(); tierDraft.scopeType = type; if (type !== 'CATEGORY') tierDraft.categoryIds = []; if (type !== 'PRODUCT') tierDraft.productIds = []; renderTierFormSheet(); }
-    function setTierDraftActive(active) { syncTierDraftFromDom(); tierDraft.isActive = active; renderTierFormSheet(); }
-    function setTierDraftStepType(index, type) { syncTierDraftFromDom(); tierDraft.steps[index].discountType = type; renderTierFormSheet(); }
-    function addTierDraftStep() { syncTierDraftFromDom(); tierDraft.steps.push({ thresholdAmount: '', discountType: 'PERCENT', discountValue: '' }); renderTierFormSheet(); }
-    function removeTierDraftStep(index) { syncTierDraftFromDom(); if (tierDraft.steps.length <= 1) return; tierDraft.steps.splice(index, 1); renderTierFormSheet(); }
+    function setTierDraftScope(type) { syncTierDraftFromDom(); tierDraft.scopeType = type; if (type !== 'CATEGORY') tierDraft.categoryIds = []; if (type !== 'PRODUCT') tierDraft.productIds = []; rerenderSheetPreserveUiState('fc-tier-form-root', renderTierFormSheet); }
+    function setTierDraftActive(active) { syncTierDraftFromDom(); tierDraft.isActive = active; rerenderSheetPreserveUiState('fc-tier-form-root', renderTierFormSheet); }
+    function setTierDraftStepType(index, type) { syncTierDraftFromDom(); tierDraft.steps[index].discountType = type; rerenderSheetPreserveUiState('fc-tier-form-root', renderTierFormSheet); }
+    function addTierDraftStep() { syncTierDraftFromDom(); tierDraft.steps.push({ thresholdAmount: '', discountType: 'PERCENT', discountValue: '' }); rerenderSheetPreserveUiState('fc-tier-form-root', renderTierFormSheet); }
+    function removeTierDraftStep(index) { syncTierDraftFromDom(); if (tierDraft.steps.length <= 1) return; tierDraft.steps.splice(index, 1); rerenderSheetPreserveUiState('fc-tier-form-root', renderTierFormSheet); }
     function syncTierDraftFromDom() {
       if (!tierDraft) return; const val = id => document.getElementById(id)?.value;
       if (document.getElementById('tier-f-name')) tierDraft.name = val('tier-f-name') || '';
@@ -11879,7 +12047,7 @@
       if(document.getElementById('reward-f-ends'))rewardRuleDraft.endsAt=val('reward-f-ends')||'';
       if(document.getElementById('reward-f-active'))rewardRuleDraft.isActive=!!document.getElementById('reward-f-active').checked;
     }
-    function setRewardRuleDraftMatchMode(mode) { syncRewardRuleDraftFromDom(); rewardRuleDraft.matchMode = mode; renderRewardRuleFormSheet(); }
+    function setRewardRuleDraftMatchMode(mode) { syncRewardRuleDraftFromDom(); rewardRuleDraft.matchMode = mode; rerenderSheetPreserveUiState('fc-reward-form-root', renderRewardRuleFormSheet); }
     function renderRewardRuleFormSheet() {
       let root = document.getElementById('fc-reward-rule-form-root');
       if (!root) { root = document.createElement('div'); root.id = 'fc-reward-rule-form-root'; document.body.appendChild(root); }
@@ -11969,7 +12137,19 @@
       const item = { ...r, __kind: 'gift' };
       const root=document.createElement('div');root.id='fc-reward-preview-root';root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)this.parentElement.remove()"><div class="fc-sheet fc-marketing-detail-sheet fc-mkt-pro-sheet fc-mkt-pro-gift-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr("Avtomatik sovg'a",'Автоматический подарок')}</div><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body space-y-3">${p?.img||p?.imageUrl?`<img src="${escapeHtml(p.img||p.imageUrl)}" class="fc-marketing-detail-image">`:''}<div class="fc-card"><div class="flex justify-between gap-2"><h3 class="font-black text-base">${escapeHtml(r.name)}</h3>${giftItemStatusBadge(item)}</div><p class="text-xs text-gray-500 mt-1">${giftTypeLabel(giftItemType(item))}</p></div><div class="fc-gift-agar-unda"><div class="is-agar"><span>AGAR</span><p>${escapeHtml(giftAgarText(item))}</p></div><div class="is-unda"><span>UNDA</span><p>${giftUndaText(item)}</p></div></div><div class="fc-detail-grid"><div><small>${tr('Qo‘llangan','Применено')}</small><b>${r.usageCount||0}</b></div><div><small>${tr('Qoldiq tugasa','Если закончится')}</small><b>${r.stockZeroPolicy==='AUTO_PAUSE'?tr('Avto to‘xtaydi','Автостоп'):tr('Sovg‘asiz davom','Без подарка')}</b></div><div><small>${tr('Boshlanish','Начало')}</small><b>${r.startsAt?new Date(r.startsAt).toLocaleDateString():'—'}</b></div><div><small>${tr('Tugash','Окончание')}</small><b>${r.endsAt?new Date(r.endsAt).toLocaleDateString():'—'}</b></div></div><label class="fc-settings-toggle-row fc-gift-detail-status"><span><b>${tr('Holati','Статус')}</b><small>${r.isActive ? tr('Faol','Активен') : tr('Nofaol','Неактивен')}</small></span><span class="fc-toggle"><input type="checkbox" ${r.isActive ? 'checked' : ''} onchange="toggleRewardRuleActive('${r.id}',this.checked)"><span class="fc-toggle-track"></span></span></label><div class="grid grid-cols-2 gap-2 fc-gift-detail-actions"><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();openRewardRuleForm('${r.id}')" class="fc-btn fc-btn-outline-primary"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Tahrirlash','Изменить')}</button><button type="button" onclick="document.getElementById('fc-reward-preview-root')?.remove();deleteRewardRuleAt('${r.id}')" class="fc-btn fc-btn-outline-danger"><i data-lucide="trash-2" class="w-4 h-4"></i>${tr("O'chirish",'Удалить')}</button></div></div></div></div>`;document.body.appendChild(root);safeCreateIcons();
     }
-    async function toggleRewardRuleActive(id,checked){const r=rewardRuleList.find(x=>String(x.id)===String(id));if(!r)return;try{await callApi('automatic_gift_update',{...r,id:r.id,isActive:checked});r.isActive=checked;render();loadMarketingSummaryLazy();}catch(e){render();showActionToast(tr("O'zgartirib bo'lmadi",'Не удалось изменить'),'error',1500);}}
+    async function toggleRewardRuleActive(id,checked){
+      const r=rewardRuleList.find(x=>String(x.id)===String(id)); if(!r)return;
+      const previous=!!r.isActive; r.isActive=!!checked;
+      try{
+        await callApi('automatic_gift_update',{...r,id:r.id,isActive:!!checked});
+        showActionToast(checked?tr("Avtomatik sovg‘a yoqildi",'Автоподарок включён'):tr("Avtomatik sovg‘a o‘chirildi",'Автоподарок выключен'),'success',3000);
+        loadMarketingSummaryLazy();
+      }catch(e){
+        r.isActive=previous;
+        document.querySelectorAll('#fc-reward-preview-root input[type=checkbox]').forEach(el=>{el.checked=previous;});
+        showActionToast(tr('Saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить. Попробуйте ещё раз.'),'error',4000);
+      }
+    }
     async function deleteRewardRuleAt(id) {
       const ok = await fcConfirm(tr("Sovg'a kampaniyasini o'chirish", 'Удалить подарочную кампанию'), tr("Ishlatilgan bo'lsa tarix uchun nofaol qilinadi.", 'Если использовалась, будет отключена для сохранения истории.'));
       if (!ok) return;
@@ -12173,7 +12353,7 @@
     function setPersonalDiscountDraftMode(mode) {
       syncPersonalDiscountDraftFromDom();
       personalDiscountDraft.customerMode = mode;
-      if (mode !== 'TOPN') renderPersonalDiscountFormSheet();
+      if (mode !== 'TOPN') rerenderSheetPreserveUiState('fc-personal-discount-form-root', renderPersonalDiscountFormSheet);
       else { updatePersonalDiscountTopNPreview(); }
     }
     function syncPersonalDiscountDraftFromDom() {
@@ -12187,8 +12367,8 @@
       if (document.getElementById('pd-f-ends')) d.endsAt = val('pd-f-ends') || '';
       if (document.getElementById('pd-f-topn')) d.topN = Number(val('pd-f-topn')) || 10;
     }
-    function setPersonalDiscountDraftType(type) { syncPersonalDiscountDraftFromDom(); personalDiscountDraft.discountType = type; renderPersonalDiscountFormSheet(); }
-    function setPersonalDiscountDraftUsageMode(mode) { syncPersonalDiscountDraftFromDom(); personalDiscountDraft.usageMode = mode; renderPersonalDiscountFormSheet(); }
+    function setPersonalDiscountDraftType(type) { syncPersonalDiscountDraftFromDom(); personalDiscountDraft.discountType = type; rerenderSheetPreserveUiState('fc-personal-discount-form-root', renderPersonalDiscountFormSheet); }
+    function setPersonalDiscountDraftUsageMode(mode) { syncPersonalDiscountDraftFromDom(); personalDiscountDraft.usageMode = mode; rerenderSheetPreserveUiState('fc-personal-discount-form-root', renderPersonalDiscountFormSheet); }
     async function updatePersonalDiscountTopNPreview() {
       syncPersonalDiscountDraftFromDom();
       const d = personalDiscountDraft;
@@ -12200,7 +12380,7 @@
         const data = await callApi('get_customer_report', { segment: d.topNMetric, page: 1, pageSize: Math.max(10, n) });
         d.selectedCustomers = (data.customers || []).slice(0, n).map(c => ({ tgId: c.tgId, name: c.name || c.username || String(c.tgId) }));
       } catch (e) { d.selectedCustomers = []; }
-      renderPersonalDiscountFormSheet();
+      rerenderSheetPreserveUiState('fc-personal-discount-form-root', renderPersonalDiscountFormSheet);
     }
     function setPersonalDiscountTopNMetric(metric) { personalDiscountDraft.topNMetric = metric; updatePersonalDiscountTopNPreview(); }
     // Mijoz qidirish/tanlash — mavjud get_customer_report'dan (yangi
@@ -12243,7 +12423,9 @@
     }
     async function loadPersonalDiscountPickerResults() {
       const p = personalDiscountPicker;
-      p.loading = true; renderPersonalDiscountCustomerPickerSheet();
+      p.loading = true;
+      if (document.getElementById('fc-personal-discount-picker-root')) rerenderSheetPreserveUiState('fc-personal-discount-picker-root', renderPersonalDiscountCustomerPickerSheet);
+      else renderPersonalDiscountCustomerPickerSheet();
       try {
         const segment = p.sort === 'NEWEST_JOINED' ? 'NEWEST_JOINED' : p.sort === 'TOP_SPEND_PERIOD' ? 'TOP_SPEND_PERIOD' : 'ALL';
         const data = await callApi('get_customer_report', { search: p.search, segment, period: p.sortPeriod, page: p.page, pageSize: 20 });
@@ -12252,7 +12434,10 @@
         p.totalCount = data.totalCount || 0;
         p.page = data.page || p.page;
       } catch (e) { p.results = []; p.totalPages = 1; p.totalCount = 0; }
-      finally { p.loading = false; renderPersonalDiscountCustomerPickerSheet(); }
+      finally {
+        p.loading = false;
+        if (document.getElementById('fc-personal-discount-picker-root')) rerenderSheetPreserveUiState('fc-personal-discount-picker-root', renderPersonalDiscountCustomerPickerSheet);
+      }
     }
     function togglePersonalDiscountPickerItem(tgId) {
       const key = String(tgId);
@@ -12265,7 +12450,7 @@
         personalDiscountPicker.selected.add(key);
         personalDiscountPicker.selectedRows.set(key, normalized);
       }
-      renderPersonalDiscountCustomerPickerSheet();
+      rerenderSheetPreserveUiState('fc-personal-discount-picker-root', renderPersonalDiscountCustomerPickerSheet);
     }
     // Joriy sahifada ko'ringan barchasini bir bosishda tanlash/bekor qilish
     // (haqiqiy "hammasi" — barcha sahifalar — talab qilinmagan, chunki bu
@@ -12279,13 +12464,13 @@
         if (allSelected) { p.selected.delete(key); p.selectedRows.delete(key); }
         else { p.selected.add(key); p.selectedRows.set(key, { tgId: c.tgId, name: c.name || c.username || String(c.tgId), username: c.username || null, phone: c.phone || null }); }
       }
-      renderPersonalDiscountCustomerPickerSheet();
+      rerenderSheetPreserveUiState('fc-personal-discount-picker-root', renderPersonalDiscountCustomerPickerSheet);
     }
     function applyPersonalDiscountCustomerPicker() {
       personalDiscountDraft.selectedCustomers = Array.from(personalDiscountPicker.selectedRows.values()).filter(c => personalDiscountPicker.selected.has(String(c.tgId)));
       document.getElementById('fc-personal-discount-picker-root')?.remove();
       personalDiscountPicker = null;
-      renderPersonalDiscountFormSheet();
+      rerenderSheetPreserveUiState('fc-personal-discount-form-root', renderPersonalDiscountFormSheet);
     }
     function renderPersonalDiscountCustomerPickerSheet() {
       let root = document.getElementById('fc-personal-discount-picker-root');
@@ -12491,9 +12676,9 @@
       const body = `
         <div class="space-y-2">
           <div class="fc-card space-y-2">
-            <label class="fc-settings-toggle-row"><span><b>${tr("Chegirmalarni birga ishlatish", "Совмещать скидки")}</b><small>${tr("Yoqilsa, mos kelgan promo-kod, bosqichli chegirma va mijozning shaxsiy chegirmasi BITTA buyurtmada birga qo'llanadi. O'chiq bo'lsa, faqat eng foydali bittasi ishlaydi (avvalgidek).", "Если включено, подходящий промокод, ступенчатая скидка и персональная скидка клиента применяются В ОДНОМ заказе вместе. Если выключено — работает только самая выгодная (как раньше).")}</small></span><span class="fc-toggle shrink-0"><input type="checkbox" ${allowDiscountCombining ? 'checked' : ''} onchange="saveMarketingSettings({allowDiscountCombining:this.checked})" ${marketingSettingsSaving ? 'disabled' : ''}><span class="fc-toggle-track"></span></span></label>
+            <label class="fc-settings-toggle-row"><span><b>${tr("Chegirmalarni birga ishlatish", "Совмещать скидки")}</b><small>${tr("Yoqilsa, mos kelgan promo-kod, bosqichli chegirma va mijozning shaxsiy chegirmasi BITTA buyurtmada birga qo'llanadi. O'chiq bo'lsa, faqat eng foydali bittasi ishlaydi (avvalgidek).", "Если включено, подходящий промокод, ступенчатая скидка и персональная скидка клиента применяются В ОДНОМ заказе вместе. Если выключено — работает только самая выгодная (как раньше).")}</small></span><span class="fc-toggle shrink-0"><input type="checkbox" ${allowDiscountCombining ? 'checked' : ''} onchange="saveMarketingSettings({allowDiscountCombining:this.checked})"><span class="fc-toggle-track"></span></span></label>
             ${allowDiscountCombining ? `
-            <label class="fc-mini-field"><span>${tr("Umumiy chegirma ko'pi bilan (%)", "Максимальная суммарная скидка (%)")}</span><input type="number" id="marketing-max-combined-percent" value="${maxCombinedDiscountPercent ?? ''}" min="1" max="100" placeholder="${tr('Cheklovsiz', 'Без ограничения')}" onchange="saveMarketingSettings({maxCombinedDiscountPercent: this.value === '' ? null : Number(this.value)})" ${marketingSettingsSaving ? 'disabled' : ''}></label>
+            <label class="fc-mini-field"><span>${tr("Umumiy chegirma ko'pi bilan (%)", "Максимальная суммарная скидка (%)")}</span><input type="number" id="marketing-max-combined-percent" value="${maxCombinedDiscountPercent ?? ''}" min="1" max="100" placeholder="${tr('Cheklovsiz', 'Без ограничения')}" onchange="saveMarketingSettings({maxCombinedDiscountPercent: this.value === '' ? null : Number(this.value)})"></label>
             <p class="text-[10px] text-gray-400">${tr("Masalan 20 kiritsangiz, uchala chegirma qo'shilganda ham umumiy chegirma buyurtmaning 20% idan oshmaydi. Bo'sh qoldirsangiz — cheklovsiz.", "Например, если указать 20, суммарная скидка (даже если сложатся все три) не превысит 20% от заказа. Оставьте пустым — без ограничения.")}</p>
             ` : ''}
           </div>
@@ -12503,18 +12688,23 @@
     }
 
     async function saveMarketingSettings(patch) {
-      marketingSettingsSaving = true;
-      render();
+      const before = { allowDiscountCombining, maxCombinedDiscountPercent };
+      const version = ++marketingSettingsMutationVersion;
+      if (patch.allowDiscountCombining !== undefined) allowDiscountCombining = !!patch.allowDiscountCombining;
+      if (patch.maxCombinedDiscountPercent !== undefined) maxCombinedDiscountPercent = patch.maxCombinedDiscountPercent;
+      // Input/switchning o‘zi UI ni darhol o‘zgartirgan; backend ketma-ket fonda saqlaydi.
+      const task = marketingSettingsSaveChain.catch(() => {}).then(() => callApi('set_marketing_settings', patch));
+      marketingSettingsSaveChain = task.catch(() => {});
       try {
-        await callApi('set_marketing_settings', patch);
-        if (patch.allowDiscountCombining !== undefined) allowDiscountCombining = patch.allowDiscountCombining;
-        if (patch.maxCombinedDiscountPercent !== undefined) maxCombinedDiscountPercent = patch.maxCombinedDiscountPercent;
-        showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1200);
+        await task;
+        if (version === marketingSettingsMutationVersion) showActionToast(tr('Marketing sozlamasi saqlandi','Настройка маркетинга сохранена'), 'success', 3000);
       } catch (e) {
-        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
-      } finally {
-        marketingSettingsSaving = false;
-        render();
+        if (version === marketingSettingsMutationVersion) {
+          allowDiscountCombining = before.allowDiscountCombining;
+          maxCombinedDiscountPercent = before.maxCombinedDiscountPercent;
+          render();
+          showActionToast(tr('Saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить. Попробуйте ещё раз.'), 'error', 4000);
+        }
       }
     }
 
@@ -12827,13 +13017,13 @@
     function setPromoDraftType(type) {
       syncPromoDraftFromDom();
       promoDraft.discountType = type;
-      renderPromoFormSheet();
+      rerenderSheetPreserveUiState('fc-promo-form-root', renderPromoFormSheet);
     }
     function setPromoDraftScope(type) {
       syncPromoDraftFromDom(); promoDraft.scopeType = type;
       if (type !== 'CATEGORY') promoDraft.categoryIds = [];
       if (type !== 'PRODUCT') promoDraft.productIds = [];
-      renderPromoFormSheet();
+      rerenderSheetPreserveUiState('fc-promo-form-root', renderPromoFormSheet);
     }
     function syncPromoDraftFromDom() {
       if (!promoDraft) return;
@@ -12974,15 +13164,17 @@
     }
 
     async function togglePromoActive(id, checked) {
+      const item = promoList.find(p => String(p.id) === String(id));
+      const previous = item ? !!item.isActive : !checked;
+      if (item) item.isActive = !!checked;
       try {
-        await callApi('promo_update', { id, isActive: checked });
+        await callApi('promo_update', { id, isActive: !!checked });
         marketingCampaignsLoaded = false;
-        const item = promoList.find(p => String(p.id) === String(id));
-        if (item) item.isActive = checked;
-        render();
+        showActionToast(checked ? tr('Promo-kod yoqildi','Промокод включён') : tr('Promo-kod o‘chirildi','Промокод выключен'), 'success', 3000);
       } catch (e) {
-        showAppNotice(tr("O'zgartirib bo'lmadi.", "Не удалось изменить."));
+        if (item) item.isActive = previous;
         render();
+        showActionToast(tr('Saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить. Попробуйте ещё раз.'), 'error', 4000);
       }
     }
 
@@ -15483,14 +15675,13 @@
           <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-sm w-full max-h-[94vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
               <div class="flex items-center justify-between border-b pb-2">
-                <div><h3 class="font-black text-base flex items-center gap-2"><i data-lucide="image-off" class="w-5 h-5 text-blue-600"></i>${tr('Rasmsiz tovarlar','Товары без фото')}</h3><p class="text-[10px] text-gray-400">${tr('Barcha kataloglar bo‘yicha global navbat','Общая очередь по всем каталогам')}</p></div>
+                <div><h3 class="font-black text-base flex items-center gap-2"><i data-lucide="image-off" class="w-5 h-5 text-blue-600"></i>${tr('Rasmsiz tovarlar','Товары без фото')}</h3><p class="text-[10px] text-gray-400">${tr('Faqat rasmi yo‘q tovarlar','Только товары без изображения')}</p></div>
                 <button onclick="clearTempImageSelection(); activePopupModal=null; render();" class="fc-icon-btn"><i data-lucide="x" class="w-4 h-4"></i></button>
               </div>
               ${p ? `
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
                     <p class="font-black text-sm text-gray-900">${escapeHtml(productName(p))}</p>
-                    <p class="mt-1 text-[10px] text-blue-700 font-bold break-words flex items-center gap-1"><i data-lucide="folder" class="w-3.5 h-3.5"></i>${escapeHtml(categoryPathForProduct(p))}</p>
                     <p class="mt-1 text-[10px] font-mono text-gray-500">SKU: ${escapeHtml(p.sku || '—')}</p>
                   </div>
                   <span class="flex-shrink-0 bg-slate-100 text-slate-700 font-black px-2.5 py-1 rounded-xl">${missingImageQueueIndex + 1} / ${queue.length}</span>
@@ -15505,7 +15696,7 @@
                   <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                   <div class="fc-image-url-field"><input id="miq-image-url" type="url" value="${escapeHtml(p.img || '')}" placeholder="https://..." aria-label="${tr('Rasm URL manzili','URL изображения')}" oninput="document.getElementById('miq-empty-preview')?.classList.add('hidden');onImageUrlInput(this.value,'miq-img-prev','miq-image-url-error','miq-image-button')"><p id="miq-image-url-error" class="hidden"></p></div>
                 </div>
-                <button onclick="saveMissingImageQueueItem('${p.id}')" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('Saqlanmoqda…','Сохранение…') : tr('Saqlash','Сохранить')}</button>
+                <button data-missing-image-save onclick="saveMissingImageQueueItem('${p.id}')" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('Saqlanmoqda…','Сохранение…') : tr('Saqlash','Сохранить')}</button>
                 <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
                   <button onclick="moveMissingImageQueue(-1)" ${missingImageQueueSaving || missingImageQueueIndex === 0 ? 'disabled' : ''} class="fc-image-queue-nav" aria-label="${tr('Oldingi','Предыдущий')}" title="${tr('Oldingi','Предыдущий')}"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
                   <button onclick="moveMissingImageQueue(1)" ${missingImageQueueSaving || missingImageQueueIndex >= queue.length - 1 ? 'disabled' : ''} class="fc-image-queue-nav" aria-label="${tr('Keyingi','Следующий')}" title="${tr('Keyingi','Следующий')}"><i data-lucide="arrow-right" class="w-5 h-5"></i></button>
@@ -16519,11 +16710,20 @@
       return out;
     }
     let productGalleryIndex = 0;
+    let productGalleryProgrammaticTarget = null;
+    let productGalleryProgrammaticToken = 0;
+    let productGalleryProgrammaticClearTimer = null;
     function scrollProductGalleryTo(index, smooth) {
       const el = document.getElementById('product-gallery-scroll');
       if (!el) return;
       const slide = el.children[index];
       if (!slide) return;
+      const token = ++productGalleryProgrammaticToken;
+      productGalleryProgrammaticTarget = { index, token };
+      clearTimeout(productGalleryProgrammaticClearTimer);
+      productGalleryProgrammaticClearTimer = setTimeout(() => {
+        if (productGalleryProgrammaticTarget?.token === token) productGalleryProgrammaticTarget = null;
+      }, smooth === false ? 180 : 900);
       el.scrollTo({ left: slide.offsetLeft, behavior: smooth === false ? 'auto' : 'smooth' });
       productGalleryIndex = index;
       updateProductGalleryDots();
@@ -16572,6 +16772,18 @@
           if (dist < closestDist) { closestDist = dist; closest = i; }
         });
         productGalleryIndex = closest;
+        // selectColor()/selectSize() dan keyingi smooth scroll davomida eski
+        // slayd scroll-event yuborishi mumkin. Bunday event foydalanuvchi
+        // tanlagan yangi rangni eski rangga qaytarmasligi kerak.
+        const programmatic = productGalleryProgrammaticTarget;
+        if (programmatic) {
+          updateProductGalleryDots();
+          if (closest === programmatic.index) {
+            clearTimeout(productGalleryProgrammaticClearTimer);
+            productGalleryProgrammaticTarget = null;
+          }
+          return;
+        }
         const changedVariant = syncActiveVariantFromGalleryIndex(closest);
         if (changedVariant) {
           rerenderProductDetailPreserveScroll(() => scrollProductGalleryTo(closest, false));
@@ -16637,8 +16849,11 @@
       if (!p) return;
       const sizesForColor = productVariants(p).filter((v) => v.color === name);
       if (!sizesForColor.length) return;
+      const previousSize = activeSizeName;
       activeColorName = name;
-      const firstAvailable = sizesForColor.find((v) => Number(v.qty) > 0) || sizesForColor[0] || null;
+      const sameSize = sizesForColor.find((v) => v.size === previousSize && Number(v.qty) > 0)
+        || sizesForColor.find((v) => v.size === previousSize);
+      const firstAvailable = sameSize || sizesForColor.find((v) => Number(v.qty) > 0) || sizesForColor[0] || null;
       activeSizeName = firstAvailable?.size || null;
       rerenderProductDetailPreserveScroll(() => scrollProductGalleryToColor(name));
     }
@@ -17287,8 +17502,8 @@
       }
       const imageSnap = takeTempImageSnapshot();
       missingImageQueueSaving = true;
-      renderModalContainer();
-      showActionToast(tr("⏳ Rasm saqlanmoqda...", "⏳ Изображение сохраняется..."), 'saving');
+      const saveBtn = document.querySelector('[data-missing-image-save]');
+      if (saveBtn) saveBtn.disabled = true;
       try {
         const imagePayload = await productImagePayloadFromSnapshot(imageSnap, true);
         const result = await callApi('edit_product_field', {
@@ -17304,15 +17519,15 @@
         const remaining = getMissingImageProducts();
         if (missingImageQueueIndex >= remaining.length) missingImageQueueIndex = Math.max(0, remaining.length - 1);
         initializeTempImageEditor(null);
-        showActionToast(tr("✅ Rasm saqlandi", "✅ Изображение сохранено"), 'success', 1200);
+        showActionToast(tr('Rasm saqlandi','Изображение сохранено'), 'success', 3000);
       } catch (e) {
         console.error('Global rasmsiz navbatda rasm saqlash xatosi:', e);
-        showActionToast(tr("❌ Rasm saqlanmadi", "❌ Изображение не сохранено"), 'error', 1800);
+        showActionToast(tr('Rasm saqlanmadi','Изображение не сохранено'), 'error', 4000);
         showAppNotice(tr("❌ Rasm saqlanmadi. Eski ma'lumot o'zgarmadi: ", "❌ Изображение не сохранено. Старые данные не изменены: ") + friendlyImageError(e));
       } finally {
         releaseImageSnapshot(imageSnap);
         missingImageQueueSaving = false;
-        render();
+        renderModalContainer();
       }
     }
 
@@ -17370,7 +17585,7 @@
       excelOpening = true;
       render();
       try {
-        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=9');
+        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=10');
         await excelModulePromise;
         if (!window.UstoreExcel) throw new Error('Excel moduli topilmadi');
         await window.UstoreExcel.prepare?.();

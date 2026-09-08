@@ -5529,3 +5529,123 @@ body.fc-admin-mode .fc-theme-card-v2.is-selected{border-color:color-mix(in srgb,
 .fc-orders-status-select select:focus{outline:0;box-shadow:none!important}.fc-orders-calendar-trigger{flex:0 0 46px;width:46px;height:46px;border-radius:13px}
 .fc-admin-orders-filter-card{display:flex;flex-direction:column;gap:10px}
 @media(max-width:360px){.fc-orders-status-select{max-width:none}.fc-orders-status-select select{font-size:12px}}
+
+/* =========================================================
+   2026-09-08 VIDEO FIX BATCH — interaction / compact actions
+   ========================================================= */
+/* Save/cancel juftligi endi katta oq card emas: faqat ixcham floating
+   actionlar. Do'kon parametrlari sahifalarida JS dirty-state bo'yicha
+   ko'rsatadi/yashiradi. */
+.fc-icon-action-bar{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:8px!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+.fc-action-icon-btn{
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  min-height:42px!important;
+  padding:0!important;
+  border-radius:12px!important;
+}
+.fc-action-icon-btn>svg,.fc-action-icon-btn>i{
+  width:18px!important;
+  height:18px!important;
+}
+.fc-action-icon-btn:disabled{opacity:.62!important}
+body.fc-admin-mode .fc-settings-sticky-actions,
+body.fc-admin-mode .fc-delivery-footer,
+body.fc-admin-mode .fc-design-footer-v2,
+body.fc-admin-mode .fc-legal-savebar{
+  position:sticky!important;
+  bottom:calc(76px + env(safe-area-inset-bottom))!important;
+  z-index:24!important;
+  width:max-content!important;
+  margin-left:auto!important;
+  pointer-events:none;
+}
+body.fc-admin-mode .fc-settings-sticky-actions .fc-action-icon-btn,
+body.fc-admin-mode .fc-delivery-footer .fc-action-icon-btn,
+body.fc-admin-mode .fc-design-footer-v2 .fc-action-icon-btn,
+body.fc-admin-mode .fc-legal-savebar .fc-action-icon-btn{pointer-events:auto}
+@media(min-width:768px){
+  body.fc-admin-mode .fc-settings-sticky-actions,
+  body.fc-admin-mode .fc-delivery-footer,
+  body.fc-admin-mode .fc-design-footer-v2,
+  body.fc-admin-mode .fc-legal-savebar{bottom:16px!important}
+}
+
+/* Toggle: barcha sahifada bir xil o'lcham va bosilishi bilan darhol aniq
+   holat. disabled paytidagi eski yarim-shaffof track yo'q. */
+.fc-toggle{width:44px!important;height:26px!important;min-width:44px!important;flex:0 0 44px!important}
+.fc-toggle-track{border-radius:999px!important;transition:background-color .16s ease,box-shadow .16s ease!important}
+.fc-toggle-track::after{
+  top:2px!important;left:2px!important;width:22px!important;height:22px!important;
+  transition:transform .16s ease!important;
+}
+.fc-toggle input:checked + .fc-toggle-track::after{transform:translateX(18px)!important}
+.fc-toggle input:disabled + .fc-toggle-track{opacity:1!important}
+
+/* Toggle matnini siqib tashlamasin. Iconsiz row = text + 44px switch;
+   ikonli row = 40px icon + text + 44px switch. */
+.fc-settings-toggle-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 44px!important;
+  align-items:center!important;
+  gap:12px!important;
+  padding:14px 16px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.fc-settings-toggle-row:has(> .fc-settings-menu-icon){
+  grid-template-columns:40px minmax(0,1fr) 44px!important;
+}
+.fc-settings-toggle-row>.fc-settings-menu-icon{width:40px!important;height:40px!important}
+.fc-settings-toggle-row>span:first-child:not(.fc-settings-menu-icon),
+.fc-settings-toggle-row>.fc-settings-menu-copy,
+.fc-settings-toggle-row>div:not(.fc-settings-menu-icon){min-width:0!important;width:auto!important}
+.fc-settings-toggle-row>.fc-toggle{justify-self:end!important}
+.fc-settings-toggle-row b,.fc-settings-toggle-row small{overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important}
+
+/* Modern non-blocking snackbar/toast. */
+#action-toast{
+  left:50%!important;
+  right:auto!important;
+  bottom:calc(82px + env(safe-area-inset-bottom))!important;
+  transform:translateX(-50%)!important;
+  width:max-content!important;
+  max-width:min(340px,calc(100vw - 24px))!important;
+  min-height:40px!important;
+  padding:10px 14px!important;
+  border-radius:12px!important;
+  font-size:13px!important;
+  line-height:18px!important;
+  font-weight:750!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  text-align:center!important;
+  box-shadow:0 10px 30px rgba(16,24,40,.14)!important;
+  animation:ustoreToastIn .16s ease-out both;
+}
+@keyframes ustoreToastIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@media(min-width:768px){#action-toast{bottom:24px!important}}
+
+/* Boshqaruv markazi fonda ma'lumot kelganda DOM yangilanadi, lekin panel
+   qayta ochilish animatsiyasini takrorlamaydi. */
+#fc-admin-command-center-root[data-refreshing] .fc-command-panel{animation:none!important}
+/* Exact final geometry from 2026-09-08 UX spec. */
+.fc-action-icon-btn:disabled{opacity:.46!important}
+#action-toast{font-weight:700!important}
+@media(min-width:768px){#action-toast{bottom:20px!important}}
+@keyframes ustoreToastIn{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
+.fc-icon-action-bar.hidden{display:none!important}
