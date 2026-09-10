@@ -1333,6 +1333,10 @@
     // HAR DOIM promo_preview/create_order javobidan olinadi, mijoz tomonda
     // hisoblanmaydi.
     let checkoutPromoCode = '';
+    // boot() to'ldiradi — do'konda kamida bitta faol promo-kod bo'lsa TRUE.
+    // Savatdagi "promo-kod kiritish" maydoni faqat shu holatda (yoki mijozning
+    // shaxsiy kodi bo'lsa / kod allaqachon qo'llangan bo'lsa) ko'rinadi.
+    let hasActivePromoCodes = false;
     let appliedPromoState = null; // { code, name, discountAmount } | null
     let checkoutDiscountState = null; // server preview: promo/tier/VIP parts
     let cartDiscountState = null;
@@ -7042,10 +7046,7 @@
             <span class="fc-badge fc-badge-success">${tr('Bepul', 'Бесплатно')}</span>
           </div>` : ''}
 
-          <div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
-            <div class="flex items-center gap-2 text-xs font-bold text-gray-700"><i data-lucide="ticket-percent" class="w-4 h-4"></i>${tr('Promo-kod', 'Промокод')}</div>
-            <div id="cart-promo-wrap">${renderPromoWrapHtml()}</div>
-          </div>
+          ${renderPromoSectionHtml()}
         </div>
 
         <div class="fixed left-0 right-0 z-30 px-4" style="bottom:calc(4.25rem + env(safe-area-inset-bottom))">
@@ -7243,6 +7244,21 @@
       return checkoutDiscountState;
     }
 
+    // Promo-kod kiritish joyi FAQAT quyidagilardan biri to'g'ri bo'lsa ko'rinadi:
+    //  - kod allaqachon qo'llangan (appliedPromoState)
+    //  - do'konda kamida bitta faol promo-kod bor (boot -> hasActivePromoCodes)
+    //  - mijozga shaxsan berilgan promo-kod bor (myPromoCodes)
+    // Admin hech qachon promo-kod qo'shmagan bo'lsa — bo'lim umuman chiqmaydi.
+    function promoInputVisible() {
+      return !!appliedPromoState || hasActivePromoCodes || (Array.isArray(myPromoCodes) && myPromoCodes.length > 0);
+    }
+    function renderPromoSectionHtml() {
+      if (!promoInputVisible()) return '';
+      return `<div class="bg-white rounded-2xl p-4 shadow-sm space-y-2">
+            <div class="flex items-center gap-2 text-xs font-bold text-gray-700"><i data-lucide="ticket-percent" class="w-4 h-4"></i>${tr('Promo-kod', 'Промокод')}</div>
+            <div id="cart-promo-wrap">${renderPromoWrapHtml()}</div>
+          </div>`;
+    }
     function renderPromoWrapHtml() {
       if (appliedPromoState) {
         return `<div class="fc-checkout-promo-row">
@@ -17576,7 +17592,7 @@
       excelOpening = true;
       render();
       try {
-        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=11');
+        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=12');
         await excelModulePromise;
         if (!window.UstoreExcel) throw new Error('Excel moduli topilmadi');
         await window.UstoreExcel.prepare?.();
@@ -18724,6 +18740,7 @@
         returnPolicyText = String(bootData.returnPolicyText || '');
         allowDiscountCombining = bootData.allowDiscountCombining === true;
         maxCombinedDiscountPercent = bootData.maxCombinedDiscountPercent ?? null;
+        hasActivePromoCodes = bootData.hasActivePromoCodes === true;
         fulfillmentConfig = commerce.normalizeConfig(bootData.fulfillmentConfig, TOP_LEVEL_REGION_IDS);
         designSettings = bootData.designSettings || { themeId: 'minimal', colors: {} };
         legalDocuments = Array.isArray(bootData.legalDocuments) ? bootData.legalDocuments : [];

@@ -529,9 +529,14 @@
     source.oldPriceRaw=document.getElementById('xe-oldprice')?.value.trim()||'';
     source.stockRaw=document.getElementById('xe-stock')?.value.trim()||'';
     source.desc=document.getElementById('xe-desc')?.value.trim()||'';
-    source.sizeText=document.getElementById('xe-size')?.value.trim()||'';
-    source.colorText=document.getElementById('xe-color')?.value.trim()||'';
-    source.variantText=document.getElementById('xe-variants')?.value.trim()||'';
+    const structuredVariants=readVariantEditorText();
+    if(structuredVariants!==null){
+      source.variantText=structuredVariants; source.sizeText=''; source.colorText='';
+    }else{
+      source.variantText='';
+      source.sizeText=document.getElementById('xe-size')?.value.trim()||'';
+      source.colorText=document.getElementById('xe-color')?.value.trim()||'';
+    }
     const rebuilt=rebuildSourceRow(source);
     state.rows=state.rows.filter(r=>r.excelRow!==excelRow);
     if(rebuilt.row)state.rows.push(rebuilt.row);
@@ -896,8 +901,10 @@
       }
       const chunks=[];for(let i=0;i<prepared.length;i+=75)chunks.push(prepared.slice(i,i+75));
       const started=await callApi('start_import_batch',{fileName:state.fileName,fileHash:state.fileHash,totalRows:prepared.length});
-      batchId=Number(started.batchId);
-      if(!batchId)throw new Error('import_batch_start_failed');
+      // 2026-09-10: import_batches.id — UUID (matn), raqam EMAS. Avval bu yerda
+      // Number(...) qilinardi -> NaN -> har safar 'import_batch_start_failed'.
+      batchId=started.batchId ? String(started.batchId) : null;
+      if(!batchId)throw new Error(started.error||'import_batch_start_failed');
       state.lastBatch={id:batchId,fileName:state.fileName,status:'IN_PROGRESS',totalRows:prepared.length,importedRows:0};
       let imported=0; const createdCats=[]; const importedProducts=[];
       for(let i=0;i<chunks.length;i++){
@@ -946,6 +953,81 @@
     finally{state.busy=false;state.busyText='';rerender();}
   }
 
+  // ---- "Qatorni tuzatish": variativ tovar variantlari (structured editor) ----
+  // Excel'dagi "Rang|O'lcham|Narx|Eski narx|Qoldiq / ..." satrini har biri
+  // alohida input qatoriga aylantiramiz; saqlashda qayta xuddi shu formatga
+  // yig'iladi — parseModernVariants va butun import quvuri o'zgarmaydi.
+  function parseVariantTextToRows(text) {
+    return String(text || '').split('/').map(g => g.trim()).filter(Boolean).map(g => {
+      const p = g.split('|').map(x => x.trim());
+      return { color: p[0] || '', size: p[1] || '', price: p[2] || '', oldPrice: p[3] || '', qty: p.slice(4).join('|').trim() || '' };
+    });
+  }
+  function serializeVariantRows(rows) {
+    return rows
+      .filter(v => (v.color || v.size || v.price || v.oldPrice || v.qty))
+      .map(v => `${v.color}|${v.size}|${v.price}|${v.oldPrice}|${v.qty}`)
+      .join(' / ');
+  }
+  function variantRowHtml(v) {
+    v = v || {};
+    return `<div class="xe-vrow bg-white border border-slate-200 rounded-xl p-2 space-y-1.5">
+      <div class="flex items-center justify-between"><span class="text-[10px] font-bold text-slate-400">${xl('Variant', 'Вариант')}</span><button type="button" onclick="UstoreExcel.removeVariantRow(this)" class="text-slate-400 text-sm leading-none px-1" aria-label="${xl("O'chirish", 'Удалить')}">✕</button></div>
+      <div class="grid grid-cols-2 gap-1.5">
+        <input class="xe-v-color w-full p-1.5 border rounded-lg text-sm" value="${esc(v.color || '')}" placeholder="${xl('Rang', 'Цвет')}">
+        <input class="xe-v-size w-full p-1.5 border rounded-lg text-sm" value="${esc(v.size || '')}" placeholder="${xl("O'lcham", 'Размер')}">
+        <input class="xe-v-price w-full p-1.5 border rounded-lg text-sm" inputmode="decimal" value="${esc(v.price || '')}" placeholder="${xl('Narx', 'Цена')}">
+        <input class="xe-v-old w-full p-1.5 border rounded-lg text-sm" inputmode="decimal" value="${esc(v.oldPrice || '')}" placeholder="${xl('Eski narx', 'Старая цена')}">
+        <input class="xe-v-qty w-full p-1.5 border rounded-lg text-sm" inputmode="numeric" value="${esc(v.qty || '')}" placeholder="${xl('Qoldiq', 'Остаток')}">
+      </div>
+    </div>`;
+  }
+  function addVariantRow() {
+    const list = document.getElementById('xe-variants-list');
+    if (list) list.insertAdjacentHTML('beforeend', variantRowHtml({}));
+  }
+  function removeVariantRow(btn) {
+    const row = btn && btn.closest('.xe-vrow');
+    if (row && row.parentElement && row.parentElement.querySelectorAll('.xe-vrow').length > 1) row.remove();
+    else if (row) row.querySelectorAll('input').forEach(i => { i.value = ''; }); // oxirgi qatorni o'chirmay, tozalaymiz
+  }
+  function readVariantEditorText() {
+    const list = document.getElementById('xe-variants-list');
+    if (!list) return null; // oddiy (variativ bo'lmagan) qator
+    const rows = [...list.querySelectorAll('.xe-vrow')].map(el => ({
+      color: el.querySelector('.xe-v-color')?.value.trim() || '',
+      size: el.querySelector('.xe-v-size')?.value.trim() || '',
+      price: el.querySelector('.xe-v-price')?.value.trim() || '',
+      oldPrice: el.querySelector('.xe-v-old')?.value.trim() || '',
+      qty: el.querySelector('.xe-v-qty')?.value.trim() || '',
+    }));
+    return serializeVariantRows(rows);
+  }
+  function buildRowEditorHtml(editSource) {
+    if (!editSource) return '';
+    const isVariative = editSource.sheetName === 'Variativ tovarlar' || !!String(editSource.variantText || '').trim();
+    const vrows = parseVariantTextToRows(editSource.variantText);
+    const variantBlock = isVariative
+      ? `<div>
+          <label class="font-bold">${xl('Variantlar', 'Варианты')}</label>
+          <div id="xe-variants-list" class="mt-1 space-y-1.5">${(vrows.length ? vrows : [{}]).map(variantRowHtml).join('')}</div>
+          <button type="button" onclick="UstoreExcel.addVariantRow()" class="mt-1.5 w-full border border-dashed border-slate-300 text-slate-600 rounded-xl py-2 font-bold text-sm">➕ ${xl("Variant qo'shish", 'Добавить вариант')}</button>
+          <p class="text-[10px] text-gray-500 mt-1">${xl("Rang yoki o'lchamdan kamida bittasi to'ldirilsin. Narx bo'sh bo'lsa asosiy narx ishlaydi.", 'Заполните хотя бы цвет или размер. Пустая цена — берётся основная.')}</p>
+        </div>`
+      : `<div><label class="font-bold">${xl("O'lchami", 'Размер')}</label><input id="xe-size" value="${esc(editSource.sizeText || '')}" class="w-full mt-1 p-2 border rounded-xl"></div>
+         <div><label class="font-bold">${xl('Rang', 'Цвет')}</label><input id="xe-color" value="${esc(editSource.colorText || '')}" class="w-full mt-1 p-2 border rounded-xl"></div>`;
+    return `<div class="bg-slate-50 border border-slate-300 rounded-2xl p-3 space-y-2">
+      <div class="flex items-center justify-between"><h4 class="font-black">✏️ ${xl('Qatorni tuzatish', 'Исправление строки')} ${rowLabel(editSource.excelRow)}</h4><button onclick="UstoreExcel.closeRowEditor()" class="bg-white border px-2 py-1 rounded-lg font-bold">✕</button></div>
+      <div><label class="font-bold">${xl("Katalog yo'li", "Katalog yo'li")}</label><input id="xe-path" value="${esc((editSource.categoryPath || []).join(' / '))}" class="w-full mt-1 p-2 border rounded-xl"></div>
+      <div><label class="font-bold">${xl('Tovar nomi', 'Название товара')}</label><input id="xe-name" value="${esc(editSource.name || '')}" class="w-full mt-1 p-2 border rounded-xl"></div>
+      <div class="grid grid-cols-2 gap-2"><div><label class="font-bold">${xl('Narx', 'Цена')}</label><input id="xe-price" inputmode="decimal" value="${esc(editSource.priceRaw || '')}" class="w-full mt-1 p-2 border rounded-xl"></div><div><label class="font-bold">${xl('Eski narx', 'Старая цена')}</label><input id="xe-oldprice" inputmode="decimal" value="${esc(editSource.oldPriceRaw || '')}" class="w-full mt-1 p-2 border rounded-xl"></div></div>
+      <div><label class="font-bold">${xl('Soni', 'Количество')}</label><input id="xe-stock" inputmode="numeric" value="${esc(editSource.stockRaw || '')}" class="w-full mt-1 p-2 border rounded-xl"></div>
+      <div><label class="font-bold">${xl('Izoh', 'Описание')}</label><textarea id="xe-desc" rows="2" class="w-full mt-1 p-2 border rounded-xl">${esc(editSource.desc || '')}</textarea></div>
+      ${variantBlock}
+      <button onclick="UstoreExcel.saveRowEditor()" class="w-full bg-blue-600 text-white font-black py-2.5 rounded-xl">✅ ${xl('Saqlash va qayta tekshirish', 'Сохранить и перепроверить')}</button>
+    </div>`;
+  }
+
   function renderModal() {
     const errors=state.rowIssues.filter(x=>x.severity==='ERROR');
     const warnings=state.rowIssues.filter(x=>x.severity==='WARNING');
@@ -980,7 +1062,7 @@
     const progressPercent=state.progressTotal?Math.min(100,Math.round(state.progressDone/state.progressTotal*100)):0;
     const canRollbackLast=(!state.result||(!state.result.ok&&!state.result.batchId))&&state.lastBatch?.id&&['COMPLETED','IN_PROGRESS','FAILED'].includes(state.lastBatch?.status);
     const editSource=state.sourceRows.find(r=>r.excelRow===Number(state.editingRow));
-    const editorHtml=editSource?`<div class="bg-slate-50 border border-slate-300 rounded-2xl p-3 space-y-2"><div class="flex items-center justify-between"><h4 class="font-black">✏️ ${xl('Qatorni tuzatish','Исправление строки')} ${rowLabel(editSource.excelRow)}</h4><button onclick="UstoreExcel.closeRowEditor()" class="bg-white border px-2 py-1 rounded-lg font-bold">✕</button></div><div><label class="font-bold">${xl("Katalog yo'li","Katalog yo'li")}</label><input id="xe-path" value="${esc((editSource.categoryPath||[]).join(' / '))}" class="w-full mt-1 p-2 border rounded-xl"></div><div><label class="font-bold">${xl('Tovar nomi','Название товара')}</label><input id="xe-name" value="${esc(editSource.name||'')}" class="w-full mt-1 p-2 border rounded-xl"></div><div class="grid grid-cols-2 gap-2"><div><label class="font-bold">${xl('Narx','Цена')}</label><input id="xe-price" inputmode="decimal" value="${esc(editSource.priceRaw||'')}" class="w-full mt-1 p-2 border rounded-xl"></div><div><label class="font-bold">${xl('Eski narx','Старая цена')}</label><input id="xe-oldprice" inputmode="decimal" value="${esc(editSource.oldPriceRaw||'')}" class="w-full mt-1 p-2 border rounded-xl"></div></div><div><label class="font-bold">${xl('Soni','Количество')}</label><input id="xe-stock" inputmode="numeric" value="${esc(editSource.stockRaw||'')}" class="w-full mt-1 p-2 border rounded-xl"></div><div><label class="font-bold">${xl('Izoh','Описание')}</label><textarea id="xe-desc" rows="2" class="w-full mt-1 p-2 border rounded-xl">${esc(editSource.desc||'')}</textarea></div><div><label class="font-bold">${xl("O'lchami",'Размер')}</label><input id="xe-size" value="${esc(editSource.sizeText||'')}" class="w-full mt-1 p-2 border rounded-xl"></div><div><label class="font-bold">${xl('Rang (eski format)','Цвет (старый формат)')}</label><input id="xe-color" value="${esc(editSource.colorText||'')}" class="w-full mt-1 p-2 border rounded-xl"></div><div><label class="font-bold">${xl('Variantlar (yangi format)','Варианты (новый формат)')}</label><input id="xe-variants" value="${esc(editSource.variantText||'')}" placeholder="Yashil|S|180000|220000|3 / Yashil|M|185000||4" class="w-full mt-1 p-2 border rounded-xl"><p class="text-[10px] text-gray-500 mt-1">${xl("Rang|O'lcham|Narx|Eski narx|Qoldiq","Цвет|Размер|Цена|Старая цена|Остаток")}</p></div><button onclick="UstoreExcel.saveRowEditor()" class="w-full bg-blue-600 text-white font-black py-2.5 rounded-xl">✅ ${xl('Saqlash va qayta tekshirish','Сохранить и перепроверить')}</button></div>`:'';
+    const editorHtml=buildRowEditorHtml(editSource);
     return `
       <div class="fc-excel-overlay" onclick="activePopupModal=null; render();">
         <div class="fc-excel-modal" onclick="event.stopPropagation()">
@@ -1010,5 +1092,5 @@
     catch(e){console.warn('Last import batch unavailable',e);}
     return true;
   }
-  window.UstoreExcel={prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,doImport,rollbackBatch,reset,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload}};
+  window.UstoreExcel={prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,addVariantRow,removeVariantRow,doImport,rollbackBatch,reset,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload,parseVariantTextToRows,serializeVariantRows}};
 })();
