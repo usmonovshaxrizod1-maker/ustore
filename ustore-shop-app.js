@@ -4512,20 +4512,6 @@
       for(let i=0;i<bytes.length;i+=chunk) binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
       return btoa(binary);
     }
-    function telegramNativeDownloadAvailable() {
-      return typeof window.Telegram?.WebApp?.downloadFile === 'function';
-    }
-    function requestTelegramNativeDownload(url, filename) {
-      return new Promise((resolve,reject)=>{
-        let settled=false; const timer=setTimeout(()=>{if(!settled){settled=true;reject(new Error('telegram_download_timeout'));}},15000);
-        try {
-          window.Telegram.WebApp.downloadFile({ url, file_name: filename }, (accepted)=>{
-            if(settled)return;settled=true;clearTimeout(timer);
-            accepted ? resolve(true) : reject(new Error('telegram_download_rejected'));
-          });
-        } catch(e) { if(!settled){settled=true;clearTimeout(timer);reject(e);} }
-      });
-    }
     async function browserSaveReportBlob(blob, filename) {
       const file = (typeof File === 'function') ? new File([blob], filename, { type:'application/pdf' }) : null;
       const isTelegram = !!window.Telegram?.WebApp?.initData;
@@ -4541,17 +4527,22 @@
     async function saveReportPdf(doc, filename) {
       const blob=doc.output('blob');
       if (!(blob instanceof Blob) || !blob.size) throw new Error('pdf_blob_empty');
-      // Telegram Mini Apps 8.0+ has a native file download prompt, but it
-      // requires an HTTPS URL. The PDF is therefore written to a PRIVATE
-      // latest-per-user bucket and exposed only through a 5-minute signed URL.
-      if (telegramNativeDownloadAvailable()) {
+      // 2026-09-10: Telegram Mini App ichida PDF'ni PRIVATE bucket'ga yozamiz,
+      // 5 daqiqalik signed URL olamiz va uni TASHQI brauzerda ochamiz
+      // (openLink). Signed URL `Content-Disposition: attachment` bilan
+      // kelgani uchun brauzer faylni to'g'ridan-to'g'ri yuklab oladi.
+      // Telegram'ning native downloadFile() dialogi ba'zi Android/iOS
+      // qurilmalarida "Yuklash" bosilgach ham faylni saqlamaydi — shuning
+      // uchun undan foydalanmaymiz.
+      const tgOpenLink = window.Telegram?.WebApp?.openLink;
+      if (typeof tgOpenLink === 'function' && !!window.Telegram?.WebApp?.initData) {
         try {
           const uploaded=await callApi('upload_report_pdf',{ fileName:filename, pdfUpload:{ mimeType:'application/pdf', base64:await reportBlobToBase64(blob) } });
           if (!uploaded?.url) throw new Error('report_download_url_missing');
-          await requestTelegramNativeDownload(uploaded.url, uploaded.fileName || filename);
-          showActionToast(tr('PDF yuklash oynasi ochildi','Открыто окно загрузки PDF'),'success',1400);
+          window.Telegram.WebApp.openLink(String(uploaded.url), { try_instant_view:false });
+          showActionToast(tr('PDF brauzerda ochildi — yuklab olish boshlanadi','PDF открыт в браузере — начнётся загрузка'),'success',1600);
           return true;
-        } catch(e) { console.warn('[report-native-download-fallback]',e); }
+        } catch(e) { console.warn('[report-openlink-fallback]',e); }
       }
       return browserSaveReportBlob(blob, filename);
     }
@@ -17585,7 +17576,7 @@
       excelOpening = true;
       render();
       try {
-        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=10');
+        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=11');
         await excelModulePromise;
         if (!window.UstoreExcel) throw new Error('Excel moduli topilmadi');
         await window.UstoreExcel.prepare?.();

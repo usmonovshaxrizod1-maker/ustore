@@ -131,44 +131,30 @@
   }
   function startTemplateDownload(url,fileName,pendingWindow) {
     if(!/^https:\/\//i.test(url))throw new Error(xl('Server xavfsiz HTTPS download URL qaytarmadi.','Сервер не вернул безопасный HTTPS URL.'));
-    if(canUseTelegramDownload()){
-      try{
-        const result=window.Telegram.WebApp.downloadFile({url,file_name:fileName},accepted=>{
-          if(accepted===false){
-            try{
-              const mode=fallbackTemplateDownload(url,fileName,pendingWindow);
-              state.templateStatus={type:'success',message:mode==='telegram-link'?xl('Shablon Telegram orqali ochildi.','Шаблон открыт через Telegram.'):xl('Shablonni yuklab olish boshlandi.','Загрузка шаблона началась.')};
-            }catch(error){
-              console.error('Excel template fallback download failed',error);
-              state.templateStatus={type:'error',message:xl('Shablonni yuklab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось скачать шаблон. Попробуйте ещё раз.')};
-            }
-            rerender();
-          }
-        });
-        if(result&&typeof result.then==='function'){
-          result.catch(error=>{
-            console.warn('Telegram native download promise failed, using fallback',error);
-            try{fallbackTemplateDownload(url,fileName,pendingWindow);state.templateStatus={type:'success',message:xl('Shablonni yuklab olish boshlandi.','Загрузка шаблона началась.')};}
-            catch(fallbackError){state.templateStatus={type:'error',message:xl('Shablonni yuklab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось скачать шаблон. Попробуйте ещё раз.')};}
-            rerender();
-          });
-        }
-        return 'telegram';
-      }catch(error){console.warn('Telegram native download failed, using browser fallback',error);}
-    }
+    // 2026-09-10: Telegram Mini App ichida havolani TASHQI brauzerda ochamiz.
+    // Server signed URL'ni `Content-Disposition: attachment` bilan beradi,
+    // shuning uchun tashqi brauzer faylni to'g'ridan-to'g'ri yuklab oladi.
+    // Telegram'ning native downloadFile() dialogi ("… 12 KB, Yuklash")
+    // ba'zi Android/iOS qurilmalarida "Yuklash" bosilgach ham faylni
+    // umuman saqlamaydi — shuning uchun undan foydalanmaymiz.
+    if(telegramOpenLink(url))return 'telegram-link';
     return fallbackTemplateDownload(url,fileName,pendingWindow);
   }
   async function downloadTemplate() {
     if(state.busy)return;
-    const nativeDownload=canUseTelegramDownload();
+    // Telegram ichida bo'lsak, tashqi brauzer ochiladi (openLink) — bu yerda
+    // oldindan bo'sh oyna ochish shart emas va Telegram WebView'da u baribir
+    // ishlamaydi. Faqat oddiy brauzerda (Telegramsiz) foydalanuvchi bosgan
+    // paytdagi "gesture"ni saqlab qolish uchun bo'sh oyna ochamiz.
+    const inTelegram=typeof window.Telegram?.WebApp?.openLink==='function';
     let pendingWindow=null;
-    if(!nativeDownload){try{pendingWindow=window.open('about:blank','_blank');}catch{}}
+    if(!inTelegram){try{pendingWindow=window.open('about:blank','_blank');}catch{}}
     state.busy=true;state.busyText=xl('Shablon tayyorlanmoqda…','Шаблон готовится…');state.templateStatus=null;rerender();
     try{
       const data=await callApi('get_excel_template_url',{});
       const url=String(data?.url||'');const fileName=String(data?.fileName||'Tovar_import_shablon.xlsx');
       const mode=startTemplateDownload(url,fileName,pendingWindow);
-      state.templateStatus={type:'success',message:mode==='telegram'?xl('Telegram yuklab olish oynasi ochildi.','Открыто окно загрузки Telegram.'):(mode==='telegram-link'?xl('Shablon Telegram orqali ochildi.','Шаблон открыт через Telegram.'):xl('Shablonni yuklab olish boshlandi.','Загрузка шаблона началась.'))};
+      state.templateStatus={type:'success',message:mode==='telegram-link'?xl('Shablon brauzerda ochildi — yuklab olish boshlanadi.','Шаблон открыт в браузере — начнётся загрузка.'):xl('Shablonni yuklab olish boshlandi.','Загрузка шаблона началась.')};
     }catch(e){
       if(pendingWindow&&!pendingWindow.closed)pendingWindow.close();
       console.error(e);state.templateStatus={type:'error',message:xl('Shablonni tayyorlab bo‘lmadi: ','Не удалось подготовить шаблон: ')+(e.message||e)};
