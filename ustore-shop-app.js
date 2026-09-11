@@ -143,6 +143,101 @@
     // tarmoqsiz ham ishlaydi, istalgan o'lchamda aniq (vektor) ko'rinadi.
     const FALLBACK_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE0IiBmaWxsPSIjZjNmNGY2Ii8+PGcgc3Ryb2tlPSIjYzdjZGQ2IiBzdHJva2Utd2lkdGg9IjQiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iMjgiIHk9IjI4IiB3aWR0aD0iNDQiIGhlaWdodD0iNDQiIHJ4PSI2Ii8+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNCIvPjxwYXRoIGQ9Ik0yOCA2MiBMNDQgNDYgTDU0IDU2IEw3MiAzOCIvPjwvZz48L3N2Zz4=';
 
+    // Ommaviy katalog importi uchun ChatGPT prompti — BITTA markaziy joy
+    // (28-band, "Bir nechta katalog qo'shish" oynasidagi "ChatGPT uchun
+    // prompt" tugmasi shu konstantani ko'rsatadi/nusxalaydi). Matn keyinchalik
+    // yangilansa, faqat shu yerda o'zgartiriladi.
+    const CATALOG_CHATGPT_PROMPT = `Men internet-do'konimdagi mavjud tovarlar asosida UStorE uchun kataloglar strukturasini yaratmoqchiman.
+
+Hozircha katalog tuzmang.
+
+Birinchi javobingizda faqat quyidagini yozing:
+
+"Tovarlaringiz ro'yxatini yuboring. Tovarlarni vergul bilan yoki har birini yangi qatordan yuborishingiz mumkin."
+
+Men tovarlar ro'yxatini yuborganimdan keyin barcha tovarlarni tahlil qiling va UStorE'dagi "Bir nechta katalog qo'shish" funksiyasiga to'g'ridan-to'g'ri nusxa olib joylash mumkin bo'lgan katalog yo'llarini yarating.
+
+QOIDALAR:
+
+1. Tovarlarni mantiqiy guruhlarga ajrating.
+2. Avval asosiy bosh kataloglarni aniqlang.
+3. Zarur bo'lsa ichki katalog yarating.
+4. Zarur bo'lsa yana bir daraja ichki katalog yarating.
+5. Katalog strukturasini keragidan ortiq chuqurlashtirmang. Odatda 2-3 daraja yetarli.
+6. Individual mahsulot nomini katalogga aylantirmang.
+7. Mahsulotning og'irligi, hajmi, ta'mi, rangi, o'lchami, modeli yoki SKU nomini katalog sifatida yaratmang.
+8. Katalog nomlari qisqa, tushunarli va xaridor uchun qulay bo'lsin.
+9. Bir xil ma'nodagi kataloglarni turli nomlarda takrorlamang.
+10. Faqat men yuborgan tovarlardan kelib chiqib katalog yarating.
+11. Men yubormagan mahsulotlar uchun kelajakda kerak bo'lishi mumkin deb katalog qo'shmang.
+12. Bir xil katalog yo'li natijada faqat bir marta chiqsin.
+13. Har bir tovar eng mos katalogga joylashtirilsin.
+
+Masalan:
+
+Whey Protein 900 g
+
+uchun:
+
+Sport ozuqalari/Protein/Whey
+
+TO'G'RI.
+
+Sport ozuqalari/Protein/Whey/Whey Protein 900 g
+
+NOTO'G'RI.
+
+YAKUNIY USTORE FORMAT:
+
+Katalog yo'llarini alohida BITTA code block ichida bering.
+
+Code block ichida:
+- raqam bo'lmasin;
+- bullet bo'lmasin;
+- izoh bo'lmasin;
+- sarlavha bo'lmasin;
+- emoji bo'lmasin;
+- bo'sh qator bo'lmasin;
+- har bir qatorda faqat bitta katalog yo'li bo'lsin;
+- katalog darajalarini faqat / belgisi bilan ajrating;
+- / belgisi oldi yoki orqasida probel bo'lmasin.
+
+Masalan:
+
+Sport ozuqalari/Protein/Whey
+Sport ozuqalari/Protein/Casein
+Sport ozuqalari/Creatine
+Sport ozuqalari/BCAA
+Sport kiyimlari/Erkaklar/Futbolkalar
+Sport kiyimlari/Erkaklar/Shortilar
+Sport kiyimlari/Ayollar/Legginslar
+Vitaminlar/Omega-3
+Sport buyumlari/Shakerlar
+
+Code blockdan oldin faqat:
+
+"UStorE'ga nusxa olish uchun tayyor katalog yo'llari:"
+
+deb yozing.
+
+Code blockdan keyin:
+
+"Tekshiruv uchun tovarlar taqsimoti"
+
+degan bo'lim yarating.
+
+Bu bo'limda har bir mahsulot qaysi katalogga tushganini ko'rsating.
+
+Masalan:
+
+Whey Protein 900 g → Sport ozuqalari/Protein/Whey
+Whey Isolate 1 kg → Sport ozuqalari/Protein/Whey
+Casein Protein 900 g → Sport ozuqalari/Protein/Casein
+
+UStorE'ga nusxa olinadigan ma'lumot FAQAT birinchi code block ichidagi katalog yo'llari bo'lishi kerak.
+
+Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
+
     // 31-band: navigatsiya/action kontekstidagi emoji o'rniga zamonaviy SVG
     // iconlar — inline (Lucide-uslubida chizilgan, lekin data-lucide emas,
     // shuning uchun lucide.createIcons() chaqirilishiga bog'liq emas va har
@@ -1443,6 +1538,11 @@
     let bulkMoveTargetCategoryId = '';
     let bulkCategorySelectMode = false;
     const bulkSelectedCategoryIds = new Set();
+    // Ommaviy katalog yaratish ("Bir nechta katalog qo'shish") — eski
+    // bitta-katalog ADD_CAT oynasiga TEGMAYDI, mustaqil holat.
+    let bulkCatText = '';
+    let bulkCatPreview = null; // buildBulkCategoryPreview() natijasi | null
+    let bulkCatBusy = false;
     let movePickerParentId = null;
     let movePickerSearch = '';
     let catalogLongPressTimer = null;
@@ -6049,7 +6149,7 @@
       const d = fulfillmentConfig?.delivery || {};
       const regionEnabled = (bucket) => Object.values(bucket?.regions || {}).some(x => x?.enabled);
       const postEnabled = !!(d.post?.enabled && (d.post?.providers || []).some(x => x?.enabled));
-      return !!((d.free?.enabled && regionEnabled(d.free)) || (d.fixed?.enabled && regionEnabled(d.fixed)) || (d.taxi?.enabled && (regionEnabled(d.taxi) || d.taxi?.general?.exactFee != null || d.taxi?.general?.minFee != null)) || postEnabled);
+      return !!((d.free?.enabled && regionEnabled(d.free)) || (d.fixed?.enabled && regionEnabled(d.fixed)) || (d.taxi?.enabled && (regionEnabled(d.taxi) || (d.taxi?.general?.enabled && (d.taxi.general.exactFee != null || d.taxi.general.minFee != null)))) || postEnabled);
     }
 
     function adminCommandCenterPaymentReady() {
@@ -6276,7 +6376,7 @@
       const hasRegion = bucket => Object.values(bucket?.regions || {}).some(x => x?.enabled);
       const free = !!(d.free?.enabled && hasRegion(d.free));
       const fixed = !!(d.fixed?.enabled && hasRegion(d.fixed));
-      const taxi = !!(d.taxi?.enabled && (hasRegion(d.taxi) || d.taxi?.general?.exactFee != null || d.taxi?.general?.minFee != null));
+      const taxi = !!(d.taxi?.enabled && (hasRegion(d.taxi) || (d.taxi?.general?.enabled && (d.taxi.general.exactFee != null || d.taxi.general.minFee != null))));
       const post = !!(d.post?.enabled && (d.post?.providers || []).some(x => x?.enabled));
       const signals = [];
       if (free) signals.push({icon:'truck', text:tr('Bepul yetkazib berish mavjud','Доступна бесплатная доставка')});
@@ -6677,7 +6777,7 @@
               <!-- 23-band: Katalog/Tovar/Excel bitta ixcham qatorda, zamonaviy
                    (Lucide) iconlar bilan — eski emoji emas. -->
               <div class="flex space-x-2 pt-1 border-t">
-                ${canManageCatalog() ? `<button onclick="openAddCatModal()" class="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="folder-plus" class="w-3.5 h-3.5"></i>${tr("Katalog", "Каталог")}</button>` : ''}
+                ${canManageCatalog() ? `<button onclick="openAddCategoryChooser()" class="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="folder-plus" class="w-3.5 h-3.5"></i>${tr("Katalog", "Каталог")}</button>` : ''}
                 ${canManageProducts() ? `<button onclick="openAddProductModal()" class="fc-product-add-btn flex-1 flex items-center justify-center gap-1 text-white font-bold py-1.5 rounded-xl text-xs"><i data-lucide="package-plus" class="w-3.5 h-3.5"></i>${tr("Tovar", "Товар")}</button>` : ''}
                 ${(isAdminMode && isUserAnAdmin && hasPermission('products.import_export')) ? `<button onclick="openExcelImportModal()" ${excelOpening ? 'disabled' : ''} class="fc-excel-btn flex-1 flex items-center justify-center gap-1 font-bold py-1.5 rounded-xl text-xs">${excelOpening ? '<span class="fc-spinner fc-spinner-xs"></span>' : '<i data-lucide="table" class="w-3.5 h-3.5"></i>'}${excelOpening ? tr('Ochilmoqda...','Открывается...') : 'Excel'}</button>` : ''}
               </div>
@@ -9917,22 +10017,46 @@
       fulfillmentDraft.delivery[key].regions[regionId].estimatedTime = String(value || '').slice(0, 60);
     }
 
-    // 7-band: TAXI uchun "umumiy" (region'ga bog'liq bo'lmagan) narx/izoh —
-    // biror region o'zining qiymatini kiritmagan bo'lsa shu fallback bo'ladi.
-    function setTaxiGeneralNumber(field, value) {
-      if (!fulfillmentDraft.delivery.taxi.general) fulfillmentDraft.delivery.taxi.general = { exactFee: null, minFee: null, maxFee: null, comment: null };
+    // "Umumiy qiymat" — region'ga bog'liq bo'lmagan narx/izoh/vaqt (7-band,
+    // TAXI uchun asli shu yerda paydo bo'lgan; 2026-09'da FREE/FIXED'ga ham
+    // xuddi shu naqsh bilan kengaytirildi, endi hammasi bitta generik
+    // funksiyalar to'plami — DELIVERY_CONFIG_KEYS orqali). Har biri o'z
+    // yoqish/o'chirish tugmasiga ega — o'chiq bo'lsa checkout'da fallback
+    // sifatida ISHLATILMAYDI (qarang ustore-commerce.js deliveryOptions()).
+    function generalDefault(kind) {
+      if (kind === 'FIXED') return { enabled: false, fee: null, comment: null, estimatedTime: null };
+      if (kind === 'TAXI') return { enabled: false, exactFee: null, minFee: null, maxFee: null, comment: null, estimatedTime: null };
+      return { enabled: false, comment: null, estimatedTime: null }; // FREE
+    }
+    function ensureGeneral(kind) {
+      const key = DELIVERY_CONFIG_KEYS[kind];
+      if (!key || !fulfillmentDraft) return null;
+      if (!fulfillmentDraft.delivery[key].general) fulfillmentDraft.delivery[key].general = generalDefault(kind);
+      return fulfillmentDraft.delivery[key].general;
+    }
+    function setGeneralEnabled(kind, enabled) {
+      const general = ensureGeneral(kind);
+      if (!general) return;
+      general.enabled = !!enabled;
+      rerenderFulfillmentBody();
+    }
+    function setGeneralNumber(kind, field, value) {
+      const general = ensureGeneral(kind);
+      if (!general) return;
       const raw = String(value ?? '').trim();
-      if (raw === '') { fulfillmentDraft.delivery.taxi.general[field] = null; return; }
+      if (raw === '') { general[field] = null; return; }
       const n = Number(raw);
-      fulfillmentDraft.delivery.taxi.general[field] = (Number.isFinite(n) && n >= 0) ? Math.round(n) : null;
+      general[field] = (Number.isFinite(n) && n >= 0) ? Math.round(n) : null;
     }
-    function setTaxiGeneralComment(value) {
-      if (!fulfillmentDraft.delivery.taxi.general) fulfillmentDraft.delivery.taxi.general = { exactFee: null, minFee: null, maxFee: null, comment: null, estimatedTime: null };
-      fulfillmentDraft.delivery.taxi.general.comment = String(value || '').slice(0, 200) || null;
+    function setGeneralComment(kind, value) {
+      const general = ensureGeneral(kind);
+      if (!general) return;
+      general.comment = String(value || '').slice(0, 200) || null;
     }
-    function setTaxiGeneralEstimatedTime(value) {
-      if (!fulfillmentDraft.delivery.taxi.general) fulfillmentDraft.delivery.taxi.general = { exactFee: null, minFee: null, maxFee: null, comment: null, estimatedTime: null };
-      fulfillmentDraft.delivery.taxi.general.estimatedTime = String(value || '').slice(0, 60) || null;
+    function setGeneralEstimatedTime(kind, value) {
+      const general = ensureGeneral(kind);
+      if (!general) return;
+      general.estimatedTime = String(value || '').slice(0, 60) || null;
     }
 
     function bulkDeliveryRegions(kind, enabled) {
@@ -10374,19 +10498,32 @@
         FIXED: tr('Har hudud uchun aniq yetkazish narxini kiriting.', 'Укажите точную стоимость доставки для каждого региона.'),
         TAXI: tr("Aniq narx yoki min/max diapazon ixtiyoriy va informatsion.", "Точная цена или диапазон min/max необязательны и носят информационный характер."),
       };
-      const taxiGeneralHtml = kind === 'TAXI' ? (() => {
-        const g = fulfillmentDraft.delivery.taxi.general || { exactFee: null, minFee: null, maxFee: null, comment: null };
-        return `<div class="fc-delivery-general-card">
-          <div class="fc-delivery-general-head"><span class="fc-shop-settings-icon"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i></span><div><b>${tr('Umumiy qiymat','Общее значение')}</b><small>${tr('O‘z narxi kiritilmagan hududlar uchun','Для регионов без собственной цены')}</small></div></div>
-          <label class="fc-mini-field"><span>${tr('Aniq narx (ixtiyoriy)','Точная цена (необязательно)')}</span><input type="number" min="0" value="${g.exactFee ?? ''}" oninput="setTaxiGeneralNumber('exactFee',this.value)"></label>
-          <div class="grid grid-cols-2 gap-2"><label class="fc-mini-field"><span>Min</span><input type="number" min="0" value="${g.minFee ?? ''}" oninput="setTaxiGeneralNumber('minFee',this.value)"></label><label class="fc-mini-field"><span>Max</span><input type="number" min="0" value="${g.maxFee ?? ''}" oninput="setTaxiGeneralNumber('maxFee',this.value)"></label></div>
-          <label class="fc-mini-field"><span>${tr('Umumiy izoh','Общий комментарий')}</span><input type="text" value="${escapeHtml(g.comment || '')}" oninput="setTaxiGeneralComment(this.value)" maxlength="200"></label>
-          <label class="fc-mini-field"><span>${tr('Yetkazib berish vaqti','Время доставки')}</span><input type="text" value="${escapeHtml(g.estimatedTime || '')}" oninput="setTaxiGeneralEstimatedTime(this.value)" maxlength="60"></label>
-        </div>`;
-      })() : '';
+      const generalHtml = renderDeliveryGeneralCard(kind, method.general);
       return `<div class="space-y-3">
         <div class="fc-delivery-master-toggle"><div><b>${tr('Usulni yoqish','Включить способ')}</b><small>${descriptions[kind]}</small></div><label class="fc-toggle"><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setDeliveryMethodEnabled('${kind}',this.checked)"><span class="fc-toggle-track"></span></label></div>
-        ${method.enabled ? `${taxiGeneralHtml}<div class="fc-delivery-bulk-tools">${settingsBulkButtons(`bulkDeliveryRegions('${kind}',true)`, `bulkDeliveryRegions('${kind}',false)`)}</div>${renderDeliveryRegionRows(kind)}` : `<div class="fc-empty-state compact"><p>${tr('Bu yetkazib berish usuli o‘chirilgan.','Этот способ доставки выключен.')}</p></div>`}
+        ${method.enabled ? `${generalHtml}<div class="fc-delivery-bulk-tools">${settingsBulkButtons(`bulkDeliveryRegions('${kind}',true)`, `bulkDeliveryRegions('${kind}',false)`)}</div>${renderDeliveryRegionRows(kind)}` : `<div class="fc-empty-state compact"><p>${tr('Bu yetkazib berish usuli o‘chirilgan.','Этот способ доставки выключен.')}</p></div>`}
+      </div>`;
+    }
+    // "Umumiy qiymat" kartasi — FREE/FIXED/TAXI uchun bitta umumiy render
+    // (2026-09 kengaytma). Yoqish/o'chirish tugmasi HAR DOIM ko'rinadi;
+    // maydonlar FAQAT yoqilganda chiqadi (spec talabi: "ungacha ... yoqib
+    // o'chirish tugmachasi turadi, uni bossa keyin izohlar chiqadi").
+    // Har bir maydon xuddi region qatoridagi bir xil maydonning nusxasi.
+    function renderDeliveryGeneralCard(kind, general) {
+      const g = general || generalDefault(kind);
+      const valueFields = [];
+      if (kind === 'FIXED') {
+        valueFields.push(`<label class="fc-mini-field"><span>${tr('Yetkazish narxi','Стоимость доставки')}</span><div class="fc-money-input"><input type="number" min="0" value="${g.fee ?? ''}" oninput="setGeneralNumber('FIXED','fee',this.value)"><em>${tr("so'm",'сум')}</em></div></label>`);
+      }
+      if (kind === 'TAXI') {
+        valueFields.push(`<label class="fc-mini-field"><span>${tr('Aniq narx (ixtiyoriy)','Точная цена (необязательно)')}</span><input type="number" min="0" value="${g.exactFee ?? ''}" oninput="setGeneralNumber('TAXI','exactFee',this.value)"></label>`);
+        valueFields.push(`<div class="grid grid-cols-2 gap-2"><label class="fc-mini-field"><span>Min</span><input type="number" min="0" value="${g.minFee ?? ''}" oninput="setGeneralNumber('TAXI','minFee',this.value)"></label><label class="fc-mini-field"><span>Max</span><input type="number" min="0" value="${g.maxFee ?? ''}" oninput="setGeneralNumber('TAXI','maxFee',this.value)"></label></div>`);
+      }
+      valueFields.push(`<label class="fc-mini-field"><span>${tr('Umumiy izoh (ixtiyoriy)','Общий комментарий (необязательно)')}</span><input type="text" value="${escapeHtml(g.comment || '')}" oninput="setGeneralComment('${kind}',this.value)" maxlength="200"></label>`);
+      valueFields.push(`<label class="fc-mini-field"><span>${tr('Yetkazib berish vaqti (ixtiyoriy)','Время доставки (необязательно)')}</span><input type="text" value="${escapeHtml(g.estimatedTime || '')}" oninput="setGeneralEstimatedTime('${kind}',this.value)" maxlength="60"></label>`);
+      return `<div class="fc-delivery-general-card">
+        <div class="fc-delivery-general-head"><span class="fc-shop-settings-icon"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i></span><div><b>${tr('Umumiy qiymat','Общее значение')}</b><small>${tr('O‘z qiymati kiritilmagan hududlar uchun','Для регионов без собственного значения')}</small></div><label class="fc-toggle" onclick="event.stopPropagation()"><input type="checkbox" ${g.enabled ? 'checked' : ''} onchange="setGeneralEnabled('${kind}',this.checked)"><span class="fc-toggle-track"></span></label></div>
+        ${g.enabled ? valueFields.join('') : ''}
       </div>`;
     }
 
@@ -17573,6 +17710,271 @@
       clearTempImageSelection();
       activePopupModal = 'ADD_CAT';
       render();
+    }
+
+    // ============================================================
+    // OMMAVIY KATALOG YARATISH ("Bir nechta katalog qo'shish")
+    // Mavjud "Katalog" tugmasi endi avval shu kichik tanlov varag'ini
+    // ochadi; "Bitta katalog qo'shish" bosilsa — YUQORIDAGI openAddCatModal()
+    // AYNAN o'sha holicha chaqiriladi, hech narsa o'zgarmaydi. Bu bo'lim
+    // butunlay QO'SHIMCHA — .fc-sheet (mavjud bottom-sheet tizimi) va
+    // showActionToast (mavjud non-blocking toast) ustiga qurilgan, yangi
+    // modal-chrome ixtiro qilinmagan.
+    // ============================================================
+
+    function openAddCategoryChooser() {
+      if (!canManageCatalog()) return;
+      let root = document.getElementById('fc-addcat-chooser-root');
+      if (!root) { root = document.createElement('div'); root.id = 'fc-addcat-chooser-root'; document.body.appendChild(root); }
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)closeAddCategoryChooser()"><div class="fc-sheet"><div class="fc-sheet-handle"></div>
+        <div class="fc-sheet-header"><div class="fc-sheet-title">${tr("Katalog qo'shish", "Добавить каталог")}</div><button type="button" onclick="closeAddCategoryChooser()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+        <div class="fc-sheet-body space-y-2">
+          <button type="button" onclick="closeAddCategoryChooser();openAddCatModal();" class="w-full flex items-center gap-3 bg-white border rounded-2xl p-3.5 text-left">
+            <span class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0"><i data-lucide="folder-plus" class="w-5 h-5"></i></span>
+            <span class="min-w-0 flex-1"><b class="block text-sm font-bold text-gray-900">${tr('Bitta katalog qo‘shish', 'Добавить один каталог')}</b><small class="block text-[11px] text-gray-400 mt-0.5">${tr('Nomi va rasmi bilan, alohida', 'С названием и фото, по одному')}</small></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 flex-shrink-0"></i>
+          </button>
+          <button type="button" onclick="closeAddCategoryChooser();openBulkCategoryModal();" class="w-full flex items-center gap-3 bg-white border rounded-2xl p-3.5 text-left">
+            <span class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0"><i data-lucide="list-plus" class="w-5 h-5"></i></span>
+            <span class="min-w-0 flex-1"><b class="block text-sm font-bold text-gray-900">${tr('Bir nechta katalog qo‘shish', 'Добавить несколько каталогов')}</b><small class="block text-[11px] text-gray-400 mt-0.5">${tr('Ro‘yxatdan bir martada, tez', 'Списком, за один раз')}</small></span>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300 flex-shrink-0"></i>
+          </button>
+        </div>
+      </div></div>`;
+      safeCreateIcons();
+    }
+    function closeAddCategoryChooser() {
+      document.getElementById('fc-addcat-chooser-root')?.remove();
+    }
+
+    // ---- Parser: "Katalog / Subkatalog / ..." qatorlarini segmentlarga
+    // ajratish. norm() excel-import.js'dagi bir xil naqsh (trim + unicode
+    // apostrof + probel yig'ish + 'uz' locale-lower) — parallel normalizatsiya
+    // yozilmadi, faqat shu fayl ichida takrorlangan (excel-import.js lazy-load
+    // qilinadi, undan import qilish shart emas).
+    function bulkCatNorm(v) {
+      return String(v ?? '').trim().toLocaleLowerCase('uz').replace(/[ʻʼ‘’`]/g, "'").replace(/\s+/g, ' ');
+    }
+    function parseBulkCategoryLine(raw) {
+      return String(raw ?? '').split('/').map(s => s.trim().replace(/[ʻʼ‘’`]/g, "'").replace(/\s+/g, ' ')).filter(Boolean);
+    }
+    // Serverdagi resolveCategoryPath/bulk_create_categories bilan AYNAN bir
+    // xil algoritm — faqat READ-ONLY, hech narsa yaratmaydi. Joriy `categories`
+    // ustiga "virtual" (hali saqlanmagan) tugunlarni qo'shib boradi, shunda
+    // bitta importdagi keyingi qatorlar oldingi qatorda "yangi" deb topilgan
+    // katalogni ham "mavjud" deb to'g'ri aniqlaydi (25-band, 10/11-misollar).
+    function buildBulkCategoryPreview(text) {
+      const rawLines = String(text || '').split('\n');
+      const workingNodes = categories.map(c => ({ id: String(c.id), name: c.name, parentId: c.parentId ? String(c.parentId) : null }));
+      const cache = new Map();
+      let virtualSeq = 0;
+      const seenFullPaths = new Set();
+      const lines = [];
+      let newCategories = 0, existingCategories = 0, duplicates = 0, errors = 0;
+      rawLines.forEach((raw, idx) => {
+        const lineNumber = idx + 1;
+        if (!raw.trim()) return; // bo'sh qator — sanoqqa kirmaydi, xato ham emas
+        const segments = parseBulkCategoryLine(raw);
+        if (!segments.length) {
+          lines.push({ lineNumber, raw, status: 'error', error: tr("Katalog nomi topilmadi", "Название каталога не найдено") });
+          errors++; return;
+        }
+        const fullKey = segments.map(bulkCatNorm).join('');
+        if (seenFullPaths.has(fullKey)) {
+          lines.push({ lineNumber, raw, status: 'duplicate', segments });
+          duplicates++; return;
+        }
+        seenFullPaths.add(fullKey);
+        let parentId = null;
+        const segStatuses = [];
+        for (const name of segments) {
+          const cacheKey = `${parentId ?? ''}${bulkCatNorm(name)}`;
+          let nodeId = cache.get(cacheKey);
+          let status = 'existing';
+          if (!nodeId) {
+            let found = workingNodes.find(n => String(n.parentId ?? '') === String(parentId ?? '') && bulkCatNorm(n.name) === bulkCatNorm(name));
+            if (!found) {
+              found = { id: `NEW:${virtualSeq++}`, name, parentId };
+              workingNodes.push(found);
+              status = 'new';
+            }
+            nodeId = found.id;
+            cache.set(cacheKey, nodeId);
+          }
+          if (status === 'new') newCategories++; else existingCategories++;
+          segStatuses.push({ name, status });
+          parentId = nodeId;
+        }
+        lines.push({ lineNumber, raw, status: 'ok', segments: segStatuses });
+      });
+      return { lines, summary: { totalPaths: lines.length, newCategories, existingCategories, duplicates, errors } };
+    }
+
+    function openBulkCategoryModal() {
+      if (!canManageCatalog()) return;
+      bulkCatPreview = null; bulkCatBusy = false;
+      renderBulkCategoryModal();
+    }
+    function closeBulkCategoryModal() {
+      if (bulkCatBusy) return;
+      document.getElementById('fc-bulkcat-root')?.remove();
+    }
+    function bulkCatLineNumbersText(text) {
+      const lineCount = Math.max(1, (String(text || '').match(/\n/g) || []).length + 1);
+      const out = [];
+      for (let i = 1; i <= lineCount; i++) out.push(i);
+      return out.join('\n');
+    }
+    // Har keystrokeда BUTUN varaqni qayta chizmaymiz (fokus/kursor yo'qolib
+    // qolmasin) — faqat gutter raqamlari sonini yangilaymiz va eski
+    // preview'ni bekor qilamiz ("Tekshirish" qayta bosilishi kerak).
+    function onBulkCatInput(el) {
+      bulkCatText = el.value;
+      if (bulkCatPreview) { bulkCatPreview = null; updateBulkCatActionsBar(); }
+      const gutter = document.getElementById('bulkcat-gutter');
+      if (gutter) gutter.textContent = bulkCatLineNumbersText(bulkCatText);
+    }
+    function syncBulkCatGutterScroll(el) {
+      const gutter = document.getElementById('bulkcat-gutter');
+      if (gutter) gutter.scrollTop = el.scrollTop;
+    }
+    function updateBulkCatActionsBar() {
+      const bar = document.getElementById('bulkcat-preview-area');
+      if (bar) bar.innerHTML = bulkCatPreviewAreaHtml();
+    }
+    function jumpToBulkCatLine(lineNumber) {
+      const ta = document.getElementById('bulkcat-textarea');
+      if (!ta) return;
+      const lines = ta.value.split('\n');
+      let offset = 0;
+      for (let i = 0; i < lineNumber - 1 && i < lines.length; i++) offset += lines[i].length + 1;
+      const lineText = lines[lineNumber - 1] || '';
+      ta.focus();
+      ta.setSelectionRange(offset, offset + lineText.length);
+      const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20;
+      ta.scrollTop = Math.max(0, (lineNumber - 3) * lineHeight);
+      syncBulkCatGutterScroll(ta);
+    }
+    function runBulkCategoryPreview() {
+      bulkCatPreview = buildBulkCategoryPreview(bulkCatText);
+      updateBulkCatActionsBar();
+    }
+    function bulkCatStatusBadge(status) {
+      const map = {
+        new: { cls: 'fc-bulkcat-badge is-new', text: tr('Yangi yaratiladi', 'Будет создан') },
+        existing: { cls: 'fc-bulkcat-badge is-existing', text: tr('Mavjud', 'Существует') },
+      };
+      return map[status] || map.existing;
+    }
+    function bulkCatPreviewAreaHtml() {
+      if (!bulkCatPreview) {
+        return `<div class="fc-empty-state compact"><p>${tr("Preview ko‘rish uchun “Tekshirish” tugmasini bosing.", "Нажмите «Проверить», чтобы увидеть предпросмотр.")}</p></div>`;
+      }
+      const s = bulkCatPreview.summary;
+      const summaryHtml = `<div class="fc-bulkcat-summary">
+        <div><b>${s.totalPaths}</b><small>${tr('Jami yo‘llar', 'Всего путей')}</small></div>
+        <div class="is-new"><b>${s.newCategories}</b><small>${tr('Yangi kataloglar', 'Новых каталогов')}</small></div>
+        <div class="is-existing"><b>${s.existingCategories}</b><small>${tr('Mavjud kataloglar', 'Существующих')}</small></div>
+        <div class="is-duplicate"><b>${s.duplicates}</b><small>${tr('Takrorlangan', 'Повторов')}</small></div>
+        <div class="is-error"><b>${s.errors}</b><small>${tr('Xatolar', 'Ошибок')}</small></div>
+      </div>`;
+      const rowsHtml = bulkCatPreview.lines.map(line => {
+        if (line.status === 'error') {
+          return `<button type="button" onclick="jumpToBulkCatLine(${line.lineNumber})" class="fc-bulkcat-line is-error"><b>${line.lineNumber}.</b><span class="fc-bulkcat-line-text">${escapeHtml(line.raw)}</span><small>${tr('Xato', 'Ошибка')}: ${escapeHtml(line.error)}</small></button>`;
+        }
+        if (line.status === 'duplicate') {
+          return `<div class="fc-bulkcat-line is-duplicate"><b>${line.lineNumber}.</b><span class="fc-bulkcat-line-text">${escapeHtml(line.raw)}</span><small>${tr('Takrorlangan', 'Повторяется')}</small></div>`;
+        }
+        const segHtml = line.segments.map(seg => {
+          const badge = bulkCatStatusBadge(seg.status);
+          return `<div class="fc-bulkcat-seg"><span>${escapeHtml(seg.name)}</span><em class="${badge.cls}">${badge.text}</em></div>`;
+        }).join('');
+        return `<details class="fc-bulkcat-line is-ok"><summary><b>${line.lineNumber}.</b><span class="fc-bulkcat-line-text">${escapeHtml(line.raw)}</span><i data-lucide="chevron-down" class="w-3.5 h-3.5 fc-bulkcat-line-chevron"></i></summary><div class="fc-bulkcat-seg-list">${segHtml}</div></details>`;
+      }).join('');
+      return `${summaryHtml}<div class="fc-bulkcat-line-list">${rowsHtml}</div>`;
+    }
+    function renderBulkCategoryModal() {
+      let root = document.getElementById('fc-bulkcat-root');
+      if (!root) { root = document.createElement('div'); root.id = 'fc-bulkcat-root'; document.body.appendChild(root); }
+      const okCount = bulkCatPreview ? bulkCatPreview.lines.filter(l => l.status === 'ok').length : 0;
+      const canCreate = !!bulkCatPreview && okCount > 0 && !bulkCatBusy;
+      root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this)closeBulkCategoryModal()"><div class="fc-sheet fc-bulkcat-sheet">
+        <div class="fc-sheet-handle"></div>
+        <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Bir nechta katalog qo‘shish', 'Добавить несколько каталогов')}</div><button type="button" onclick="closeBulkCategoryModal()" class="fc-btn fc-btn-icon" ${bulkCatBusy ? 'disabled' : ''}><i data-lucide="x" class="w-4 h-4"></i></button></div>
+        <div class="fc-sheet-body space-y-3">
+          <button type="button" id="bulkcat-chatgpt-btn" onclick="copyCatalogChatGptPrompt(this)" class="fc-bulkcat-chatgpt-btn"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span>${tr('ChatGPT uchun prompt', 'Промпт для ChatGPT')}</span></button>
+          <p class="fc-bulkcat-help">${tr("Har bir katalog yo‘lini yangi qatordan kiriting. Darajalarni <b>/</b> belgisi bilan ajrating.", "Каждый путь каталога — с новой строки. Уровни разделяйте символом <b>/</b>.")}<br><span class="fc-bulkcat-help-example">${tr('Masalan', 'Например')}: Sport ozuqalari/Protein/Whey</span></p>
+          <div class="fc-bulkcat-editor">
+            <div id="bulkcat-gutter" class="fc-bulkcat-gutter" aria-hidden="true">${bulkCatLineNumbersText(bulkCatText)}</div>
+            <textarea id="bulkcat-textarea" class="fc-bulkcat-textarea" rows="8" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="${tr('Sport ozuqalari/Protein/Whey', 'Sport ozuqalari/Protein/Whey')}" oninput="onBulkCatInput(this)" onscroll="syncBulkCatGutterScroll(this)">${escapeHtml(bulkCatText)}</textarea>
+          </div>
+          <button type="button" onclick="runBulkCategoryPreview()" ${bulkCatBusy ? 'disabled' : ''} class="fc-btn fc-btn-secondary w-full"><i data-lucide="list-checks" class="w-4 h-4"></i>${tr('Tekshirish', 'Проверить')}</button>
+          <div id="bulkcat-preview-area">${bulkCatPreviewAreaHtml()}</div>
+        </div>
+        <div class="fc-sheet-footer">
+          <button type="button" onclick="submitBulkCategoryImport()" ${canCreate ? '' : 'disabled'} class="fc-btn fc-btn-primary w-full">${bulkCatBusy ? '<span class="fc-spinner fc-spinner-xs"></span>' : `<i data-lucide="check" class="w-4 h-4"></i>`}${bulkCatBusy ? tr('Yaratilmoqda...', 'Создание...') : tr('Barchasini yaratish', 'Создать всё')}</button>
+        </div>
+      </div></div>`;
+      safeCreateIcons();
+    }
+    async function submitBulkCategoryImport() {
+      if (bulkCatBusy || !bulkCatPreview) return;
+      const okLines = bulkCatPreview.lines.filter(l => l.status === 'ok');
+      if (!okLines.length) return;
+      bulkCatBusy = true;
+      renderBulkCategoryModal();
+      showActionToast(tr('⏳ Kataloglar yaratilmoqda...', '⏳ Каталоги создаются...'), 'saving');
+      try {
+        const paths = okLines.map(l => l.segments.map(seg => seg.name));
+        const data = await callApi('bulk_create_categories', { paths });
+        (data.createdCategories || []).forEach(c => { try { upsertLocalCategory(c); } catch (_) {} });
+        await loadCatalog();
+        saveCatalogCache();
+        const s = data.summary || {};
+        const parts = [];
+        if (s.newCategories) parts.push(`${s.newCategories} ${tr('ta yangi katalog yaratildi', 'новых каталогов создано')}`);
+        if (s.existingCategories) parts.push(`${s.existingCategories} ${tr('ta mavjud katalog qayta ishlatildi', 'существующих переиспользовано')}`);
+        const errCount = (data.results || []).filter(r => r.status === 'error').length;
+        let msg = parts.length ? parts.join(', ') + '.' : tr('Kataloglar yaratildi.', 'Каталоги созданы.');
+        if (errCount) msg += ` ${errCount} ${tr('ta qatorni tekshiring.', 'строк требуют проверки.')}`;
+        showActionToast('✅ ' + msg, 'success', 2600);
+        closeBulkCategoryModal();
+        render();
+      } catch (e) {
+        console.error(e);
+        showActionToast(tr('❌ Kataloglarni yaratib bo‘lmadi', '❌ Не удалось создать каталоги'), 'error', 1800);
+        showAppNotice(tr('Kataloglarni saqlashda xatolik: ', 'Ошибка сохранения каталогов: ') + (e.message || e));
+      } finally {
+        bulkCatBusy = false;
+        if (document.getElementById('fc-bulkcat-root')) renderBulkCategoryModal();
+      }
+    }
+
+    // ---- "ChatGPT uchun prompt" — "Bir nechta katalog qo'shish" ichidagi
+    // tugma. 2026-09-11 SODDALASHTIRISH: alohida oyna/yo'riqnoma-qadamlar
+    // OLIB TASHLANDI — bosilganda promptni to'g'ridan-to'g'ri nusxalaydi
+    // (mavjud copyTextToClipboard() orqali: navigator.clipboard + execCommand
+    // fallback), non-blocking toast ko'rsatadi va tugma yorlig'ini qisqa
+    // vaqtga "Nusxalandi ✓" qilib ko'rsatadi. #fc-bulkcat-root'ga
+    // tegilmaydi — bulk editordagi yozilgan qatorlar hech qachon yo'qolmaydi.
+    let catGptCopyResetTimer = null;
+    async function copyCatalogChatGptPrompt(btn) {
+      if (btn?.disabled) return; // double-click himoyasi
+      if (btn) btn.disabled = true;
+      const ok = await copyTextToClipboard(CATALOG_CHATGPT_PROMPT);
+      if (btn) btn.disabled = false;
+      if (ok) {
+        showActionToast(tr('✅ ChatGPT prompti nusxalandi', '✅ Промпт ChatGPT скопирован'), 'success', 1600);
+        const label = btn?.querySelector('span');
+        if (label && btn) {
+          const original = label.textContent;
+          label.textContent = tr('Nusxalandi ✓', 'Скопировано ✓');
+          if (catGptCopyResetTimer) clearTimeout(catGptCopyResetTimer);
+          catGptCopyResetTimer = setTimeout(() => { if (label.isConnected) label.textContent = original; catGptCopyResetTimer = null; }, 1800);
+        }
+      } else {
+        showActionToast(tr('❌ Promptni nusxalab bo‘lmadi', '❌ Не удалось скопировать промпт'), 'error', 1800);
+      }
     }
 
     // ============ EXCEL IMPORT (faqat admin ochganda lazy-load) ============

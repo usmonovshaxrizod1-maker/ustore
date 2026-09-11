@@ -35,9 +35,9 @@
     return {
       version: VERSION,
       delivery: {
-        free: { enabled: true, regions: freeRegions },
-        fixed: { enabled: false, regions: {} },
-        taxi: { enabled: false, general: { exactFee: null, minFee: null, maxFee: null, comment: null, estimatedTime: null }, regions: {} },
+        free: { enabled: true, regions: freeRegions, general: { enabled: false, comment: null, estimatedTime: null } },
+        fixed: { enabled: false, regions: {}, general: { enabled: false, fee: null, comment: null, estimatedTime: null } },
+        taxi: { enabled: false, general: { enabled: false, exactFee: null, minFee: null, maxFee: null, comment: null, estimatedTime: null }, regions: {} },
         post: {
           enabled: false,
           providers: [
@@ -115,7 +115,10 @@
       const entry = { enabled: true };
       const districts = cleanDistricts(raw.districts);
       if (districts.length) entry.districts = districts;
-      if (kind === 'FIXED') entry.fee = nonNegativeInt(raw.fee);
+      // 2026-09: bo'sh qoldirilgan narx endi 0'ga emas, null'ga tushadi —
+      // "narx kiritilmagan (umumiy qiymatga tushadi)" va "0 kiritilgan"
+      // aniq ajratilishi uchun (region qatorlari bilan bir xil qoida).
+      if (kind === 'FIXED') entry.fee = nonNegativeIntOrNull(raw.fee);
       if (kind === 'TAXI') {
         entry.exactFee = nonNegativeIntOrNull(raw.exactFee);
         entry.minFee = nonNegativeIntOrNull(raw.minFee);
@@ -136,16 +139,32 @@
     return result;
   }
 
-  // Phase 3, 7-band: taxi uchun umumiy (region'ga bog'liq bo'lmagan)
-  // narx/izoh — mavjud region'lar hech narsa kiritmagan bo'lsa fallback.
-  function normalizeTaxiGeneral(raw) {
-    return {
-      exactFee: nonNegativeIntOrNull(raw?.exactFee),
-      minFee: nonNegativeIntOrNull(raw?.minFee),
-      maxFee: nonNegativeIntOrNull(raw?.maxFee),
-      comment: (String(raw?.comment || '').trim().slice(0, 200)) || null,
-      estimatedTime: (String(raw?.estimatedTime || '').trim().slice(0, 60)) || null,
-    };
+  // Phase 3, 7-band (TAXI) + 2026-09 kengaytma (FREE/FIXED): har bir
+  // yetkazib berish turi uchun "umumiy" (region'ga bog'liq bo'lmagan)
+  // narx/izoh/vaqt — mavjud region hech narsa kiritmagan bo'lsa fallback.
+  // Endi alohida yoqish/o'chirish tugmasi bor (`enabled`) — o'chiq bo'lsa
+  // maydonlar qanchalik to'ldirilgan bo'lishidan qat'i nazar fallback
+  // sifatida ISHLATILMAYDI (deliveryOptions() shu bayroqni tekshiradi).
+  // Legacy migratsiya: eski TAXI konfiguratsiyalarida bu tugma umuman yo'q
+  // edi (kiritilgan maydonlar doim fallback bo'lib ishlagan) — `enabled`
+  // maydoni yo'q-u, lekin biror qiymat kiritilgan bo'lsa, TRUE deb
+  // hisoblanadi (aks holda mavjud do'konning ishlayotgan narxi jim
+  // yo'qolib qolardi). FIXED/FREE'da bu maydon ILGARI UMUMAN BO'LMAGAN —
+  // ular uchun legacy-migratsiya shart emas, standart holat har doim FALSE.
+  function normalizeGeneral(raw, kind) {
+    const hasLegacyValue = kind === 'TAXI' && raw && typeof raw === 'object' && raw.enabled === undefined &&
+      (raw.exactFee != null || raw.minFee != null || raw.maxFee != null ||
+        (raw.comment && String(raw.comment).trim()) || (raw.estimatedTime && String(raw.estimatedTime).trim()));
+    const entry = { enabled: raw?.enabled === true || !!hasLegacyValue };
+    if (kind === 'FIXED') entry.fee = nonNegativeIntOrNull(raw?.fee);
+    if (kind === 'TAXI') {
+      entry.exactFee = nonNegativeIntOrNull(raw?.exactFee);
+      entry.minFee = nonNegativeIntOrNull(raw?.minFee);
+      entry.maxFee = nonNegativeIntOrNull(raw?.maxFee);
+    }
+    entry.comment = (String(raw?.comment || '').trim().slice(0, 200)) || null;
+    entry.estimatedTime = (String(raw?.estimatedTime || '').trim().slice(0, 60)) || null;
+    return entry;
   }
 
   function normalizeConfig(raw, regionIds) {
@@ -156,10 +175,12 @@
     const delivery = raw.delivery || {};
     base.delivery.free.enabled = bool(delivery.free?.enabled);
     base.delivery.free.regions = normalizeRegions(delivery.free?.regions, ids, 'FREE');
+    base.delivery.free.general = normalizeGeneral(delivery.free?.general, 'FREE');
     base.delivery.fixed.enabled = bool(delivery.fixed?.enabled);
     base.delivery.fixed.regions = normalizeRegions(delivery.fixed?.regions, ids, 'FIXED');
+    base.delivery.fixed.general = normalizeGeneral(delivery.fixed?.general, 'FIXED');
     base.delivery.taxi.enabled = bool(delivery.taxi?.enabled);
-    base.delivery.taxi.general = normalizeTaxiGeneral(delivery.taxi?.general);
+    base.delivery.taxi.general = normalizeGeneral(delivery.taxi?.general, 'TAXI');
     base.delivery.taxi.regions = normalizeRegions(delivery.taxi?.regions, ids, 'TAXI');
     base.delivery.post.enabled = bool(delivery.post?.enabled);
 
@@ -228,19 +249,28 @@
     const delivery = config?.delivery || {};
     const free = delivery.free?.regions?.[regionId];
     if (delivery.free?.enabled && free?.enabled && districtAllowed(free, district)) {
-      result.push({ id: 'FREE', kind: 'FREE', fee: 0, payableFee: 0, comment: free.comment || null, estimatedTime: free.estimatedTime || null });
+      // "Umumiy qiymat" (2026-09): faqat general.enabled bo'lsa fallback
+      // sifatida ishlatiladi — region o'z izohi/vaqtini kiritmagan bo'lsa.
+      const general = delivery.free?.general?.enabled ? delivery.free.general : {};
+      const comment = free.comment ?? general.comment ?? null;
+      const estimatedTime = free.estimatedTime ?? general.estimatedTime ?? null;
+      result.push({ id: 'FREE', kind: 'FREE', fee: 0, payableFee: 0, comment, estimatedTime });
     }
     const fixed = delivery.fixed?.regions?.[regionId];
     if (delivery.fixed?.enabled && fixed?.enabled && districtAllowed(fixed, district)) {
-      const fee = nonNegativeInt(fixed.fee);
-      result.push({ id: 'FIXED', kind: 'FIXED', fee, payableFee: fee, comment: fixed.comment || null, estimatedTime: fixed.estimatedTime || null });
+      const general = delivery.fixed?.general?.enabled ? delivery.fixed.general : {};
+      const fee = nonNegativeInt(fixed.fee ?? general.fee ?? 0);
+      const comment = fixed.comment ?? general.comment ?? null;
+      const estimatedTime = fixed.estimatedTime ?? general.estimatedTime ?? null;
+      result.push({ id: 'FIXED', kind: 'FIXED', fee, payableFee: fee, comment, estimatedTime });
     }
     const taxi = delivery.taxi?.regions?.[regionId];
     if (delivery.taxi?.enabled && taxi?.enabled && districtAllowed(taxi, district)) {
       // 7-band: barcha uch maydon ham ixtiyoriy — region'da yo'q bo'lsa
       // umumiy (general) qiymatga tushiladi, u ham bo'lmasa null qoladi
       // (chaqiruvchi taraf buni "narx yo'q" deb aniq talqin qiladi, 0 emas).
-      const general = delivery.taxi?.general || {};
+      // 2026-09: fallback endi FAQAT general.enabled bo'lsa ishlaydi.
+      const general = delivery.taxi?.general?.enabled ? delivery.taxi.general : {};
       const exactFee = taxi.exactFee ?? general.exactFee ?? null;
       const minFee = taxi.minFee ?? general.minFee ?? null;
       const maxFee = taxi.maxFee ?? general.maxFee ?? null;
@@ -284,8 +314,13 @@
   function validateConfig(config, regionIds) {
     const normalized = normalizeConfig(config, regionIds);
     const issues = [];
+    // 2026-09: region o'z narxini kiritmagan (fee === null) bo'lsa ham, agar
+    // "Umumiy qiymat" yoqilgan va musbat narx bilan bo'lsa — bu YARAROQ
+    // (fallback ishlaydi), xato emas. Faqat ikkalasi ham yo'q/0 bo'lsa xato.
+    const fixedGeneralFee = normalized.delivery.fixed.general?.enabled ? normalized.delivery.fixed.general.fee : null;
     for (const [regionId, entry] of Object.entries(normalized.delivery.fixed.regions)) {
-      if (entry.enabled && entry.fee <= 0) issues.push({ code: 'FIXED_FEE_REQUIRED', regionId });
+      const effectiveFee = entry.fee ?? fixedGeneralFee;
+      if (entry.enabled && !(effectiveFee > 0)) issues.push({ code: 'FIXED_FEE_REQUIRED', regionId });
     }
     // 7-band: narx to'liq ixtiyoriy bo'lgani uchun endi FAQAT haqiqiy
     // nomuvofiqlik (ikkalasi ham kiritilgan-u max < min) xato hisoblanadi —

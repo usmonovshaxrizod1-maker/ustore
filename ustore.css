@@ -1865,6 +1865,58 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .fc-nav-dot { position: absolute; top: -1px; right: 22%; width: 9px; height: 9px; border-radius: 9999px; background: var(--fc-danger); border: 1.5px solid #fff; }
 
 /* ============================================================
+   OMMAVIY KATALOG YARATISH ("Bir nechta katalog qo'shish") va
+   "ChatGPT uchun prompt" — .fc-sheet (mavjud bottom-sheet) ustiga
+   qurilgan, mavjud --fc-* token'lardan tashqari yangi rang kiritilmagan.
+   ============================================================ */
+.fc-bulkcat-sheet .fc-sheet-body { padding-top: .75rem; }
+.fc-bulkcat-help { font-size: .68rem; line-height: 1.45; color: var(--fc-muted); }
+.fc-bulkcat-help-example { display: inline-block; margin-top: .2rem; font-size: .62rem; color: var(--color-gray-600); }
+.fc-bulkcat-chatgpt-btn { display: inline-flex; align-items: center; gap: .3rem; padding: .35rem .65rem; border-radius: .7rem; background: var(--fc-selected-bg, #eff6ff); color: var(--fc-primary); font-size: .62rem; font-weight: 800; border: none; }
+
+/* Qator raqamlari gutteri: textarea bilan bir xil font/line-height/padding
+   ulanadi (JS onscroll orqali scrollTop sinxronlanadi) — raqamlar alohida,
+   tanlab bo'lmaydigan qatlamda, hech qachon textarea qiymatiga kirmaydi. */
+.fc-bulkcat-editor { display: flex; border: 1px solid var(--fc-border); border-radius: .85rem; overflow: hidden; background: var(--fc-surface); }
+.fc-bulkcat-gutter, .fc-bulkcat-textarea { font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .72rem; line-height: 1.6rem; padding: .6rem .5rem; }
+.fc-bulkcat-gutter { flex: none; width: 2.6rem; text-align: right; color: var(--fc-muted); background: var(--fc-muted-bg); white-space: pre; overflow: hidden; user-select: none; pointer-events: none; border-right: 1px solid var(--fc-border); font-variant-numeric: tabular-nums; }
+.fc-bulkcat-textarea { flex: 1; min-width: 0; border: 0; outline: none; resize: vertical; white-space: pre; overflow: auto; color: var(--color-gray-900); background: transparent; min-height: 9rem; max-height: 40vh; }
+.fc-bulkcat-textarea::placeholder { color: #9ca3af; }
+
+.fc-bulkcat-summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; text-align: center; }
+.fc-bulkcat-summary > div { padding: .4rem .2rem; border-radius: .65rem; background: var(--fc-muted-bg); }
+.fc-bulkcat-summary > div b { display: block; font-size: .78rem; font-weight: 800; color: var(--color-gray-900); }
+.fc-bulkcat-summary > div small { display: block; font-size: .52rem; font-weight: 700; color: var(--fc-muted); margin-top: .1rem; }
+.fc-bulkcat-summary > div.is-new { background: var(--fc-success-bg); } .fc-bulkcat-summary > div.is-new b { color: var(--fc-success); }
+.fc-bulkcat-summary > div.is-existing b { color: var(--color-gray-600); }
+.fc-bulkcat-summary > div.is-duplicate { background: var(--fc-warning-bg); } .fc-bulkcat-summary > div.is-duplicate b { color: var(--fc-warning); }
+.fc-bulkcat-summary > div.is-error { background: var(--fc-danger-bg); } .fc-bulkcat-summary > div.is-error b { color: var(--fc-danger); }
+
+.fc-bulkcat-line-list { display: flex; flex-direction: column; gap: .4rem; max-height: 45vh; overflow-y: auto; }
+.fc-bulkcat-line { display: block; width: 100%; text-align: left; border: 1px solid var(--fc-border); border-radius: .7rem; padding: .5rem .6rem; background: var(--fc-surface); }
+.fc-bulkcat-line b { font-size: .62rem; color: var(--fc-muted); margin-right: .3rem; }
+.fc-bulkcat-line-text { font-size: .68rem; font-weight: 700; color: var(--color-gray-800); word-break: break-word; }
+.fc-bulkcat-line.is-ok > summary { display: flex; align-items: center; gap: .3rem; cursor: pointer; list-style: none; }
+.fc-bulkcat-line.is-ok > summary::-webkit-details-marker { display: none; }
+.fc-bulkcat-line.is-ok > summary .fc-bulkcat-line-text { flex: 1; min-width: 0; }
+.fc-bulkcat-line-chevron { flex-shrink: 0; color: var(--fc-muted); transition: transform .15s ease; }
+.fc-bulkcat-line.is-ok[open] .fc-bulkcat-line-chevron { transform: rotate(180deg); }
+.fc-bulkcat-line.is-duplicate { background: var(--fc-warning-bg); border-color: var(--fc-warning-border); display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .4rem; }
+.fc-bulkcat-line.is-duplicate small, .fc-bulkcat-line.is-error small { font-size: .58rem; font-weight: 800; color: var(--fc-warning); flex-basis: 100%; }
+.fc-bulkcat-line.is-error { background: var(--fc-danger-bg); border-color: var(--fc-danger-border); display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .4rem; }
+.fc-bulkcat-line.is-error small { color: var(--fc-danger); }
+.fc-bulkcat-seg-list { margin-top: .4rem; padding-top: .4rem; border-top: 1px dashed var(--fc-border); display: flex; flex-direction: column; gap: .3rem; }
+.fc-bulkcat-seg { display: flex; align-items: center; justify-content: space-between; gap: .4rem; font-size: .64rem; }
+.fc-bulkcat-seg span { color: var(--color-gray-700); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-bulkcat-badge { flex-shrink: 0; font-size: .56rem; font-weight: 800; padding: .15rem .45rem; border-radius: 9999px; }
+.fc-bulkcat-badge.is-new { background: var(--fc-success-bg); color: var(--fc-success); }
+.fc-bulkcat-badge.is-existing { background: var(--fc-muted-bg); color: var(--fc-muted); }
+
+@media (max-width: 380px) {
+  .fc-bulkcat-summary { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ============================================================
    Yakuniy UI/UX redizayn — A-bosqich: yangi umumiy komponentlar
    (tab/segmented control, toggle-switch, bottom-sheet wrapper,
    accordion qator). Eski 31 ta qo'lda yozilgan modal QAYTA
@@ -2027,7 +2079,7 @@ input, select, textarea { max-width: 100%; min-width: 0; }
    bo'limlarga ajratuvchi kichik sarlavha — mavjud fc-mini-field'lar bilan
    bir xil space-y-3 oqimida, faqat vizual ajratuvchi sifatida. */
 .fc-form-section-title{font-size:.62rem;font-weight:900;letter-spacing:.02em;text-transform:uppercase;color:var(--ustore-primary,#2563eb);padding-top:.3rem;border-top:1px solid var(--ustore-border,#eef2f7)}
-.fc-form-section-title:first-child{padding-top:0;border-top:0}.fc-money-input{display:grid;grid-template-columns:1fr auto;align-items:center;border:1px solid #e5e7eb;border-radius:.68rem;background:#fff;overflow:hidden}.fc-money-input input{border:0!important;border-radius:0!important;box-shadow:none!important}.fc-money-input em{font-style:normal;font-size:.62rem;color:#64748b;padding:0 .65rem}.fc-delivery-provider-card{padding-bottom:.65rem}.fc-delivery-provider-card>.fc-mini-field,.fc-delivery-provider-tools,.fc-delivery-provider-card>.fc-delivery-region-list{margin-left:.7rem;margin-right:.7rem}.fc-delivery-provider-card>.fc-delivery-region-list{margin-top:.55rem}.fc-delivery-general-card{background:#fff;border:1px solid #e5e7eb;border-radius:.85rem;padding:.7rem;display:flex;flex-direction:column;gap:.55rem}.fc-delivery-general-head{display:flex;align-items:center;gap:.55rem}.fc-delivery-general-head>div{display:flex;flex-direction:column}.fc-delivery-general-head b{font-size:.72rem}.fc-delivery-general-head small{font-size:.58rem;color:#94a3b8}.fc-empty-state.compact{padding:1.1rem!important;min-height:auto!important}
+.fc-form-section-title:first-child{padding-top:0;border-top:0}.fc-money-input{display:grid;grid-template-columns:1fr auto;align-items:center;border:1px solid #e5e7eb;border-radius:.68rem;background:#fff;overflow:hidden}.fc-money-input input{border:0!important;border-radius:0!important;box-shadow:none!important}.fc-money-input em{font-style:normal;font-size:.62rem;color:#64748b;padding:0 .65rem}.fc-delivery-provider-card{padding-bottom:.65rem}.fc-delivery-provider-card>.fc-mini-field,.fc-delivery-provider-tools,.fc-delivery-provider-card>.fc-delivery-region-list{margin-left:.7rem;margin-right:.7rem}.fc-delivery-provider-card>.fc-delivery-region-list{margin-top:.55rem}.fc-delivery-general-card{background:#fff;border:1px solid #e5e7eb;border-radius:.85rem;padding:.7rem;display:flex;flex-direction:column;gap:.55rem}.fc-delivery-general-head{display:flex;align-items:center;gap:.55rem}.fc-delivery-general-head>div{display:flex;flex-direction:column;flex:1;min-width:0}.fc-delivery-general-head b{font-size:.72rem}.fc-delivery-general-head small{font-size:.58rem;color:#94a3b8}.fc-empty-state.compact{padding:1.1rem!important;min-height:auto!important}
 @media(max-width:360px){.fc-profile-card{grid-template-columns:3.25rem minmax(0,1fr) 2.25rem}.fc-profile-avatar{width:3.25rem;height:3.25rem}.fc-orders-calendar-card{padding:.6rem}.fc-orders-calendar-day{min-height:1.9rem}}
 .fc-delivery-footer{padding-top:.5rem;padding-bottom:calc(.5rem + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);backdrop-filter:blur(8px)}
 
