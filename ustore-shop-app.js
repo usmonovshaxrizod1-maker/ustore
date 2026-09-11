@@ -3238,7 +3238,22 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       setImageUrlError(errorId, xlImageText('Rasm tekshirilmoqda…', 'Изображение проверяется…'));
       if (!preview) return;
       preview.onload = () => setImageUrlError(errorId, '');
+      // Ba'zi rasm manbalari (CDN/hotlink himoyasi, vaqtinchalik tarmoq
+      // xatosi) BIRINCHI urinishda muvaffaqiyatsiz bo'lishi mumkin, garchi
+      // URL haqiqatan ishlayotgan bo'lsa ham. Shu sabab darhol "buzuq" deb
+      // e'lon qilishdan oldin, keshni chetlab, BIR MARTA qayta urinamiz.
+      // Diqqat: faqat preview.src'ga vaqtinchalik cache-bust qo'shiladi —
+      // saqlanadigan tempImageUrl har doim TOZA validUrl bo'lib qoladi.
+      let retriedOnce = false;
       preview.onerror = () => {
+        if (!retriedOnce) {
+          retriedOnce = true;
+          setTimeout(() => {
+            if (!preview.isConnected) return;
+            preview.src = validUrl + (validUrl.includes('?') ? '&' : '?') + '_retry=' + Date.now();
+          }, 700);
+          return;
+        }
         preview.classList.add('hidden');
         setImageUrlError(errorId, tr("Rasmni bu URL orqali ko'rsatib bo'lmadi. Havolani tekshiring.", "Не удалось показать изображение по этому URL. Проверьте ссылку."));
       };
@@ -6440,7 +6455,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const byId = new Map(products.map(p => [String(p.id), p]));
       const list = recentViewProductIds.map(id => byId.get(String(id))).filter(productVisibleInCurrentMode).slice(0, 6);
       if (!list.length) return '';
-      return `<section class="fc-home-recent fc-home-default-block"><div class="fc-home-recent-head"><div><span>${tr('Siz uchun','Для вас')}</span><h3>${tr('Yaqinda ko‘rilgan','Недавно просмотренные')}</h3></div><button type="button" onclick="openPage('RECENT','nav-profile')">${tr('Barchasi','Все')} →</button></div><div class="fc-home-recent-row">${list.map(p=>`<button type="button" onclick="openProductDetailModal('${p.id}')" class="fc-home-recent-card"><img src="${escapeHtml(p.img || FALLBACK_IMG)}" data-fallback="${escapeHtml(FALLBACK_IMG)}" onerror="this.onerror=null;this.src=this.dataset.fallback" loading="lazy"><span><b>${escapeHtml(productName(p))}</b><strong>${money(productDefaultDisplayPrice(p))}</strong></span></button>`).join('')}</div></section>`;
+      return `<section class="fc-home-recent fc-home-default-block"><div class="fc-home-recent-head"><div><span>${tr('Siz uchun','Для вас')}</span><h3>${tr('Yaqinda ko‘rilgan','Недавно просмотренные')}</h3></div><button type="button" onclick="openPage('RECENT','nav-profile')">${tr('Barchasi','Все')} →</button></div><div class="fc-home-recent-row">${list.map(p=>`<button type="button" onclick="openProductDetailModal('${p.id}')" class="fc-home-recent-card"><img referrerpolicy="no-referrer" src="${escapeHtml(p.img || FALLBACK_IMG)}" data-fallback="${escapeHtml(FALLBACK_IMG)}" onerror="this.onerror=null;this.src=this.dataset.fallback" loading="lazy"><span><b>${escapeHtml(productName(p))}</b><strong>${money(productDefaultDisplayPrice(p))}</strong></span></button>`).join('')}</div></section>`;
     }
     function rerenderRecentHome() {
       const root = document.getElementById('home-recent-root');
@@ -6784,7 +6799,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                      asosiy rasmga qaytadi. Agar kichik nusxa qandaydir sababga
                      ko'ra ochilmasa, onerror avval asosiy rasmni sinaydi va
                      faqat u ham bo'lmasa zaxira belgiga o'tadi. -->
-                <img src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)" class="w-full h-full object-contain" loading="lazy" decoding="async">
+                <img referrerpolicy="no-referrer" src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)" class="w-full h-full object-contain" loading="lazy" decoding="async">
               </div>
               ${(canManageProducts() && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-product-visibility-overlay ${p.isVisible === false ? 'is-hidden' : 'is-visible'}" aria-label="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" title="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductVisibility('${p.id}')"><i data-lucide="${p.isVisible === false ? 'eye-off' : 'eye'}" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
@@ -6882,7 +6897,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               <div data-category-row-id="${sub.id}" onclick="handleCategoryRowClick('${sub.id}', event)" onpointerdown="startCategoryLongPress('${sub.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="ustore-cat-row p-3.5 rounded-2xl border ${bulkCategorySelectMode && bulkSelectedCategoryIds.has(String(sub.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex items-center justify-between shadow-sm cursor-pointer">
                 <div class="flex items-center space-x-3">
                   ${sub.img && (sub.img.startsWith('http') || sub.img.startsWith('data:')) ?
-                    `<img src="${escapeHtml(sub.img)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-8 h-8 object-contain bg-gray-50 rounded-lg p-0.5" loading="lazy">` :
+                    `<img referrerpolicy="no-referrer" src="${escapeHtml(sub.img)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-8 h-8 object-contain bg-gray-50 rounded-lg p-0.5" loading="lazy">` :
                     `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center"><i data-lucide="folder" class="w-4 h-4"></i></span>`
                   }
                   <div>
@@ -7204,7 +7219,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               return `
               <div class="py-3 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
-                  <img src="${escapeHtml(item.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-12 h-12 object-contain bg-gray-50 rounded-lg flex-shrink-0 p-0.5" loading="lazy">
+                  <img referrerpolicy="no-referrer" src="${escapeHtml(item.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-12 h-12 object-contain bg-gray-50 rounded-lg flex-shrink-0 p-0.5" loading="lazy">
                   <div class="min-w-0">
                     <h4 class="font-bold text-sm text-gray-800 truncate">${escapeHtml(productName(item))}</h4>
                     ${(item.size || item.color) ? `<div class="flex items-center gap-1 mt-0.5">${item.size ? `<span class="fc-badge fc-badge-muted">${escapeHtml(localizedVariantSize(item.size))}</span>` : ''}${item.color ? `<span class="fc-badge fc-badge-muted">${escapeHtml(localizedVariantColor(item.color))}</span>` : ''}</div>` : ''}
@@ -8563,7 +8578,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               <div class="text-xs space-y-1.5">
                 ${o.items.map(i => `
                   <div class="flex items-center gap-2">
-                    ${i.img ? `<img src="${escapeHtml(i.img)}" onerror="this.style.display='none'" class="w-7 h-7 object-contain bg-gray-50 rounded-lg flex-shrink-0 p-0.5" loading="lazy">` : ''}
+                    ${i.img ? `<img referrerpolicy="no-referrer" src="${escapeHtml(i.img)}" onerror="this.style.display='none'" class="w-7 h-7 object-contain bg-gray-50 rounded-lg flex-shrink-0 p-0.5" loading="lazy">` : ''}
                     <p class="font-medium">• ${escapeHtml(orderItemName(i))} ${i.size ? `<span class="text-gray-500 font-mono">[${escapeHtml(localizedVariantSize(i.size))}]</span>` : ''} ${i.color ? `<span class="text-gray-500">[${escapeHtml(localizedVariantColor(i.color))}]</span>` : ''} ${(i.sku && isAdminMode && isUserAnAdmin) ? `<span class="text-gray-400 font-mono">(ID: ${escapeHtml(i.sku)})</span>` : ''} x ${i.qty}</p>
                   </div>
                 `).join('')}
@@ -8775,7 +8790,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const catLabel = productCategoryLabel(p);
       return `
         <button type="button" onclick="openProductDetailModal('${p.id}')" class="fc-card fc-warehouse-stock-card w-full flex items-center gap-3 text-left">
-          <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-12 h-12 object-contain bg-gray-50 rounded-xl flex-shrink-0 p-0.5">
+          <img referrerpolicy="no-referrer" src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-12 h-12 object-contain bg-gray-50 rounded-xl flex-shrink-0 p-0.5">
           <div class="min-w-0 flex-1">
             <p class="font-bold text-xs text-gray-800 truncate">${escapeHtml(productName(p))}</p>
             <p class="text-[10px] text-gray-400">ID: ${escapeHtml(p.sku)}${catLabel ? ` · ${escapeHtml(catLabel)}` : ''}</p>
@@ -8862,7 +8877,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
     function renderWarehouseBrowseProductHtml(p){
       const vars=productVariants(p); const total=vars.length?vars.reduce((n,v)=>n+(Number(v.qty)||0),0):Number(p.stock||0);
-      return `<button type="button" onclick="openWarehouseStockAdjust('${p.id}')" class="fc-warehouse-product-row"><img src="${escapeHtml(p.img||FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';"><span class="fc-warehouse-product-row-copy"><b>${escapeHtml(productName(p))}</b><small>ID: ${escapeHtml(p.sku)}${vars.length?` · ${vars.length} ${tr('variant','вариант')}`:''}</small></span><strong class="${total>0?'is-in':'is-out'}">${total} ${tr('ta','шт.')}</strong><i data-lucide="chevron-right" class="w-4 h-4"></i></button>`;
+      return `<button type="button" onclick="openWarehouseStockAdjust('${p.id}')" class="fc-warehouse-product-row"><img referrerpolicy="no-referrer" src="${escapeHtml(p.img||FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';"><span class="fc-warehouse-product-row-copy"><b>${escapeHtml(productName(p))}</b><small>ID: ${escapeHtml(p.sku)}${vars.length?` · ${vars.length} ${tr('variant','вариант')}`:''}</small></span><strong class="${total>0?'is-in':'is-out'}">${total} ${tr('ta','шт.')}</strong><i data-lucide="chevron-right" class="w-4 h-4"></i></button>`;
     }
     function openWarehouseStockAdjust(productId){
       const p=products.find(x=>String(x.id)===String(productId)); if(!p)return;
@@ -8968,7 +8983,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const catLabel = productCategoryLabel(p);
       return `
         <div onclick="pickKirimProduct('${p.id}')" class="fc-card flex items-center gap-3 cursor-pointer hover:bg-blue-50">
-          <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-12 h-12 object-contain bg-gray-50 rounded-xl flex-shrink-0 p-0.5">
+          <img referrerpolicy="no-referrer" src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-12 h-12 object-contain bg-gray-50 rounded-xl flex-shrink-0 p-0.5">
           <div class="min-w-0 flex-1">
             <p class="font-bold text-xs text-gray-800 truncate">${escapeHtml(productName(p))}</p>
             <p class="text-[10px] text-gray-400">ID: ${escapeHtml(p.sku)}${catLabel ? ` · ${escapeHtml(catLabel)}` : ''}</p>
@@ -10719,7 +10734,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function currentProfileAvatarHtml() {
       const photo = String(currentUser.photoUrl || '').trim();
       if (photo) {
-        return `<img src="${escapeHtml(photo)}" alt="${escapeHtml(currentProfileDisplayName())}" class="fc-profile-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');"><span class="fc-profile-avatar-fallback hidden"><i data-lucide="user" class="w-6 h-6"></i></span>`;
+        return `<img referrerpolicy="no-referrer" src="${escapeHtml(photo)}" alt="${escapeHtml(currentProfileDisplayName())}" class="fc-profile-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');"><span class="fc-profile-avatar-fallback hidden"><i data-lucide="user" class="w-6 h-6"></i></span>`;
       }
       return `<span class="fc-profile-avatar-fallback"><i data-lucide="user" class="w-6 h-6"></i></span>`;
     }
@@ -11177,7 +11192,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               <input id="banner-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', 'banner-image-url', 'banner-image-url-error')" class="hidden">
               <input id="banner-image-input-files" type="file" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', 'banner-image-url', 'banner-image-url-error')" class="hidden">
               <div class="fc-image-source-row mt-1"><button id="banner-image-button" type="button" onclick="openImagePickerSheet('banner-image-input','banner-image-input-files')" class="fc-image-icon-action" aria-label="${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}" title="${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="banner-image-url" type="url" value="${escapeHtml(tempImageUrl || d.imageUrl || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'banner-image-prev','banner-image-url-error','banner-image-button')"><p id="banner-image-url-error" class="hidden"></p></div></div>
-              <img id="banner-image-prev" src="${escapeHtml(previewSrc)}" style="aspect-ratio:3/1" class="w-full object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
+              <img referrerpolicy="no-referrer" id="banner-image-prev" src="${escapeHtml(previewSrc)}" style="aspect-ratio:3/1" class="w-full object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
             </div>
 
             <div class="fc-form-section-title">${tr('Bog‘lanish / maqsad', 'Связь / назначение')}</div>
@@ -11598,7 +11613,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               <input id="bundle-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'bundle-image-prev', 'bundle-image-button', 'bundle-image-url', 'bundle-image-url-error')" class="hidden">
               <input id="bundle-image-input-files" type="file" onchange="onImagePicked(event, 'bundle-image-prev', 'bundle-image-button', 'bundle-image-url', 'bundle-image-url-error')" class="hidden">
               <div class="fc-image-source-row mt-1"><button id="bundle-image-button" type="button" onclick="openImagePickerSheet('bundle-image-input','bundle-image-input-files')" class="fc-image-icon-action" aria-label="${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr('Rasm tanlash (ixtiyoriy)', 'Выбрать фото (необязательно)')}" title="${previewSrc ? tr('Rasmni almashtirish', 'Заменить фото') : tr('Rasm tanlash (ixtiyoriy)', 'Выбрать фото (необязательно)')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="bundle-image-url" type="url" value="${escapeHtml(tempImageUrl || d.coverImageUrl || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'bundle-image-prev','bundle-image-url-error','bundle-image-button')"><p id="bundle-image-url-error" class="hidden"></p></div></div>
-              <img id="bundle-image-prev" src="${escapeHtml(previewSrc)}" class="w-full h-28 object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
+              <img referrerpolicy="no-referrer" id="bundle-image-prev" src="${escapeHtml(previewSrc)}" class="w-full h-28 object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
             </div>
             <div class="fc-form-section-title">${tr('Mahsulotlar', 'Товары')}</div>
             <div class="space-y-1.5">
@@ -15776,7 +15791,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             <div class="fc-sheet fc-stock-adjust-sheet" onclick="event.stopPropagation()">
               <div class="fc-sheet-handle"></div>
               <div class="fc-stock-adjust-head">
-                <img src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';">
+                <img referrerpolicy="no-referrer" src="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';">
                 <div><small>${tr('Qoldiqni boshqarish','Управление остатком')}</small><h3>${escapeHtml(productName(p))}</h3><p>ID: ${escapeHtml(p.sku)}</p></div>
                 <button type="button" onclick="closeWarehouseStockAdjust()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button>
               </div>
@@ -15837,7 +15852,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               <div class="grid grid-cols-2 gap-2"><div><label class="font-bold text-gray-600">${tr('Sotuv narxi *','Цена продажи *')}</label><input type="number" id="m-prod-price" value="${escapeHtml(productFormDraft.price)}" placeholder="400000" class="w-full mt-1 p-2 border rounded-xl"></div><div><label class="font-bold text-gray-600">${tr('Eski narx','Старая цена')}</label><input type="number" id="m-prod-oldprice" value="${escapeHtml(productFormDraft.oldPrice)}" placeholder="480000" class="w-full mt-1 p-2 border rounded-xl"></div></div>
               <div><label class="font-bold text-gray-600">${tr("Ombor qoldig'i (Soni) *",'Остаток на складе *')}</label><input type="number" id="m-prod-stock" value="${escapeHtml(productFormDraft.stock)}" placeholder="15" class="w-full mt-1 p-2 border rounded-xl"></div>
               <div><label class="font-bold text-gray-600">${tr('Izoh / Tavsif','Описание')}</label><textarea id="m-prod-desc" rows="2" placeholder="${tr('Tovar haqida ma’lumot','Описание товара')}" class="w-full mt-1 p-2 border rounded-xl">${escapeHtml(productFormDraft.desc)}</textarea></div>
-              <div><label class="font-bold text-gray-600">${tr('Tovar rasmi','Фото товара')}</label>${productImageSizeHintHtml()}<div class="fc-image-picker-inline">${previewSrc ? `<img id="m-prod-prev" src="${escapeHtml(previewSrc)}" class="fc-image-preview-square">` : `<span class="fc-image-preview-square is-empty"><i data-lucide="image" class="w-5 h-5"></i></span><img id="m-prod-prev" src="" class="fc-image-preview-square hidden">`}<div class="fc-image-source-row"><button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button><div class="fc-image-url-field"><input id="m-prod-image-url" type="url" value="${escapeHtml(tempImageUrl || productFormDraft.imageUrl || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'m-prod-prev','m-prod-image-url-error','m-prod-image-button')"><p id="m-prod-image-url-error" class="hidden"></p></div></div></div><input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"><input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"></div>
+              <div><label class="font-bold text-gray-600">${tr('Tovar rasmi','Фото товара')}</label>${productImageSizeHintHtml()}<div class="fc-image-picker-inline">${previewSrc ? `<img referrerpolicy="no-referrer" id="m-prod-prev" src="${escapeHtml(previewSrc)}" class="fc-image-preview-square">` : `<span class="fc-image-preview-square is-empty"><i data-lucide="image" class="w-5 h-5"></i></span><img referrerpolicy="no-referrer" id="m-prod-prev" src="" class="fc-image-preview-square hidden">`}<div class="fc-image-source-row"><button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button><div class="fc-image-url-field"><input id="m-prod-image-url" type="url" value="${escapeHtml(tempImageUrl || productFormDraft.imageUrl || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'m-prod-prev','m-prod-image-url-error','m-prod-image-button')"><p id="m-prod-image-url-error" class="hidden"></p></div></div></div><input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"><input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"></div>
               <div class="flex space-x-2 pt-2"><button onclick="saveProductFromModal()" class="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl">${tr('Saqlash va omborga kiritish','Сохранить и добавить на склад')}</button><button onclick="cancelProductEditor()" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr('Bekor qilish','Отмена')}</button></div>
             </div>
           </div>`;
@@ -15857,7 +15872,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                 <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
                 <input id="m-cat-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
                 <input id="m-cat-image-input-files" type="file" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
-                <img id="m-cat-prev" src="" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 hidden border mt-1">
+                <img referrerpolicy="no-referrer" id="m-cat-prev" src="" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 hidden border mt-1">
                 <div class="fc-image-source-row mt-1"><button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="m-cat-image-url" type="url" value="" placeholder="https://..." oninput="onImageUrlInput(this.value,'m-cat-prev','m-cat-image-url-error','m-cat-image-button')"><p id="m-cat-image-url-error" class="hidden"></p></div></div>
               </div>
               <div class="flex space-x-2 pt-2">
@@ -15884,7 +15899,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                 <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
                 <input id="ec-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
                 <input id="ec-image-input-files" type="file" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
-                <img id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border mt-1">
+                <img referrerpolicy="no-referrer" id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border mt-1">
                 <div class="fc-image-source-row mt-1"><button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="ec-image-url" type="url" value="${escapeHtml(c.img || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'ec-img-prev','ec-image-url-error','ec-image-button')"><p id="ec-image-url-error" class="hidden"></p></div></div>
               </div>
               <div class="flex space-x-2 pt-2">
@@ -15919,7 +15934,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                   <span class="flex-shrink-0 bg-slate-100 text-slate-700 font-black px-2.5 py-1 rounded-xl">${missingImageQueueIndex + 1} / ${queue.length}</span>
                 </div>
                 <div class="rounded-2xl bg-slate-50 border border-slate-200 p-3">
-                  <img id="miq-img-prev" src="" class="hidden w-full h-48 object-contain rounded-xl bg-white">
+                  <img referrerpolicy="no-referrer" id="miq-img-prev" src="" class="hidden w-full h-48 object-contain rounded-xl bg-white">
                   <div id="miq-empty-preview" class="h-32 flex flex-col gap-2 items-center justify-center text-center text-gray-400 font-bold"><i data-lucide="image" class="w-7 h-7"></i><span>${tr('Rasm preview','Предпросмотр фото')}</span></div>
                 </div>
                 <input id="miq-image-input" type="file" accept="image/*" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
@@ -16175,7 +16190,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                 <input id="ef-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
                 <input id="ef-image-input-files" type="file" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
                 <div class="fc-image-source-row mt-1"><button id="ef-image-button" type="button" onclick="openImagePickerSheet('ef-image-input','ef-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button><div class="fc-image-url-field"><input id="ef-image-url" type="url" value="${escapeHtml(p.img || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'ef-img-prev','ef-image-url-error','ef-image-button')"><p id="ef-image-url-error" class="hidden"></p></div></div>
-                <img id="ef-img-prev" src="${escapeHtml(hasProductImage(p) ? p.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-24 h-24 object-contain bg-gray-50 rounded-xl p-0.5 mt-2 border ${hasProductImage(p) ? '' : 'hidden'}">
+                <img referrerpolicy="no-referrer" id="ef-img-prev" src="${escapeHtml(hasProductImage(p) ? p.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-24 h-24 object-contain bg-gray-50 rounded-xl p-0.5 mt-2 border ${hasProductImage(p) ? '' : 'hidden'}">
               ` : ''}
 
               ${(field === 'variants' || field === 'sizes') ? renderVariantBuilderHtml() : ''}
@@ -16650,7 +16665,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                   <div id="product-gallery-scroll" class="fc-product-gallery" onscroll="onProductGalleryScroll()">
                     ${images.map((img) => `
                       <div class="fc-product-gallery-slide">
-                        <img src="${escapeHtml(img.url)}" data-fallback="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src=this.dataset.fallback;" class="w-full h-full object-contain">
+                        <img referrerpolicy="no-referrer" src="${escapeHtml(img.url)}" data-fallback="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src=this.dataset.fallback;" class="w-full h-full object-contain">
                       </div>
                     `).join('')}
                   </div>
@@ -16841,7 +16856,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               ${canManageOrders() ? `<section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="sticky-note" class="w-4 h-4"></i>${tr("Ichki izoh (faqat xodimlar ko'radi)", "Внутренняя заметка (видна только сотрудникам)")}</div><textarea id="order-internal-note-${o.id}" rows="2" placeholder="${tr('Masalan: mijoz 18:00 dan keyin yetkazishni so\'radi','Например: клиент просил доставить после 18:00')}" class="w-full p-2 border rounded-xl text-xs" onclick="event.stopPropagation()">${escapeHtml(o.internalNote || '')}</textarea><button type="button" onclick="event.stopPropagation(); saveOrderInternalNote(${o.id})" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></section>` : ''}
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${escapeHtml(deliveryTariffLabel(o.delivery))}</span><b>${escapeHtml(deliveryTariffValue(o.delivery, o.deliveryFee))}</b></div><div class="fc-order-kv"><span>${tr('Hudud:','Регион:')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div><div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div></section>
-              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku && isAdminMode && isUserAnAdmin) ? `<span class="text-gray-400 font-mono">(ID: ${escapeHtml(i.sku)})</span>` : ''} ${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
+              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img referrerpolicy="no-referrer" src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku && isAdminMode && isUserAnAdmin) ? `<span class="text-gray-400 font-mono">(ID: ${escapeHtml(i.sku)})</span>` : ''} ${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
               <section class="fc-order-summary-card"><div class="is-subtotal"><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div class="is-delivery"><span>${escapeHtml(deliveryTariffLabel(o.delivery))}</span><b>${escapeHtml(deliveryTariffValue(o.delivery, o.deliveryFee))}</b></div>${Number(o.promoDiscount) > 0 ? `<div class="is-discount"><span>${tr('Promo chegirma','Скидка по промокоду')} (${escapeHtml(o.promoCode || '')})</span><b>-${money(o.promoDiscount)}</b></div>` : ''}${Number(o.tierDiscount)>0?`<div class="is-discount"><span>${tr('Bosqichli chegirma','Ступенчатая скидка')}</span><b>-${money(o.tierDiscount)}</b></div>`:''}${Number(o.vipDiscount)>0?`<div class="is-discount"><span>${tr('Shaxsiy chegirma','Персональная скидка')}</span><b>-${money(o.vipDiscount)}</b></div>`:''}<div class="is-total"><span>${tr("Hozir to'lanadigan jami",'Итого к оплате сейчас')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
 
               ${(!isAdminMode && o.status === 'PROCESSING') ? `<button onclick="confirmOrderReceived(${o.id})" class="fc-btn fc-btn-primary w-full"><i data-lucide="package-check" class="w-4 h-4"></i>${tr("Qabul qildim", "Я получил(а)")}</button>` : ''}
