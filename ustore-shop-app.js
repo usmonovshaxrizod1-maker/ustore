@@ -1986,8 +1986,24 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       for (const category of categories) countFor(String(category.id));
       return totals;
     }
-    function getMissingImageProducts() {
-      return products.filter(p => p && p.id !== null && p.id !== undefined && p.status !== 'DELETED' && !hasProductImage(p));
+    // "Rasmsiz tovarlar" navbati elementlari — {product, color}. Oddiy
+    // tovar uchun color=null (bitta element, p.img tekshiriladi). Variativ
+    // tovar uchun rasmi RANGGA tegishli (colorGroupsForProduct), shuning
+    // uchun butun tovar emas — rasmi yo'q HAR BIR rang alohida element
+    // bo'lib chiqadi (bitta tovarning 2 rangi rasmsiz bo'lsa — 2 element).
+    // Shu bois navbat/hisoblagich variativ tovarni "oddiy" deb ko'rsatmaydi.
+    function getMissingImageQueueItems() {
+      const items = [];
+      for (const p of products) {
+        if (!p || p.id === null || p.id === undefined || p.status === 'DELETED') continue;
+        const colors = colorGroupsForProduct(p);
+        if (colors.length) {
+          for (const c of colors) if (!c.img) items.push({ product: p, color: c.name });
+        } else if (!hasProductImage(p)) {
+          items.push({ product: p, color: null });
+        }
+      }
+      return items;
     }
     function categoryPathForProduct(product) {
       const byId = new Map(categories.map(c => [String(c.id), c]));
@@ -2021,7 +2037,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
     function openMissingImageQueue() {
       if (!canManageProducts()) return;
-      missingImageQueueIndex = Math.min(missingImageQueueIndex, Math.max(0, getMissingImageProducts().length - 1));
+      missingImageQueueIndex = Math.min(missingImageQueueIndex, Math.max(0, getMissingImageQueueItems().length - 1));
       missingImageQueueSaving = false;
       initializeTempImageEditor(null);
       activePopupModal = 'MISSING_IMAGE_QUEUE';
@@ -2030,7 +2046,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
     function moveMissingImageQueue(direction) {
       if (missingImageQueueSaving) return;
-      const queue = getMissingImageProducts();
+      const queue = getMissingImageQueueItems();
       if (!queue.length) return;
       missingImageQueueIndex = Math.max(0, Math.min(queue.length - 1, missingImageQueueIndex + Number(direction || 0)));
       initializeTempImageEditor(null);
@@ -6757,7 +6773,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const recursiveProductCounts = buildRecursiveProductCountMap();
       const catProdsRaw = products.filter(p => p.categoryId === adminCatParentId && productVisibleInCurrentMode(p));
       const catProds = applyCategoryFilter(catProdsRaw);
-      const globalMissingImageCount = getMissingImageProducts().length;
+      const globalMissingImageCount = getMissingImageQueueItems().length;
       const filterActive = isCategoryFilterActive();
 
       const totalPages = Math.ceil(catProds.length / 10) || 1;
@@ -8618,7 +8634,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         return `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`;
       }
       const s = warehouseSummaryData;
-      const missingImageCount = getMissingImageProducts().length;
+      const missingImageCount = getMissingImageQueueItems().length;
       const importMissingImageCount = products.filter(p => p.status !== 'DELETED' && !hasProductImage(p) && p.importBatchId).length;
       const statCards = [
         { kind:'LOW', title:tr('Kam qolgan','Заканчивается'), value:s.lowStock, sub:tr('Chegaradan past','Ниже порога'), icon:'bell-ring', tone:'warning' },
@@ -8759,7 +8775,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         <div class="fc-warehouse-stack">
           <div class="fc-warehouse-tools">
             <button type="button" onclick="warehouseBulkPanelOpen=!warehouseBulkPanelOpen;render();" class="fc-warehouse-tool-btn ${warehouseBulkPanelOpen?'is-active':''}"><i data-lucide="list-plus" class="w-4 h-4"></i><span>${tr("Ko'p tovarni yangilash","Массовое обновление")}</span></button>
-            <button onclick="warehouseMissingImageOnly=!warehouseMissingImageOnly; if(warehouseMissingImageOnly)warehouseImportedMissingImageOnly=false; render();" class="fc-warehouse-tool-icon ${warehouseMissingImageOnly?'is-active is-warning':''}" title="${tr('Rasmsiz', 'Без фото')} (${getMissingImageProducts().length})"><i data-lucide="image-off" class="w-4 h-4"></i><small>${getMissingImageProducts().length}</small></button>
+            <button onclick="warehouseMissingImageOnly=!warehouseMissingImageOnly; if(warehouseMissingImageOnly)warehouseImportedMissingImageOnly=false; render();" class="fc-warehouse-tool-icon ${warehouseMissingImageOnly?'is-active is-warning':''}" title="${tr('Rasmsiz', 'Без фото')} (${getMissingImageQueueItems().length})"><i data-lucide="image-off" class="w-4 h-4"></i><small>${getMissingImageQueueItems().length}</small></button>
             <button onclick="warehouseImportedMissingImageOnly=!warehouseImportedMissingImageOnly; if(warehouseImportedMissingImageOnly)warehouseMissingImageOnly=false; render();" class="fc-warehouse-tool-icon ${warehouseImportedMissingImageOnly?'is-active':''}" title="${tr('Import rasmsiz','Импорт без фото')}"><i data-lucide="cloud-upload" class="w-4 h-4"></i><small>${products.filter(p=>p.status!=='DELETED'&&!hasProductImage(p)&&p.importBatchId).length}</small></button>
           </div>
 
@@ -15819,9 +15835,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       }
 
       if (activePopupModal === 'MISSING_IMAGE_QUEUE') {
-        const queue = getMissingImageProducts();
+        const queue = getMissingImageQueueItems();
         if (missingImageQueueIndex >= queue.length) missingImageQueueIndex = Math.max(0, queue.length - 1);
-        const p = queue[missingImageQueueIndex] || null;
+        const item = queue[missingImageQueueIndex] || null;
+        const p = item?.product || null;
+        const itemColor = item?.color || null;
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-sm w-full max-h-[94vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
@@ -15833,7 +15851,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
                     <p class="font-black text-sm text-gray-900">${escapeHtml(productName(p))}</p>
-                    <p class="mt-1 text-[10px] font-mono text-gray-500">SKU: ${escapeHtml(p.sku || '—')}</p>
+                    ${itemColor ? `<p class="mt-1 text-[10px] font-bold text-blue-700">${tr('Rangi','Цвет')}: ${escapeHtml(localizedVariantColor(itemColor))}</p>` : `<p class="mt-1 text-[10px] font-mono text-gray-500">SKU: ${escapeHtml(p.sku || '—')}</p>`}
                   </div>
                   <span class="flex-shrink-0 bg-slate-100 text-slate-700 font-black px-2.5 py-1 rounded-xl">${missingImageQueueIndex + 1} / ${queue.length}</span>
                 </div>
@@ -15845,9 +15863,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                 <input id="miq-image-input-files" type="file" onchange="document.getElementById('miq-empty-preview')?.classList.add('hidden'); onImagePicked(event, 'miq-img-prev', 'miq-image-button', 'miq-image-url', 'miq-image-url-error')" class="hidden">
                 <div class="fc-image-source-row">
                   <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
-                  <div class="fc-image-url-field"><input id="miq-image-url" type="url" value="${escapeHtml(p.img || '')}" placeholder="https://..." aria-label="${tr('Rasm URL manzili','URL изображения')}" oninput="document.getElementById('miq-empty-preview')?.classList.add('hidden');onImageUrlInput(this.value,'miq-img-prev','miq-image-url-error','miq-image-button')"><p id="miq-image-url-error" class="hidden"></p></div>
+                  <div class="fc-image-url-field"><input id="miq-image-url" type="url" value="${escapeHtml(itemColor ? '' : (p.img || ''))}" placeholder="https://..." aria-label="${tr('Rasm URL manzili','URL изображения')}" oninput="document.getElementById('miq-empty-preview')?.classList.add('hidden');onImageUrlInput(this.value,'miq-img-prev','miq-image-url-error','miq-image-button')"><p id="miq-image-url-error" class="hidden"></p></div>
                 </div>
-                <button data-missing-image-save onclick="saveMissingImageQueueItem('${p.id}')" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('Saqlanmoqda…','Сохранение…') : tr('Saqlash','Сохранить')}</button>
+                <button data-missing-image-save onclick="saveMissingImageQueueItem('${p.id}', ${itemColor ? JSON.stringify(itemColor) : 'null'})" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('Saqlanmoqda…','Сохранение…') : tr('Saqlash','Сохранить')}</button>
                 <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
                   <button onclick="moveMissingImageQueue(-1)" ${missingImageQueueSaving || missingImageQueueIndex === 0 ? 'disabled' : ''} class="fc-image-queue-nav" aria-label="${tr('Oldingi','Предыдущий')}" title="${tr('Oldingi','Предыдущий')}"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
                   <button onclick="moveMissingImageQueue(1)" ${missingImageQueueSaving || missingImageQueueIndex >= queue.length - 1 ? 'disabled' : ''} class="fc-image-queue-nav" aria-label="${tr('Keyingi','Следующий')}" title="${tr('Keyingi','Следующий')}"><i data-lucide="arrow-right" class="w-5 h-5"></i></button>
@@ -17644,10 +17662,19 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       }
     }
 
-    async function saveMissingImageQueueItem(prodId) {
+    // color=null bo'lsa — oddiy tovar, p.img'ga saqlanadi (avvalgi xatti-harakat).
+    // color berilsa — bu rangi rasmsiz variativ tovar; rasm RANGGA tegishli
+    // bo'lgani uchun p.img emas, shu rangdagi HAR BIR variantning colorImg'i
+    // yangilanadi (butun variants massivi round-trip qilib qayta yuboriladi —
+    // edit_product_field'ning mavjud field:'variants' yo'li).
+    async function saveMissingImageQueueItem(prodId, color) {
       if (missingImageQueueSaving) return;
       const product = products.find(p => p.id === prodId);
-      if (!product || product.status === 'DELETED' || hasProductImage(product)) {
+      if (!product || product.status === 'DELETED') { renderModalContainer(); return; }
+      if (color) {
+        const stillMissing = colorGroupsForProduct(product).find(c => c.name === color && !c.img);
+        if (!stillMissing) { renderModalContainer(); return; }
+      } else if (hasProductImage(product)) {
         renderModalContainer();
         return;
       }
@@ -17657,17 +17684,23 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (saveBtn) saveBtn.disabled = true;
       try {
         const imagePayload = await productImagePayloadFromSnapshot(imageSnap, true);
-        const result = await callApi('edit_product_field', {
-          productId: prodId,
-          field: 'img',
-          value: imagePayload.img,
-          thumbImg: imagePayload.thumbImg,
-          imageUpload: imagePayload.imageUpload,
-        });
+        let result;
+        if (color) {
+          const newVariants = productVariants(product).map(v => v.color === color ? { ...v, colorImg: imagePayload.img } : v);
+          result = await callApi('edit_product_field', { productId: prodId, field: 'variants', value: newVariants });
+        } else {
+          result = await callApi('edit_product_field', {
+            productId: prodId,
+            field: 'img',
+            value: imagePayload.img,
+            thumbImg: imagePayload.thumbImg,
+            imageUpload: imagePayload.imageUpload,
+          });
+        }
         const current = products.find(p => p.id === prodId);
         if (current) Object.assign(current, mapProductFromDB(result.product));
         saveCatalogCache();
-        const remaining = getMissingImageProducts();
+        const remaining = getMissingImageQueueItems();
         if (missingImageQueueIndex >= remaining.length) missingImageQueueIndex = Math.max(0, remaining.length - 1);
         initializeTempImageEditor(null);
         showActionToast(tr('Rasm saqlandi','Изображение сохранено'), 'success', 3000);
