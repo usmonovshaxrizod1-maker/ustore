@@ -257,6 +257,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     const ICON_COPY_CHECK = fcIcon('<rect x="3" y="8" width="13" height="13" rx="2"></rect><path d="M8 8V5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3"></path><path d="M6.5 14.5l2 2 4-4"></path>');
     const ICON_CHECK_SQUARE = fcIcon('<rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M7.5 12.5l3 3 6-6"></path>');
     const ICON_DOWNLOAD = fcIcon('<path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path>');
+    const ICON_PERCENT = fcIcon('<line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle>');
     // Legacy audit, 9-band: to'lov metod tanlagichidagi eski emojilar o'rniga.
     const ICON_CASH = fcIcon('<rect x="2" y="6" width="20" height="12" rx="2"></rect><circle cx="12" cy="12" r="3"></circle><path d="M6 6v0M18 6v0M6 18v0M18 18v0"></path>', 'w-5 h-5');
     const ICON_CARD = fcIcon('<rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path>', 'w-5 h-5');
@@ -1538,6 +1539,16 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     let bulkMoveTargetCategoryId = '';
     let bulkCategorySelectMode = false;
     const bulkSelectedCategoryIds = new Set();
+    // "Chegirma" (2026-09-11): DISCOUNT_LIST — hozir chegirmadagi barcha
+    // tovarlar ro'yxati + tanlab/barchasini bekor qilish. APPLY_DISCOUNT —
+    // mavjud bulk-select (tovar YOKI katalog) ustiga foizli chegirma
+    // qo'llash oynasi.
+    const discountListSelectedIds = new Set();
+    let discountListBusy = false;
+    let discountApplyScope = null; // 'PRODUCTS' | 'CATEGORIES'
+    let discountApplyPercent = '';
+    let discountApplyMode = 'REDUCE_PRICE'; // 'REDUCE_PRICE' | 'RAISE_OLD_PRICE'
+    let discountApplyBusy = false;
     // Ommaviy katalog yaratish ("Bir nechta katalog qo'shish") — eski
     // bitta-katalog ADD_CAT oynasiga TEGMAYDI, mustaqil holat.
     let bulkCatText = '';
@@ -1909,6 +1920,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (!p?.oldPrice || !(p.oldPrice > p.price)) return null;
       return Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100);
     }
+    function getDiscountedProducts() {
+      return products.filter(p => p && p.status !== 'DELETED' && discountPercent(p) !== null);
+    }
 
     // 4-band: Telegram WebView'da (ayniqsa eski Android) navigator.clipboard
     // hamma vaqt ham mavjud/ruxsat etilgan bo'lavermaydi — shu sabab
@@ -2051,6 +2065,54 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       missingImageQueueIndex = Math.max(0, Math.min(queue.length - 1, missingImageQueueIndex + Number(direction || 0)));
       initializeTempImageEditor(null);
       renderModalContainer();
+    }
+    // "Chegirma" (2026-09-11): Billz tugmasi yoniga qo'shilgan % belgichasi
+    // shu ro'yxatni ochadi — hozir chegirmada (oldPrice>price) turgan
+    // BARCHA tovarlar, do'kon bo'yicha (bitta katalog bilan cheklanmaydi).
+    // Belgilab yoki "barchasini belgilash" orqali bir yoki bir nechtasining
+    // chegirmasini bir amalda bekor qilish mumkin.
+    function openDiscountList() {
+      if (!canManageProducts()) return;
+      discountListSelectedIds.clear();
+      discountListBusy = false;
+      activePopupModal = 'DISCOUNT_LIST';
+      render();
+    }
+    function toggleDiscountListSelect(id) {
+      id = String(id);
+      if (discountListSelectedIds.has(id)) discountListSelectedIds.delete(id); else discountListSelectedIds.add(id);
+      renderModalContainer();
+    }
+    function selectAllDiscountList() {
+      for (const p of getDiscountedProducts()) discountListSelectedIds.add(String(p.id));
+      renderModalContainer();
+    }
+    function clearDiscountListSelection() {
+      discountListSelectedIds.clear();
+      renderModalContainer();
+    }
+    // restorePrice=true — narx chegirmadan OLDINGI (eski narx)ga qaytadi.
+    // false — hozirgi (pastroq) narx saqlanib, faqat chizilgan eski narx
+    // yo'qoladi. Ikkalasi ham foydalanuvchining aniq tanlovi (2026-09-11
+    // so'rovi: "eski narx asosiyga otsinmi yoki shunchaki olib tashlansinmi").
+    async function cancelSelectedDiscounts(restorePrice) {
+      if (discountListBusy || !discountListSelectedIds.size) return;
+      discountListBusy = true;
+      renderModalContainer();
+      try {
+        const ids = [...discountListSelectedIds];
+        const result = await callApi('bulk_clear_discount', { productIds: ids, restorePrice: !!restorePrice });
+        for (const row of (result.products || [])) upsertLocalProduct(row);
+        saveCatalogCache();
+        discountListSelectedIds.clear();
+        showActionToast(tr(`✅ ${result.updatedCount} ta tovarning chegirmasi bekor qilindi`, `✅ Скидка отменена у ${result.updatedCount} товаров`), 'success', 2600);
+      } catch (e) {
+        console.error('Chegirmani bekor qilish xatosi:', e);
+        showAppNotice(tr("❌ Chegirmani bekor qilib bo'lmadi: ", "❌ Не удалось отменить скидку: ") + (e.message || e));
+      } finally {
+        discountListBusy = false;
+        renderModalContainer();
+      }
     }
     function regionLabel(v) { return v === 'TASHKENT' ? tr('Toshkent shahri','Город Ташкент') : (v === 'PROVINCE' ? tr('Viloyatlar','Области') : (v || '')); }
     function orderRegionFilterKey(order) {
@@ -6809,6 +6871,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                 <button onclick="openTrashModal()" title="${tr('Chiqindi (24 soat)','Корзина (24 часа)')}" aria-label="${tr('Chiqindi', 'Корзина')}" class="flex items-center justify-center min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-white border fc-text-danger">${ICON_TRASH}</button>
                 <button onclick="openDuplicateProductsModal()" title="${tr('Duplicate tovarlarni tekshirish','Проверить дубликаты товаров')}" aria-label="${tr('Duplicate tovarlarni tekshirish','Проверить дубликаты товаров')}" class="flex items-center justify-center min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-white border text-gray-600">${ICON_COPY_CHECK}</button>
                 ${billzAccessGranted ? `<button onclick="openBillzBrowse('${adminCatParentId || ''}')" title="${tr("Billz'dan tovar tortib olish", 'Импорт товаров из Billz')}" aria-label="${tr("Billz'dan tovar tortib olish", 'Импорт товаров из Billz')}" class="flex items-center justify-center gap-1 min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-white border text-gray-600">${ICON_DOWNLOAD}Billz</button>` : ''}
+                <button onclick="openDiscountList()" title="${tr('Chegirmadagi tovarlar','Товары со скидкой')}" aria-label="${tr('Chegirmadagi tovarlar','Товары со скидкой')}" class="flex items-center justify-center gap-1 min-w-[2.5rem] min-h-[2.5rem] px-2.5 rounded-xl text-[11px] font-bold bg-red-50 text-red-700 border border-red-200">${ICON_PERCENT}${getDiscountedProducts().length > 0 ? `<span>${getDiscountedProducts().length}</span>` : ''}</button>
               </div>` : ''}
             ` : ''}
           </div>
@@ -6838,7 +6901,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             `).join('')}
           </div>
 
-          ${bulkCategorySelectMode ? `<div class="fc-selection-toolbar"><span>${bulkSelectedCategoryIds.size}</span><button onclick="openBulkMoveCategoriesModal()" ${bulkSelectedCategoryIds.size?'':'disabled'} aria-label="${tr('Ko‘chirish','Переместить')}"><i data-lucide="folder-input" class="w-4 h-4"></i></button><button onclick="bulkTrashSelectedCategories()" ${bulkSelectedCategoryIds.size?'':'disabled'} class="is-danger" aria-label="${tr('O‘chirish','Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="clearBulkCategorySelection()"><i data-lucide="x" class="w-4 h-4"></i></button></div>` : ''}
+          ${bulkCategorySelectMode ? `<div class="fc-selection-toolbar"><span>${bulkSelectedCategoryIds.size}</span><button onclick="openBulkMoveCategoriesModal()" ${bulkSelectedCategoryIds.size?'':'disabled'} aria-label="${tr('Ko‘chirish','Переместить')}"><i data-lucide="folder-input" class="w-4 h-4"></i></button><button onclick="openApplyDiscountSheet('CATEGORIES')" ${bulkSelectedCategoryIds.size?'':'disabled'} aria-label="${tr('Chegirma qoʻllash','Применить скидку')}" title="${tr('Chegirma qoʻllash','Применить скидку')}"><i data-lucide="percent" class="w-4 h-4"></i></button><button onclick="bulkTrashSelectedCategories()" ${bulkSelectedCategoryIds.size?'':'disabled'} class="is-danger" aria-label="${tr('O‘chirish','Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="clearBulkCategorySelection()"><i data-lucide="x" class="w-4 h-4"></i></button></div>` : ''}
 
           ${catProdsRaw.length === 0 && subCats.length > 0 ? '' : `
           <!-- PRODUCTS LIST -->
@@ -6866,7 +6929,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               </div>
             `}
 
-            ${bulkProductSelectMode ? `<div class="fc-selection-toolbar"><span>${bulkSelectedProductIds.size}</span><button onclick="openBulkMoveProductsModal()" ${bulkSelectedProductIds.size?'':'disabled'} aria-label="${tr('Ko‘chirish','Переместить')}"><i data-lucide="folder-input" class="w-4 h-4"></i></button><button onclick="bulkTrashSelectedProducts()" ${bulkSelectedProductIds.size?'':'disabled'} class="is-danger" aria-label="${tr('O‘chirish','Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="clearBulkProductSelection()" aria-label="${tr('Tanlashni tugatish','Завершить выбор')}"><i data-lucide="x" class="w-4 h-4"></i></button></div>` : ''}
+            ${bulkProductSelectMode ? `<div class="fc-selection-toolbar"><span>${bulkSelectedProductIds.size}</span><button onclick="openBulkMoveProductsModal()" ${bulkSelectedProductIds.size?'':'disabled'} aria-label="${tr('Ko‘chirish','Переместить')}"><i data-lucide="folder-input" class="w-4 h-4"></i></button><button onclick="openApplyDiscountSheet('PRODUCTS')" ${bulkSelectedProductIds.size?'':'disabled'} aria-label="${tr('Chegirma qoʻllash','Применить скидку')}" title="${tr('Chegirma qoʻllash','Применить скидку')}"><i data-lucide="percent" class="w-4 h-4"></i></button><button onclick="bulkTrashSelectedProducts()" ${bulkSelectedProductIds.size?'':'disabled'} class="is-danger" aria-label="${tr('O‘chirish','Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button><button onclick="clearBulkProductSelection()" aria-label="${tr('Tanlashni tugatish','Завершить выбор')}"><i data-lucide="x" class="w-4 h-4"></i></button></div>` : ''}
 
             ${totalPages > 1 ? `
               <div class="flex justify-center items-center space-x-2 pt-4">
@@ -15879,6 +15942,66 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         return;
       }
 
+      if (activePopupModal === 'DISCOUNT_LIST') {
+        const items = getDiscountedProducts();
+        const allSelected = items.length > 0 && items.every(p => discountListSelectedIds.has(String(p.id)));
+        container.innerHTML = `
+          <div class="fc-sheet-overlay" onclick="if(event.target===this){activePopupModal=null;render();}">
+            <div class="fc-sheet" onclick="event.stopPropagation()">
+              <div class="fc-sheet-handle"></div>
+              <div class="fc-sheet-header"><div><div class="fc-sheet-title">${tr('Chegirmadagi tovarlar','Товары со скидкой')}</div><p class="fc-shop-info-subtitle">${items.length} ${tr('ta tovar chegirmada','товаров со скидкой')}</p></div><button type="button" onclick="activePopupModal=null;render();" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+              <div class="fc-sheet-body space-y-2">
+                ${items.length ? `<button type="button" onclick="${allSelected ? 'clearDiscountListSelection()' : 'selectAllDiscountList()'}" class="text-[10px] font-bold text-blue-700">${allSelected ? tr('Tanlashni bekor qilish','Снять выделение') : tr('Barchasini belgilash','Выбрать все')}</button>` : ''}
+                ${items.length === 0 ? `<p class="text-center text-gray-400 py-8 text-xs">${tr('Hozircha chegirmadagi tovar yoʻq.','Пока нет товаров со скидкой.')}</p>` : items.map(p => `
+                  <div onclick="toggleDiscountListSelect('${p.id}')" class="flex items-center gap-2.5 p-2.5 rounded-xl border ${discountListSelectedIds.has(String(p.id)) ? 'border-blue-400 bg-blue-50' : 'border-gray-100'} cursor-pointer">
+                    <span class="fc-select-dot ${discountListSelectedIds.has(String(p.id)) ? 'is-selected' : ''}"><i data-lucide="check" class="w-3.5 h-3.5"></i></span>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-xs font-bold text-gray-900 truncate">${escapeHtml(productName(p))}</p>
+                      <div class="fc-product-price-main-row mt-0.5"><div class="fc-product-current-price fc-text-danger">${money(p.price)}</div><span class="fc-product-discount-badge">-${discountPercent(p)}%</span></div>
+                      <div class="fc-product-old-price-row"><span class="fc-product-old-price">${money(p.oldPrice)}</span></div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+              ${discountListSelectedIds.size ? `<div class="fc-sheet-footer space-y-1.5">
+                <p class="text-[10px] text-gray-500 text-center">${discountListSelectedIds.size} ${tr('ta tovar tanlandi','товаров выбрано')}</p>
+                <button type="button" onclick="cancelSelectedDiscounts(false)" ${discountListBusy ? 'disabled' : ''} class="fc-btn fc-btn-secondary w-full">${discountListBusy ? tr('Bajarilmoqda…','Выполняется…') : tr('Faqat eski narxni olib tashlash','Просто убрать старую цену')}</button>
+                <button type="button" onclick="cancelSelectedDiscounts(true)" ${discountListBusy ? 'disabled' : ''} class="fc-btn fc-btn-primary w-full">${discountListBusy ? tr('Bajarilmoqda…','Выполняется…') : tr('Narxni eski narxga qaytarish','Вернуть цену к старой')}</button>
+              </div>` : ''}
+            </div>
+          </div>`;
+        return;
+      }
+
+      if (activePopupModal === 'APPLY_DISCOUNT') {
+        const targetCount = discountApplyScope === 'CATEGORIES' ? bulkSelectedCategoryIds.size : bulkSelectedProductIds.size;
+        const scopeLabel = discountApplyScope === 'CATEGORIES'
+          ? tr(`${targetCount} ta tanlangan katalog (ichidagi barcha tovarlar)`, `${targetCount} выбранных каталогов (все товары внутри)`)
+          : tr(`${targetCount} ta tanlangan tovar`, `${targetCount} выбранных товаров`);
+        container.innerHTML = `
+          <div class="fc-sheet-overlay" onclick="if(event.target===this && !discountApplyBusy){activePopupModal=null;render();}">
+            <div class="fc-sheet" onclick="event.stopPropagation()">
+              <div class="fc-sheet-handle"></div>
+              <div class="fc-sheet-header"><div><div class="fc-sheet-title">${tr('Chegirma qoʻllash','Применить скидку')}</div><p class="fc-shop-info-subtitle">${scopeLabel}</p></div><button type="button" ${discountApplyBusy?'disabled':''} onclick="activePopupModal=null;render();" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+              <div class="fc-sheet-body space-y-3">
+                <label class="fc-mini-field"><span>${tr('Chegirma foizi','Процент скидки')}</span><input type="number" id="adp-percent" min="1" max="99" value="${escapeHtml(discountApplyPercent)}" oninput="discountApplyPercent=this.value" placeholder="20" class="text-sm"></label>
+                <div class="fc-delivery-kind-grid">
+                  <button type="button" onclick="discountApplyMode='REDUCE_PRICE';renderModalContainer();" class="fc-delivery-kind ${discountApplyMode==='REDUCE_PRICE'?'is-active':''}">${tr('Narxni pasaytirish','Снизить цену')}</button>
+                  <button type="button" onclick="discountApplyMode='RAISE_OLD_PRICE';renderModalContainer();" class="fc-delivery-kind ${discountApplyMode==='RAISE_OLD_PRICE'?'is-active':''}">${tr('Eski narxni oshirish','Повысить старую цену')}</button>
+                </div>
+                <p class="fc-shop-field-help">${discountApplyMode==='REDUCE_PRICE'
+                  ? tr("Hozirgi narx \"eski narx\" (chizib ko'rsatiladigan) bo'ladi, YANGI, pastroq narx hisoblanadi. Masalan 100 000 so'm + 20% → eski narx 100 000, yangi narx 80 000.", "Текущая цена станет \"старой\" (зачёркнутой), рассчитается НОВАЯ, более низкая цена. Например 100 000 + 20% → старая цена 100 000, новая 80 000.")
+                  : tr("Hozirgi sotuv narxi O'ZGARMAYDI, faqat \"eski narx\" yuqoriroq hisoblab qo'yiladi. Masalan 100 000 so'm + 20% → eski narx 125 000, yangi narx 100 000 (o'zgarmadi).", "Текущая цена продажи НЕ МЕНЯЕТСЯ, только \"старая цена\" рассчитывается выше. Например 100 000 + 20% → старая цена 125 000, новая 100 000 (без изменений).")}</p>
+              </div>
+              <div class="fc-sheet-footer grid grid-cols-2 gap-2">
+                <button type="button" ${discountApplyBusy?'disabled':''} onclick="activePopupModal=null;render();" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button>
+                <button type="button" ${discountApplyBusy?'disabled':''} onclick="applyBulkDiscount()" class="fc-btn fc-btn-primary"><i data-lucide="percent" class="w-4 h-4"></i>${discountApplyBusy ? tr('Qoʻllanmoqda…','Применяется…') : tr('Qoʻllash','Применить')}</button>
+              </div>
+            </div>
+          </div>`;
+        return;
+      }
+
       if (activePopupModal === 'EXCEL_IMPORT') {
         if (window.UstoreExcel && typeof window.UstoreExcel.renderModal === 'function') {
           container.innerHTML = window.UstoreExcel.renderModal();
@@ -18642,6 +18765,49 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         saveCatalogCache(); render();
         showActionToast(tr('✅ Chiqindiga o‘tkazildi','✅ Перемещено в корзину'), 'success', 1500);
       } catch (e) { console.error(e); showAppNotice(tr('❌ Xatolik: ','❌ Ошибка: ') + (e.message || e)); }
+    }
+    // "Chegirma" (2026-09-11): mavjud bulk-select mexanizmi (tovar YOKI
+    // katalog uzoq bosib tanlash) ustiga qo'shilgan — scope='PRODUCTS'
+    // bulkSelectedProductIds'ni, scope='CATEGORIES' bulkSelectedCategoryIds'ni
+    // (server ICHKI kataloglar bilan birga qamrab oladi) ishlatadi.
+    function openApplyDiscountSheet(scope) {
+      const size = scope === 'CATEGORIES' ? bulkSelectedCategoryIds.size : bulkSelectedProductIds.size;
+      if (!size) return;
+      discountApplyScope = scope;
+      discountApplyPercent = '';
+      discountApplyMode = 'REDUCE_PRICE';
+      discountApplyBusy = false;
+      activePopupModal = 'APPLY_DISCOUNT';
+      render();
+    }
+    async function applyBulkDiscount() {
+      if (discountApplyBusy) return;
+      const percent = Number(document.getElementById('adp-percent')?.value ?? discountApplyPercent);
+      if (!Number.isFinite(percent) || percent <= 0 || percent >= 100) {
+        showAppNotice(tr("❌ Foizni 1 dan 99 gacha kiriting.", "❌ Введите процент от 1 до 99."));
+        return;
+      }
+      discountApplyBusy = true;
+      renderModalContainer();
+      try {
+        const payload = { percent, mode: discountApplyMode };
+        if (discountApplyScope === 'CATEGORIES') payload.categoryIds = [...bulkSelectedCategoryIds];
+        else payload.productIds = [...bulkSelectedProductIds];
+        const result = await callApi('bulk_apply_discount', payload);
+        for (const row of (result.products || [])) upsertLocalProduct(row);
+        saveCatalogCache();
+        activePopupModal = null;
+        bulkProductSelectMode = false; bulkSelectedProductIds.clear();
+        bulkCategorySelectMode = false; bulkSelectedCategoryIds.clear();
+        render();
+        showActionToast(tr(`✅ ${result.updatedCount} ta tovarga chegirma qoʻllandi`, `✅ Скидка применена к ${result.updatedCount} товарам`), 'success', 2600);
+      } catch (e) {
+        console.error('Chegirma qoʻllash xatosi:', e);
+        showAppNotice(tr("❌ Chegirma qoʻllab boʻlmadi: ", "❌ Не удалось применить скидку: ") + (e.message || e));
+      } finally {
+        discountApplyBusy = false;
+        renderModalContainer();
+      }
     }
     async function purgeTrashBatchNow(batchId) {
       const ok = await fcConfirm(tr('Butunlay o‘chirilsinmi?', 'Удалить навсегда?'), tr('Bu elementlar darhol va qaytarib bo‘lmaydigan tarzda o‘chiriladi.', 'Эти элементы будут удалены немедленно и без возможности восстановления.'));
