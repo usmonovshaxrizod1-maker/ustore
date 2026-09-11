@@ -6661,9 +6661,16 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const move = kind === 'product'
         ? `openMoveProductModal('${id}');cardActionMenu=null;`
         : `openMoveCategoryModal('${id}', event);cardActionMenu=null;`;
+      // 2026-09-11 XATO TUZATISH: avval bu yerda faqat "cardActionMenu=null"
+      // o'zgaruvchisi qo'yilardi — render() chaqirilmagani uchun 3-nuqta
+      // menyu EKRANDA ochiq qolib ketardi (O'chirish uchun bo'lsa, butun
+      // tekshirish→tasdiqlash→o'chirish jarayoni davomida — chunki
+      // deleteCategory/deleteProduct faqat MUVAFFAQIYATLI tugagach render()
+      // chaqiradi). Endi closeCardActionMenu(event) BIRINCHI, sinxron
+      // ishlaydi (darhol yopadi), keyingina o'chirish jarayoni boshlanadi.
       const del = kind === 'product'
-        ? `deleteProduct('${id}');cardActionMenu=null;`
-        : `deleteCategory('${id}', event);cardActionMenu=null;`;
+        ? `closeCardActionMenu(event);deleteProduct('${id}');`
+        : `closeCardActionMenu(event);deleteCategory('${id}');`;
       return `<div class="fc-card-action-menu" onclick="event.stopPropagation()"><button type="button" onclick="${edit}"><i data-lucide="pencil" class="w-4 h-4"></i><span>${tr('Tahrirlash','Изменить')}</span></button><button type="button" onclick="${move}"><i data-lucide="folder-input" class="w-4 h-4"></i><span>${tr('Ko‘chirish','Переместить')}</span></button><button type="button" class="is-danger" onclick="${del}"><i data-lucide="trash-2" class="w-4 h-4"></i><span>${tr('O‘chirish','Удалить')}</span></button></div>`;
     }
 
@@ -18022,7 +18029,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       excelOpening = true;
       render();
       try {
-        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=12');
+        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=13');
         await excelModulePromise;
         if (!window.UstoreExcel) throw new Error('Excel moduli topilmadi');
         await window.UstoreExcel.prepare?.();
@@ -18193,17 +18200,18 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // 2.5: tasdiqlansa, butun subtree+tovarlar 24 soatlik trash'ga tushadi —
     // bu kaskad ko'p elementga ta'sir qilgani uchun aniqlik uchun butun
     // katalogni qayta yuklaymiz (optimistik qisman o'chirish emas).
-    async function deleteCategory(id, e) {
-      if (e) e.stopPropagation();
+    // 2026-09-11: "Tekshirilmoqda..." oraliq bosqichi OLIB TASHLANDI (menyu
+    // yopilishi endi closeCardActionMenu() orqali chaqiruvchi tarafda,
+    // sinxron ravishda bo'ladi — bu yerda alohida toast ko'rsatishga hojat
+    // yo'q). get_category_delete_preview jim (toastsiz) kutiladi va
+    // natija to'g'ridan-to'g'ri tasdiqlash oynasiga o'tadi.
+    async function deleteCategory(id) {
       let preview;
-      showActionToast(tr('⏳ Tekshirilmoqda...', '⏳ Проверка...'), 'saving');
       try {
         preview = await callApi('get_category_delete_preview', { categoryId: id });
       } catch (err) {
-        hideActionToast();
         return showAppNotice(tr('❌ Tekshirishda xatolik: ', '❌ Ошибка проверки: ') + (err.message || err));
       }
-      hideActionToast();
       const msg = (preview.categoryCount > 0 || preview.productCount > 0)
         ? tr(
             `Bu katalog ichida:\n${preview.categoryCount} ta ichki katalog\n${preview.productCount} ta tovar\nbor.\n\nO'chirishga aminmisiz? (24 soat ichida Chiqindidan tiklash mumkin)`,

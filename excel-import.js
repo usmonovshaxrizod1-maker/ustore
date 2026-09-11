@@ -86,6 +86,21 @@
     return 1 - levenshtein(aa,bb) / Math.max(aa.length,bb.length,1);
   }
 
+  // 2026-09-11: haqiqiy .xlsx fayli — ZIP arxiv (ichida xl/workbook.xml bor).
+  // Agar foydalanuvchi boshqa formatda saqlangan/buzilgan/aslida .xls yoki
+  // CSV bo'lgan faylni yuklasa, ExcelJS o'zining ICHKI xatosini beradi
+  // ("Cannot read properties of undefined (reading 'sheets')") — bu
+  // texnik, tushunarsiz xabar. Shu bois wb.xlsx.load()'ni chaqirishdan
+  // OLDIN faylning ZIP imzosini ("PK") tekshiramiz — mos kelmasa darhol
+  // aniq, tushunarli xabar beramiz.
+  function looksLikeXlsxZip(arrayBuffer) {
+    if (!arrayBuffer || arrayBuffer.byteLength < 4) return false;
+    const bytes = new Uint8Array(arrayBuffer, 0, 4);
+    // ZIP local-file-header imzosi 'PK\x03\x04' (eng ko'p uchraydigan);
+    // 'PK\x05\x06' (bo'sh arxiv) va 'PK\x07\x08' (bo'lingan arxiv) ham bor.
+    return bytes[0] === 0x50 && bytes[1] === 0x4B && (bytes[2] === 0x03 || bytes[2] === 0x05 || bytes[2] === 0x07);
+  }
+
   function ensureExcelJS() {
     if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
     if (window.__ustoreExcelJsPromise) return window.__ustoreExcelJsPromise;
@@ -727,7 +742,22 @@
       const aliasPromise=callApi('get_category_aliases',{}).catch(()=>({aliases:[]}));
       const [arrayBuffer,aliasData]=await Promise.all([file.arrayBuffer(),aliasPromise]);
       state.aliases=aliasData.aliases||[]; state.file=file; state.fileName=file.name; state.fileHash='';
-      const wb=new ExcelJS.Workbook(); await wb.xlsx.load(arrayBuffer);
+      if(!looksLikeXlsxZip(arrayBuffer)){
+        throw new Error(xl(
+          "Bu fayl haqiqiy .xlsx (Excel) fayliga o'xshamayapti — boshqa formatda saqlangan yoki buzilgan bo'lishi mumkin. Shablonni qayta yuklab oling va FAQAT undagi katakchalarni to'ldiring (boshqa dastur bilan qayta saqlamang).",
+          'Этот файл не похож на настоящий файл .xlsx — возможно, он сохранён в другом формате или повреждён. Скачайте шаблон заново и заполните ТОЛЬКО его ячейки (не пересохраняйте другой программой).'
+        ));
+      }
+      const wb=new ExcelJS.Workbook();
+      try{
+        await wb.xlsx.load(arrayBuffer);
+      }catch(loadErr){
+        console.error('[excel-import] ExcelJS parse failed', loadErr);
+        throw new Error(xl(
+          "Excel faylini o'qib bo'lmadi (fayl tuzilishi noto'g'ri). Shablonni qayta yuklab oling va FAQAT undagi katakchalarni to'ldiring.",
+          'Не удалось прочитать файл Excel (неверная структура файла). Скачайте шаблон заново и заполните только его ячейки.'
+        ));
+      }
 
       // V4: oddiy va variativ tovarlar ikki alohida listdan o'qiladi.
       const meta=workbookMeta(wb);
@@ -1092,5 +1122,5 @@
     catch(e){console.warn('Last import batch unavailable',e);}
     return true;
   }
-  window.UstoreExcel={prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,addVariantRow,removeVariantRow,doImport,rollbackBatch,reset,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload,parseVariantTextToRows,serializeVariantRows}};
+  window.UstoreExcel={prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,addVariantRow,removeVariantRow,doImport,rollbackBatch,reset,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload,parseVariantTextToRows,serializeVariantRows,looksLikeXlsxZip}};
 })();
