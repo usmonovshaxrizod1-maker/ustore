@@ -71,7 +71,7 @@ Variativ tovarlarda har bir rang/o'lcham kombinatsiyasi alohida qator bo'lsin. T
 
 Excelga rasm qo'shmang — mahsulotlar rasmsiz import qilinadi.
 
-Barcha ma'lumotlar to'liq bo'lgach, original Excel shablonini to'ldirib, strukturasini buzmasdan .xlsx fayl qilib qaytaring.
+Barcha ma'lumotlar to'liq bo'lgach, original Excel shablonini to'ldirib, strukturasini buzmasdan .xlsx fayl qilib qaytaring. Faylni Python'da FAQAT openpyxl kutubxonasining load_workbook() funksiyasi bilan oching va shu obyekt ichidagi katakchalarni to'ldiring — faylni xml.etree, lxml yoki boshqa usul bilan qo'lda qayta yig'ib chiqmang va noldan yaratmang, aks holda fayl UStorE'da ochilmay qoladi. Saqlagandan keyin faylni yana bir marta load_workbook() bilan ochib, xatosiz ochilishini albatta tekshiring — xato chiqsa, faylni qayta yarating va foydalanuvchiga xato haqida hech narsa demang.
 
 Oxirida qisqa hisobot bering:
 - oddiy tovarlar soni

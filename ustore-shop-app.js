@@ -18029,7 +18029,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       excelOpening = true;
       render();
       try {
-        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=14');
+        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=15');
         await excelModulePromise;
         if (!window.UstoreExcel) throw new Error('Excel moduli topilmadi');
         await window.UstoreExcel.prepare?.();
