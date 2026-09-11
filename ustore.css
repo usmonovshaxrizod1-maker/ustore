@@ -1874,13 +1874,29 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .fc-bulkcat-help-example { display: inline-block; margin-top: .2rem; font-size: .62rem; color: var(--color-gray-600); }
 .fc-bulkcat-chatgpt-btn { display: inline-flex; align-items: center; gap: .3rem; padding: .35rem .65rem; border-radius: .7rem; background: var(--fc-selected-bg, #eff6ff); color: var(--fc-primary); font-size: .62rem; font-weight: 800; border: none; }
 
-/* Qator raqamlari gutteri: textarea bilan bir xil font/line-height/padding
-   ulanadi (JS onscroll orqali scrollTop sinxronlanadi) — raqamlar alohida,
-   tanlab bo'lmaydigan qatlamda, hech qachon textarea qiymatiga kirmaydi. */
-.fc-bulkcat-editor { display: flex; border: 1px solid var(--fc-border); border-radius: .85rem; overflow: hidden; background: var(--fc-surface); }
+/* Qator raqamlari gutteri. 2026-09-11 QAYTA QURISH: ilgari gutter va
+   textarea IKKALASI HAM o'z ichida mustaqil scroll qilardi, JS orqali
+   scrollTop sinxronlanardi — real mobil qurilmada (Telegram WebView) bu
+   ikkisi orasida kechikish/sinxronsizlik yuzaga keldi ("raqamlar qatorga
+   to'g'ri kelmayapti", "scroll qilsa ko'tarilib ketyapti"). Endi FAQAT
+   bitta narsa scroll qiladi — TASHQI .fc-bulkcat-editor. Gutter va
+   textarea o'zlari HECH QACHON mustaqil scroll qilmaydi — textarea JS
+   orqali (autoGrowBulkCatTextarea) doim o'z matniga aynan mos balandlikda
+   o'sadi, shuning uchun gutter bilan bir xil "jismoniy" blokda qattiq
+   yopishib turadi (moslik strukturaviy jihatdan kafolatlanadi, scrollTop'ni
+   "taxmin qilib" sinxronlashning hojati yo'q). Raqamlar alohida, tanlab
+   bo'lmaydigan qatlamda — hech qachon textarea qiymatiga/clipboard'ga
+   kirmaydi.
+   Tashqi quti — doimiy, taxminan 7-8 qatorlik "deraza": necha qator
+   yozilishidan qat'i nazar quti shu balandlikda qoladi (8 x line-height +
+   padding), ortig'i shu quti ICHIDA scroll qilinadi. rem (vh emas) —
+   mobil brauzerning manzil paneli/klaviaturasi tufayli vh o'zgarib
+   turishi ("to'liq tushmayapti" muammosining sababi) bu yerda ta'sir
+   qilmaydi. */
+.fc-bulkcat-editor { display: flex; align-items: stretch; border: 1px solid var(--fc-border); border-radius: .85rem; overflow-y: auto; overflow-x: hidden; height: 14rem; background: var(--fc-surface); -webkit-overflow-scrolling: touch; }
 .fc-bulkcat-gutter, .fc-bulkcat-textarea { font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .72rem; line-height: 1.6rem; padding: .6rem .5rem; }
 .fc-bulkcat-gutter { flex: none; width: 2.6rem; text-align: right; color: var(--fc-muted); background: var(--fc-muted-bg); white-space: pre; overflow: hidden; user-select: none; pointer-events: none; border-right: 1px solid var(--fc-border); font-variant-numeric: tabular-nums; }
-.fc-bulkcat-textarea { flex: 1; min-width: 0; border: 0; outline: none; resize: vertical; white-space: pre; overflow: auto; color: var(--color-gray-900); background: transparent; min-height: 9rem; max-height: 40vh; }
+.fc-bulkcat-textarea { flex: 1; min-width: 0; border: 0; outline: none; resize: none; white-space: pre; overflow: hidden; color: var(--color-gray-900); background: transparent; min-height: 9rem; height: 9rem; }
 .fc-bulkcat-textarea::placeholder { color: #9ca3af; }
 
 .fc-bulkcat-summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; text-align: center; }

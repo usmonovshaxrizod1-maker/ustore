@@ -17814,6 +17814,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (!canManageCatalog()) return;
       bulkCatPreview = null; bulkCatBusy = false;
       renderBulkCategoryModal();
+      autoGrowBulkCatTextarea(document.getElementById('bulkcat-textarea'));
     }
     function closeBulkCategoryModal() {
       if (bulkCatBusy) return;
@@ -17825,25 +17826,47 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       for (let i = 1; i <= lineCount; i++) out.push(i);
       return out.join('\n');
     }
+    // 2026-09-11: gutter/textarea endi ikkalasi ham MUSTAQIL scroll
+    // qilmaydi — faqat TASHQI .fc-bulkcat-editor scroll qiladi. Buning
+    // uchun textarea o'z matniga aynan mos balandlikda "o'sishi" kerak
+    // (standart auto-grow naqsh: height=auto qilib scrollHeight'ni o'qish,
+    // keyin shunga tenglashtirish) — shunda gutter bilan bir xil jismoniy
+    // blokda qoladi, raqam va qator hech qachon bir-biridan siljimaydi.
+    function autoGrowBulkCatTextarea(el) {
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+      const gutter = document.getElementById('bulkcat-gutter');
+      if (gutter) gutter.style.height = el.style.height;
+    }
     // Har keystrokeда BUTUN varaqni qayta chizmaymiz (fokus/kursor yo'qolib
-    // qolmasin) — faqat gutter raqamlari sonini yangilaymiz va eski
-    // preview'ni bekor qilamiz ("Tekshirish" qayta bosilishi kerak).
+    // qolmasin) — faqat gutter raqamlari sonini/balandligini yangilaymiz va
+    // eski preview'ni bekor qilamiz ("Tekshirish" qayta bosilishi kerak).
     function onBulkCatInput(el) {
       bulkCatText = el.value;
       if (bulkCatPreview) { bulkCatPreview = null; updateBulkCatActionsBar(); }
       const gutter = document.getElementById('bulkcat-gutter');
       if (gutter) gutter.textContent = bulkCatLineNumbersText(bulkCatText);
+      autoGrowBulkCatTextarea(el);
     }
-    function syncBulkCatGutterScroll(el) {
-      const gutter = document.getElementById('bulkcat-gutter');
-      if (gutter) gutter.scrollTop = el.scrollTop;
-    }
+    // 2026-09-11 XATO TUZATISH: bu funksiya avval FAQAT preview-blokni
+    // yangilardi — pastdagi "Barchasini yaratish" tugmasi #bulkcat-preview-area
+    // TASHQARISIDA (footer'da) joylashgani uchun uning disabled holati
+    // "Tekshirish" bosilgandan keyin HECH QACHON yangilanmasdi (statistika
+    // to'g'ri ko'rinsa ham tugma abadiy o'chiq qolib ketardi). Endi ikkalasi
+    // ham shu yerda yangilanadi.
     function updateBulkCatActionsBar() {
       const bar = document.getElementById('bulkcat-preview-area');
       if (bar) bar.innerHTML = bulkCatPreviewAreaHtml();
+      const createBtn = document.getElementById('bulkcat-create-btn');
+      if (createBtn) {
+        const okCount = bulkCatPreview ? bulkCatPreview.lines.filter(l => l.status === 'ok').length : 0;
+        createBtn.disabled = !(bulkCatPreview && okCount > 0 && !bulkCatBusy);
+      }
     }
     function jumpToBulkCatLine(lineNumber) {
       const ta = document.getElementById('bulkcat-textarea');
+      const editor = document.getElementById('bulkcat-editor-scroll');
       if (!ta) return;
       const lines = ta.value.split('\n');
       let offset = 0;
@@ -17851,9 +17874,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const lineText = lines[lineNumber - 1] || '';
       ta.focus();
       ta.setSelectionRange(offset, offset + lineText.length);
-      const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20;
-      ta.scrollTop = Math.max(0, (lineNumber - 3) * lineHeight);
-      syncBulkCatGutterScroll(ta);
+      // Endi FAQAT tashqi .fc-bulkcat-editor scroll qiladi (gutter/textarea
+      // o'zlari mustaqil scroll qilmaydi) — shu tashqi konteyner scroll
+      // qilinadi, textarea o'zining tabiiy scrollIntoView'idan foydalanmaydi
+      // (chunki uning endi o'z scrolli yo'q, butun matn ko'rinadi).
+      if (editor) {
+        const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 20;
+        editor.scrollTop = Math.max(0, (lineNumber - 3) * lineHeight);
+      }
     }
     function runBulkCategoryPreview() {
       bulkCatPreview = buildBulkCategoryPreview(bulkCatText);
@@ -17904,15 +17932,15 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         <div class="fc-sheet-body space-y-3">
           <button type="button" id="bulkcat-chatgpt-btn" onclick="copyCatalogChatGptPrompt(this)" class="fc-bulkcat-chatgpt-btn"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span>${tr('ChatGPT uchun prompt', 'Промпт для ChatGPT')}</span></button>
           <p class="fc-bulkcat-help">${tr("Har bir katalog yo‘lini yangi qatordan kiriting. Darajalarni <b>/</b> belgisi bilan ajrating.", "Каждый путь каталога — с новой строки. Уровни разделяйте символом <b>/</b>.")}<br><span class="fc-bulkcat-help-example">${tr('Masalan', 'Например')}: Sport ozuqalari/Protein/Whey</span></p>
-          <div class="fc-bulkcat-editor">
+          <div id="bulkcat-editor-scroll" class="fc-bulkcat-editor">
             <div id="bulkcat-gutter" class="fc-bulkcat-gutter" aria-hidden="true">${bulkCatLineNumbersText(bulkCatText)}</div>
-            <textarea id="bulkcat-textarea" class="fc-bulkcat-textarea" rows="8" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="${tr('Sport ozuqalari/Protein/Whey', 'Sport ozuqalari/Protein/Whey')}" oninput="onBulkCatInput(this)" onscroll="syncBulkCatGutterScroll(this)">${escapeHtml(bulkCatText)}</textarea>
+            <textarea id="bulkcat-textarea" class="fc-bulkcat-textarea" rows="8" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="${tr('Sport ozuqalari/Protein/Whey', 'Sport ozuqalari/Protein/Whey')}" oninput="onBulkCatInput(this)">${escapeHtml(bulkCatText)}</textarea>
           </div>
           <button type="button" onclick="runBulkCategoryPreview()" ${bulkCatBusy ? 'disabled' : ''} class="fc-btn fc-btn-secondary w-full"><i data-lucide="list-checks" class="w-4 h-4"></i>${tr('Tekshirish', 'Проверить')}</button>
           <div id="bulkcat-preview-area">${bulkCatPreviewAreaHtml()}</div>
         </div>
         <div class="fc-sheet-footer">
-          <button type="button" onclick="submitBulkCategoryImport()" ${canCreate ? '' : 'disabled'} class="fc-btn fc-btn-primary w-full">${bulkCatBusy ? '<span class="fc-spinner fc-spinner-xs"></span>' : `<i data-lucide="check" class="w-4 h-4"></i>`}${bulkCatBusy ? tr('Yaratilmoqda...', 'Создание...') : tr('Barchasini yaratish', 'Создать всё')}</button>
+          <button type="button" id="bulkcat-create-btn" onclick="submitBulkCategoryImport()" ${canCreate ? '' : 'disabled'} class="fc-btn fc-btn-primary w-full">${bulkCatBusy ? '<span class="fc-spinner fc-spinner-xs"></span>' : `<i data-lucide="check" class="w-4 h-4"></i>`}${bulkCatBusy ? tr('Yaratilmoqda...', 'Создание...') : tr('Barchasini yaratish', 'Создать всё')}</button>
         </div>
       </div></div>`;
       safeCreateIcons();
