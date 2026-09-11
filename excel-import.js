@@ -25,6 +25,82 @@
     editSequential: false,
   };
 
+  // Excel orqali ommaviy tovar yuklash uchun ChatGPT prompti — bulk-katalog
+  // oynasidagi "ChatGPT uchun prompt" tugmasi bilan bir xil naqsh: tugma
+  // bosilganda shu matn to'g'ridan-to'g'ri clipboard'ga nusxalanadi.
+  const EXCEL_CHATGPT_PROMPT = `Men UStorE'ga mahsulotlarni Excel orqali ommaviy yuklamoqchiman.
+
+Birinchi javobingiz faqat:
+"UStorE Excel shablonini yuklang."
+bo'lsin.
+
+Excel yuklangach:
+
+1. Excel strukturasini, sheet nomlarini va formatini o'zgartirmang.
+2. 3-listdagi "Kataloglar" ro'yxatini o'qing.
+3. Keyin mendan yuklanadigan tovarlar ro'yxatini so'rang.
+
+Tovarlar uchun kerakli ma'lumotlar:
+- nomi
+- izohi
+- yangi narxi
+- eski narxi (bo'lsa)
+- soni
+
+Variativ tovar bo'lsa:
+- ranglari
+- o'lchamlari
+- har bir variant narxi
+- har bir variant soni
+
+Ma'lumot yetishmasa taxmin qilmang. Yetishmayotgan ma'lumotlarni mahsulotlar bo'yicha bir martada jamlab so'rang. Narx va sonni hech qachon o'zingiz o'ylab topmang.
+
+Har bir mahsulotga 3-listdagi eng mos katalog yo'lini avtomatik tanlang.
+
+Agar mahsulotga mos katalog 3-listda bo'lmasa:
+- eng mantiqiy yangi katalog yo'lini o'zingiz taklif qiling;
+- masalan: Sport ozuqalari/Protein/Whey;
+- menga yangi kataloglar ro'yxatini ko'rsating va tasdiqlashimni so'rang;
+- tasdiqlaganimdan keyin ularni "Kataloglar" listiga qo'shib, mahsulotlarni shu kataloglarga biriktiring.
+
+Oddiy tovarlarni "Oddiy tovarlar" listiga, variativ tovarlarni "Variativ tovarlar" listiga yozing.
+
+Bir katalogga bir nechta tovar tushsa, katalog yo'lini birinchi tovar qatorida yozish kifoya; shu katalogdagi keyingi tovarlarda katalog yo'li bo'sh qolishi mumkin.
+
+Variativ tovarlarda har bir rang/o'lcham kombinatsiyasi alohida qator bo'lsin. Tovar nomi va izohi faqat birinchi variant qatorida yozilsin. Har bir variantning narxi va soni alohida saqlansin.
+
+Excelga rasm qo'shmang — mahsulotlar rasmsiz import qilinadi.
+
+Barcha ma'lumotlar to'liq bo'lgach, original Excel shablonini to'ldirib, strukturasini buzmasdan .xlsx fayl qilib qaytaring.
+
+Oxirida qisqa hisobot bering:
+- oddiy tovarlar soni
+- variativ tovarlar soni
+- variantlar soni
+- ishlatilgan kataloglar
+- yangi qo'shilgan kataloglar
+- xato yoki yetishmayotgan ma'lumotlar`;
+
+  let excelGptCopyResetTimer = null;
+  async function copyExcelChatGptPrompt(btn) {
+    if (btn?.disabled) return; // double-click himoyasi
+    if (btn) btn.disabled = true;
+    const ok = await copyTextToClipboard(EXCEL_CHATGPT_PROMPT);
+    if (btn) btn.disabled = false;
+    if (ok) {
+      showActionToast(xl('✅ ChatGPT prompti nusxalandi', '✅ Промпт ChatGPT скопирован'), 'success', 1600);
+      const label = btn?.querySelector('span:last-child');
+      if (label && btn) {
+        const original = label.textContent;
+        label.textContent = xl('Nusxalandi ✓', 'Скопировано ✓');
+        if (excelGptCopyResetTimer) clearTimeout(excelGptCopyResetTimer);
+        excelGptCopyResetTimer = setTimeout(() => { if (label.isConnected) label.textContent = original; excelGptCopyResetTimer = null; }, 1800);
+      }
+    } else {
+      showActionToast(xl('❌ Promptni nusxalab bo\'lmadi', '❌ Не удалось скопировать промпт'), 'error', 1800);
+    }
+  }
+
   function esc(v) {
     try { return escapeHtml(v); } catch { return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   }
@@ -1097,6 +1173,7 @@
       <div class="fc-excel-overlay" onclick="activePopupModal=null; render();">
         <div class="fc-excel-modal" onclick="event.stopPropagation()">
           <div class="fc-excel-header"><div><div class="fc-excel-title-icon">XLSX</div><div class="fc-excel-heading"><h3>${xl('Excel orqali tovar importi','Импорт товаров из Excel')}</h3><p>${xl('Xavfsiz preview + katalog typo tekshiruvi','Безопасный предпросмотр + проверка опечаток каталогов')}</p></div></div><button onclick="activePopupModal=null;render();" class="fc-excel-close" aria-label="${xl('Yopish','Закрыть')}">✕</button></div>
+          <button type="button" onclick="UstoreExcel.copyExcelChatGptPrompt(this)" ${state.busy?'disabled':''} class="w-full flex items-center justify-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 font-black py-2.5 rounded-xl text-sm"><span>✨</span><span>${xl('ChatGPT uchun prompt','Промпт для ChatGPT')}</span></button>
           ${state.busy?`<div class="fc-excel-busy"><div class="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div><b>${esc(state.busyText||xl('Bajarilmoqda...','Выполняется...'))}</b>${state.progressTotal?`<div class="mt-3 h-2 bg-blue-100 rounded-full overflow-hidden"><div class="h-full bg-blue-600 transition-all" style="width:${progressPercent}%"></div></div><p class="mt-1 text-[10px] text-blue-700">${progressPercent}%</p>`:''}</div>`:''}
           ${editorHtml}
           <div class="fc-excel-primary-actions">
@@ -1122,5 +1199,5 @@
     catch(e){console.warn('Last import batch unavailable',e);}
     return true;
   }
-  window.UstoreExcel={prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,addVariantRow,removeVariantRow,doImport,rollbackBatch,reset,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload,parseVariantTextToRows,serializeVariantRows,looksLikeXlsxZip}};
+  window.UstoreExcel={prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,addVariantRow,removeVariantRow,doImport,rollbackBatch,reset,copyExcelChatGptPrompt,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload,parseVariantTextToRows,serializeVariantRows,looksLikeXlsxZip}};
 })();
