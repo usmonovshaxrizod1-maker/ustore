@@ -8449,6 +8449,16 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function adminOrderNextAction(o) {
       if (!o || !canManageOrders()) return null;
       if (isReceiptPendingReview(o)) return { kind:'RECEIPT', label:tr("To'lov chekini tekshiring",'Проверьте чек оплаты'), primary:tr('Tasdiqlash','Подтвердить'), action:`approvePaymentReceipt(${o.id})`, secondary:tr('Rad etish','Отклонить'), secondaryAction:`openRejectReceiptModal(${o.id})`, icon:'receipt-text' };
+      // Real bug, 2026-09-13: chek rad etilgan (soxta/noto'g'ri deb topilgan)
+      // buyurtmada o.status hamon 'NEW' bo'lib qoladi (reject_payment_receipt
+      // faqat receipt_review_status'ni o'zgartiradi), shuning uchun bu
+      // tekshiruv bo'lmasa quyidagi "status === 'NEW'" shoxobchasi ishlab
+      // ketib, "Buyurtmani qabul qilish" ni asosiy amal sifatida taklif
+      // qilardi — mijoz pulni tasdiqlamagan bo'lsa ham. Endi bekor qilish
+      // taklif qilinadi.
+      if (o.receiptReviewStatus === 'REJECTED' && o.status === 'NEW') {
+        return { kind:'STATUS', label:tr("Chek rad etildi — buyurtmani bekor qiling","Чек отклонён — отмените заказ"), primary:tr('Bekor qilish','Отменить'), action:`updateOrderStatus(${o.id}, 'CANCELLED')`, icon:'ban' };
+      }
       if (o.status === 'NEW') return { kind:'STATUS', label:tr('Buyurtmani qabul qiling','Примите заказ'), primary:tr('Buyurtmani qabul qilish','Принять заказ'), action:`updateOrderStatus(${o.id}, 'PROCESSING')`, icon:'package-check' };
       if (o.status === 'PROCESSING') return { kind:'STATUS', label:tr('Buyurtma tayyor bo‘lgach yakunlang','Завершите заказ после выполнения'), primary:tr('Yetkazildi deb belgilash','Отметить доставленным'), action:`updateOrderStatus(${o.id}, 'DELIVERED')`, icon:'check-check' };
       return null;
@@ -17362,6 +17372,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (['DELIVERED','CANCELLED'].includes(old.status)) return;
       if (newStatus === 'DELIVERED' && old.delivery?.kind === 'POST' && old.shipment?.status !== 'HANDED_TO_CARRIER') {
         showAppNotice(tr("Avval buyurtmani pochtaga topshirib, jo'natma raqamini saqlang.", 'Сначала передайте заказ почте и сохраните трек-номер.'));
+        return;
+      }
+      // 2026-09-13: Pochtadagi kabi himoya Taksiga ham qo'shildi — taksi hali
+      // "Yo'lga chiqdi" bosqichiga yetmasdan turib butun buyurtmani
+      // "Yetkazildi" deb belgilab bo'lmaydi (server ham xuddi shu tekshiruvni
+      // takrorlaydi — bu faqat tezroq feedback uchun).
+      if (newStatus === 'DELIVERED' && old.delivery?.kind === 'TAXI' && !['IN_TRANSIT','DELIVERED'].includes(old.shipment?.status)) {
+        showAppNotice(tr("Avval taksi yo'lga chiqqanini belgilang.", 'Сначала отметьте, что такси выехало.'));
         return;
       }
       if (newStatus === 'CANCELLED' && !(await appConfirm(tr("Buyurtmani bekor qilasizmi?", "Отменить заказ?"), { danger:true }))) return;
