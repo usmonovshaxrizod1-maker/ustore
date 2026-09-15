@@ -6792,14 +6792,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           <div>
             <div class="relative">
               ${productBadgeChipHtml(p)}
-              <div class="fc-img-square rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
+              <div class="fc-img-square rounded-xl mb-2 bg-gray-100 overflow-hidden flex items-center justify-center p-1.5 animate-pulse">
                 <!-- 041: kartochka rasmni ~128px da ko'rsatadi, shuning uchun
                      mavjud bo'lsa kichik nusxa ishlatiladi (~25 KB, asosiy
                      rasm ~157 KB). Eski mahsulotlarda thumbImg yo'q — o'shanda
                      asosiy rasmga qaytadi. Agar kichik nusxa qandaydir sababga
                      ko'ra ochilmasa, onerror avval asosiy rasmni sinaydi va
                      faqat u ham bo'lmasa zaxira belgiga o'tadi. -->
-                <img referrerpolicy="no-referrer" src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)" class="w-full h-full object-contain" loading="lazy" decoding="async">
+                <img referrerpolicy="no-referrer" src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)" onload="this.parentElement?.classList.remove('animate-pulse','bg-gray-100'); this.parentElement?.classList.add('bg-gray-50');" class="w-full h-full object-contain" loading="lazy" decoding="async">
               </div>
               ${(canManageProducts() && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-product-visibility-overlay ${p.isVisible === false ? 'is-hidden' : 'is-visible'}" aria-label="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" title="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductVisibility('${p.id}')"><i data-lucide="${p.isVisible === false ? 'eye-off' : 'eye'}" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
@@ -16674,15 +16674,15 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                   return `
                   <div id="product-gallery-scroll" class="fc-product-gallery" onscroll="onProductGalleryScroll()">
                     ${images.map((img) => `
-                      <div class="fc-product-gallery-slide">
-                        <img referrerpolicy="no-referrer" src="${escapeHtml(img.url)}" data-fallback="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src=this.dataset.fallback;" class="w-full h-full object-contain">
+                      <div class="fc-product-gallery-slide bg-gray-100 animate-pulse">
+                        <img referrerpolicy="no-referrer" src="${escapeHtml(img.url)}" data-fallback="${escapeHtml(p.img || FALLBACK_IMG)}" onerror="this.onerror=null;this.src=this.dataset.fallback;this.parentElement?.classList.remove('animate-pulse','bg-gray-100')" onload="this.parentElement?.classList.remove('animate-pulse','bg-gray-100')" class="w-full h-full object-contain">
                       </div>
                     `).join('')}
                   </div>
                   ${images.length > 1 ? `<div class="fc-product-gallery-dots">${images.map((_, i) => `<span class="fc-gallery-dot ${i === productGalleryIndex ? 'is-active' : ''}"></span>`).join('')}</div>` : ''}
                   `;
                 })()}
-                ${(canManageProducts() && !productVariants(p).length) ? `
+                ${(canManageProducts()) ? `
                   <button onclick="openEditFieldModal('${p.id}', 'img')" class="absolute bottom-2 right-2 bg-blue-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-xl flex items-center space-x-1 shadow">
                     <span class="inline-flex items-center gap-1">${ICON_EDIT} ${tr("Rasmni o'zgartirish", "Изменить фото")}</span>
                   </button>
@@ -19324,8 +19324,40 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       // olish mumkin bo'lardi (avvalgi versiyadagi xavfsizlik teshigi).
       if (!tg || !tg.initData) {
         document.getElementById('app-content').innerHTML = `
-          <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-4 rounded-2xl mt-10 text-center">
-            ⚠️ Bu ilova faqat Telegram bot orqali ishlaydi.<br>Iltimos, Telegram'dagi bot/mini-app orqali oching.
+          <div class="space-y-4 my-6">
+            <div class="bg-slate-900 border border-slate-800 text-slate-100 p-5 rounded-2xl shadow-xl">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 font-bold text-lg">
+                  U
+                </div>
+                <div>
+                  <h3 class="font-bold text-base text-white">UStorE Mini App</h3>
+                  <p class="text-xs text-slate-400">Telegram e-commerce & Supabase</p>
+                </div>
+              </div>
+
+              <div class="bg-blue-950/40 border border-blue-800/40 rounded-xl p-3.5 mb-3 text-xs text-blue-200">
+                <p class="font-semibold mb-1">🔗 Loyiha va ma'lumotlar bazasi ulandi:</p>
+                <ul class="space-y-1 text-slate-300">
+                  <li>• <strong>GitHub:</strong> <code class="text-sky-300">usmonovshaxrizod1-maker/ustore</code></li>
+                  <li>• <strong>Supabase Ref:</strong> <code class="text-emerald-300">jzdpogwxonvaagxotgyi</code></li>
+                  <li>• <strong>Supabase API:</strong> <span class="text-emerald-400 font-semibold">Faol va ulandi (200 OK)</span></li>
+                </ul>
+              </div>
+
+              <div class="bg-amber-950/30 border border-amber-800/40 text-amber-200 text-xs p-3.5 rounded-xl mb-4">
+                <strong>ℹ️ Telegram orqali ochish:</strong><br>
+                Ushbu ilova Telegram foydalanuvchi ma'lumotlari (xavfsiz HMAC tekshiruvi) bilan ishlaydi. 
+                Do'konni to'liq ko'rish uchun Telegram botingizdagi Mini App tugmasi orqali oching yoki havola oxiriga do'kon bot parametrini qo'shing (<code class="bg-slate-800 px-1 py-0.5 rounded text-amber-300">?bot_id=...</code>).
+              </div>
+
+              <div class="flex flex-col gap-2 pt-1">
+                <a href="./platform/" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold text-center transition flex items-center justify-center gap-2">
+                  <span>🏢 UStorE Boshqaruv Panelini ochish</span>
+                  <span>→</span>
+                </a>
+              </div>
+            </div>
           </div>`;
         return;
       }
@@ -19334,8 +19366,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       // button URL noto'g'ri sozlangan bo'lsa yuz berishi mumkin).
       if (!BOT_ID) {
         document.getElementById('app-content').innerHTML = `
-          <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-4 rounded-2xl mt-10 text-center">
-            ⚠️ Do'kon aniqlanmadi (bot_id yo'q).<br>Iltimos, botning Mini App havolasini tekshiring.
+          <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-5 rounded-2xl mt-10 text-center space-y-2">
+            <p class="font-bold text-sm">⚠️ Do'kon aniqlanmadi (bot_id ko'rsatilmagan)</p>
+            <p class="text-xs text-amber-700">Iltimos, botning Mini App havolasini tekshiring yoki URL manziliga <code class="bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold">?bot_id=BOT_ID</code> parametrini qo'shing.</p>
           </div>`;
         return;
       }

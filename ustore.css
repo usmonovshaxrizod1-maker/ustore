@@ -1843,7 +1843,7 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 @keyframes fc-spin { to { transform: rotate(360deg); } }
 
 /* Tasdiqlash dialogi — native confirm() o'rniga ishlatiladigan custom komponent (delete/restore/permanent-delete) */
-.fc-confirm-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 60; display: flex; align-items: flex-end; justify-content: center; }
+.fc-confirm-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: flex; align-items: flex-end; justify-content: center; }
 @media (min-width: 640px) { .fc-confirm-backdrop { align-items: center; } }
 .fc-confirm-box { background: var(--fc-surface); border-radius: 1.25rem 1.25rem 0 0; padding: 1.25rem; width: 100%; max-width: 26rem; }
 @media (min-width: 640px) { .fc-confirm-box { border-radius: 1.25rem; } }
@@ -2279,7 +2279,7 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .fc-gallery-dot.is-active{background:var(--fc-primary,#2563eb);width:1rem;border-radius:999px}
 .fc-banner-strip{display:flex;gap:.72rem;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:.3rem 10% .45rem;margin:.25rem -.1rem 1rem}
 .fc-banner-strip::-webkit-scrollbar{display:none}
-.fc-banner-card{position:relative;flex:0 0 80%;scroll-snap-align:center;aspect-ratio:16/8;border-radius:1.15rem;overflow:hidden;background-size:cover;background-position:center;border:1px solid var(--fc-border);box-shadow:0 5px 14px rgba(15,23,42,.08);text-align:left;padding:0;transform:scale(.955);opacity:.76;transition:transform .22s ease,opacity .22s ease,box-shadow .22s ease}
+.fc-banner-card{position:relative;flex:0 0 80%;scroll-snap-align:center;aspect-ratio:3/1;border-radius:1.15rem;overflow:hidden;background-size:cover;background-position:center;border:1px solid var(--fc-border);box-shadow:0 5px 14px rgba(15,23,42,.08);text-align:left;padding:0;transform:scale(.955);opacity:.76;transition:transform .22s ease,opacity .22s ease,box-shadow .22s ease}
 .fc-banner-card.is-active{transform:scale(1);opacity:1;box-shadow:0 10px 24px rgba(15,23,42,.14)}
 .fc-banner-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:.2rem;padding:.9rem 1rem;background:linear-gradient(180deg,rgba(0,0,0,0) 35%,rgba(0,0,0,.72) 100%)}
 .fc-banner-overlay h3{color:#fff;font-size:.95rem;font-weight:900;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.3)}
