@@ -92,10 +92,18 @@
       const el = document.getElementById('action-toast');
       if (!el) return;
       if (actionToastTimer) { clearTimeout(actionToastTimer); actionToastTimer = null; }
-      // Statusni toastning o'zi icon/rang bilan ko'rsatadi; eski ✅/❌/⚠ emoji
-      // matn boshida qayta takrorlanib premium UI'ni buzmasin.
-      const cleanText = String(text || '').replace(/^(?:✅|❌|⚠️?|⏳|✓|✕)\s*/u, '');
-      el.innerHTML = cleanText;
+      const cleanText = String(text || '').replace(/^(?:✅|❌|⚠️?|⏳|✓|✕|☁️)\s*/u, '');
+      
+      let iconHtml = '';
+      if (state === 'saving') {
+        iconHtml = `<svg class="fc-toast-spinner" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`;
+      } else if (state === 'success') {
+        iconHtml = `<svg class="fc-toast-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+      } else if (state === 'error') {
+        iconHtml = `<svg class="fc-toast-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+      }
+
+      el.innerHTML = `<div class="fc-toast-inner">${iconHtml}<span>${escapeHtml(cleanText)}</span></div>`;
       el.dataset.state = state;
       el.classList.remove('hidden');
       if (duration > 0) {
@@ -991,7 +999,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         ${c.error ? `<p class="fc-variant-inline-error">${escapeHtml(c.error)}</p>` : ''}
         <div class="fc-variant-editor-section-title"><b>${tr("O'lchamlar",'Размеры')}</b></div>
         <div class="fc-variant-size-list">${rows.map((row) => `<div class="fc-variant-size-editor">
-          <div class="fc-variant-size-head"><div class="fc-shop-field"><label for="vr-${row.idx}-size">${tr("O'lcham *",'Размер *')}</label><input type="text" id="vr-${row.idx}-size" class="fc-shop-input" value="${escapeHtml(row.size)}" placeholder="XL"></div><button type="button" onclick="deleteSizeRow(${row.idx})" class="fc-icon-plain is-danger" aria-label="${tr("O'chirish",'Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>
+          <div class="fc-variant-size-head"><div class="fc-shop-field"><label for="vr-${row.idx}-size">${tr("O'lcham",'Размер')}</label><input type="text" id="vr-${row.idx}-size" class="fc-shop-input" value="${escapeHtml(row.size)}" placeholder="XL"></div><button type="button" onclick="deleteSizeRow(${row.idx})" class="fc-icon-plain is-danger" aria-label="${tr("O'chirish",'Удалить')}"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>
           <div class="fc-variant-size-grid"><div class="fc-shop-field"><label>${tr('Qoldiq *','Остаток *')}</label><div class="fc-inline-stepper"><button type="button" onclick="changeSizeRowQty(${row.idx},-1)" aria-label="${tr('Kamaytirish','Уменьшить')}"><i data-lucide="minus" class="w-4 h-4"></i></button><input type="number" min="0" id="vr-${row.idx}-qty" value="${escapeHtml(String(row.qty))}"><button type="button" onclick="changeSizeRowQty(${row.idx},1)" aria-label="${tr('Ko‘paytirish','Увеличить')}"><i data-lucide="plus" class="w-4 h-4"></i></button></div></div><div class="fc-shop-field"><label for="vr-${row.idx}-price">${tr('Narx *','Цена *')}</label><input type="number" min="0" id="vr-${row.idx}-price" class="fc-shop-input" value="${escapeHtml(String(row.price))}" placeholder="29000"></div></div>
           <div class="fc-variant-size-grid is-single"><div class="fc-shop-field"><label for="vr-${row.idx}-oldprice">${tr('Eski narx','Старая цена')}</label><input type="number" min="0" id="vr-${row.idx}-oldprice" class="fc-shop-input" value="${escapeHtml(String(row.oldPrice))}" placeholder="39000"></div></div>
           ${row.error ? `<p class="fc-variant-inline-error">${escapeHtml(row.error)}</p>` : ''}
@@ -1502,6 +1510,18 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     let logoCropPinchStartDist = 0;
     let logoCropPinchStartScale = 1;
     let logoCropDragStart = null; // {x,y,offsetX,offsetY}
+    const BANNER_CROP_CANVAS_W = 1000, BANNER_CROP_CANVAS_H = 400; // 2.5:1
+    let bannerCropFile = null;
+    let bannerCropBitmap = null;
+    let bannerCropScale = 1;
+    let bannerCropMinScale = 1;
+    let bannerCropOffsetX = 0;
+    let bannerCropOffsetY = 0;
+    let bannerCropPointers = new Map();
+    let bannerCropPinchStartDist = 0;
+    let bannerCropPinchStartScale = 1;
+    let bannerCropDragStart = null;
+
     let editingFieldData = null;
     // Variativ tovar — Rang+O'lcham modeli (Add + Edit bir xil komponent).
     // productColorDrafts: [{name,img}] — e'lon qilingan ranglar (hali 0
@@ -6483,6 +6503,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const homeFilterActive = isCategoryFilterActive();
       container.innerHTML = `
         <div class="space-y-4">
+          <button type="button" onclick="window.scrollTo({top:0,behavior:'smooth'})" class="fc-scroll-top-btn" aria-label="${escapeHtml(tr('Tepaga', 'Наверх'))}" title="${escapeHtml(tr('Tepaga', 'Наверх'))}"><i data-lucide="arrow-up" class="w-4 h-4"></i></button>
           ${(isAdminMode && isUserAnAdmin) ? `<div class="fc-admin-home-launcher"><div><span>${tr('Admin rejimi','Режим администратора')}</span><b>${tr('Boshqaruv markazi','Центр управления')}</b></div><button type="button" onclick="openAdminCommandCenter()"><i data-lucide="layout-dashboard" class="w-4 h-4"></i>${tr('Ochish','Открыть')}</button></div>` : ''}
           <div class="fc-home-sticky-bar space-y-2">
             <div class="flex items-center gap-2">
@@ -11198,11 +11219,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
             <div class="fc-form-section-title">${tr('Banner rasmi', 'Изображение баннера')}</div>
             <div>
-              <p class="text-[10px] text-gray-400">${tr('Tavsiya etilgan o\'lcham: 1200 × 400 px (3:1)', 'Рекомендуемый размер: 1200 × 400 px (3:1)')}</p>
-              <input id="banner-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', 'banner-image-url', 'banner-image-url-error')" class="hidden">
-              <input id="banner-image-input-files" type="file" onchange="onImagePicked(event, 'banner-image-prev', 'banner-image-button', 'banner-image-url', 'banner-image-url-error')" class="hidden">
+              <p class="text-[10px] text-gray-400">${tr('Tavsiya etilgan o\'lcham: 1000 × 400 px (2.5:1)', 'Рекомендуемый размер: 1000 × 400 px (2.5:1)')}</p>
+              <input id="banner-image-input" type="file" accept="image/*" onchange="onBannerImagePicked(event)" class="hidden">
+              <input id="banner-image-input-files" type="file" accept="image/*" onchange="onBannerImagePicked(event)" class="hidden">
               <div class="fc-image-source-row mt-1"><button id="banner-image-button" type="button" onclick="openImagePickerSheet('banner-image-input','banner-image-input-files')" class="fc-image-icon-action" aria-label="${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}" title="${previewSrc ? tr("Rasmni almashtirish", "Заменить фото") : tr("Rasm tanlash", "Выбрать фото")}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="banner-image-url" type="url" value="${escapeHtml(tempImageUrl || d.imageUrl || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'banner-image-prev','banner-image-url-error','banner-image-button')"><p id="banner-image-url-error" class="hidden"></p></div></div>
-              <img referrerpolicy="no-referrer" id="banner-image-prev" src="${escapeHtml(previewSrc)}" style="aspect-ratio:3/1" class="w-full object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
+              <img referrerpolicy="no-referrer" id="banner-image-prev" src="${escapeHtml(previewSrc)}" style="aspect-ratio:5/2" class="w-full object-cover rounded-xl mt-2 ${previewSrc ? '' : 'hidden'} border">
             </div>
 
             <div class="fc-form-section-title">${tr('Bog‘lanish / maqsad', 'Связь / назначение')}</div>
@@ -14404,7 +14425,173 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       openLogoCropStep(file, editingInsideShopInfo);
     }
 
-    async function processCroppedLogoFile(file, editingInsideShopInfo) {
+    
+    // ============ BANNER 2.5:1 CROP ============
+    async function openBannerCropStep(file) {
+      bannerCropFile = file;
+      activePopupModal = 'BANNER_CROP';
+      render();
+      try {
+        bannerCropBitmap = await createImageBitmap(file);
+      } catch (e) {
+        try {
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('read_failed'));
+            reader.readAsDataURL(file);
+          });
+          const img = new Image();
+          await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error('decode_failed')); img.src = dataUrl; });
+          bannerCropBitmap = img;
+        } catch (e2) {
+          console.error('[banner-crop:DECODE_FAILED]', e2);
+          activePopupModal = null;
+          bannerCropFile = null;
+          renderBannerFormSheet();
+          return showAppNotice(tr("Rasmni o'qib bo'lmadi. Boshqa rasm tanlab ko'ring.", "Не удалось прочитать изображение. Попробуйте выбрать другое."));
+        }
+      }
+      resetBannerCropTransform();
+      drawBannerCropCanvas();
+    }
+    function bannerCropImageSize() {
+      const bm = bannerCropBitmap;
+      return { w: bm?.width || bm?.naturalWidth || 1, h: bm?.height || bm?.naturalHeight || 1 };
+    }
+    function resetBannerCropTransform() {
+      const { w, h } = bannerCropImageSize();
+      if (!w || !h) return;
+      const cover = Math.max(BANNER_CROP_CANVAS_W / w, BANNER_CROP_CANVAS_H / h);
+      bannerCropMinScale = cover;
+      bannerCropScale = cover;
+      bannerCropOffsetX = (BANNER_CROP_CANVAS_W - w * cover) / 2;
+      bannerCropOffsetY = (BANNER_CROP_CANVAS_H - h * cover) / 2;
+    }
+    function clampBannerCropOffset() {
+      const { w, h } = bannerCropImageSize();
+      const scaledW = w * bannerCropScale, scaledH = h * bannerCropScale;
+      const minX = BANNER_CROP_CANVAS_W - scaledW, maxX = 0;
+      const minY = BANNER_CROP_CANVAS_H - scaledH, maxY = 0;
+      bannerCropOffsetX = Math.min(maxX, Math.max(minX, bannerCropOffsetX));
+      bannerCropOffsetY = Math.min(maxY, Math.max(minY, bannerCropOffsetY));
+    }
+    function drawBannerCropCanvas() {
+      const canvas = document.getElementById('banner-crop-canvas');
+      if (!canvas || !bannerCropBitmap) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, BANNER_CROP_CANVAS_W, BANNER_CROP_CANVAS_H);
+      const { w, h } = bannerCropImageSize();
+      ctx.drawImage(bannerCropBitmap, bannerCropOffsetX, bannerCropOffsetY, w * bannerCropScale, h * bannerCropScale);
+    }
+    function onBannerCropPointerDown(event) {
+      const canvas = document.getElementById('banner-crop-canvas');
+      canvas.setPointerCapture(event.pointerId);
+      bannerCropPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (bannerCropPointers.size === 1) {
+        bannerCropDragStart = { x: event.clientX, y: event.clientY, offsetX: bannerCropOffsetX, offsetY: bannerCropOffsetY };
+      } else if (bannerCropPointers.size === 2) {
+        const pts = Array.from(bannerCropPointers.values());
+        bannerCropPinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+        bannerCropPinchStartScale = bannerCropScale;
+        bannerCropDragStart = null;
+      }
+    }
+    function onBannerCropPointerMove(event) {
+      if (!bannerCropPointers.has(event.pointerId)) return;
+      bannerCropPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (bannerCropPointers.size === 2) {
+        const pts = Array.from(bannerCropPointers.values());
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const nextScale = Math.min(bannerCropMinScale * 4, Math.max(bannerCropMinScale, bannerCropPinchStartScale * (dist / bannerCropPinchStartDist)));
+        applyBannerCropScale(nextScale);
+      } else if (bannerCropPointers.size === 1 && bannerCropDragStart) {
+        const canvas = document.getElementById('banner-crop-canvas');
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = rect ? (BANNER_CROP_CANVAS_W / rect.width) : 1;
+        const scaleY = rect ? (BANNER_CROP_CANVAS_H / rect.height) : 1;
+        bannerCropOffsetX = bannerCropDragStart.offsetX + (event.clientX - bannerCropDragStart.x) * scaleX;
+        bannerCropOffsetY = bannerCropDragStart.offsetY + (event.clientY - bannerCropDragStart.y) * scaleY;
+        clampBannerCropOffset();
+      }
+      drawBannerCropCanvas();
+    }
+    function onBannerCropPointerUp(event) {
+      bannerCropPointers.delete(event.pointerId);
+      if (bannerCropPointers.size < 2) bannerCropPinchStartDist = 0;
+      if (bannerCropPointers.size === 1) {
+        const remaining = Array.from(bannerCropPointers.entries())[0];
+        bannerCropDragStart = { x: remaining[1].x, y: remaining[1].y, offsetX: bannerCropOffsetX, offsetY: bannerCropOffsetY };
+      } else {
+        bannerCropDragStart = null;
+      }
+    }
+    function onBannerCropWheel(event) {
+      event.preventDefault();
+      const delta = event.deltaY < 0 ? 1.08 : 0.92;
+      applyBannerCropScale(bannerCropScale * delta);
+      drawBannerCropCanvas();
+    }
+    function applyBannerCropScale(nextScale) {
+      const clamped = Math.min(bannerCropMinScale * 4, Math.max(bannerCropMinScale, nextScale));
+      if (clamped === bannerCropScale) return;
+      const cx = BANNER_CROP_CANVAS_W / 2, cy = BANNER_CROP_CANVAS_H / 2;
+      const imgX = (cx - bannerCropOffsetX) / bannerCropScale;
+      const imgY = (cy - bannerCropOffsetY) / bannerCropScale;
+      bannerCropScale = clamped;
+      bannerCropOffsetX = cx - imgX * bannerCropScale;
+      bannerCropOffsetY = cy - imgY * bannerCropScale;
+      clampBannerCropOffset();
+    }
+    function recropBanner() {
+      resetBannerCropTransform();
+      drawBannerCropCanvas();
+    }
+    function closeBannerCropStep() {
+      bannerCropFile = null;
+      bannerCropBitmap = null;
+      bannerCropPointers.clear();
+      bannerCropDragStart = null;
+      activePopupModal = null;
+      renderBannerFormSheet();
+    }
+    function cancelBannerCrop() {
+      closeBannerCropStep();
+    }
+    async function confirmBannerCrop() {
+      const canvas = document.getElementById('banner-crop-canvas');
+      if (!canvas || !bannerCropFile) return;
+      const mimeType = bannerCropFile.type === 'image/png' ? 'image/png' : 'image/jpeg';
+      const ext = mimeType === 'image/png' ? 'png' : 'jpg';
+      const blob = await new Promise(r => canvas.toBlob(r, mimeType, 0.92));
+      closeBannerCropStep();
+      if (!blob) return showAppNotice(tr("Xatolik yuz berdi.", "Произошла ошибка."));
+      const croppedFile = new File([blob], `banner-2.5x1.${ext}`, { type: mimeType });
+      
+      // Inject logic to mimic onImagePicked
+      const selectionVersion = ++tempImageSelectionVersion;
+      if (tempImagePreviewUrl && String(tempImagePreviewUrl).startsWith('blob:')) {
+        try { URL.revokeObjectURL(tempImagePreviewUrl); } catch (_) {}
+      }
+      tempImageFile = croppedFile;
+      try { tempImagePreviewUrl = URL.createObjectURL(croppedFile); }
+      catch (_) { tempImagePreviewUrl = null; }
+      tempImageUrl = null;
+      
+      renderBannerFormSheet();
+    }
+
+
+    async function onBannerImagePicked(event) {
+      const file = event.target.files?.[0];
+      event.target.value = ''; // reset input
+      if (!file) return;
+      try { validatePickedImageFile(file); }
+      catch (e) { return showAppNotice(pickedImageErrorMessage(e, file)); }
+      openBannerCropStep(file);
+    }
+
+async function processCroppedLogoFile(file, editingInsideShopInfo) {
       if (editingInsideShopInfo) setShopInfoLogoPreparing(true);
       let prepared;
       try {
@@ -16194,7 +16381,13 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                 <textarea id="ef-val" rows="3" class="w-full p-2 border rounded-xl">${escapeHtml(p.desc || '')}</textarea>
               ` : ''}
 
-              ${field === 'img' ? `
+              ${field === 'img' && productVariants(p).some(v => !!v.color) ? `
+                <div class="p-3 bg-blue-50/50 text-blue-800 rounded-xl flex items-start gap-2.5">
+                  <i data-lucide="info" class="w-5 h-5 flex-shrink-0 mt-0.5 text-blue-500"></i>
+                  <span class="leading-tight">${tr("Rangli tovarlarning asosiy rasmini bu yerdan o'zgartirib bo'lmaydi. Uni o'zgartirish uchun ranglar ichiga kiring.", "Главное фото цветных товаров нельзя изменить отсюда. Войдите в раздел цветов.")}</span>
+                </div>
+              ` : ''}
+              ${field === 'img' && !productVariants(p).some(v => !!v.color) ? `
                 <label class="font-bold text-gray-600">${tr("Tovar rasmi", "Фото товара")}</label>
                 ${productImageSizeHintHtml()}
                 <input id="ef-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ef-img-prev', 'ef-image-button', 'ef-image-url', 'ef-image-url-error')" class="hidden">
@@ -16362,7 +16555,33 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         return;
       }
 
-      if (activePopupModal === 'LOGO_CROP') {
+      
+      if (activePopupModal === 'BANNER_CROP') {
+        container.innerHTML = `
+          <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Bannerni moslang (2.5:1)', 'Настройте баннер (2.5:1)')}</h3>
+              <p class="text-[10px] text-gray-500 -mt-1">${tr("Rasmni surish uchun bosib torting, kattalashtirish uchun barmoqlaringizni siljiting yoki sichqoncha g'ildiragidan foydalaning.", "Перетаскивайте изображение пальцем, для увеличения используйте жест щипка или колесо мыши.")}</p>
+              <div class="fc-logo-crop-frame">
+                <canvas id="banner-crop-canvas" width="${BANNER_CROP_CANVAS_W}" height="${BANNER_CROP_CANVAS_H}" class="fc-logo-crop-canvas" style="aspect-ratio:5/2;"
+                  onpointerdown="onBannerCropPointerDown(event)" onpointermove="onBannerCropPointerMove(event)"
+                  onpointerup="onBannerCropPointerUp(event)" onpointercancel="onBannerCropPointerUp(event)"
+                  onwheel="onBannerCropWheel(event)"></canvas>
+              </div>
+              <div class="flex items-center gap-2 flex-wrap justify-center">
+                <button type="button" onclick="recropBanner()" class="fc-btn fc-btn-secondary"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr('Qayta joylash', 'Заново')}</button>
+              </div>
+              <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="confirmBannerCrop()" class="fc-btn fc-btn-primary">${tr('Tasdiqlash', 'Подтвердить')}</button>
+                <button onclick="cancelBannerCrop()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
+              </div>
+            </div>
+          </div>
+        `;
+        requestAnimationFrame(() => drawBannerCropCanvas());
+        return;
+      }
+if (activePopupModal === 'LOGO_CROP') {
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
