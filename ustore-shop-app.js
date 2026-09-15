@@ -5314,7 +5314,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function openOrderPauseSettingsPage() { if (isUserAnAdmin && isAdminMode) openPage('ORDER_PAUSE_SETTINGS'); }
     function closeOrderPauseSettingsPage() { openPage('SETTINGS', 'nav-profile'); }
     function orderPauseDetailCardHtml() {
-      const noteRow = ordersPaused ? `<div class="fc-pause-note-row mt-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
+      const noteRow = ordersPaused ? `<div class="px-4 pb-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
   <label class="text-xs font-bold text-gray-700">${tr("Mijozga izoh", "Комментарий для клиента")}</label>
   <textarea id="orders-paused-note" rows="3" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:bg-white" placeholder="${tr('Ixtiyoriy izoh...', 'Необязательный комментарий...')}" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea>
   <button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-btn fc-btn-primary w-full flex items-center justify-center gap-2" style="height: 48px; border-radius: 12px;">
@@ -10908,12 +10908,12 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         
       </div>`;
       renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body + `
-  <div class="fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-end md:max-w-md md:mx-auto">
-    <button type="button" onclick="saveFeaturedCategories()" class="fc-btn-primary text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center gap-2" ${featuredCategoriesSaving ? 'disabled' : ''}>
-      <i data-lucide="check" class="w-5 h-5"></i>
-      ${featuredCategoriesSaving ? tr("Saqlanmoqda...","Сохранение...") : tr("Saqlash","Сохранить")}
-    </button>
-  </div>`, { onBack: "openMarketingHubPage()" });
+    <div class="pt-4 mt-4 border-t border-gray-100 pb-8">
+      <button type="button" onclick="saveFeaturedCategories()" class="fc-btn fc-btn-primary w-full flex items-center justify-center gap-2" style="height: 52px; border-radius: 14px; font-size: 15px;" ${featuredCategoriesSaving ? 'disabled' : ''}>
+        <i data-lucide="check" class="w-5 h-5"></i>
+        ${featuredCategoriesSaving ? tr("Saqlanmoqda...","Сохранение...") : tr("Saqlash","Сохранить")}
+      </button>
+    </div>`, { onBack: "openMarketingHubPage()" });
     }
 
     // ==================== BANNERLAR (Online Do'kon yaxshilashlari, 17-band) ====================
