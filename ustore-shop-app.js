@@ -1,4 +1,4 @@
-    // ============ UMUMIY XATO TARMOG'I (eng birinchi ishga tushadi) ============
+// ============ UMUMIY XATO TARMOG'I (eng birinchi ishga tushadi) ============
     // Bu blok ATAYLAB faylning eng boshida turadi — undan keyingi istalgan
     // qatordagi ushlanmagan xatoni tutib olishi uchun.
     //
@@ -3237,7 +3237,6 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const preview = document.getElementById(previewId);
       const pickerButton = buttonId ? document.getElementById(buttonId) : null;
       if (pickerButton) { const lbl = tr('Rasm tanlash', 'Выбрать фото'); pickerButton.setAttribute('aria-label', lbl); pickerButton.title = lbl; }
-
       if (!raw) {
         setImageUrlError(errorId, '');
         if (preview) {
@@ -3246,7 +3245,6 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         }
         return;
       }
-
       let validUrl;
       try { validUrl = validateExternalImageUrl(raw); }
       catch (e) {
@@ -3258,24 +3256,19 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       setImageUrlError(errorId, xlImageText('Rasm tekshirilmoqda…', 'Изображение проверяется…'));
       if (!preview) return;
       preview.onload = () => setImageUrlError(errorId, '');
-      // Ba'zi rasm manbalari (CDN/hotlink himoyasi, vaqtinchalik tarmoq
-      // xatosi) BIRINCHI urinishda muvaffaqiyatsiz bo'lishi mumkin, garchi
-      // URL haqiqatan ishlayotgan bo'lsa ham. Shu sabab darhol "buzuq" deb
-      // e'lon qilishdan oldin, keshni chetlab, BIR MARTA qayta urinamiz.
-      // Diqqat: faqat preview.src'ga vaqtinchalik cache-bust qo'shiladi —
-      // saqlanadigan tempImageUrl har doim TOZA validUrl bo'lib qoladi.
       let retriedOnce = false;
       preview.onerror = () => {
         if (!retriedOnce) {
           retriedOnce = true;
           setTimeout(() => {
             if (!preview.isConnected) return;
-            preview.src = validUrl + (validUrl.includes('?') ? '&' : '?') + '_retry=' + Date.now();
-          }, 700);
+            // Retry through a global caching proxy to bypass rate limits/hotlink protection
+            preview.src = 'https://wsrv.nl/?url=' + encodeURIComponent(validUrl) + '&w=300';
+          }, 400);
           return;
         }
         preview.classList.add('hidden');
-        setImageUrlError(errorId, tr("Rasmni bu URL orqali ko'rsatib bo'lmadi. Havolani tekshiring.", "Не удалось показать изображение по этому URL. Проверьте ссылку."));
+        setImageUrlError(errorId, tr("Manba (sayt) rasmni bloklayotgan bo'lishi mumkin. Lekin baribir saqlashingiz mumkin.", "Сайт-источник может блокировать фото. Но вы все равно можете сохранить."));
       };
       preview.src = validUrl;
       preview.classList.remove('hidden');
@@ -3499,6 +3492,24 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       // bo'lib, callApi'dagi kabi o'z AbortController'iga ega emas).
       const extByMime = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
       const ext = extByMime[mimeType] || 'jpg';
+
+      // Fast path for small images (< 512KB) -> One round trip server upload
+      if (prepared.size <= 512 * 1024) {
+        const serverUploadStartedAt = Date.now();
+        try {
+          const imageUpload = { mimeType, base64: await fileToBase64(prepared) };
+          const url = await retryAsync(async () => {
+            const result = await callApi('upload_product_image', { imageUpload });
+            if (!result?.url) throw new Error('image_public_url_failed');
+            return result.url;
+          }, 2, 350);
+          imageIO.logStage('FAST_SERVER_UPLOAD_OK', { duration: Date.now() - serverUploadStartedAt, size: prepared.size });
+          return url;
+        } catch (e) {
+          console.warn('[image:FAST_SERVER_UPLOAD_FAILED]', e);
+        }
+      }
+
       let signedErr = null;
       const signedUploadStartedAt = Date.now();
       try {
@@ -5292,7 +5303,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // ostidagi shu sahifa qayta ko'rinadi. Bot /start endi shu yerda, alohida
     // qatordan boshqa joyga ko'chirilmagan.
     function settingsMenuRowHtml({ icon, title, subtitle = '', status = '', onclick }) {
-      return `<button type="button" onclick="${onclick}" class="fc-settings-menu-row"><span class="fc-settings-menu-icon"><i data-lucide="${icon}" class="w-5 h-5"></i></span><span class="fc-settings-menu-copy"><b>${title}</b>${subtitle ? `<small>${subtitle}</small>` : ''}</span>${status ? `<span class="fc-settings-menu-status">${status}</span>` : ''}<i data-lucide="chevron-right" class="w-4 h-4 fc-settings-menu-chevron"></i></button>`;
+      return profileMenuRowHtml({ icon, title, subtitle, onclick, badge: status });
     }
     function openOrderPauseSettingsPage() { if (isUserAnAdmin && isAdminMode) openPage('ORDER_PAUSE_SETTINGS'); }
     function closeOrderPauseSettingsPage() { openPage('SETTINGS', 'nav-profile'); }
@@ -6028,7 +6039,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // 2. Aksiyalar — FAQAT mahsulotlar to'plami (bundle), boshqa aksiya
     // turi qo'shilmaydi (avtomatik sovg'a endi o'z bo'limida, pastda).
     function bundleCardsHtml(bundles) {
-      return bundles.map(c => `<button type="button" onclick="openCampaignDetail('BUNDLE','${c.id}')" class="fc-public-offer-card is-action">${c.coverImageUrl ? `<img src="${escapeHtml(c.coverImageUrl)}" loading="lazy">` : `<span class="fc-public-offer-icon">🎁</span>`}<div><b>${escapeHtml(c.name)}</b><p>${tr('Maxsus to‘plam narxi', 'Специальная цена комплекта')}: <strong>${c.discountLabel}</strong></p><span><i data-lucide="boxes" class="w-3.5 h-3.5"></i>${c.items?.length || 0} ${tr('ta mahsulot', 'товаров')}</span>${publicMarketingDateHtml(c)}${bundleThumbStripHtml(c)}<em>${tr('Batafsil ko‘rish', 'Подробнее')} →</em></div></button>`);
+      return bundles.map(c => `<button type="button" onclick="openCampaignDetail('BUNDLE','${c.id}')" class="fc-public-offer-card is-action">${c.coverImageUrl ? `<img src="${escapeHtml(c.coverImageUrl)}">` : `<span class="fc-public-offer-icon">🎁</span>`}<div><b>${escapeHtml(c.name)}</b><p>${tr('Maxsus to‘plam narxi', 'Специальная цена комплекта')}: <strong>${c.discountLabel}</strong></p><span><i data-lucide="boxes" class="w-3.5 h-3.5"></i>${c.items?.length || 0} ${tr('ta mahsulot', 'товаров')}</span>${publicMarketingDateHtml(c)}${bundleThumbStripHtml(c)}<em>${tr('Batafsil ko‘rish', 'Подробнее')} →</em></div></button>`);
     }
     // 3. Promo-kodlar va kuponlar — FAQAT manual promo-kod (kupon turi
     // "Avtomatik sovg'alar"ga ko'chdi).
@@ -6046,7 +6057,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function giftSectionCardsHtml(rewards, gifts) {
       return [
         ...rewards.map(c => { const text = publicRewardRuleText(c); return `<article class="fc-public-offer-card is-action"><span class="fc-public-offer-icon">🏆</span><div><b>${escapeHtml(text.condition)}</b><p>${tr('Shart bajarilsa', 'За выполнение')}: <strong>${text.reward} ${tr('bir martalik kupon', 'одноразовый купон')}</strong></p><span><i data-lucide="clock-3" class="w-3.5 h-3.5"></i>${escapeHtml(text.expiry)}</span></div></article>`; }),
-        ...gifts.map(c => { const giftName = uiLang === 'ru' ? (c.giftProduct?.nameRu || c.giftProduct?.name) : c.giftProduct?.name; return `<article class="fc-public-offer-card is-action">${c.giftProduct?.imageUrl ? `<img src="${escapeHtml(c.giftProduct.imageUrl)}" loading="lazy">` : `<span class="fc-public-offer-icon">🎁</span>`}<div><b>${escapeHtml(c.name)}</b><p>${escapeHtml(publicGiftConditionText(c))} — <strong>${c.giftQuantity} × ${escapeHtml(giftName || tr('sovg‘a', 'подарок'))}</strong></p>${publicMarketingDateHtml(c)}</div></article>`; }),
+        ...gifts.map(c => { const giftName = uiLang === 'ru' ? (c.giftProduct?.nameRu || c.giftProduct?.name) : c.giftProduct?.name; return `<article class="fc-public-offer-card is-action">${c.giftProduct?.imageUrl ? `<img src="${escapeHtml(c.giftProduct.imageUrl)}">` : `<span class="fc-public-offer-icon">🎁</span>`}<div><b>${escapeHtml(c.name)}</b><p>${escapeHtml(publicGiftConditionText(c))} — <strong>${c.giftQuantity} × ${escapeHtml(giftName || tr('sovg‘a', 'подарок'))}</strong></p>${publicMarketingDateHtml(c)}</div></article>`; }),
       ];
     }
     // 6. Shaxsiy takliflar — faqat joriy userga biriktirilgan.
@@ -6207,7 +6218,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const media = products.map(p => p.imageUrl).filter(Boolean);
       const countdown = c.endsAt ? `<span class="fc-campaign-chip"><i data-lucide="calendar-clock" class="w-3.5 h-3.5"></i>${tr('Tugaydi','Заканчивается')}: ${new Date(c.endsAt).toLocaleDateString()}</span>` : '';
       const codeBlock = c.code ? `<div class="fc-campaign-code-card"><div><small>${tr('Promo-kod','Промокод')}</small><b>${escapeHtml(c.code)}</b></div><button type="button" onclick="copyTextToClipboard('${escapeHtml(c.code)}')" class="fc-btn fc-btn-secondary"><i data-lucide="copy" class="w-3.5 h-3.5"></i>${tr('Nusxalash','Копировать')}</button></div>` : '';
-      const mediaHtml = products.length ? `<details class="fc-card fc-bundle-products-collapse"><summary><span><b>${tr('Mahsulotlar','Товары')} — ${products.length}</b><span class="fc-overlap-thumbs">${products.slice(0,3).map(p=>p.imageUrl?`<img src="${escapeHtml(p.imageUrl)}">`:'').join('')}</span></span><i data-lucide="chevron-down" class="w-4 h-4"></i></summary><div class="fc-campaign-media-strip mt-3">${products.map((p,idx) => `<button type="button" onclick="openProductDetailModal('${p.id}')" class="fc-campaign-media-slide">${p.imageUrl ? `<img src="${escapeHtml(p.imageUrl)}" loading="lazy">` : `<span class="fc-campaign-media-placeholder"><i data-lucide="image" class="w-5 h-5"></i></span>`}<small>${idx+1} / ${products.length} · ${escapeHtml(p.name)}${p.price?` · ${money(p.price)}`:''}</small></button>`).join('')}</div></details>` : '';
+      const mediaHtml = products.length ? `<details class="fc-card fc-bundle-products-collapse"><summary><span><b>${tr('Mahsulotlar','Товары')} — ${products.length}</b><span class="fc-overlap-thumbs">${products.slice(0,3).map(p=>p.imageUrl?`<img src="${escapeHtml(p.imageUrl)}">`:'').join('')}</span></span><i data-lucide="chevron-down" class="w-4 h-4"></i></summary><div class="fc-campaign-media-strip mt-3">${products.map((p,idx) => `<button type="button" onclick="openProductDetailModal('${p.id}')" class="fc-campaign-media-slide">${p.imageUrl ? `<img src="${escapeHtml(p.imageUrl)}">` : `<span class="fc-campaign-media-placeholder"><i data-lucide="image" class="w-5 h-5"></i></span>`}<small>${idx+1} / ${products.length} · ${escapeHtml(p.name)}${p.price?` · ${money(p.price)}`:''}</small></button>`).join('')}</div></details>` : '';
       const priceFacts = c.kind==='BUNDLE'?`<div class="fc-campaign-price-facts"><div><small>${tr('Oddiy jami','Обычная сумма')}</small><b>${money(c.regularTotal)}</b></div><div class="is-primary"><small>${tr('Aksiya narxi','Цена акции')}</small><b>${money(c.bundlePrice)}</b></div><div class="is-saving"><small>${tr('Tejaysiz','Экономия')}</small><b>${money(c.savings)} · ${c.savingsPercent}%</b></div></div>`:'';
       // 3-paket, 6.UI.5-band: promo-kod user detailida shartlar — manual
       // savatcha-kod oqimiga zid "avtomatik qo'llanadi" matni ATAYLAB yozilmaydi.
@@ -6820,7 +6831,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                      asosiy rasmga qaytadi. Agar kichik nusxa qandaydir sababga
                      ko'ra ochilmasa, onerror avval asosiy rasmni sinaydi va
                      faqat u ham bo'lmasa zaxira belgiga o'tadi. -->
-                <img referrerpolicy="no-referrer" src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)" onload="this.parentElement?.classList.remove('animate-pulse','bg-gray-100'); this.parentElement?.classList.add('bg-gray-50');" class="w-full h-full object-contain" loading="lazy" decoding="async">
+                <img referrerpolicy="no-referrer" src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)" onload="this.parentElement?.classList.remove('animate-pulse','bg-gray-100'); this.parentElement?.classList.add('bg-gray-50');" class="w-full h-full object-contain">
               </div>
               ${(canManageProducts() && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-product-visibility-overlay ${p.isVisible === false ? 'is-hidden' : 'is-visible'}" aria-label="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" title="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductVisibility('${p.id}')"><i data-lucide="${p.isVisible === false ? 'eye-off' : 'eye'}" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
@@ -10819,7 +10830,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       featuredCategoriesSaving = true;
       render();
       try {
-        await callApi('set_featured_categories', { featuredCategories });
+        await callApi('set_marketing_settings', { featuredCategories });
         showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1500);
       } catch (e) {
         showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
@@ -10934,37 +10945,88 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       event.preventDefault(); event.stopPropagation();
       const handle = event.currentTarget;
       const card = handle.closest('[data-banner-slot-id]');
-      handle.setPointerCapture?.(event.pointerId);
-      slotDrag = { id: String(id), startX: event.clientX, card, handle };
-      card?.classList.add('is-dragging');
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      const list = card.closest('.fc-banner-slots-grid');
+      
+      const ghost = card.cloneNode(true);
+      ghost.classList.add('fc-drag-ghost');
+      Object.assign(ghost.style, { position: 'fixed', left: `\${rect.left}px`, top: `\${rect.top}px`, width: `\${rect.width}px`, height: `\${rect.height}px`, margin: '0', zIndex: '9999', pointerEvents: 'none', transition: 'none' });
+      
+      const placeholder = document.createElement('div');
+      placeholder.className = 'fc-drag-placeholder';
+      placeholder.style.height = `\${rect.height}px`;
+      placeholder.style.width = `\${rect.width}px`;
+      
+      card.replaceWith(placeholder);
+      document.body.appendChild(ghost);
+      
+      try { handle.setPointerCapture(event.pointerId); } catch (_) {}
+      
+      slotDrag = { id: String(id), pointerId: event.pointerId, handle, card, list, ghost, placeholder, targetEl: null, startX: event.clientX, pointerOffsetX: event.clientX - rect.left, pointerOffsetY: event.clientY - rect.top };
+      
+      window.addEventListener('pointermove', moveBannerSlotDrag, {passive: false});
+      window.addEventListener('pointerup', endBannerSlotDrag);
+      window.addEventListener('pointercancel', cancelBannerSlotDrag);
     }
+    
     function moveBannerSlotDrag(event) {
-      if (!slotDrag) return;
-      event.preventDefault(); event.stopPropagation();
-      if (slotDrag.card) slotDrag.card.style.translate = `${event.clientX - slotDrag.startX}px 0`;
+      const st = slotDrag; if (!st || st.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      
+      const left = event.clientX - st.pointerOffsetX;
+      const top = event.clientY - st.pointerOffsetY;
+      st.ghost.style.left = `\${left}px`; st.ghost.style.top = `\${top}px`;
+      
+      const items = Array.from(st.list.children).filter(el => el !== st.placeholder && el.matches('[data-banner-slot-id]'));
+      let target = null, placeBefore = false;
+      for (const el of items) {
+        const r = el.getBoundingClientRect();
+        if (event.clientY >= r.top && event.clientY <= r.bottom) {
+          if (event.clientX < r.left + r.width / 2) { target = el; placeBefore = true; break; }
+          else if (event.clientX >= r.left + r.width / 2 && event.clientX <= r.right) { target = el; placeBefore = false; break; }
+        }
+      }
+      if (st.targetEl && st.targetEl !== target) st.targetEl.classList.remove('fc-drag-target');
+      if (target) {
+        target.classList.add('fc-drag-target');
+        st.targetEl = target;
+        if (placeBefore) target.before(st.placeholder);
+        else target.after(st.placeholder);
+      }
     }
+    
     function cancelBannerSlotDrag() {
-      if (!slotDrag) return;
-      if (slotDrag.card) { slotDrag.card.style.translate = ''; slotDrag.card.classList.remove('is-dragging'); }
+      const st = slotDrag; if (!st) return;
+      st.targetEl?.classList.remove('fc-drag-target');
+      st.placeholder?.replaceWith?.(st.card);
+      if (st.card && st.card.parentElement !== st.list) st.list?.appendChild?.(st.card);
+      st.ghost?.remove?.();
+      window.removeEventListener('pointermove', moveBannerSlotDrag);
+      window.removeEventListener('pointerup', endBannerSlotDrag);
+      window.removeEventListener('pointercancel', cancelBannerSlotDrag);
       slotDrag = null;
     }
     async function endBannerSlotDrag(event) {
-      if (!slotDrag) return;
+      const st = slotDrag; if (!st) return;
       event.preventDefault(); event.stopPropagation();
-      const drag = slotDrag;
-      const cards = [...document.querySelectorAll('[data-banner-slot-id]')];
-      let targetIndex = cards.findIndex(card => event.clientX < card.getBoundingClientRect().left + card.getBoundingClientRect().width / 2);
-      if (targetIndex < 0) targetIndex = cards.length - 1;
-      const slots = bannerSlotList();
-      const fromIndex = slots.findIndex(b => String(b.id) === drag.id);
+      const dragId = st.id;
+      
+      const orderedIds = Array.from(st.list.children)
+        .map(el => el === st.placeholder ? dragId : el.dataset.bannerSlotId)
+        .filter(Boolean).map(String);
+        
       cancelBannerSlotDrag();
-      if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) return;
-      const reordered = [...slots];
-      const [moved] = reordered.splice(fromIndex, 1);
-      reordered.splice(Math.min(targetIndex, reordered.length), 0, moved);
-      const slotIds = new Set(slots.map(b => String(b.id)));
+      
+      const slots = bannerSlotList();
+      const currentIds = slots.map(b => String(b.id));
+      if (orderedIds.join(',') === currentIds.join(',')) return;
+      
+      const reordered = orderedIds.map(id => slots.find(b => String(b.id) === id)).filter(Boolean);
+      const slotIds = new Set(reordered.map(b => String(b.id)));
       const rest = bannerList.filter(b => !slotIds.has(String(b.id)));
       const previous = [...bannerList];
+      
       bannerList = [...reordered, ...rest].map((b, i) => ({ ...b, sortOrder: i }));
       syncActiveBannersFromList(); render();
       try {
@@ -12920,20 +12982,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           <div><small>${tr('Hozir faol', 'Сейчас активно')}</small><b>${marketingSummaryLoading ? '…' : marketingSummary.activeTotal} ${tr('ta marketing vositasi', 'маркетинговых инструментов')}</b></div>
         </section>
         <div class="fc-marketing-hub-grid">
-        ${items.map(it => `
-          <button type="button" onclick="${it.onclick}" class="fc-marketing-hub-card fc-marketing-hub-tone-${it.tone}">
-            <span class="fc-marketing-hub-icon"><i data-lucide="${it.icon}" class="w-4 h-4"></i></span>
-            <span><b>${it.title}</b><small>${it.count !== undefined ? it.count : (marketingSummaryLoading ? '…' : Number(marketingSummary[it.key]) || 0)} ${tr('ta', 'шт.')}</small></span>
-            <i data-lucide="chevron-right" class="w-4 h-4 fc-marketing-hub-chevron"></i>
-          </button>
-        `).join('')}
+        ${items.map(it => profileMenuRowHtml({ icon: it.icon, title: it.title, subtitle: `${it.count !== undefined ? it.count : (marketingSummaryLoading ? '…' : Number(marketingSummary[it.key]) || 0)} ${tr('ta', 'шт.')}`, onclick: it.onclick })).join('')}
         </div>
         <div class="fc-marketing-settings-sep">
-          <button type="button" onclick="openMarketingSettingsPage()" class="fc-marketing-hub-card fc-marketing-settings-card fc-marketing-hub-tone-slate">
-            <span class="fc-marketing-hub-icon"><i data-lucide="sliders-horizontal" class="w-4 h-4"></i></span>
-            <span><b>${tr("Marketing sozlamalari", "Настройки маркетинга")}</b><small>${tr('Marketing parametrlarini boshqarish', 'Управление параметрами маркетинга')}</small></span>
-            <i data-lucide="chevron-right" class="w-4 h-4 fc-marketing-hub-chevron"></i>
-          </button>
+          ${profileMenuRowHtml({ icon: 'sliders-horizontal', title: tr("Marketing sozlamalari", "Настройки маркетинга"), subtitle: tr('Marketing parametrlarini boshqarish', 'Управление параметрами маркетинга'), onclick: 'openMarketingSettingsPage()' })}
         </div>
       </div>`;
       renderPageShell(container, tr('Marketing', 'Маркетинг'), body);
@@ -14254,7 +14306,6 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
           <section class="shop-about-card fc-shop-public-card">
             <div class="fc-shop-public-head">
-              ${shopLogoUrl ? `<span class="fc-shop-public-logo"><img src="${escapeHtml(shopLogoUrl)}" alt=""></span>` : `<span class="fc-shop-public-logo is-empty"><i data-lucide="store" class="w-5 h-5"></i></span>`}
               <div class="min-w-0 flex-1"><div class="fc-shop-public-eyebrow">${tr("Do'kon ma'lumotlari", 'Данные магазина')}</div><h3>${escapeHtml(shopDisplayName())}</h3></div>
               ${(isUserAnAdmin && isAdminMode && hasPermission('shop.settings.manage')) ? `<button onclick="openShopInfoModal(); activePopupModal='SHOP_INFO'" class="fc-btn fc-btn-secondary fc-shop-public-edit"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>${tr("Tahrirlash", "Изменить")}</button>` : ''}
             </div>
@@ -15775,7 +15826,12 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
     function renderMovePickerHtml(mode){const allowed=movePickerAllowedCategories(mode),q=normalizeText(movePickerSearch||'').latin;let rows=q?allowed.filter(c=>normalizeText(categoryName(c)).latin.includes(q)):allowed.filter(c=>String(c.parentId||'')===String(movePickerParentId||''));rows=rows.sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)||categoryName(a).localeCompare(categoryName(b)));const cur=categories.find(c=>String(c.id)===String(movePickerParentId||'')),targetLabel=cur?categoryName(cur):tr('Bosh katalog','Главный каталог');return `<div class="fc-move-picker"><div class="fc-move-picker-nav"><button type="button" onclick="movePickerBack()" ${!movePickerParentId?'disabled':''}><i data-lucide="arrow-left" class="w-4 h-4"></i></button><div class="fc-move-breadcrumb">${movePickerPathHtml()}</div></div><div class="fc-move-search"><i data-lucide="search" class="w-4 h-4"></i><input value="${escapeHtml(movePickerSearch)}" oninput="setMovePickerSearch(this.value)" placeholder="${tr('Katalog qidirish','Поиск каталога')}"></div><div class="fc-move-list">${rows.length?rows.map(c=>`<button type="button" onclick="movePickerEnter('${c.id}')" class="fc-move-folder"><span><i data-lucide="folder" class="w-4 h-4"></i><b>${escapeHtml(categoryName(c))}</b></span><i data-lucide="chevron-right" class="w-4 h-4"></i></button>`).join(''):`<div class="fc-empty-state"><i data-lucide="folder-search" class="w-7 h-7"></i><p>${tr('Katalog topilmadi','Каталог не найден')}</p></div>`}</div><div class="fc-move-target"><small>${tr('Tanlangan joy','Выбранное место')}</small><b>${escapeHtml(targetLabel)}</b></div></div>`;}
     async function saveBulkMoveCategories(){const ids=[...bulkSelectedCategoryIds];if(!ids.length)return;const newParentId=movePickerParentId||null;showActionToast(tr('Ko‘chirilmoqda...','Перемещение...'),'saving');try{for(const id of ids)await callApi('move_category',{categoryId:id,newParentId});await loadCatalog();activePopupModal=null;bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();showActionToast(tr('Kataloglar ko‘chirildi','Каталоги перемещены'),'success',1500);}catch(e){console.error(e);await loadCatalog();activePopupModal=null;bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();showAppNotice(tr('Ko‘chirishda xatolik: ','Ошибка перемещения: ')+(e.message||e));}}
 
-    function renderModalContainer() {
+    
+    function showAdminWelcomeModal() {
+      activePopupModal = 'ADMIN_WELCOME';
+      render();
+    }
+function renderModalContainer() {
       // TASK 1.8 root-cause fix (2026-09-01): ko'plab chaqiruv nuqtalari
       // (rang/o'lcham inline CRUD, va h.k.) bu funksiyadan keyin
       // safeCreateIcons()ni chaqirishni unutgan edi — natijada yangi
@@ -15802,6 +15858,35 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       if (isCatalogEditorModalOpen()) { syncProductFormDraftFromDom(); syncVariantBuilderFromDom(); }
 
       // REGISTRATION MODAL
+    if (activePopupModal === 'ADMIN_WELCOME') {
+        container.innerHTML = `
+        <div class="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4 backdrop-blur-sm" onclick="activePopupModal=null;render();">
+          <div class="bg-white rounded-[2rem] max-w-sm w-full shadow-2xl flex flex-col overflow-hidden transform transition-all duration-300 scale-100" onclick="event.stopPropagation()">
+            <div class="p-8 text-center relative overflow-hidden bg-gradient-to-br from-indigo-50 to-white">
+              <div class="absolute -top-12 -right-12 w-32 h-32 bg-blue-100/50 rounded-full blur-2xl"></div>
+              <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-100/50 rounded-full blur-2xl"></div>
+              
+              <div class="w-16 h-16 bg-white shadow-lg rounded-2xl flex items-center justify-center mx-auto mb-5 relative z-10 border border-gray-100">
+                <i data-lucide="sparkles" class="w-8 h-8 text-blue-600"></i>
+              </div>
+              <h2 class="text-xl font-black text-gray-900 mb-2 relative z-10">${tr("Xush kelibsiz, Admin!", "Добро пожаловать, Админ!")}</h2>
+              <p class="text-sm text-gray-500 font-medium leading-relaxed relative z-10">${tr("Do'koningizni boshqarish uchun barcha kerakli vositalar tayyor. Qiladigan ishlaringizni ko'rib chiqing.", "Все необходимые инструменты для управления магазином готовы. Просмотрите ваши задачи.")}</p>
+            </div>
+            <div class="p-5 flex flex-col gap-3 bg-white border-t border-gray-50">
+              <button type="button" onclick="activePopupModal=null; render(); setTimeout(() => openAdminCommandCenter(true), 50);" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-md">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                ${tr("Boshqaruv markazini ochish", "Открыть центр управления")}
+              </button>
+              <button type="button" onclick="activePopupModal=null; render();" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3.5 px-4 rounded-xl transition-colors">
+                ${tr("Keyinroq", "Позже")}
+              </button>
+            </div>
+          </div>
+        </div>`;
+        lucide.createIcons({ root: container });
+        return;
+    }
+
       if (activePopupModal === 'REGISTRATION') {
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; render();">
@@ -16792,12 +16877,13 @@ if (activePopupModal === 'LOGO_CROP') {
       }
 
       // KATALOG FILTR/SARALASH PANELI
-      if (activePopupModal === 'CAT_FILTER') {
+            if (activePopupModal === 'CAT_FILTER') {
         const activeSortMode = currentCategorySortMode();
-        const sortRowClass = (mode) => activeSortMode === mode ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600';
-        const sortRow = (mode, label) => `
-          <button onclick="setCategorySortMode('${mode}')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold ${sortRowClass(mode)}">
-            <span>${label}</span><span>${activeSortMode === mode ? '✓' : ''}</span>
+        const sortRowClass = (mode) => activeSortMode === mode ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+        const sortRow = (mode, label, icon) => `
+          <button onclick="setCategorySortMode('${mode}')" class="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold transition-all ${sortRowClass(mode)}">
+            <div class="flex items-center gap-3"><i data-lucide="${icon}" class="w-5 h-5 opacity-70"></i><span>${label}</span></div>
+            ${activeSortMode === mode ? '<i data-lucide="check-circle-2" class="w-5 h-5 text-white"></i>' : ''}
           </button>`;
         const pricePresetLabel = (min, max) => {
           const shortMoney = (v) => Number(v) >= 1000000 ? `${Number(v)/1000000} mln` : `${Math.round(Number(v)/1000)} ming`;
@@ -16805,10 +16891,6 @@ if (activePopupModal === 'LOGO_CROP') {
           if (!max) return `≥${shortMoney(min)}`;
           return `${shortMoney(min)}–${shortMoney(max)}`;
         };
-        // Joriy kontekst (Bosh sahifa yoki Katalog sahifasi)dagi bazaviy ro'yxatga
-        // filtrni qo'llab, natija sonini hisoblaydi — mavjud render funksiyalaridagi
-        // (renderHome/renderCategories) bazaviy ro'yxat mantig'ini FAQAT o'qish
-        // uchun takrorlaydi, ularning o'ziga tegilmaydi.
         let filterResultCount;
         if (currentTab === 'home') {
           let base = searchProducts(homeSearchQuery || '');
@@ -16818,54 +16900,95 @@ if (activePopupModal === 'LOGO_CROP') {
           const catBase = products.filter(p => p.categoryId === adminCatParentId && productVisibleInCurrentMode(p));
           filterResultCount = applyCategoryFilter(catBase).length;
         }
+        
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="closeCategoryFilterModal();">
-            <div class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-sm w-full space-y-4 shadow-2xl text-xs max-h-[88vh] overflow-y-auto" onclick="event.stopPropagation()">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr("Filtr va saralash", "Фильтр и сортировка")}</h3>
-
-              <div>
-                <label class="font-bold text-gray-600">${tr("Tovar qidirish", "Поиск товара")}</label>
-                <input type="text" value="${escapeHtml(categoryFilter.search || '')}" oninput="categoryFilter.search=this.value; categoryPage=1;" placeholder="${escapeHtml(searchPlaceholderText())}" class="w-full mt-1 p-2.5 border rounded-xl">
+          <div class="fixed inset-0 bg-black/60 z-[99] flex items-end justify-center backdrop-blur-sm transition-all duration-300" onclick="closeCategoryFilterModal();">
+            <div class="bg-white rounded-t-[2rem] p-6 max-w-md w-full shadow-2xl max-h-[90vh] flex flex-col transform transition-transform duration-300 translate-y-0" onclick="event.stopPropagation()">
+              <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+              
+              <div class="flex items-center justify-between mb-6">
+                <h3 class="font-black text-xl text-gray-900 tracking-tight">${tr("Filtr va saralash", "Фильтр и сортировка")}</h3>
+                <button type="button" onclick="categoryFilter = { search: '', minPrice: '', maxPrice: '', sortPrice: null, sortNew: null, sortSold: null, inStockOnly: false, discountOnly: false }; categoryPage = 1; render();" class="text-sm font-bold text-gray-400 hover:text-gray-900 transition-colors">${tr("Tozalash", "Сбросить")}</button>
               </div>
-
-              <div class="fc-filter-chip-grid">
-                <button onclick="toggleInStockOnlyFilter()" class="fc-filter-choice ${categoryFilter.inStockOnly ? 'is-active' : ''}" aria-pressed="${categoryFilter.inStockOnly}"><span>📦 ${tr('Faqat mavjud','Только в наличии')}</span></button>
-                <button onclick="toggleDiscountOnlyFilter()" class="fc-filter-choice ${categoryFilter.discountOnly ? 'is-active' : ''}" aria-pressed="${categoryFilter.discountOnly}"><span>🏷️ ${tr('Chegirmali','Со скидкой')}</span></button>
-              </div>
-
-              <div>
-                <label class="font-bold text-gray-600">${tr("Narx oralig'i (so'm)", "Диапазон цен (сум)")}</label>
-                <div class="flex items-center gap-2 mt-1">
-                  <input type="number" inputmode="numeric" placeholder="${tr('Dan','От')}" value="${escapeHtml(categoryFilter.minPrice)}" oninput="setCategoryPriceBound('minPrice', this.value)" class="w-full p-2.5 border rounded-xl">
-                  <span class="text-gray-400">—</span>
-                  <input type="number" inputmode="numeric" placeholder="${tr('Gacha','До')}" value="${escapeHtml(categoryFilter.maxPrice)}" oninput="setCategoryPriceBound('maxPrice', this.value)" class="w-full p-2.5 border rounded-xl">
+              
+              <div class="overflow-y-auto overflow-x-hidden -mx-6 px-6 pb-6 space-y-8 no-scrollbar">
+                
+                <!-- Qidiruv -->
+                <div class="space-y-3">
+                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="search" class="w-4 h-4 text-gray-400"></i> ${tr("Tovar qidirish", "Поиск товара")}</label>
+                  <div class="relative">
+                    <input type="text" value="${escapeHtml(categoryFilter.search || '')}" oninput="categoryFilter.search=this.value; categoryPage=1; renderModalContainer();" placeholder="${escapeHtml(searchPlaceholderText())}" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 pl-11 pr-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+                    <i data-lucide="search" class="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2"></i>
+                    ${categoryFilter.search ? `<button onclick="categoryFilter.search=''; categoryPage=1; renderModalContainer();" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900"><i data-lucide="x-circle" class="w-5 h-5"></i></button>` : ''}
+                  </div>
                 </div>
-                <div class="flex flex-wrap gap-1.5 mt-2">
-                  ${CATEGORY_PRICE_PRESETS.map(p => `
-                    <button onclick="applyCategoryPricePreset('${p.min}','${p.max}')" class="px-2.5 py-1.5 rounded-lg font-bold text-[10px] ${String(categoryFilter.minPrice || '') === p.min && String(categoryFilter.maxPrice || '') === p.max ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}">${pricePresetLabel(p.min, p.max)}</button>
-                  `).join('')}
+                
+                <!-- Tezkor holat filtrlari -->
+                <div class="space-y-3">
+                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-gray-400"></i> ${tr("Holat bo'yicha", "По статусу")}</label>
+                  <div class="grid grid-cols-2 gap-3">
+                    <button onclick="toggleInStockOnlyFilter()" class="flex flex-col items-start gap-2 p-4 rounded-2xl border-2 transition-all ${categoryFilter.inStockOnly ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'}">
+                      <div class="flex items-center justify-between w-full">
+                        <i data-lucide="package" class="w-6 h-6 ${categoryFilter.inStockOnly ? 'text-emerald-500' : 'text-gray-400'}"></i>
+                        ${categoryFilter.inStockOnly ? '<i data-lucide="check" class="w-5 h-5 text-emerald-500"></i>' : ''}
+                      </div>
+                      <span class="font-bold text-sm">${tr('Faqat mavjud', 'В наличии')}</span>
+                    </button>
+                    <button onclick="toggleDiscountOnlyFilter()" class="flex flex-col items-start gap-2 p-4 rounded-2xl border-2 transition-all ${categoryFilter.discountOnly ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'}">
+                      <div class="flex items-center justify-between w-full">
+                        <i data-lucide="tag" class="w-6 h-6 ${categoryFilter.discountOnly ? 'text-blue-500' : 'text-gray-400'}"></i>
+                        ${categoryFilter.discountOnly ? '<i data-lucide="check" class="w-5 h-5 text-blue-500"></i>' : ''}
+                      </div>
+                      <span class="font-bold text-sm">${tr('Chegirmali', 'Со скидкой')}</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              <div class="space-y-1.5">
-                <label class="font-bold text-gray-600">${tr("Saralash", "Сортировка")}</label>
-                <div class="fc-sort-compact-grid">
-                  <button onclick="setCategorySortMode('priceAsc')" class="fc-sort-compact ${activeSortMode === 'priceAsc' ? 'is-active' : ''}" aria-label="${tr('Narx: arzondan qimmatga','Цена: сначала дешевле')}" title="${tr('Narx: arzondan qimmatga','Цена: сначала дешевле')}">💰 ↓</button>
-                  <button onclick="setCategorySortMode('priceDesc')" class="fc-sort-compact ${activeSortMode === 'priceDesc' ? 'is-active' : ''}" aria-label="${tr('Narx: qimmatdan arzonga','Цена: сначала дороже')}" title="${tr('Narx: qimmatdan arzonga','Цена: сначала дороже')}">💰 ↑</button>
-                  <button onclick="setCategorySortMode('new')" class="fc-sort-compact ${activeSortMode === 'new' ? 'is-active' : ''}">🆕 ${tr('Eng yangi','Новые')}</button>
-                  <button onclick="setCategorySortMode('sold')" class="fc-sort-compact ${activeSortMode === 'sold' ? 'is-active' : ''}">🔥 ${tr("Ko'p sotilgan",'Популярное')}</button>
+                
+                <!-- Narx filtri -->
+                <div class="space-y-4">
+                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="banknote" class="w-4 h-4 text-gray-400"></i> ${tr("Narx oralig'i (so'm)", "Диапазон цен (сум)")}</label>
+                  <div class="flex items-center gap-3">
+                    <div class="relative flex-1">
+                      <input type="number" inputmode="numeric" placeholder="${tr('Dan','От')}" value="${escapeHtml(categoryFilter.minPrice)}" oninput="setCategoryPriceBound('minPrice', this.value); renderModalContainer();" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+                    </div>
+                    <div class="w-4 h-px bg-gray-300 shrink-0"></div>
+                    <div class="relative flex-1">
+                      <input type="number" inputmode="numeric" placeholder="${tr('Gacha','До')}" value="${escapeHtml(categoryFilter.maxPrice)}" oninput="setCategoryPriceBound('maxPrice', this.value); renderModalContainer();" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+                    </div>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    ${CATEGORY_PRICE_PRESETS.map(p => `
+                      <button onclick="applyCategoryPricePreset('${p.min}','${p.max}'); renderModalContainer();" class="px-3.5 py-2 rounded-xl font-bold text-xs transition-all ${String(categoryFilter.minPrice || '') === p.min && String(categoryFilter.maxPrice || '') === p.max ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${pricePresetLabel(p.min, p.max)}</button>
+                    `).join('')}
+                  </div>
                 </div>
+                
+                <!-- Saralash -->
+                <div class="space-y-3">
+                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="arrow-down-up" class="w-4 h-4 text-gray-400"></i> ${tr("Saralash", "Сортировка")}</label>
+                  <div class="space-y-2">
+                    ${sortRow('priceAsc', tr('Narx: arzondan qimmatga', 'Сначала дешевле'), 'trending-up')}
+                    ${sortRow('priceDesc', tr('Narx: qimmatdan arzonga', 'Сначала дороже'), 'trending-down')}
+                    ${sortRow('new', tr('Yangi qoʻshilganlar', 'Сначала новые'), 'sparkles')}
+                    ${sortRow('sold', tr('Eng koʻp sotilganlar', 'Популярные'), 'flame')}
+                  </div>
+                </div>
+                
               </div>
-
-              <div class="fc-filter-footer-actions pt-1">
-                <button onclick="clearCategoryFilter()" class="fc-filter-reset">🧹 ${tr("Tozalash", "Сбросить")}</button>
-                <button onclick="closeCategoryFilterModal()" class="fc-filter-results">👁 ${tr(`Natijalarni ko'rish (${filterResultCount} ta)`, `Результаты (${filterResultCount})`)}</button>
+              
+              <div class="pt-4 border-t border-gray-50 bg-white">
+                <button onclick="closeCategoryFilterModal();" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold text-[15px] py-4 px-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
+                  <span>${tr("Natijalarni ko'rish", "Показать результаты")}</span>
+                  <span class="bg-white/20 px-2 py-0.5 rounded-full text-xs">${filterResultCount}</span>
+                </button>
               </div>
             </div>
           </div>
         `;
+        lucide.createIcons({ root: container });
         return;
       }
+
 
       // PRODUCT DETAILS MODAL
       if (selectedProductModal) {
@@ -19710,7 +19833,7 @@ if (activePopupModal === 'LOGO_CROP') {
 
       setupPolling();
       switchTab('home');
-      if (isAdminMode && isUserAnAdmin) requestAnimationFrame(() => openAdminCommandCenter(true));
+      if (isAdminMode && isUserAnAdmin) requestAnimationFrame(() => showAdminWelcomeModal());
       // (catalogPromise xatosi endi yuqorida, yaratilgan joyida ushlanadi.)
       void catalogPromise;
 
@@ -19728,4 +19851,8 @@ if (activePopupModal === 'LOGO_CROP') {
     }
 
     // INITIAL LAUNCH
+    window.addEventListener('scroll', () => {
+      const btn = document.querySelector('.fc-scroll-top-btn');
+      if (btn) btn.classList.toggle('is-visible', window.scrollY > 300);
+    });
     boot();
