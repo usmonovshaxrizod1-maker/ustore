@@ -2253,7 +2253,7 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .fc-home-cat-block-title{font-size:.85rem;font-weight:800;color:var(--ustore-text,#0f172a)}
 .fc-home-cat-block-seeall{font-size:.68rem;font-weight:700;color:var(--fc-primary)}
 /* 4-band: Kataloglar sahifasidagi "Tepaga" tugmasi (pastdagi nav ustida). */
-.fc-scroll-top-btn{position:fixed;right:1rem;bottom:5.5rem;z-index:30;width:2.6rem;height:2.6rem;border-radius:999px;background:var(--fc-primary);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.18);border:none;opacity:0;pointer-events:none;transform:translateY(1rem);transition:opacity 0.2s ease, transform 0.2s ease}
+.fc-scroll-top-btn{position:fixed;right:1rem;bottom:6rem;z-index:30;width:2.8rem;height:2.8rem;border-radius:999px;background:rgba(255,255,255,0.95);color:#0f172a;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;pointer-events:none;transform:translateY(1rem);transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1)}\nbody.fc-admin-mode .fc-scroll-top-btn{bottom: 110px;}
 .fc-scroll-top-btn.is-visible{opacity:1;pointer-events:auto;transform:translateY(0)}
 .fc-scroll-top-btn:active{transform:scale(.94)}
 
@@ -5550,16 +5550,44 @@ body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn){box-shadow:none!impo
 
 /* FIX8 follow-up: any remaining ADMIN primary-blue control is softened globally.
    Storefront/user mode is untouched; semantic Save/Cancel/Danger keep their own colors. */
+/* Premium Dark Monochrome primary buttons in Admin Mode */
 body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn),
 body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn){
-  background:#eaf3ff!important;
-  border:1px solid #bfd7ff!important;
-  color:#175cd3!important;
-  box-shadow:none!important;
+  background:#0f172a!important;
+  border:1px solid #0f172a!important;
+  color:#fff!important;
+  box-shadow:0 4px 12px rgba(15,23,42,0.15)!important;
+  transition: all 0.2s ease !important;
 }
-body.fc-admin-mode button.bg-blue-600.text-white:not(.fc-action-icon-btn){color:#175cd3!important}
+body.fc-admin-mode button.bg-blue-600.text-white:not(.fc-action-icon-btn){color:#fff!important}
 body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn):hover,
-body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn):hover{background:#dcecff!important;border-color:#9fc7ff!important;color:#164caa!important}
+body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn):hover{
+  background:#1e293b!important;
+  border-color:#1e293b!important;
+  box-shadow:0 6px 16px rgba(15,23,42,0.2)!important;
+  transform: translateY(-1px);
+}
+body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn):active,
+body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn):active{
+  transform: translateY(1px);
+}
+
+/* Premium Secondary buttons */
+body.fc-admin-mode .fc-btn-secondary:not(.fc-action-icon-btn),
+body.fc-admin-mode button.bg-gray-100:not(.fc-action-icon-btn){
+  background:#f8fafc!important;
+  border:1px solid #e2e8f0!important;
+  color:#334155!important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+  transition: all 0.2s ease !important;
+}
+body.fc-admin-mode .fc-btn-secondary:not(.fc-action-icon-btn):hover,
+body.fc-admin-mode button.bg-gray-100:not(.fc-action-icon-btn):hover{
+  background:#f1f5f9!important;
+  border-color:#cbd5e1!important;
+  color:#0f172a!important;
+}
+
 /* Save/confirm actions are semantic green even if legacy utility classes remain. */
 body.fc-admin-mode .fc-btn-success{background:#ecfdf3!important;border:1px solid #c6f1d5!important;color:#16803c!important;box-shadow:none!important}
 

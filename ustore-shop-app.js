@@ -121,7 +121,13 @@
     }
 
     // XSS OLDINI OLISH UCHUN: foydalanuvchi kiritgan matnni HTML'ga xavfsiz qo'yish
-    function escapeHtml(str) {
+        function optimizeImageUrl(url, width = 400) {
+      if (!url) return '';
+      if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+      if (url.includes('wsrv.nl')) return url;
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=${width}&output=webp&we`;
+    }
+function escapeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str)
         .replace(/&/g, '&amp;')
@@ -6824,14 +6830,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           <div>
             <div class="relative">
               ${productBadgeChipHtml(p)}
-              <div class="fc-img-square rounded-xl mb-2 bg-gray-100 overflow-hidden flex items-center justify-center p-1.5 animate-pulse">
+              <div class="fc-img-square rounded-xl mb-2 bg-gray-50 overflow-hidden flex items-center justify-center p-1.5">
                 <!-- 041: kartochka rasmni ~128px da ko'rsatadi, shuning uchun
                      mavjud bo'lsa kichik nusxa ishlatiladi (~25 KB, asosiy
                      rasm ~157 KB). Eski mahsulotlarda thumbImg yo'q — o'shanda
                      asosiy rasmga qaytadi. Agar kichik nusxa qandaydir sababga
                      ko'ra ochilmasa, onerror avval asosiy rasmni sinaydi va
                      faqat u ham bo'lmasa zaxira belgiga o'tadi. -->
-                <img referrerpolicy="no-referrer" src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)" onload="this.parentElement?.classList.remove('animate-pulse','bg-gray-100'); this.parentElement?.classList.add('bg-gray-50');" class="w-full h-full object-contain">
+                <img referrerpolicy="no-referrer" src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)"  class="w-full h-full object-contain">
               </div>
               ${(canManageProducts() && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-product-visibility-overlay ${p.isVisible === false ? 'is-hidden' : 'is-visible'}" aria-label="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" title="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductVisibility('${p.id}')"><i data-lucide="${p.isVisible === false ? 'eye-off' : 'eye'}" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
@@ -10830,7 +10836,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       featuredCategoriesSaving = true;
       render();
       try {
-        await callApi('set_marketing_settings', { featuredCategories });
+        await callApi('set_marketing_settings', { featuredCategories, featured_categories: featuredCategories });
         showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1500);
       } catch (e) {
         showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
@@ -10893,9 +10899,15 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const body = `<div class="space-y-3">
         <div class="fc-card"><p class="text-xs text-gray-600">${tr("Bosh sahifada ko'rinadigan kataloglarni va har biriga 6 tagacha mahsulot tanlang.", "Выберите каталоги для главной и до 6 товаров для каждого.")}</p><p class="text-[10px] text-gray-400 mt-1">${featuredCategories.length} / 8 ${tr('katalog tanlandi', 'каталогов выбрано')}</p></div>
         <div class="fc-featured-tree">${renderFeaturedTreeNodes() || `<div class="fc-empty-state"><p>${tr("Kataloglar topilmadi.", "Каталоги не найдены.")}</p></div>`}</div>
-        <button type="button" onclick="saveFeaturedCategories()" class="fc-action-icon-btn is-save" ${featuredCategoriesSaving ? 'disabled' : ''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
+        
       </div>`;
-      renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body, { onBack: "openMarketingHubPage()" });
+      renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body + `
+  <div class="fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-end md:max-w-md md:mx-auto">
+    <button type="button" onclick="saveFeaturedCategories()" class="bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center gap-2" ${featuredCategoriesSaving ? 'disabled' : ''}>
+      <i data-lucide="check" class="w-5 h-5"></i>
+      ${featuredCategoriesSaving ? tr("Saqlanmoqda...","Сохранение...") : tr("Saqlash","Сохранить")}
+    </button>
+  </div>`, { onBack: "openMarketingHubPage()" });
     }
 
     // ==================== BANNERLAR (Online Do'kon yaxshilashlari, 17-band) ====================
@@ -15828,6 +15840,9 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
 
     
     function showAdminWelcomeModal() {
+      const today = new Date().toDateString();
+      if (localStorage.getItem('fc_admin_welcome_date') === today) return;
+      localStorage.setItem('fc_admin_welcome_date', today);
       activePopupModal = 'ADMIN_WELCOME';
       render();
     }
@@ -15860,25 +15875,22 @@ function renderModalContainer() {
       // REGISTRATION MODAL
     if (activePopupModal === 'ADMIN_WELCOME') {
         container.innerHTML = `
-        <div class="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4 backdrop-blur-sm" onclick="activePopupModal=null;render();">
-          <div class="bg-white rounded-[2rem] max-w-sm w-full shadow-2xl flex flex-col overflow-hidden transform transition-all duration-300 scale-100" onclick="event.stopPropagation()">
-            <div class="p-8 text-center relative overflow-hidden bg-gradient-to-br from-indigo-50 to-white">
-              <div class="absolute -top-12 -right-12 w-32 h-32 bg-blue-100/50 rounded-full blur-2xl"></div>
-              <div class="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-100/50 rounded-full blur-2xl"></div>
-              
-              <div class="w-16 h-16 bg-white shadow-lg rounded-2xl flex items-center justify-center mx-auto mb-5 relative z-10 border border-gray-100">
-                <i data-lucide="sparkles" class="w-8 h-8 text-blue-600"></i>
+        <div class="fixed inset-0 bg-[#0a0a0a]/80 z-[9999] flex items-center justify-center p-4 backdrop-blur-xl transition-all duration-300" onclick="activePopupModal=null;render();">
+          <div class="bg-white rounded-[2rem] max-w-sm w-full shadow-[0_24px_64px_-12px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden transform transition-all duration-300 scale-100" onclick="event.stopPropagation()">
+            <div class="pt-10 pb-8 px-8 text-center relative overflow-hidden">
+              <div class="w-16 h-16 bg-gray-900 rounded-[1.25rem] flex items-center justify-center mx-auto mb-6 relative z-10 shadow-lg">
+                <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
               </div>
-              <h2 class="text-xl font-black text-gray-900 mb-2 relative z-10">${tr("Xush kelibsiz, Admin!", "Добро пожаловать, Админ!")}</h2>
-              <p class="text-sm text-gray-500 font-medium leading-relaxed relative z-10">${tr("Do'koningizni boshqarish uchun barcha kerakli vositalar tayyor. Qiladigan ishlaringizni ko'rib chiqing.", "Все необходимые инструменты для управления магазином готовы. Просмотрите ваши задачи.")}</p>
+              <h2 class="text-[22px] font-black text-gray-900 tracking-tight leading-tight mb-3">${tr("Xush kelibsiz", "Добро пожаловать")}</h2>
+              <p class="text-[14px] text-gray-500 font-medium leading-relaxed max-w-[260px] mx-auto">${tr("Do'koningizni boshqarish uchun barcha kerakli vositalar tayyor.", "Все инструменты для управления вашим магазином готовы к работе.")}</p>
             </div>
-            <div class="p-5 flex flex-col gap-3 bg-white border-t border-gray-50">
-              <button type="button" onclick="activePopupModal=null; render(); setTimeout(() => openAdminCommandCenter(true), 50);" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-md">
-                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                ${tr("Boshqaruv markazini ochish", "Открыть центр управления")}
+            <div class="p-6 pt-2 flex flex-col gap-3">
+              <button type="button" onclick="activePopupModal=null; render(); setTimeout(() => openAdminCommandCenter(true), 50);" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold text-[15px] py-4 px-4 rounded-2xl flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 opacity-90"></i>
+                ${tr("Boshqaruv markazi", "Центр управления")}
               </button>
-              <button type="button" onclick="activePopupModal=null; render();" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3.5 px-4 rounded-xl transition-colors">
-                ${tr("Keyinroq", "Позже")}
+              <button type="button" onclick="activePopupModal=null; render();" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold text-[15px] py-4 px-4 rounded-2xl transition-all active:scale-[0.98]">
+                ${tr("Do'konni ko'rish", "Посмотреть магазин")}
               </button>
             </div>
           </div>
@@ -16645,7 +16657,7 @@ function renderModalContainer() {
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Bannerni moslang (2.5:1)', 'Настройте баннер (2.5:1)')}</h3>
+              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Bannerni moslang (5x2)', 'Настройте баннер (5x2)')}</h3>
               <p class="text-[10px] text-gray-500 -mt-1">${tr("Rasmni surish uchun bosib torting, kattalashtirish uchun barmoqlaringizni siljiting yoki sichqoncha g'ildiragidan foydalaning.", "Перетаскивайте изображение пальцем, для увеличения используйте жест щипка или колесо мыши.")}</p>
               <div class="fc-logo-crop-frame">
                 <canvas id="banner-crop-canvas" width="${BANNER_CROP_CANVAS_W}" height="${BANNER_CROP_CANVAS_H}" class="fc-logo-crop-canvas" style="aspect-ratio:5/2;"
