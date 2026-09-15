@@ -5550,26 +5550,27 @@ body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn){box-shadow:none!impo
 
 /* FIX8 follow-up: any remaining ADMIN primary-blue control is softened globally.
    Storefront/user mode is untouched; semantic Save/Cancel/Danger keep their own colors. */
-/* Premium Dark Monochrome primary buttons in Admin Mode */
+/* Premium Deep Blue primary buttons in Admin Mode */
 body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn),
 body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn){
-  background:#0f172a!important;
-  border:1px solid #0f172a!important;
-  color:#fff!important;
-  box-shadow:0 4px 12px rgba(15,23,42,0.15)!important;
+  background:linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)!important;
+  border:1px solid #1d4ed8!important;
+  color:#ffffff!important;
+  box-shadow:0 4px 14px rgba(37,99,235,0.25), inset 0 1px 0 rgba(255,255,255,0.2)!important;
   transition: all 0.2s ease !important;
 }
-body.fc-admin-mode button.bg-blue-600.text-white:not(.fc-action-icon-btn){color:#fff!important}
+body.fc-admin-mode button.bg-blue-600.text-white:not(.fc-action-icon-btn){color:#ffffff!important}
 body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn):hover,
 body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn):hover{
-  background:#1e293b!important;
-  border-color:#1e293b!important;
-  box-shadow:0 6px 16px rgba(15,23,42,0.2)!important;
+  background:linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%)!important;
+  border-color:#2563eb!important;
+  box-shadow:0 6px 20px rgba(37,99,235,0.35), inset 0 1px 0 rgba(255,255,255,0.3)!important;
   transform: translateY(-1px);
 }
 body.fc-admin-mode .fc-btn-primary:not(.fc-action-icon-btn):active,
 body.fc-admin-mode button.bg-blue-600:not(.fc-action-icon-btn):active{
   transform: translateY(1px);
+  box-shadow:0 2px 8px rgba(37,99,235,0.2), inset 0 2px 4px rgba(0,0,0,0.1)!important;
 }
 
 /* Premium Secondary buttons */

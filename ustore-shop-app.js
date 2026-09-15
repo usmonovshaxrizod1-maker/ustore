@@ -5314,7 +5314,13 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function openOrderPauseSettingsPage() { if (isUserAnAdmin && isAdminMode) openPage('ORDER_PAUSE_SETTINGS'); }
     function closeOrderPauseSettingsPage() { openPage('SETTINGS', 'nav-profile'); }
     function orderPauseDetailCardHtml() {
-      const noteRow = ordersPaused ? `<div class="fc-pause-note-row"><textarea id="orders-paused-note" rows="2" placeholder="${tr('Ixtiyoriy izoh, masalan: Bugun inventarizatsiya sababli buyurtmalar qabul qilinmaydi.', 'Необязательный комментарий, например: Сегодня заказы не принимаются из-за инвентаризации.')}" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea><button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-action-icon-btn is-save" aria-label="${tr('Izohni saqlash','Сохранить комментарий')}" title="${tr('Izohni saqlash','Сохранить комментарий')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>` : '';
+      const noteRow = ordersPaused ? `<div class="fc-pause-note-row mt-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
+  <label class="text-xs font-bold text-gray-700">${tr("Mijozga izoh", "Комментарий для клиента")}</label>
+  <textarea id="orders-paused-note" rows="3" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:bg-white" placeholder="${tr('Ixtiyoriy izoh...', 'Необязательный комментарий...')}" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea>
+  <button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-btn fc-btn-primary w-full flex items-center justify-center gap-2" style="height: 48px; border-radius: 12px;">
+    <i data-lucide="check" class="w-5 h-5"></i> ${tr('Saqlash','Сохранить')}
+  </button>
+</div>` : '';
       return `<section class="fc-settings-detail-card"><div class="fc-settings-toggle-row"><span class="fc-settings-menu-icon"><i data-lucide="pause-circle" class="w-5 h-5"></i></span><div class="fc-settings-menu-copy"><b>${tr("Buyurtmalarni vaqtincha qabul qilmaslik", "Временно не принимать заказы")}</b><small>${tr("Katalog ko'rinishda qoladi, faqat yangi buyurtma berish vaqtincha to'xtatiladi.", "Каталог остаётся видимым, приостанавливается только оформление новых заказов.")}</small></div><label class="fc-toggle"><input type="checkbox" ${ordersPaused ? 'checked' : ''} onchange="toggleOrdersPaused(this.checked)"><span class="fc-toggle-track"></span></label></div>${noteRow}</section>`;
     }
     function rerenderOrderPauseDetailCard() {
@@ -10903,7 +10909,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       </div>`;
       renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body + `
   <div class="fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-end md:max-w-md md:mx-auto">
-    <button type="button" onclick="saveFeaturedCategories()" class="bg-gray-900 hover:bg-gray-800 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center gap-2" ${featuredCategoriesSaving ? 'disabled' : ''}>
+    <button type="button" onclick="saveFeaturedCategories()" class="fc-btn-primary text-white font-bold py-3.5 px-6 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center gap-2" ${featuredCategoriesSaving ? 'disabled' : ''}>
       <i data-lucide="check" class="w-5 h-5"></i>
       ${featuredCategoriesSaving ? tr("Saqlanmoqda...","Сохранение...") : tr("Saqlash","Сохранить")}
     </button>
@@ -15875,21 +15881,21 @@ function renderModalContainer() {
       // REGISTRATION MODAL
     if (activePopupModal === 'ADMIN_WELCOME') {
         container.innerHTML = `
-        <div class="fixed inset-0 bg-[#0a0a0a]/80 z-[9999] flex items-center justify-center p-4 backdrop-blur-xl transition-all duration-300" onclick="activePopupModal=null;render();">
-          <div class="bg-white rounded-[2rem] max-w-sm w-full shadow-[0_24px_64px_-12px_rgba(0,0,0,0.3)] flex flex-col overflow-hidden transform transition-all duration-300 scale-100" onclick="event.stopPropagation()">
+        <div class="fixed inset-0 flex items-center justify-center p-4 transition-all duration-300" style="background: rgba(10, 10, 10, 0.8); z-index: 99999; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);" onclick="activePopupModal=null;render();">
+          <div class="bg-white w-full shadow-2xl flex flex-col overflow-hidden" style="max-w: 340px; border-radius: 28px; box-shadow: 0 24px 64px -12px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
             <div class="pt-10 pb-8 px-8 text-center relative overflow-hidden">
-              <div class="w-16 h-16 bg-gray-900 rounded-[1.25rem] flex items-center justify-center mx-auto mb-6 relative z-10 shadow-lg">
-                <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+              <div class="mx-auto mb-6 flex items-center justify-center shadow-lg" style="width: 64px; height: 64px; background: #0f172a; border-radius: 20px;">
+                <i data-lucide="shield-check" style="width: 32px; height: 32px; color: #fff;"></i>
               </div>
-              <h2 class="text-[22px] font-black text-gray-900 tracking-tight leading-tight mb-3">${tr("Xush kelibsiz", "Добро пожаловать")}</h2>
-              <p class="text-[14px] text-gray-500 font-medium leading-relaxed max-w-[260px] mx-auto">${tr("Do'koningizni boshqarish uchun barcha kerakli vositalar tayyor.", "Все инструменты для управления вашим магазином готовы к работе.")}</p>
+              <h2 class="font-black text-gray-900 tracking-tight leading-tight mb-3" style="font-size: 22px;">${tr("Xush kelibsiz", "Добро пожаловать")}</h2>
+              <p class="text-gray-500 font-medium leading-relaxed mx-auto" style="font-size: 14px; max-width: 260px;">${tr("Do'koningizni boshqarish uchun barcha kerakli vositalar tayyor.", "Все инструменты для управления вашим магазином готовы к работе.")}</p>
             </div>
             <div class="p-6 pt-2 flex flex-col gap-3">
-              <button type="button" onclick="activePopupModal=null; render(); setTimeout(() => openAdminCommandCenter(true), 50);" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold text-[15px] py-4 px-4 rounded-2xl flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]">
-                <i data-lucide="layout-dashboard" class="w-5 h-5 opacity-90"></i>
+              <button type="button" onclick="activePopupModal=null; render(); setTimeout(() => openAdminCommandCenter(true), 50);" class="fc-btn fc-btn-primary w-full" style="height: 54px; border-radius: 16px; font-size: 15px;">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
                 ${tr("Boshqaruv markazi", "Центр управления")}
               </button>
-              <button type="button" onclick="activePopupModal=null; render();" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold text-[15px] py-4 px-4 rounded-2xl transition-all active:scale-[0.98]">
+              <button type="button" onclick="activePopupModal=null; render();" class="fc-btn fc-btn-secondary w-full" style="height: 54px; border-radius: 16px; font-size: 15px; background: #f8fafc; border: 1px solid #e2e8f0;">
                 ${tr("Do'konni ko'rish", "Посмотреть магазин")}
               </button>
             </div>
@@ -16655,7 +16661,7 @@ function renderModalContainer() {
       
       if (activePopupModal === 'BANNER_CROP') {
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div class="fixed inset-0 bg-black/90" style="z-index: 999999;" flex items-center justify-center p-4">
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Bannerni moslang (5x2)', 'Настройте баннер (5x2)')}</h3>
               <p class="text-[10px] text-gray-500 -mt-1">${tr("Rasmni surish uchun bosib torting, kattalashtirish uchun barmoqlaringizni siljiting yoki sichqoncha g'ildiragidan foydalaning.", "Перетаскивайте изображение пальцем, для увеличения используйте жест щипка или колесо мыши.")}</p>
@@ -16680,7 +16686,7 @@ function renderModalContainer() {
       }
 if (activePopupModal === 'LOGO_CROP') {
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div class="fixed inset-0 bg-black/90" style="z-index: 999999;" flex items-center justify-center p-4">
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Logotipni moslang (4:1)', 'Настройте логотип (4:1)')}</h3>
               <p class="text-[10px] text-gray-500 -mt-1">${tr("Rasmni surish uchun bosib torting, kattalashtirish uchun barmoqlaringizni siljiting yoki sichqoncha g'ildiragidan foydalaning.", "Перетаскивайте изображение пальцем, для увеличения используйте жест щипка или колесо мыши.")}</p>
@@ -16707,7 +16713,7 @@ if (activePopupModal === 'LOGO_CROP') {
 
       if (activePopupModal === 'WORDMARK_GENERATOR') {
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onclick="if(event.target===this) closeWordmarkGenerator();">
+          <div class="fixed inset-0 bg-black/90" style="z-index: 999999;" flex items-center justify-center p-4" onclick="if(event.target===this) closeWordmarkGenerator();">
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs max-h-[88vh] overflow-y-auto" onclick="event.stopPropagation()">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Nomdan logo yaratish', 'Создать логотип из названия')}</h3>
               <div class="fc-shop-field">
@@ -16989,7 +16995,7 @@ if (activePopupModal === 'LOGO_CROP') {
               </div>
               
               <div class="pt-4 border-t border-gray-50 bg-white">
-                <button onclick="closeCategoryFilterModal();" class="w-full bg-gray-900 hover:bg-gray-800 text-white font-bold text-[15px] py-4 px-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
+                <button onclick="closeCategoryFilterModal();" class="w-full fc-btn-primary fc-btn text-white font-bold text-[15px] py-4 px-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
                   <span>${tr("Natijalarni ko'rish", "Показать результаты")}</span>
                   <span class="bg-white/20 px-2 py-0.5 rounded-full text-xs">${filterResultCount}</span>
                 </button>
