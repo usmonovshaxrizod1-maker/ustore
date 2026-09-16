@@ -14500,6 +14500,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       bannerCropFile = file;
       activePopupModal = 'BANNER_CROP';
       render();
+      document.querySelectorAll('.fc-sheet-overlay, [id$="-root"]').forEach(el => {
+        if (el.id === 'fc-banner-form-root' || el.classList.contains('fc-sheet-overlay')) {
+          el.style.display = 'none';
+        }
+      });
       try {
         bannerCropBitmap = await createImageBitmap(file);
       } catch (e) {
@@ -14617,6 +14622,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       drawBannerCropCanvas();
     }
     function closeBannerCropStep() {
+      document.querySelectorAll('.fc-sheet-overlay, [id$="-root"]').forEach(el => {
+        if (el.id === 'fc-banner-form-root' || el.classList.contains('fc-sheet-overlay')) {
+          el.style.display = '';
+        }
+      });
       bannerCropFile = null;
       bannerCropBitmap = null;
       bannerCropPointers.clear();
@@ -14635,7 +14645,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const blob = await new Promise(r => canvas.toBlob(r, mimeType, 0.92));
       closeBannerCropStep();
       if (!blob) return showAppNotice(tr("Xatolik yuz berdi.", "Произошла ошибка."));
-      const croppedFile = new File([blob], `banner-2.5x1.${ext}`, { type: mimeType });
+      const croppedFile = blob; croppedFile.name = `banner-5x2.${ext}`; croppedFile.lastModified = Date.now();
       
       // Inject logic to mimic onImagePicked
       const selectionVersion = ++tempImageSelectionVersion;
@@ -14722,6 +14732,11 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       logoCropEditingInsideShopInfo = editingInsideShopInfo;
       activePopupModal = 'LOGO_CROP';
       render();
+      document.querySelectorAll('.fc-sheet-overlay, [id$="-root"]').forEach(el => {
+        if (el.id === 'fc-banner-form-root' || el.classList.contains('fc-sheet-overlay')) {
+          el.style.display = 'none';
+        }
+      });
       try {
         logoCropBitmap = await createImageBitmap(file);
       } catch (e) {
@@ -14885,7 +14900,7 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       closeLogoCropStep(editingInsideShopInfo);
       if (!blob) return showAppNotice(tr("Rasmni tayyorlab bo'lmadi. Qaytadan urinib ko'ring.", "Не удалось подготовить изображение. Попробуйте снова."));
       const ext = mimeType === 'image/png' ? 'png' : 'jpg';
-      const croppedFile = new File([blob], `logo-4x1.${ext}`, { type: mimeType });
+      const croppedFile = blob; croppedFile.name = `logo-4x1.${ext}`; croppedFile.lastModified = Date.now();
       await processCroppedLogoFile(croppedFile, editingInsideShopInfo);
     }
 
@@ -16661,7 +16676,7 @@ function renderModalContainer() {
       
       if (activePopupModal === 'BANNER_CROP') {
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/90" style="z-index: 999999;" flex items-center justify-center p-4">
+          <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4" style="z-index: 999999;">
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Bannerni moslang (5x2)', 'Настройте баннер (5x2)')}</h3>
               <p class="text-[10px] text-gray-500 -mt-1">${tr("Rasmni surish uchun bosib torting, kattalashtirish uchun barmoqlaringizni siljiting yoki sichqoncha g'ildiragidan foydalaning.", "Перетаскивайте изображение пальцем, для увеличения используйте жест щипка или колесо мыши.")}</p>
@@ -16686,7 +16701,7 @@ function renderModalContainer() {
       }
 if (activePopupModal === 'LOGO_CROP') {
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/90" style="z-index: 999999;" flex items-center justify-center p-4">
+          <div class="fixed inset-0 bg-black/90 flex items-center justify-center p-4" style="z-index: 999999;">
             <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${tr('Logotipni moslang (4:1)', 'Настройте логотип (4:1)')}</h3>
               <p class="text-[10px] text-gray-500 -mt-1">${tr("Rasmni surish uchun bosib torting, kattalashtirish uchun barmoqlaringizni siljiting yoki sichqoncha g'ildiragidan foydalaning.", "Перетаскивайте изображение пальцем, для увеличения используйте жест щипка или колесо мыши.")}</p>
