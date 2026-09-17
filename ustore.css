@@ -5838,7 +5838,7 @@ body.fc-admin-mode .fc-action-icon-btn:active {
   box-shadow: 0 4px 12px rgba(16,24,40,0.1) !important;
 }
 body.fc-admin-mode .fc-action-icon-btn.is-save {
-  background: linear-gradient(135deg, #111827 0%, #374151 100%) !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
   color: #fff !important;
 }
 body.fc-admin-mode .fc-action-icon-btn.is-save > i, body.fc-admin-mode .fc-action-icon-btn.is-save > svg {
@@ -6140,3 +6140,272 @@ body.fc-admin-mode .fc-legal-savebar {
 html.ustore-dark-theme .fc-cat-filter-overlay{background:rgba(2,6,15,.7)}
 html.ustore-dark-theme .fc-cat-filter-sheet{box-shadow:0 -18px 65px rgba(0,0,0,.42)}
 
+/* === TASK 3: PREMIUM ADMIN WELCOME MODAL (2026-09-17) === */
+.fc-admin-welcome-overlay{
+  position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(8,12,20,.72);backdrop-filter:blur(18px) saturate(115%);
+  -webkit-backdrop-filter:blur(18px) saturate(115%);animation:fcAdminWelcomeFade .22s ease-out both;
+}
+.fc-admin-welcome-card{
+  position:relative;width:min(100%,368px);overflow:hidden;border-radius:32px;
+  background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(248,250,252,.985));
+  border:1px solid rgba(255,255,255,.82);
+  box-shadow:0 36px 90px rgba(2,6,23,.34),0 10px 30px rgba(2,6,23,.18),inset 0 1px 0 rgba(255,255,255,.92);
+  transform-origin:center;animation:fcAdminWelcomeCard .28s cubic-bezier(.22,1,.36,1) both;
+}
+.fc-admin-welcome-card::before{
+  content:"";position:absolute;left:50%;top:-116px;width:278px;height:210px;transform:translateX(-50%);
+  border-radius:50%;background:radial-gradient(circle at 50% 48%,rgba(59,130,246,.17),rgba(59,130,246,.055) 45%,transparent 72%);
+  pointer-events:none;
+}
+.fc-admin-welcome-card::after{
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  box-shadow:inset 0 0 0 1px rgba(15,23,42,.018);
+}
+.fc-admin-welcome-hero{position:relative;padding:36px 30px 26px;text-align:center;overflow:hidden}
+.fc-admin-welcome-orbit{
+  position:absolute;left:50%;top:28px;width:132px;height:82px;transform:translateX(-50%);
+  border-radius:50%;border:1px solid rgba(148,163,184,.16);opacity:.8;pointer-events:none;
+}
+.fc-admin-welcome-orbit::before,.fc-admin-welcome-orbit::after{
+  content:"";position:absolute;border-radius:999px;background:rgba(37,99,235,.34);box-shadow:0 0 0 4px rgba(37,99,235,.055)
+}
+.fc-admin-welcome-orbit::before{width:4px;height:4px;left:12px;top:22px}
+.fc-admin-welcome-orbit::after{width:3px;height:3px;right:9px;bottom:18px}
+.fc-admin-welcome-icon{
+  position:relative;z-index:1;width:72px;height:72px;margin:0 auto 22px;display:grid;place-items:center;
+  border-radius:24px;background:linear-gradient(145deg,#172033 0%,#0b1220 64%,#101827 100%);
+  border:1px solid rgba(255,255,255,.13);box-shadow:0 18px 34px rgba(15,23,42,.22),inset 0 1px 0 rgba(255,255,255,.14);
+}
+.fc-admin-welcome-icon::after{
+  content:"";position:absolute;inset:-7px;border-radius:29px;border:1px solid rgba(148,163,184,.15);pointer-events:none
+}
+.fc-admin-welcome-icon svg{width:34px;height:34px;stroke-width:1.85;color:#fff;filter:drop-shadow(0 2px 8px rgba(255,255,255,.14))}
+.fc-admin-welcome-copy{position:relative;z-index:1}
+.fc-admin-welcome-copy h2{
+  margin:0;color:#101827;font-size:25px;line-height:1.14;font-weight:900;letter-spacing:-.65px
+}
+.fc-admin-welcome-copy p{
+  max-width:286px;margin:12px auto 0;color:#64748b;font-size:14px;line-height:1.62;font-weight:560;letter-spacing:-.08px
+}
+.fc-admin-welcome-actions{
+  position:relative;z-index:2;padding:0 20px 22px;display:flex;flex-direction:column;gap:10px
+}
+.fc-admin-welcome-btn{
+  position:relative;width:100%;height:58px;display:grid;grid-template-columns:36px minmax(0,1fr) 18px;align-items:center;
+  gap:10px;padding:0 17px;border-radius:18px;border:1px solid transparent;font:inherit;cursor:pointer;
+  transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation
+}
+.fc-admin-welcome-btn:active{transform:scale(.985)}
+.fc-admin-welcome-btn-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:12px}
+.fc-admin-welcome-btn-icon svg{width:19px;height:19px;stroke-width:2}
+.fc-admin-welcome-btn-label{min-width:0;text-align:left;font-size:15px;font-weight:800;letter-spacing:-.15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fc-admin-welcome-btn-arrow{width:17px;height:17px;stroke-width:2;opacity:.8}
+.fc-admin-welcome-btn-primary{
+  color:#fff;background:linear-gradient(180deg,#3b82f6 0%,#2563eb 100%);border-color:rgba(29,78,216,.56);
+  box-shadow:0 13px 25px rgba(37,99,235,.24),inset 0 1px 0 rgba(255,255,255,.24),inset 0 -1px 0 rgba(15,23,42,.09)
+}
+.fc-admin-welcome-btn-primary .fc-admin-welcome-btn-icon{background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.fc-admin-welcome-btn-primary:hover{box-shadow:0 15px 30px rgba(37,99,235,.29),inset 0 1px 0 rgba(255,255,255,.26)}
+.fc-admin-welcome-btn-secondary{
+  color:#253044;background:rgba(255,255,255,.78);border-color:#e2e8f0;
+  box-shadow:0 6px 16px rgba(15,23,42,.045),inset 0 1px 0 rgba(255,255,255,.92)
+}
+.fc-admin-welcome-btn-secondary .fc-admin-welcome-btn-icon{color:#475569;background:#f1f5f9;box-shadow:inset 0 0 0 1px rgba(148,163,184,.08)}
+.fc-admin-welcome-btn-secondary .fc-admin-welcome-btn-arrow{color:#94a3b8}
+.fc-admin-welcome-btn-secondary:hover{background:#fff;border-color:#cbd5e1;box-shadow:0 9px 20px rgba(15,23,42,.07)}
+@keyframes fcAdminWelcomeFade{from{opacity:0}to{opacity:1}}
+@keyframes fcAdminWelcomeCard{from{opacity:0;transform:translateY(10px) scale(.975)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media (max-width:380px){
+  .fc-admin-welcome-overlay{padding:14px}.fc-admin-welcome-card{border-radius:28px}
+  .fc-admin-welcome-hero{padding:32px 24px 23px}.fc-admin-welcome-icon{width:68px;height:68px;border-radius:22px;margin-bottom:20px}
+  .fc-admin-welcome-copy h2{font-size:23px}.fc-admin-welcome-actions{padding:0 16px 18px}.fc-admin-welcome-btn{height:56px;border-radius:17px}
+}
+@media (prefers-reduced-motion:reduce){.fc-admin-welcome-overlay,.fc-admin-welcome-card{animation:none}.fc-admin-welcome-btn{transition:none}}
+
+
+/* TASK 3 — Marketing / Bosh sahifa kataloglari: premium floating save action.
+   Faqat vizual qatlam: tanlash UI/handlerlari o'zgarmaydi. */
+.fc-featured-page{padding-bottom:5.75rem}
+.fc-featured-save-fab{
+  position:fixed;
+  right:max(18px,calc((100vw - 28rem)/2 + 18px));
+  bottom:calc(84px + env(safe-area-inset-bottom));
+  z-index:46;
+  width:60px;
+  height:60px;
+  min-width:60px;
+  min-height:60px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 72%,#fff);
+  border-radius:20px;
+  color:#fff;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--ustore-primary,#2563eb) 82%,#fff),var(--ustore-primary,#2563eb));
+  box-shadow:0 18px 38px color-mix(in srgb,var(--ustore-primary,#2563eb) 30%,transparent),0 8px 18px rgba(15,23,42,.16),inset 0 1px 0 rgba(255,255,255,.36);
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease;
+}
+.fc-featured-save-fab::before{
+  content:"";
+  position:absolute;
+  inset:-5px;
+  border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 16%,transparent);
+  border-radius:24px;
+  pointer-events:none;
+}
+.fc-featured-save-fab-icon{
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  background:rgba(255,255,255,.13);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22);
+}
+.fc-featured-save-fab:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 21px 42px color-mix(in srgb,var(--ustore-primary,#2563eb) 34%,transparent),0 10px 20px rgba(15,23,42,.18),inset 0 1px 0 rgba(255,255,255,.4)}
+.fc-featured-save-fab:not(:disabled):active{transform:translateY(1px) scale(.94)}
+.fc-featured-save-fab:focus-visible{outline:3px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 24%,transparent);outline-offset:4px}
+.fc-featured-save-fab:disabled{cursor:wait;opacity:.86}
+.fc-featured-save-fab.is-saving .fc-featured-save-fab-icon{background:rgba(255,255,255,.18)}
+@media(min-width:768px){.fc-featured-save-fab{bottom:28px}}
+@media(prefers-reduced-motion:reduce){.fc-featured-save-fab{transition:none}}
+
+/* =========================================================
+   TASK 4 — GLOBAL PREMIUM SAVE / CANCEL STANDARD
+   Form-level save/cancel UI only. Business-domain destructive actions
+   (order cancellation, blocking, subscription disable, etc.) stay semantic.
+   ========================================================= */
+:root{
+  --fc-action-size:52px;
+  --fc-action-radius:16px;
+}
+
+/* Every form action group uses the same compact, text-free visual language. */
+.fc-icon-action-bar,
+body.fc-admin-mode .fc-icon-action-bar{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:12px!important;
+  padding:2px!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+.fc-modal-action-bar{padding-top:8px!important}
+
+.fc-action-icon-btn,
+body.fc-admin-mode .fc-action-icon-btn{
+  position:relative!important;
+  width:var(--fc-action-size)!important;
+  height:var(--fc-action-size)!important;
+  min-width:var(--fc-action-size)!important;
+  min-height:var(--fc-action-size)!important;
+  max-width:var(--fc-action-size)!important;
+  padding:0!important;
+  display:inline-grid!important;
+  place-items:center!important;
+  flex:0 0 var(--fc-action-size)!important;
+  border-radius:var(--fc-action-radius)!important;
+  font-size:0!important;
+  line-height:1!important;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s ease,background .16s ease,border-color .16s ease!important;
+}
+.fc-action-icon-btn svg,
+.fc-action-icon-btn > i,
+body.fc-admin-mode .fc-action-icon-btn svg,
+body.fc-admin-mode .fc-action-icon-btn > i{
+  width:22px!important;
+  height:22px!important;
+  stroke-width:2.35!important;
+}
+
+/* SAVE = brand-primary premium check. No black/charcoal fill. */
+.fc-action-icon-btn.is-save,
+body.fc-admin-mode .fc-action-icon-btn.is-save{
+  color:#fff!important;
+  border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 70%,#fff)!important;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--ustore-primary,#2563eb) 78%,#fff) 0%,var(--ustore-primary,#2563eb) 58%,color-mix(in srgb,var(--ustore-primary,#2563eb) 88%,#1d4ed8) 100%)!important;
+  box-shadow:0 11px 24px color-mix(in srgb,var(--ustore-primary,#2563eb) 24%,transparent),0 3px 8px rgba(15,23,42,.10),inset 0 1px 0 rgba(255,255,255,.32)!important;
+}
+.fc-action-icon-btn.is-save > i,
+.fc-action-icon-btn.is-save > svg,
+body.fc-admin-mode .fc-action-icon-btn.is-save > i,
+body.fc-admin-mode .fc-action-icon-btn.is-save > svg{color:#fff!important}
+
+/* CANCEL / CLOSE = same geometry, calm soft surface + X. */
+.fc-action-icon-btn.is-cancel,
+body.fc-admin-mode .fc-action-icon-btn.is-cancel{
+  color:#64748b!important;
+  border:1px solid #dfe6ee!important;
+  background:linear-gradient(145deg,#ffffff 0%,#f8fafc 100%)!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.07),0 2px 6px rgba(15,23,42,.045),inset 0 1px 0 rgba(255,255,255,.96)!important;
+}
+.fc-action-icon-btn.is-cancel > i,
+.fc-action-icon-btn.is-cancel > svg,
+body.fc-admin-mode .fc-action-icon-btn.is-cancel > i,
+body.fc-admin-mode .fc-action-icon-btn.is-cancel > svg{color:#64748b!important}
+
+.fc-action-icon-btn:not(:disabled):hover{transform:translateY(-1px)!important}
+.fc-action-icon-btn:not(:disabled):active{transform:translateY(1px) scale(.94)!important}
+.fc-action-icon-btn.is-save:not(:disabled):hover{
+  box-shadow:0 14px 28px color-mix(in srgb,var(--ustore-primary,#2563eb) 28%,transparent),0 4px 10px rgba(15,23,42,.11),inset 0 1px 0 rgba(255,255,255,.36)!important;
+}
+.fc-action-icon-btn.is-cancel:not(:disabled):hover{
+  color:#475569!important;
+  border-color:#cfd8e3!important;
+  background:#fff!important;
+  box-shadow:0 10px 24px rgba(15,23,42,.085),0 2px 6px rgba(15,23,42,.05)!important;
+}
+.fc-action-icon-btn:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 20%,transparent)!important;
+  outline-offset:3px!important;
+}
+.fc-action-icon-btn:disabled{opacity:.55!important;cursor:not-allowed!important;transform:none!important;box-shadow:none!important}
+.fc-action-icon-btn .fc-spinner{width:20px!important;height:20px!important;border-width:2px!important;border-color:rgba(255,255,255,.42)!important;border-top-color:#fff!important}
+
+/* Existing Task-3 floating save keeps its fixed position, but adopts the same
+   premium check geometry/colors as every other save control. */
+.fc-featured-save-fab{
+  width:var(--fc-action-size)!important;
+  height:var(--fc-action-size)!important;
+  min-width:var(--fc-action-size)!important;
+  min-height:var(--fc-action-size)!important;
+  border-radius:var(--fc-action-radius)!important;
+  border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 70%,#fff)!important;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--ustore-primary,#2563eb) 78%,#fff) 0%,var(--ustore-primary,#2563eb) 58%,color-mix(in srgb,var(--ustore-primary,#2563eb) 88%,#1d4ed8) 100%)!important;
+  box-shadow:0 11px 24px color-mix(in srgb,var(--ustore-primary,#2563eb) 24%,transparent),0 3px 8px rgba(15,23,42,.10),inset 0 1px 0 rgba(255,255,255,.32)!important;
+}
+.fc-featured-save-fab::before{display:none!important}
+.fc-featured-save-fab-icon{width:auto!important;height:auto!important;background:transparent!important;border-radius:0!important;box-shadow:none!important}
+.fc-featured-save-fab-icon svg{width:22px!important;height:22px!important;stroke-width:2.35!important}
+
+/* Footer wrappers may still own layout, but save/cancel controls themselves do
+   not stretch into old text buttons. */
+.fc-sheet-footer .fc-action-icon-btn,
+.fc-confirm-actions .fc-action-icon-btn{width:var(--fc-action-size)!important;min-width:var(--fc-action-size)!important;flex:0 0 var(--fc-action-size)!important}
+.fc-confirm-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:12px!important}
+
+/* Dark theme stays premium without crushed-black action surfaces. */
+html.ustore-dark-theme .fc-action-icon-btn.is-cancel{
+  color:#cbd5e1!important;
+  border-color:color-mix(in srgb,var(--ustore-border,#334155) 88%,#64748b)!important;
+  background:linear-gradient(145deg,color-mix(in srgb,var(--ustore-card-bg,#172033) 94%,#fff),var(--ustore-panel-bg,#1e293b))!important;
+  box-shadow:0 9px 22px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.05)!important;
+}
+html.ustore-dark-theme .fc-action-icon-btn.is-cancel > i,
+html.ustore-dark-theme .fc-action-icon-btn.is-cancel > svg{color:#cbd5e1!important}
+
+@media(max-width:380px){
+  :root{--fc-action-size:50px;--fc-action-radius:15px}
+  .fc-icon-action-bar{gap:10px!important}
+}
+@media(prefers-reduced-motion:reduce){.fc-action-icon-btn{transition:none!important}}
