@@ -141,7 +141,15 @@ function escapeHtml(str) {
     // SHOP APP 2.0: native browser alert/confirm o'rniga Mini App'ga mos,
     // bloklamaydigan toast va yagona custom confirmation dialogi.
     function showAppNotice(message, preferredState = '') {
-      const raw = String(message ?? '');
+      const original = String(message ?? '');
+      // Server/DB ichki matni foydalanuvchiga chiqmaydi. To'liq tafsilot
+      // brauzer jurnalida qoladi, ekranda esa bajariladigan yechim beriladi.
+      const technical = /\b(DEBUG|PGRST\d*|JWT|postgres|supabase|duplicate key|violates|constraint|relation\s+.+does not exist|column\s+.+does not exist|invalid input syntax|cannot read propert|undefined is not|stack trace|internal server error)\b/i.test(original)
+        || /:\s*[a-z][a-z0-9_]{2,}(?::[^\s]+)?\s*$/i.test(original);
+      if (technical) console.error('[USTORE_USER_NOTICE_DETAIL]', original);
+      const raw = technical
+        ? tr("Amal bajarilmadi. Internetni tekshirib, qayta urinib ko'ring.", 'Не удалось выполнить действие. Проверьте интернет и повторите.')
+        : original;
       const state = preferredState || (/^(✅|✓)/.test(raw) ? 'success' : /^(⚠|⏳)/.test(raw) ? 'saving' : 'error');
       const duration = state === 'success' ? 3000 : state === 'saving' ? 2800 : 4000;
       showActionToast(escapeHtml(raw).replace(/\n/g, '<br>'), state, duration);
@@ -661,6 +669,24 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const v = productVariants(p).find(x => (x.size || null) === (size || null) && (x.color || null) === (color || null));
       const vPrice = v && v.price !== undefined && v.price !== null ? Number(v.price) : null;
       return (vPrice !== null && Number.isFinite(vPrice)) ? vPrice : Number(p?.price) || 0;
+    }
+    function variantOldPrice(p, size, color) {
+      const v = productVariants(p).find(x => (x.size || null) === (size || null) && (x.color || null) === (color || null));
+      const raw = v && v.oldPrice !== undefined && v.oldPrice !== null ? v.oldPrice : v?.old_price;
+      const vOld = raw !== undefined && raw !== null ? Number(raw) : null;
+      return (vOld !== null && Number.isFinite(vOld)) ? vOld : Number(p?.oldPrice) || 0;
+    }
+    function productPriceRange(p) {
+      const vars = productVariants(p);
+      const prices = vars.length
+        ? vars.map(v => variantPrice(p, v.size || null, v.color || null)).filter(Number.isFinite)
+        : [Number(p?.price) || 0];
+      return { min: Math.min(...prices), max: Math.max(...prices) };
+    }
+    function productHasDiscount(p) {
+      const vars = productVariants(p);
+      if (!vars.length) return Number(p?.oldPrice) > Number(p?.price);
+      return vars.some(v => variantOldPrice(p, v.size || null, v.color || null) > variantPrice(p, v.size || null, v.color || null));
     }
     // 4 TA YANGI TOPSHIRIQ (2026-09-01), item 1.4: rasm uchun 4-bosqichli
     // fallback zanjiri — "1. O'lcham/variant rasmi -> 2. Rang rasmi ->
@@ -2495,6 +2521,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           openSupportTicketId = data.ticket.id;
           supportMessages = [data.message];
           startSupportThreadPoll(data.ticket.id);
+          if (supportTicketType === 'RETURN') ordersLoaded = false;
           showActionToast(tr("✅ Yuborildi", "✅ Отправлено"), 'success', 1500);
         } catch (e) {
           console.error(e);
@@ -3017,7 +3044,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       clearTimeout(cartSnapshotTimer);
       cartSnapshotTimer = setTimeout(() => {
         const items = Object.entries(cart).map(([key, itemData]) => ({ productId: cartEntryProductId(key, itemData), qty: itemData.qty, size: itemData.size || null, color: itemData.color || null }));
-        callApi('save_cart_snapshot', { items }).catch(() => {});
+        const bundleItems = Object.entries(bundleCart).map(([bundleId, itemData]) => ({ bundleId, qty: itemData.qty }));
+        callApi('save_cart_snapshot', { items, bundleItems }).catch(() => {});
       }, 1500);
     }
 
@@ -3647,7 +3675,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         const popover = document.getElementById('role-mode-popover');
         const personBtn = document.getElementById('header-person-btn');
         if (!popover || !personBtn) {
-          showActionToast('DEBUG: role-mode-popover yoki header-person-btn topilmadi', 'error', 3000);
+          console.error('[ROLE_MENU_MISSING]', { popover: !!popover, personBtn: !!personBtn });
+          showActionToast(tr("Menyu ochilmadi. Sahifani yangilab, qayta urinib ko'ring.", 'Меню не открылось. Обновите страницу и повторите.'), 'error', 3000);
           return;
         }
         const isOpen = !popover.classList.contains('hidden');
@@ -3664,7 +3693,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         popover.style.left = `${left}px`;
         popover.style.right = 'auto';
       } catch (err) {
-        try { showActionToast('DEBUG togglePersonMenu xato: ' + (err && err.message || err), 'error', 4000); } catch (_) {}
+        console.error('[ROLE_MENU_FAILED]', err);
+        try { showActionToast(tr("Menyu ochilmadi. Qayta urinib ko'ring.", 'Меню не открылось. Повторите попытку.'), 'error', 4000); } catch (_) {}
       }
     }
     document.addEventListener('click', (event) => {
@@ -4273,6 +4303,18 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         ${options.subline ? `<div class="fc-report-kpi-subline">${options.subline}</div>` : ''}${deltaHtml}
       </div>`;
     }
+    function reportCashFlowHtml(cashFlow) {
+      const c = cashFlow || {};
+      const rows = [
+        ['shopping-bag', tr('Berilgan buyurtmalar summasi', 'Сумма оформленных заказов'), money(c.orderedAmount || 0)],
+        ['circle-dollar-sign', tr('Haqiqatan tushgan pul', 'Фактически получено'), money(c.paidAmount || 0)],
+        ['truck', tr('Yetkazilgan buyurtmalar', 'Доставленные заказы'), formatNumber(c.deliveredOrders || 0)],
+        ['undo-2', tr('Qaytarilgan pul', 'Возвращено'), money(c.refundedAmount || 0)],
+        ['badge-dollar-sign', tr('Sof pul oqimi', 'Чистый денежный поток'), money(c.netReceivedAmount || 0)],
+        ['hand-coins', tr('Hali olinmagan naqd', 'Неполученные наличные'), money(c.uncollectedCashAmount || 0)],
+      ];
+      return `<div class="fc-report-cashflow-grid">${rows.map(([icon, label, value], index) => `<div class="fc-report-cashflow-item is-${index}"><span><i data-lucide="${icon}" class="w-4 h-4"></i></span><div><small>${label}</small><b>${value}</b>${index === 5 && Number(c.uncollectedCashOrders || 0) > 0 ? `<em>${formatNumber(c.uncollectedCashOrders)} ${tr('ta buyurtma', 'заказов')}</em>` : ''}</div></div>`).join('')}</div>`;
+    }
     function reportRankingBarsHtml(items) {
       if (!items.length) return `<p class="text-xs text-gray-400">${tr("Ma'lumot yo'q", 'Нет данных')}</p>`;
       const max = Math.max(...items.map((i) => i.value), 1);
@@ -4458,6 +4500,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           ${reportKpiCardHtml(tr('O‘rtacha chek', 'Средний чек'), money(d.avgOrderValue), null, { icon: 'receipt-text', subline: `${formatNumber(d.totalUnitsSold)} ${tr('dona sotildi', 'ед. продано')}` })}
           ${reportKpiCardHtml(tr('Mijozlar', 'Клиенты'), formatNumber(d.totalCustomers), null, { icon: 'users-round', subline: `${formatNumber(d.newCustomers)} ${tr('yangi', 'новых')} · ${formatNumber(d.repeatCustomers)} ${tr('qayta xarid', 'повторных')}`, onclick: "setReportsTab('CUSTOMERS')" })}
         </div>
+        ${reportSectionHtml('landmark', tr('Pul oqimi', 'Денежный поток'), tr('Buyurtma, tushgan pul va qaytarishlar alohida hisoblangan', 'Заказы, поступления и возвраты посчитаны отдельно'), reportCashFlowHtml(d.cashFlow))}
         ${reportSectionHtml('chart-spline', tr('Savdo dinamikasi', 'Динамика продаж'), `${tr('Joriy davr', 'Текущий период')}: ${money(d.totalSales)}`, reportTrendChartHtml(d.salesTimeline || [], 'report-overview-trend'))}
         <div class="fc-report-two-col">
           ${reportSectionHtml('circle-dollar-sign', tr('To‘lov turlari', 'Способы оплаты'), tr('Tushumdagi ulushi', 'Доля в выручке'), reportDonutHtml(payments, money(d.totalSales)))}
@@ -4488,6 +4531,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           ${reportKpiCardHtml(tr('O‘rtacha chek', 'Средний чек'), money(d.avgOrderValue), null, { icon: 'receipt-text' })}
           ${reportKpiCardHtml(tr('Hududlar', 'Регионы'), formatNumber(d.byRegion.length), null, { icon: 'map-pinned', subline: filtersActive ? `${filtersActive} ${tr('ta filtr faol', 'активных фильтра')}` : tr('Barcha hududlar', 'Все регионы') })}
         </div>
+        ${reportSectionHtml('landmark', tr('Pul oqimi', 'Денежный поток'), tr('Tanlangan filtr bo‘yicha pul holati', 'Денежный статус по выбранному фильтру'), reportCashFlowHtml(d.cashFlow))}
         <div class="fc-report-filter-card"><div class="fc-report-filter-title"><span><i data-lucide="list-filter" class="w-4 h-4"></i>${tr('Savdo filtrlari', 'Фильтры продаж')}</span>${filtersActive ? `<button type="button" onclick="reportSalesFilters={regionCode:'',payMethod:'',status:''};loadReportSalesLazy(true)">${tr('Tozalash', 'Сбросить')}</button>` : ''}</div><div class="fc-report-filter-grid">
           <select onchange="setSalesFilter('regionCode', this.value)" class="${selectCls}">
             <option value="">${tr('Barcha hududlar', 'Все регионы')}</option>
@@ -4849,6 +4893,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const sales = details.sales || {};
       const customers = details.customers || {};
       const products = details.products || {};
+      const cashFlow = d.cashFlow || {};
       const { doc, pageW, y: y0 } = newReportPdfDoc(tr('Umumiy hisobot', 'Общий отчёт'), reportsPeriodLabel());
 
       // 1-bet — umumiy ko'rsatkichlar va grafiklar.
@@ -4862,6 +4907,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         [tr('Sotilgan birlik', 'Продано штук'), formatNumber(d.totalUnitsSold)],
         [tr('Jami mijozlar', 'Всего клиентов'), formatNumber(d.totalCustomers)],
         [tr('Yangi mijozlar', 'Новые клиенты'), formatNumber(d.newCustomers)],
+        [tr('Buyurtma summasi', 'Сумма заказов'), money(cashFlow.orderedAmount || 0)],
+        [tr('Tushgan pul', 'Получено'), money(cashFlow.paidAmount || 0)],
+        [tr('Qaytarilgan pul', 'Возвращено'), money(cashFlow.refundedAmount || 0)],
+        [tr('Olinmagan naqd', 'Неполученные наличные'), money(cashFlow.uncollectedCashAmount || 0)],
       ]);
       if ((d.salesTimeline || []).some((row) => Number(row.salesAmount) > 0)) {
         y = pdfEnsureSpace(doc, y, 58);
@@ -4970,12 +5019,17 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (!reportSalesData) { pdfNoDataYetToast(); return; }
       if (!reportPdfAvailable()) { pdfLibMissingAlert(); return; }
       const d = reportSalesData;
+      const cashFlow = d.cashFlow || {};
       const { doc, pageW, y: y0 } = newReportPdfDoc(tr('Savdo hisoboti', 'Отчёт по продажам'), reportsPeriodLabel());
       let y = pdfKpiGrid(doc, 14, y0 + 2, pageW - 28, [
         [tr('Jami savdo', 'Продажи'), money(d.totalSales)],
         [tr('Buyurtmalar', 'Заказы'), formatNumber(d.totalOrders)],
         [tr('O‘rtacha chek', 'Средний чек'), money(d.avgOrderValue)],
         [tr('Savdoga kirgan', 'Учтено в продажах'), formatNumber(d.soldOrderCount)],
+        [tr('Buyurtma summasi', 'Сумма заказов'), money(cashFlow.orderedAmount || 0)],
+        [tr('Tushgan pul', 'Получено'), money(cashFlow.paidAmount || 0)],
+        [tr('Qaytarilgan pul', 'Возвращено'), money(cashFlow.refundedAmount || 0)],
+        [tr('Olinmagan naqd', 'Неполученные наличные'), money(cashFlow.uncollectedCashAmount || 0)],
       ]);
       if ((d.salesTimeline || []).some((row) => Number(row.salesAmount) > 0)) {
         y = pdfEnsureSpace(doc, y, 58);
@@ -5314,12 +5368,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function openOrderPauseSettingsPage() { if (isUserAnAdmin && isAdminMode) openPage('ORDER_PAUSE_SETTINGS'); }
     function closeOrderPauseSettingsPage() { openPage('SETTINGS', 'nav-profile'); }
     function orderPauseDetailCardHtml() {
-      const noteRow = ordersPaused ? `<div class="px-4 pb-4 pt-4 border-t border-gray-100 flex flex-col gap-3">
-  <label class="text-xs font-bold text-gray-700">${tr("Mijozga izoh", "Комментарий для клиента")}</label>
-  <textarea id="orders-paused-note" rows="3" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:bg-white" placeholder="${tr('Ixtiyoriy izoh...', 'Необязательный комментарий...')}" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea>
-  <button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-btn fc-btn-primary w-full flex items-center justify-center gap-2" style="height: 48px; border-radius: 12px;">
-    <i data-lucide="check" class="w-5 h-5"></i> ${tr('Saqlash','Сохранить')}
-  </button>
+      const noteRow = ordersPaused ? `<div class="fc-pause-note-row">
+  <textarea id="orders-paused-note" rows="2" aria-label="${tr('Mijozga izoh','Комментарий для клиента')}" placeholder="${tr('Mijozga ixtiyoriy izoh...', 'Необязательный комментарий для клиента...')}" oninput="ordersPausedNote=this.value">${escapeHtml(ordersPausedNote)}</textarea>
+  <button type="button" onclick="saveOrdersPausedNote(document.getElementById('orders-paused-note')?.value || '')" class="fc-action-icon-btn is-save" aria-label="${tr('Izohni saqlash','Сохранить комментарий')}" title="${tr('Izohni saqlash','Сохранить комментарий')}"><i data-lucide="check" class="w-5 h-5"></i></button>
 </div>` : '';
       return `<section class="fc-settings-detail-card"><div class="fc-settings-toggle-row"><span class="fc-settings-menu-icon"><i data-lucide="pause-circle" class="w-5 h-5"></i></span><div class="fc-settings-menu-copy"><b>${tr("Buyurtmalarni vaqtincha qabul qilmaslik", "Временно не принимать заказы")}</b><small>${tr("Katalog ko'rinishda qoladi, faqat yangi buyurtma berish vaqtincha to'xtatiladi.", "Каталог остаётся видимым, приостанавливается только оформление новых заказов.")}</small></div><label class="fc-toggle"><input type="checkbox" ${ordersPaused ? 'checked' : ''} onchange="toggleOrdersPaused(this.checked)"><span class="fc-toggle-track"></span></label></div>${noteRow}</section>`;
     }
@@ -6843,7 +6894,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                      asosiy rasmga qaytadi. Agar kichik nusxa qandaydir sababga
                      ko'ra ochilmasa, onerror avval asosiy rasmni sinaydi va
                      faqat u ham bo'lmasa zaxira belgiga o'tadi. -->
-                <img referrerpolicy="no-referrer" src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)"  class="w-full h-full object-contain">
+                <img referrerpolicy="no-referrer" loading="lazy" decoding="async" src="${escapeHtml(cardImg || FALLBACK_IMG)}" data-full-img="${escapeHtml(cardImg || p.img || '')}" onerror="retryCardImage(this)" class="w-full h-full object-contain">
               </div>
               ${(canManageProducts() && !bulkSelecting) ? `<button type="button" class="fc-product-pin-overlay ${p.isFeatured ? 'is-active' : ''}" aria-label="${tr('Pin','Закрепить')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductFeatured('${p.id}')">${ICON_PIN}</button><button type="button" class="fc-product-more-overlay" aria-label="${tr('Qo‘shimcha amallar','Дополнительные действия')}" onpointerdown="event.stopPropagation()" onclick="openCardActionMenu('product','${p.id}',event)"><i data-lucide="ellipsis-vertical" class="w-4 h-4"></i></button><button type="button" class="fc-product-visibility-overlay ${p.isVisible === false ? 'is-hidden' : 'is-visible'}" aria-label="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" title="${p.isVisible === false ? tr('Userga ko‘rsatish','Показать пользователю') : tr('Userdan yashirish','Скрыть от пользователя')}" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();toggleProductVisibility('${p.id}')"><i data-lucide="${p.isVisible === false ? 'eye-off' : 'eye'}" class="w-4 h-4"></i></button><button type="button" class="fc-drag-handle fc-product-drag-image" aria-label="${tr('Tartiblash','Сортировать')}" onpointerdown="beginCatalogDrag('product','${p.id}',event)" onpointermove="moveCatalogDrag(event)" onpointerup="endCatalogDrag(event)" onpointercancel="cancelCatalogDrag(event)">${ICON_GRIP_6}</button>${cardActionMenuHtml('product', p.id)}` : ''}
               ${!(isAdminMode && isUserAnAdmin) ? `<div class="absolute top-1 left-1">${favoriteHeartHtml(p.id)}</div>` : ''}
@@ -7019,11 +7070,12 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       // ham mantiqan bir xil narsa (stock<=0 bo'lganlarni yashirish).
       if (categoryFilter.inStockOnly) result = result.filter(p => Number(p.stock) > 0);
       // Online Do'kon yaxshilashlari, 8-band: faqat chegirmali tovarlarni ko'rsatish.
-      if (categoryFilter.discountOnly) result = result.filter(p => p.oldPrice && Number(p.oldPrice) > Number(p.price));
+      if (categoryFilter.discountOnly) result = result.filter(productHasDiscount);
       const min = parseFloat(categoryFilter.minPrice);
       const max = parseFloat(categoryFilter.maxPrice);
-      if (!isNaN(min)) result = result.filter(p => p.price >= min);
-      if (!isNaN(max)) result = result.filter(p => p.price <= max);
+      // Variantli mahsulot oralig'i filtr oralig'i bilan kesishsa ko'rinadi.
+      if (!isNaN(min)) result = result.filter(p => productPriceRange(p).max >= min);
+      if (!isNaN(max)) result = result.filter(p => productPriceRange(p).min <= max);
 
       const dirMul = (dir) => dir === 'asc' ? 1 : -1;
       result.sort((a, b) => {
@@ -7032,7 +7084,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         const stockBucket = (Number(b.stock) > 0 ? 1 : 0) - (Number(a.stock) > 0 ? 1 : 0);
         if (stockBucket !== 0) return stockBucket;
         if (categoryFilter.sortPrice) {
-          const d = (a.price - b.price) * dirMul(categoryFilter.sortPrice);
+          const aRange = productPriceRange(a), bRange = productPriceRange(b);
+          const aPrice = categoryFilter.sortPrice === 'asc' ? aRange.min : aRange.max;
+          const bPrice = categoryFilter.sortPrice === 'asc' ? bRange.min : bRange.max;
+          const d = (aPrice - bPrice) * dirMul(categoryFilter.sortPrice);
           if (d !== 0) return d;
         }
         if (categoryFilter.sortNew) {
@@ -8242,6 +8297,15 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           return showAppNotice(tr("Chek rasmi yaroqsiz yoki juda katta (JPG/PNG/WebP, 6MB gacha).", 'Файл чека повреждён или слишком большой (JPG/PNG/WebP, до 6 МБ).'));
         }
 
+        let checkoutKey = localStorage.getItem(scopedKey('checkoutRequestKey'));
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkoutKey || '')) {
+          checkoutKey = (globalThis.crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = Math.random() * 16 | 0;
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+          }));
+          localStorage.setItem(scopedKey('checkoutRequestKey'), checkoutKey);
+        }
+
         const result = await callApi('create_order', {
           items: itemsPayload, bundleItems: bundleItemsPayload, fullname, phone, regionKey, district, address,
           deliveryMethodId: selectedDeliveryMethodId,
@@ -8249,6 +8313,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           receiptImageUpload, branchId: isPostDelivery ? checkoutSelectedBranch?.id : undefined,
           promoCode: appliedPromoState?.code || undefined,
           useVip: useVipDiscount,
+          checkoutKey,
         });
         const newOrder = formatOrderForUi(result.order);
         orders.unshift(newOrder);
@@ -8256,6 +8321,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         cart = {};
         bundleCart = {};
         localStorage.setItem(scopedKey('cart'), JSON.stringify(cart));
+        localStorage.removeItem(scopedKey('checkoutRequestKey'));
         saveBundleCart();
         checkoutPromoCode = ''; appliedPromoState = null; checkoutDiscountState = null; promoError = '';
         activePopupModal = null;
@@ -8278,6 +8344,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           showAppNotice(tr("❌ Afsuski, savatchangizdagi bir yoki bir nechta tovar omborda tugab qoldi. Savatchani tekshiring.", "❌ Один или несколько товаров в корзине закончились. Проверьте корзину."));
         } else if (String(e.message).includes('bundle_unavailable')) {
           showAppNotice(tr("❌ Savatchangizdagi bir aksiya endi mavjud emas (o'chirilgan yoki muddati tugagan). Savatchani tekshiring.", "❌ Одна из акций в корзине больше недоступна (удалена или истёк срок). Проверьте корзину."));
+        } else if (String(e.message).includes('bundle_product_also_in_cart')) {
+          showAppNotice(tr("Bir mahsulot savatda oddiy hamda aksiya tarkibida takrorlangan. Ulardan bittasini olib tashlang.", "Один товар добавлен и отдельно, и в составе акции. Удалите один из вариантов."));
         } else if (String(e.message).startsWith('blocked:')) {
           myStatus.isBlocked = true;
           myStatus.blockReason = e.message.slice('blocked:'.length);
@@ -8286,6 +8354,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           showAppNotice(tr("Buyurtmani yuborish uchun to'lov chekini yuklang.", 'Чтобы отправить заказ, загрузите чек оплаты.'));
         } else if (String(e.message).includes('receipt_upload_failed')) {
           showAppNotice(tr("❌ To'lov cheki yuklanmadi, shuning uchun buyurtma yaratilmadi. Qayta urinib ko'ring.", "❌ Чек оплаты не загрузился, поэтому заказ не был создан. Попробуйте ещё раз."));
+        } else if (String(e.message).includes('promo_limit_changed')) {
+          appliedPromoState = null;
+          showAppNotice(tr("Promo-kod limiti hozirgina tugadi. Savat tiklandi; boshqa promo-kod bilan qayta urinishingiz mumkin.", "Лимит промокода только что закончился. Корзина восстановлена; попробуйте другой промокод."));
         } else if (String(e.message).includes('branch_required') || String(e.message).includes('invalid_branch')) {
           checkoutSelectedBranch = null;
           showAppNotice(tr("Iltimos, pochta filialini qaytadan tanlang.", 'Пожалуйста, выберите отделение почты заново.'));
@@ -8483,6 +8554,65 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function renderOrderStatusCompactFilter(value, onchangeJs) {
       const options = [['ALL',tr('Barchasi','Все')],['NEW',statusLabel('NEW')],['PROCESSING',statusLabel('PROCESSING')],['DELIVERED',statusLabel('DELIVERED')],['CANCELLED',statusLabel('CANCELLED')]];
       return `<label class="fc-orders-status-select ${value!=='ALL'?'is-active':''}" title="${tr('Buyurtma maqomini tanlang','Выберите статус заказа')}"><i data-lucide="list-filter" class="w-4 h-4"></i><select aria-label="${tr('Buyurtma maqomi','Статус заказа')}" onchange="${onchangeJs}">${options.map(([id,label])=>`<option value="${id}" ${value===id?'selected':''}>${escapeHtml(label)}</option>`).join('')}</select><i data-lucide="chevron-down" class="w-4 h-4 fc-orders-status-chevron"></i></label>`;
+    }
+
+    function paymentStatusLabel(status) {
+      const key = String(status || 'PENDING').toUpperCase();
+      const labels = {
+        PENDING: tr("To'lov kutilmoqda", 'Ожидает оплаты'),
+        PAID: tr("To'langan", 'Оплачен'),
+        FAILED: tr("To'lov amalga oshmadi", 'Оплата не прошла'),
+        CANCELLED: tr("To'lov bekor qilingan", 'Оплата отменена'),
+        REFUNDED: tr("Pul qaytarilgan", 'Возвращён'),
+      };
+      return labels[key] || labels.PENDING;
+    }
+
+    function paymentStatusClass(status) {
+      const key = String(status || 'PENDING').toUpperCase();
+      if (key === 'PAID') return 'fc-text-success';
+      if (key === 'REFUNDED') return 'text-violet-600';
+      if (key === 'FAILED' || key === 'CANCELLED') return 'fc-text-danger';
+      return 'text-amber-600';
+    }
+
+    function returnStatusLabel(status) {
+      const labels = {
+        REQUESTED: tr("So'rov yuborildi", 'Заявка отправлена'), APPROVED: tr('Tasdiqlandi', 'Одобрено'),
+        REJECTED: tr('Rad etildi', 'Отклонено'), RECEIVED: tr('Mahsulot qabul qilindi', 'Товар принят'),
+        RESTOCKED: tr("Qoldiqqa qaytarildi", 'Возвращён на склад'), REFUND_PENDING: tr("Pul qaytarilishi kutilmoqda", 'Ожидает возврата денег'),
+        REFUNDED: tr("Pul qaytarildi", 'Деньги возвращены'), COMPLETED: tr('Yakunlandi', 'Завершено'),
+      };
+      return labels[String(status || '').toUpperCase()] || String(status || '');
+    }
+    async function updateOrderReturn(returnId, status, extra = {}) {
+      showActionToast(tr('Saqlanmoqda...','Сохраняется...'),'saving');
+      try {
+        await callApi('update_order_return', { returnId, status, ...extra });
+        await loadOrdersLazy(true);
+        if (selectedOrderModal) selectedOrderModal = orders.find(o => String(o.id) === String(selectedOrderModal.id)) || selectedOrderModal;
+        render();
+        showActionToast(tr('Qaytarish holati yangilandi','Статус возврата обновлён'),'success',1600);
+      } catch (e) { console.error(e); showAppNotice(tr("Qaytarish holatini yangilab bo'lmadi. Qayta urinib ko'ring.",'Не удалось обновить возврат. Повторите попытку.')); }
+    }
+    function submitReturnRefund(returnId) {
+      const method = document.getElementById(`return-refund-method-${returnId}`)?.value.trim() || '';
+      const reference = document.getElementById(`return-refund-reference-${returnId}`)?.value.trim() || '';
+      if (!reference) return showAppNotice(tr('Pul qaytarilganini tasdiqlovchi raqam yoki izohni kiriting.','Введите номер или комментарий, подтверждающий возврат.'));
+      return updateOrderReturn(returnId, 'REFUNDED', { refundMethod: method, refundReference: reference });
+    }
+    function renderReturnWorkflowHtml(o) {
+      const r = o?.returnRequest;
+      if (!r) return '';
+      const admin = isAdminMode && isUserAnAdmin && canManageOrders();
+      let action = '';
+      if (admin && r.status === 'REQUESTED') action = `<div class="fc-return-actions"><button class="fc-btn fc-btn-primary" onclick="updateOrderReturn('${r.id}','APPROVED')">${tr('Tasdiqlash','Одобрить')}</button><button class="fc-btn fc-btn-secondary" onclick="updateOrderReturn('${r.id}','REJECTED')">${tr('Rad etish','Отклонить')}</button></div>`;
+      else if (admin && r.status === 'APPROVED') action = `<button class="fc-btn fc-btn-primary w-full" onclick="updateOrderReturn('${r.id}','RECEIVED')">${tr('Mahsulot qabul qilindi','Товар принят')}</button>`;
+      else if (admin && r.status === 'RECEIVED') action = `<button class="fc-btn fc-btn-primary w-full" onclick="updateOrderReturn('${r.id}','RESTOCKED')">${tr("Qoldiqqa qaytarish",'Вернуть на склад')}</button>`;
+      else if (admin && r.status === 'RESTOCKED') action = `<button class="fc-btn fc-btn-primary w-full" onclick="updateOrderReturn('${r.id}','REFUND_PENDING')">${tr("Pul qaytarish bosqichiga o'tish",'Перейти к возврату денег')}</button>`;
+      else if (admin && r.status === 'REFUND_PENDING') action = `<div class="fc-return-refund-form"><input id="return-refund-method-${r.id}" placeholder="${tr('Usul: Click, Payme, karta...','Способ: Click, Payme, карта...')}" value="${escapeHtml(r.refundMethod||'')}"><input id="return-refund-reference-${r.id}" placeholder="${tr('Tasdiq raqami yoki izoh *','Номер подтверждения или комментарий *')}"><button class="fc-btn fc-btn-primary" onclick="submitReturnRefund('${r.id}')">${tr("Pul qaytarildi",'Деньги возвращены')}</button></div>`;
+      else if (admin && r.status === 'REFUNDED') action = `<button class="fc-btn fc-btn-primary w-full" onclick="updateOrderReturn('${r.id}','COMPLETED')">${tr('Jarayonni yakunlash','Завершить процесс')}</button>`;
+      return `<section class="fc-order-section fc-return-workflow"><div class="fc-order-section-title"><i data-lucide="rotate-ccw" class="w-4 h-4"></i>${tr('Qaytarish jarayoni','Процесс возврата')}</div><div class="fc-return-status"><span>${escapeHtml(returnStatusLabel(r.status))}</span><b>${money(r.refundAmount)}</b></div><p>${escapeHtml(r.reason||'')}</p>${r.adminNote?`<small>${escapeHtml(r.adminNote)}</small>`:''}${r.billzReconciliationStatus==='MANUAL_REQUIRED'?`<div class="fc-order-note is-warning"><i data-lucide="triangle-alert" class="w-4 h-4"></i><span>${tr("BILLZ qoldig'ini rasmiy BILLZ tartibida qo'lda moslang.",'Сверьте остаток BILLZ вручную по официальному порядку BILLZ.')}</span></div>`:''}${action}</section>`;
     }
 
     function renderOrdersDateFilterHtml() {
@@ -16554,44 +16684,45 @@ function renderModalContainer() {
         const isLoading = st === null;
         const opts = billzConfigOptions;
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">🔳 Billz</h3>
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 fc-provider-overlay">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs fc-provider-modal">
+              <div class="fc-provider-modal-head"><span><i data-lucide="blocks" class="w-5 h-5"></i></span><div><h3>BILLZ</h3><p>${tr("Ombor va savdo tizimini xavfsiz ulang", "Безопасно подключите склад и продажи")}</p></div></div>
               ${isLoading ? `
                 <div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>
               ` : !isConnected ? `
-                <p class="text-gray-500">${tr("Billz hisobingizdagi integratsiya kaliti (secret_token) kiriting. BILLZ UI'da: Sozlamalar → Ключи интеграции.", "Введите ключ интеграции (secret_token) вашего аккаунта Billz. В BILLZ UI: Настройки → Ключи интеграции.")}</p>
+                <div class="fc-provider-security-note"><i data-lucide="shield-check" class="w-4 h-4"></i><span>${tr("Kalit faqat serverga yuboriladi va brauzerda saqlanmaydi.", "Ключ отправляется только на сервер и не хранится в браузере.")}</span></div>
+                <p class="fc-provider-help">${tr("BILLZ hisobingizdagi integratsiya kalitini kiriting: Sozlamalar → Ключи интеграции.", "Введите ключ интеграции BILLZ: Настройки → Ключи интеграции.")}</p>
                 ${st?.status === 'ERROR' && st?.lastError ? `<p class="fc-bg-danger-soft border fc-border-danger fc-text-danger p-2 rounded-xl">${escapeHtml(st.lastError)}</p>` : ''}
-                <input type="password" id="billz-secret-token-input" autocomplete="off" placeholder="secret_token" class="w-full p-2 border rounded-xl font-mono">
-                <button onclick="connectBillz()" id="billz-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("Ulash", "Подключить")}</button>
+                <label class="fc-provider-field"><span>${tr('Maxfiy integratsiya kaliti','Секретный ключ интеграции')}</span><input type="password" id="billz-secret-token-input" autocomplete="off" placeholder="secret_token" class="w-full p-2 border rounded-xl font-mono fc-provider-control"></label>
+                <button onclick="connectBillz()" id="billz-connect-btn" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl fc-provider-primary"><i data-lucide="link-2" class="w-4 h-4"></i>${tr("Ulash", "Подключить")}</button>
               ` : `
-                <div class="fc-bg-success-soft border fc-border-success fc-text-success p-2.5 rounded-xl font-bold">✅ ${tr("Ulangan", "Подключено")}</div>
-                <div>
-                  <label class="font-bold text-gray-600">${tr("Billz do'koni", "Магазин Billz")}</label>
-                  <select id="billz-shop-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50">
+                <div class="fc-provider-connected"><span><i data-lucide="badge-check" class="w-4 h-4"></i></span><div><b>${tr("Ulangan", "Подключено")}</b><small>${tr('Kalit maxfiy saqlanmoqda','Ключ хранится безопасно')}</small></div></div>
+                <div class="fc-provider-field">
+                  <label>${tr("BILLZ do'koni", "Магазин BILLZ")}</label>
+                  <select id="billz-shop-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50 fc-provider-control">
                     <option value="">${tr("Tanlanmagan", "Не выбрано")}</option>
                     ${(opts?.shops || []).map(s => `<option value="${escapeHtml(s.id)}" ${st.billzShopName === s.name ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
                   </select>
                 </div>
-                <div>
-                  <label class="font-bold text-gray-600">${tr("Kassa", "Касса")}</label>
-                  <select id="billz-cashbox-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50">
+                <div class="fc-provider-field">
+                  <label>${tr("Kassa", "Касса")}</label>
+                  <select id="billz-cashbox-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50 fc-provider-control">
                     <option value="">${tr("Tanlanmagan", "Не выбрано")}</option>
                     ${(opts?.cashboxes || []).map(c => `<option value="${escapeHtml(c.id)}" ${st.billzCashboxName === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('')}
                   </select>
                 </div>
-                <div>
-                  <label class="font-bold text-gray-600">${tr("To'lov turi", "Тип оплаты")}</label>
-                  <select id="billz-payment-type-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50">
+                <div class="fc-provider-field">
+                  <label>${tr("To'lov turi", "Тип оплаты")}</label>
+                  <select id="billz-payment-type-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50 fc-provider-control">
                     <option value="">${tr("Tanlanmagan", "Не выбрано")}</option>
                     ${(opts?.paymentTypes || []).map(p => `<option value="${escapeHtml(p.id)}" ${st.billzPaymentTypeName === p.name ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')}
                   </select>
                 </div>
-                <p class="text-[9px] text-gray-400">${tr("Bu tanlovlar keyingi bosqichlarda (sotuvlarni Billz'ga yuborish) ishlatiladi.", "Эти настройки будут использоваться на следующих этапах (отправка продаж в Billz).")}</p>
+                <p class="fc-provider-help">${tr("Tanlangan do‘kon, kassa va to‘lov turi BILLZga yuboriladigan savdolarda ishlatiladi.", "Выбранные магазин, касса и тип оплаты используются при отправке продаж в BILLZ.")}</p>
                 <div class="fc-icon-action-bar"><button type="button" onclick="saveBillzSaleConfig()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
-                <button onclick="disconnectBillz()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
+                <button onclick="disconnectBillz()" class="w-full text-center fc-text-danger font-bold py-2 fc-provider-disconnect"><i data-lucide="unlink" class="w-4 h-4"></i>${tr("Uzish", "Отключить")}</button>
               `}
-              <button onclick="activePopupModal=null; billzConnectionStatus=null; billzConfigOptions=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+              <button onclick="activePopupModal=null; billzConnectionStatus=null; billzConfigOptions=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl fc-provider-close">${tr("Yopish", "Закрыть")}</button>
             </div>
           </div>
         `;
@@ -16630,24 +16761,24 @@ function renderModalContainer() {
       if (activePopupModal === 'BILLZ_IMPORT_CONFIRM') {
         const flatCats = categories.slice().sort((a, b) => categoryName(a).localeCompare(categoryName(b)));
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">🔳 ${tr("Import qilish", "Импорт")} (${billzBrowseSelectedIds.size})</h3>
-              <div>
-                <label class="font-bold text-gray-600">${tr("Qaysi katalogga qo'shilsin?", "В какой каталог добавить?")}</label>
-                <select id="billz-import-category-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50">
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 fc-provider-overlay">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs fc-provider-modal">
+              <div class="fc-provider-modal-head"><span><i data-lucide="package-plus" class="w-5 h-5"></i></span><div><h3>${tr("BILLZdan import", "Импорт из BILLZ")}</h3><p>${billzBrowseSelectedIds.size} ${tr('ta mahsulot tanlandi','товаров выбрано')}</p></div></div>
+              <div class="fc-provider-field">
+                <label>${tr("Qaysi katalogga qo'shilsin?", "В какой каталог добавить?")}</label>
+                <select id="billz-import-category-select" class="w-full mt-1 p-2 border rounded-xl bg-gray-50 fc-provider-control">
                   <option value="">${tr("— Katalogsiz —", "— Без каталога —")}</option>
                   ${flatCats.map(c => `<option value="${escapeHtml(c.id)}" ${String(c.id) === String(billzImportTargetCategoryId) ? 'selected' : ''}>${escapeHtml(categoryName(c))}</option>`).join('')}
                 </select>
               </div>
-              <div>
-                <label class="font-bold text-gray-600">${tr("Eski narx (chegirma ko'rinishi), ixtiyoriy", "Старая цена (для скидки), необязательно")}</label>
-                <input type="text" id="billz-import-oldprice-input" placeholder="${tr("Masalan: 20 yoki 10-30", "Например: 20 или 10-30")}" class="w-full mt-1 p-2 border rounded-xl font-mono">
-                <p class="text-[9px] text-gray-400 mt-1">${tr("Bitta son — hammasiga bir xil foiz. Oraliq (10-30) — har tovarga har xil, tabiiy ko'rinadigan foiz.", "Одно число — одинаковый процент всем. Диапазон (10-30) — разный процент для каждого товара, выглядит естественнее.")}</p>
+              <div class="fc-provider-field">
+                <label>${tr("Eski narx (chegirma ko'rinishi), ixtiyoriy", "Старая цена (для скидки), необязательно")}</label>
+                <input type="text" id="billz-import-oldprice-input" placeholder="${tr("Masalan: 20 yoki 10-30", "Например: 20 или 10-30")}" class="w-full mt-1 p-2 border rounded-xl font-mono fc-provider-control">
+                <p class="fc-provider-help">${tr("Bitta son — hammasiga bir xil foiz. 10-30 — har mahsulotga shu oraliqdagi foiz.", "Одно число — одинаковый процент. 10-30 — процент из этого диапазона для каждого товара.")}</p>
               </div>
               <div class="flex space-x-2 pt-2">
-                <button onclick="confirmBillzImport()" ${billzImporting ? 'disabled' : ''} class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">${billzImporting ? tr("Import qilinmoqda...", "Импортируется...") : tr("Tasdiqlash", "Подтвердить")}</button>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
+                <button onclick="confirmBillzImport()" ${billzImporting ? 'disabled' : ''} class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl fc-provider-primary">${billzImporting ? tr("Import qilinmoqda...", "Импортируется...") : tr("Tasdiqlash", "Подтвердить")}</button>
+                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl fc-provider-close">${tr("Bekor qilish", "Отмена")}</button>
               </div>
             </div>
           </div>
@@ -17240,8 +17371,9 @@ if (activePopupModal === 'LOGO_CROP') {
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="user-round" class="w-4 h-4"></i>${tr('Mijoz','Клиент')}</div><div class="fc-order-kv"><span>${tr('Ism','Имя')}</span><b>${escapeHtml(o.user)}</b></div><div class="fc-order-kv"><span>${tr('Telefon','Телефон')}</span><b>${escapeHtml(o.phone)}</b></div></section>
               ${canManageOrders() ? `<section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="sticky-note" class="w-4 h-4"></i>${tr("Ichki izoh (faqat xodimlar ko'radi)", "Внутренняя заметка (видна только сотрудникам)")}</div><textarea id="order-internal-note-${o.id}" rows="2" placeholder="${tr('Masalan: mijoz 18:00 dan keyin yetkazishni so\'radi','Например: клиент просил доставить после 18:00')}" class="w-full p-2 border rounded-xl text-xs" onclick="event.stopPropagation()">${escapeHtml(o.internalNote || '')}</textarea><button type="button" onclick="event.stopPropagation(); saveOrderInternalNote(${o.id})" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></section>` : ''}
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${escapeHtml(deliveryTariffLabel(o.delivery))}</span><b>${escapeHtml(deliveryTariffValue(o.delivery, o.deliveryFee))}</b></div><div class="fc-order-kv"><span>${tr('Hudud:','Регион:')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div><div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
-              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div></section>
+              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div><div class="fc-order-kv"><span>${tr('Pul holati','Статус оплаты')}</span><b class="${paymentStatusClass(o.paymentStatus)}">${escapeHtml(paymentStatusLabel(o.paymentStatus))}</b></div>${o.paymentStatus==='PENDING'&&o.paymentDueAt?`<div class="fc-order-kv"><span>${tr('To‘lov muddati','Срок оплаты')}</span><b>${new Date(o.paymentDueAt).toLocaleString()}</b></div>`:''}${o.paidAt?`<div class="fc-order-kv"><span>${tr('To‘langan vaqt','Время оплаты')}</span><b>${new Date(o.paidAt).toLocaleString()}</b></div>`:''}${o.refundedAt?`<div class="fc-order-kv"><span>${tr('Qaytarilgan vaqt','Время возврата')}</span><b>${new Date(o.refundedAt).toLocaleString()}</b></div>`:''}</section>
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img referrerpolicy="no-referrer" src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku && isAdminMode && isUserAnAdmin) ? `<span class="text-gray-400 font-mono">(ID: ${escapeHtml(i.sku)})</span>` : ''} ${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
+              ${renderReturnWorkflowHtml(o)}
               <section class="fc-order-summary-card"><div class="is-subtotal"><span>${tr('Tovarlar summasi','Сумма товаров')}</span><b>${money(o.subtotal ?? o.totalPrice)}</b></div><div class="is-delivery"><span>${escapeHtml(deliveryTariffLabel(o.delivery))}</span><b>${escapeHtml(deliveryTariffValue(o.delivery, o.deliveryFee))}</b></div>${Number(o.promoDiscount) > 0 ? `<div class="is-discount"><span>${tr('Promo chegirma','Скидка по промокоду')} (${escapeHtml(o.promoCode || '')})</span><b>-${money(o.promoDiscount)}</b></div>` : ''}${Number(o.tierDiscount)>0?`<div class="is-discount"><span>${tr('Bosqichli chegirma','Ступенчатая скидка')}</span><b>-${money(o.tierDiscount)}</b></div>`:''}${Number(o.vipDiscount)>0?`<div class="is-discount"><span>${tr('Shaxsiy chegirma','Персональная скидка')}</span><b>-${money(o.vipDiscount)}</b></div>`:''}<div class="is-total"><span>${tr("Hozir to'lanadigan jami",'Итого к оплате сейчас')}</span><strong>${money(o.payableTotal ?? o.totalPrice)}</strong></div></section>
 
               ${(!isAdminMode && o.status === 'PROCESSING') ? `<button onclick="confirmOrderReceived(${o.id})" class="fc-btn fc-btn-primary w-full"><i data-lucide="package-check" class="w-4 h-4"></i>${tr("Qabul qildim", "Я получил(а)")}</button>` : ''}
@@ -18593,7 +18725,7 @@ if (activePopupModal === 'LOGO_CROP') {
       excelOpening = true;
       render();
       try {
-        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=15');
+        if (!excelModulePromise) excelModulePromise = ensureScript('./excel-import.js?v=16');
         await excelModulePromise;
         if (!window.UstoreExcel) throw new Error('Excel moduli topilmadi');
         await window.UstoreExcel.prepare?.();

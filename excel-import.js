@@ -21,6 +21,7 @@
     progressTotal: 0,
     templateStatus: null,
     result: null,
+    stagedImport: null,
     editingRow: null,
     editSequential: false,
   };
@@ -969,8 +970,14 @@ Oxirida qisqa hisobot bering:
     const issue=state.issues.find(x=>x.key===key); if(!issue)return;
     state.decisions[key]={type:'new',name:issue.rawName}; analyzeIssues(state.rows);analyzeRows();rerender();
   }
-  function reset() {
-    Object.assign(state,{busy:false,busyText:'',file:null,fileName:'',fileHash:'',rows:[],issues:[],decisions:{},baseRowIssues:[],rowIssues:[],sourceRows:[],progressDone:0,progressTotal:0,templateStatus:null,result:null,editingRow:null,editSequential:false});rerender();
+  async function reset() {
+    if(state.busy)return;
+    const stagedBatchId=state.stagedImport?.batchId;
+    if(stagedBatchId){
+      state.busy=true;state.busyText=xl('Vaqtinchalik import tozalanmoqda...','Очистка временного импорта...');rerender();
+      try{await callApi('rollback_import_batch',{batchId:stagedBatchId});}catch(e){console.error('staged import cleanup failed',e);}
+    }
+    Object.assign(state,{busy:false,busyText:'',file:null,fileName:'',fileHash:'',rows:[],issues:[],decisions:{},baseRowIssues:[],rowIssues:[],sourceRows:[],progressDone:0,progressTotal:0,templateStatus:null,result:null,stagedImport:null,editingRow:null,editSequential:false});rerender();
   }
 
   function downloadErrorRowsCsv() {
@@ -990,12 +997,13 @@ Oxirida qisqa hisobot bering:
 
   async function doImport() {
     if(state.busy)return;
+    if(state.stagedImport)return commitStagedImport();
     if(!state.rows.length)return alert(xl('Avval Excel faylni tanlang.','Сначала выберите файл Excel.'));
     analyzeIssues(state.rows);analyzeRows();
     if(state.issues.length)return alert(`⚠️ ${state.issues.length} ${xl('ta katalog masalasini avval hal qiling.','вопросов по каталогам: сначала решите их.')}`);
     const blocking=state.rowIssues.filter(x=>x.severity==='ERROR');
     if(blocking.length)return alert(`❌ ${blocking.length} ${xl('ta qator xatosini avval tuzating.','ошибок строк: сначала исправьте их.')}`);
-    state.busy=true;state.progressDone=0;state.progressTotal=state.rows.length;state.busyText=xl(`Tovarlar import qilinmoqda: 0 / ${state.rows.length}`,`Импорт товаров: 0 / ${state.rows.length}`);state.result=null;rerender();
+    state.busy=true;state.progressDone=0;state.progressTotal=state.rows.length;state.busyText=xl(`Serverda tekshirilmoqda: 0 / ${state.rows.length}`,`Проверка на сервере: 0 / ${state.rows.length}`);state.result=null;rerender();
     let batchId=null;
     try{
       const prepared=[]; const approvedMap=new Map(); const aliasMap=new Map();
@@ -1012,30 +1020,19 @@ Oxirida qisqa hisobot bering:
       batchId=started.batchId ? String(started.batchId) : null;
       if(!batchId)throw new Error(started.error||'import_batch_start_failed');
       state.lastBatch={id:batchId,fileName:state.fileName,status:'IN_PROGRESS',totalRows:prepared.length,importedRows:0};
-      let imported=0; const createdCats=[]; const importedProducts=[];
+      let stagedRows=0;
       for(let i=0;i<chunks.length;i++){
-        const data=await callApi('bulk_import_products',{
-          rows:chunks[i],approvedNewPaths:[...approvedMap.values()],aliases:i===0?[...aliasMap.values()]:[],
-          batchId,isFinal:i===chunks.length-1,offset:imported
+        const data=await callApi('stage_import_products',{
+          rows:chunks[i],approvedNewPaths:i===0?[...approvedMap.values()]:[],aliases:i===0?[...aliasMap.values()]:[],
+          batchId,isFinal:i===chunks.length-1,offset:stagedRows
         });
-        batchId=data.batchId; imported+=Number(data.imported)||0;
-        state.progressDone=imported;state.busyText=xl(`Tovarlar import qilinmoqda: ${imported} / ${prepared.length}`,`Импорт товаров: ${imported} / ${prepared.length}`);
-        state.lastBatch={...state.lastBatch,importedRows:imported,status:i===chunks.length-1?'COMPLETED':'IN_PROGRESS'};
-        (data.categories||[]).forEach(c=>{createdCats.push(c);try{upsertLocalCategory(c);}catch{}});
-        (data.products||[]).forEach(p=>{importedProducts.push(p);try{upsertLocalProduct(p);}catch{}});
+        batchId=String(data.batchId||batchId); stagedRows=Number(data.stagedRows)||stagedRows+chunks[i].length;
+        state.progressDone=stagedRows;state.busyText=xl(`Serverda tekshirilmoqda: ${stagedRows} / ${prepared.length}`,`Проверка на сервере: ${stagedRows} / ${prepared.length}`);
+        state.lastBatch={...state.lastBatch,importedRows:0,status:'IN_PROGRESS'};
         rerender();
       }
-      try{saveCatalogCache();}catch{}
-      const uniqueCategories=new Set(createdCats.map(c=>String(c.id))).size;
-      state.result={ok:true,batchId,imported,createdCategories:uniqueCategories,rasmsiz:importedProducts.filter(p=>!p.img).length,warnings:state.rowIssues.filter(x=>x.severity==='WARNING').length};
-      state.lastBatch={...state.lastBatch,status:'COMPLETED',importedRows:imported};
-      setTimeout(()=>{
-        if(state.result?.ok&&activePopupModal==='EXCEL_IMPORT'){
-          activePopupModal=null;
-          try{saveCatalogCache();}catch{}
-          render();
-        }
-      },1500);
+      state.stagedImport={batchId,prepared,approvedNewPaths:[...approvedMap.values()],aliases:[...aliasMap.values()]};
+      state.result={staged:true,batchId,totalRows:prepared.length};
     }catch(e){
       console.error(e);
       let autoRolledBack=false;
@@ -1049,12 +1046,51 @@ Oxirida qisqa hisobot bering:
     }finally{state.busy=false;state.busyText='';state.progressDone=0;state.progressTotal=0;rerender();}
   }
 
+  async function commitStagedImport() {
+    const staged=state.stagedImport;
+    if(!staged||state.busy)return;
+    const batchId=String(staged.batchId);
+    const prepared=staged.prepared||[];
+    const chunks=[];for(let i=0;i<prepared.length;i+=75)chunks.push(prepared.slice(i,i+75));
+    state.busy=true;state.progressDone=0;state.progressTotal=prepared.length;state.busyText=xl(`Saqlanmoqda: 0 / ${prepared.length}`,`Сохранение: 0 / ${prepared.length}`);rerender();
+    try{
+      let imported=0;const createdCats=[];const importedProducts=[];
+      for(let i=0;i<chunks.length;i++){
+        const data=await callApi('bulk_import_products',{
+          rows:chunks[i],approvedNewPaths:staged.approvedNewPaths,aliases:i===0?staged.aliases:[],
+          batchId,isFinal:i===chunks.length-1,offset:imported
+        });
+        imported+=Number(data.imported)||0;
+        state.progressDone=imported;state.busyText=xl(`Saqlanmoqda: ${imported} / ${prepared.length}`,`Сохранение: ${imported} / ${prepared.length}`);
+        state.lastBatch={...state.lastBatch,importedRows:imported,status:i===chunks.length-1?'COMPLETED':'IN_PROGRESS'};
+        (data.categories||[]).forEach(c=>{createdCats.push(c);try{upsertLocalCategory(c);}catch{}});
+        (data.products||[]).forEach(p=>{importedProducts.push(p);try{upsertLocalProduct(p);}catch{}});
+        rerender();
+      }
+      try{saveCatalogCache();}catch{}
+      const uniqueCategories=new Set(createdCats.map(c=>String(c.id))).size;
+      state.stagedImport=null;
+      state.result={ok:true,batchId,imported,createdCategories:uniqueCategories,rasmsiz:importedProducts.filter(p=>!p.img).length,warnings:state.rowIssues.filter(x=>x.severity==='WARNING').length};
+      state.lastBatch={...state.lastBatch,status:'COMPLETED',importedRows:imported};
+      setTimeout(()=>{if(state.result?.ok&&activePopupModal==='EXCEL_IMPORT'){activePopupModal=null;try{saveCatalogCache();}catch{}render();}},1500);
+    }catch(e){
+      console.error(e);
+      let autoRolledBack=false;
+      try{await callApi('rollback_import_batch',{batchId});autoRolledBack=true;}catch(re){console.error('auto rollback failed',re);}
+      const raw=e.message||String(e);const serverRows=Array.isArray(e.details?.errors)?e.details.errors:[];
+      const serverMessage=serverRows.length?serverRows.slice(0,10).map(x=>xl(`Qator ${x.row}: ${x.error}`,`Строка ${x.row}: ${x.error}`)).join(' · '):'';
+      state.stagedImport=null;
+      state.result={ok:false,batchId,error:autoRolledBack?(serverMessage||raw):`${serverMessage||raw}${xl(' Avtomatik rollback tugamadi; batchni qo‘lda bekor qiling.',' Автоматический откат не завершён; отмените batch вручную.')}`,rolledBack:autoRolledBack};
+      state.lastBatch={...state.lastBatch,status:autoRolledBack?'ROLLED_BACK':'FAILED'};
+    }finally{state.busy=false;state.busyText='';state.progressDone=0;state.progressTotal=0;rerender();}
+  }
+
   async function rollbackBatch() {
     if(state.busy)return;
     const id=state.result?.batchId||state.lastBatch?.id; if(!id)return;
     if(!confirm(xl(`Import #${id} bekor qilinsinmi? Shu importdagi tovarlar o'chiriladi.`,`Отменить импорт #${id}? Товары из этого импорта будут удалены.`)))return;
     state.busy=true;state.busyText=xl('Import bekor qilinmoqda...','Импорт отменяется...');rerender();
-    try{await callApi('rollback_import_batch',{batchId:id});state.result={...(state.result||{}),batchId:id,rolledBack:true,ok:false,error:xl('Import admin tomonidan bekor qilindi','Импорт отменён администратором')};state.lastBatch={...(state.lastBatch||{}),id,status:'ROLLED_BACK'};await loadCatalog();}
+    try{await callApi('rollback_import_batch',{batchId:id});state.stagedImport=null;state.result={...(state.result||{}),staged:false,batchId:id,rolledBack:true,ok:false,error:xl('Import admin tomonidan bekor qilindi','Импорт отменён администратором')};state.lastBatch={...(state.lastBatch||{}),id,status:'ROLLED_BACK'};await loadCatalog();}
     catch(e){alert(xl('❌ Bekor qilishda xato: ','❌ Ошибка отмены: ')+(e.message||e));}
     finally{state.busy=false;state.busyText='';rerender();}
   }
@@ -1178,7 +1214,7 @@ Oxirida qisqa hisobot bering:
           ${editorHtml}
           <div class="fc-excel-primary-actions">
             <button onclick="UstoreExcel.downloadTemplate()" ${state.busy?'disabled':''} class="fc-excel-template-btn"><span>↓</span>${xl('Yangi shablon','Новый шаблон')}</button>
-            <label class="fc-excel-file-btn ${state.busy?'is-disabled':''}"><span>↑</span>${xl('Excel tanlash','Выбрать Excel')}<input type="file" accept=".xlsx" class="hidden" onchange="UstoreExcel.handleFile(event)" ${state.busy?'disabled':''}></label>
+            <label class="fc-excel-file-btn ${state.busy||state.stagedImport?'is-disabled':''}"><span>↑</span>${xl('Excel tanlash','Выбрать Excel')}<input type="file" accept=".xlsx" class="hidden" onchange="UstoreExcel.handleFile(event)" ${state.busy||state.stagedImport?'disabled':''}></label>
           </div>
           ${state.templateStatus?`<div class="${state.templateStatus.type==='error'?'bg-red-50 border-red-200 text-red-800':state.templateStatus.type==='success'?'bg-emerald-50 border-emerald-200 text-emerald-800':'bg-slate-50 border-slate-200 text-slate-700'} border rounded-2xl p-3 font-bold">${state.templateStatus.type==='error'?'❌':state.templateStatus.type==='success'?'✅':'ℹ️'} ${esc(state.templateStatus.message)}</div>`:''}
           <div class="fc-excel-hint">💡 ${xl("Yangi shablonda <b>Oddiy tovarlar</b> va <b>Variativ tovarlar</b> alohida list. Variativ listda Tovar nomi faqat birinchi qatorga yoziladi; keyingi o'lchamlarda nom va bir xil rang bo'lsa rang katagi bo'sh qoladi — tizim yuqoridagi tovar/rangni davom ettiradi. <b>Kataklarni Merge qilmang.</b> Katalog yo'li bo'sh qolsa yuqoridagi oxirgi yo'l davom etadi.","В новом шаблоне обычные и вариативные товары находятся на отдельных листах. На листе Variativ tovarlar название указывается только в первой строке; следующие размеры продолжают товар/цвет сверху. <b>Не объединяйте ячейки.</b> Пустой путь каталога продолжает последний путь сверху.")}</div>
@@ -1186,9 +1222,9 @@ Oxirida qisqa hisobot bering:
           ${rowIssueHtml?`<div class="space-y-2"><div class="flex items-center justify-between gap-2"><h4 class="font-black">${xl('Qator tekshiruvi','Проверка строк')}</h4><div class="flex gap-1">${errors.length?`<button onclick="UstoreExcel.openFirstErrorEditor()" class="bg-blue-600 text-white px-2 py-1.5 rounded-xl font-bold">✏️ ${xl('Barcha xatolar','Все ошибки')}</button><button onclick="UstoreExcel.downloadErrorRowsCsv()" class="bg-red-600 text-white px-2 py-1.5 rounded-xl font-bold">⬇️ CSV</button>`:''}</div></div><div class="space-y-1 max-h-64 overflow-y-auto">${rowIssueHtml}</div>${issuesByRow.size>50?`<p class="text-[10px] text-gray-500">+ ${issuesByRow.size-50} ${xl('ta boshqa qator','других строк')}</p>`:''}</div>`:''}
           ${issueHtml?`<div class="space-y-2"><h4 class="font-black">${xl('Katalog qarorlari','Решения по каталогам')}</h4>${issueHtml}</div>`:''}
           ${state.rows.length && !state.issues.length && !errors.length?`<div class="bg-green-50 border border-green-200 rounded-2xl p-3"><p class="font-bold text-green-800">✅ ${xl('Preview tekshirildi. Importga tayyor.','Предпросмотр проверен. Готово к импорту.')}</p><p class="text-[10px] text-green-700">${warnings.length?xl(`${warnings.length} ta ogohlantirish importni bloklamaydi.`,`${warnings.length} предупреждений не блокируют импорт.`):''} ${xl("Rasmlar import qilinmaydi; keyin 'rasmi yo'q' filtri orqali qo'shiladi.","Изображения не импортируются; их можно добавить через фильтр «без изображения».")}</p></div>`:''}
-          ${state.result?`<div class="${state.result.ok?'bg-emerald-50 border-emerald-200':'bg-red-50 border-red-200'} border rounded-2xl p-3 space-y-1"><p class="font-black">${state.result.ok?xl('✅ Import tugadi','✅ Импорт завершён'):xl('❌ Import tugamadi','❌ Импорт не завершён')}</p>${state.result.ok?`<p>${state.result.imported} ${xl('ta tovar','товаров')} · ${state.result.createdCategories} ${xl('ta yangi katalog','новых каталогов')} · ${state.result.rasmsiz} ${xl('ta rasmsiz','без изображений')} · ${state.result.warnings||0} ${xl('ta ogohlantirish','предупреждений')}</p>`:`<p>${esc(state.result.error||xl('Xato','Ошибка'))}</p>`}${state.result.batchId?`<p class="font-mono text-[10px]">Batch #${state.result.batchId}</p>`:''}${state.result.batchId&&!state.result.rolledBack?`<button onclick="UstoreExcel.rollbackBatch()" class="mt-2 w-full bg-red-600 text-white py-2 rounded-xl font-bold">↩️ ${xl('Shu importni bekor qilish','Отменить этот импорт')}</button>`:''}</div>`:''}
+          ${state.result?`<div class="${state.result.staged?'bg-blue-50 border-blue-200':state.result.ok?'bg-emerald-50 border-emerald-200':'bg-red-50 border-red-200'} border rounded-2xl p-3 space-y-1"><p class="font-black">${state.result.staged?xl('🛡️ Server tekshiruvi tugadi','🛡️ Проверка на сервере завершена'):state.result.ok?xl('✅ Import tugadi','✅ Импорт завершён'):xl('❌ Import tugamadi','❌ Импорт не завершён')}</p>${state.result.staged?`<p>${state.result.totalRows} ${xl('ta qator vaqtinchalik joyga yozildi. Hali katalog o‘zgarmadi. Endi tasdiqlab bir marta saqlang.','строк сохранено во временной области. Каталог ещё не изменён. Подтвердите сохранение.')}</p>`:state.result.ok?`<p>${state.result.imported} ${xl('ta tovar','товаров')} · ${state.result.createdCategories} ${xl('ta yangi katalog','новых каталогов')} · ${state.result.rasmsiz} ${xl('ta rasmsiz','без изображений')} · ${state.result.warnings||0} ${xl('ta ogohlantirish','предупреждений')}</p>`:`<p>${esc(state.result.error||xl('Xato','Ошибка'))}</p>`}${state.result.batchId?`<p class="font-mono text-[10px]">Batch #${state.result.batchId}</p>`:''}${state.result.batchId&&!state.result.rolledBack?`<button onclick="UstoreExcel.rollbackBatch()" class="mt-2 w-full bg-red-600 text-white py-2 rounded-xl font-bold">↩️ ${xl('Shu importni bekor qilish','Отменить этот импорт')}</button>`:''}</div>`:''}
           ${canRollbackLast?`<div class="bg-slate-50 border border-slate-200 rounded-2xl p-3"><p class="font-bold">${xl('Oxirgi import','Последний импорт')}: #${state.lastBatch.id}</p><p class="text-[10px] text-slate-500">${esc(state.lastBatch.fileName||'')} · ${state.lastBatch.importedRows||state.lastBatch.totalRows||0} ${xl('ta tovar','товаров')}</p><button onclick="UstoreExcel.rollbackBatch()" class="mt-2 w-full bg-red-600 text-white py-2 rounded-xl font-bold">↩️ ${xl('Oxirgi importni bekor qilish','Отменить последний импорт')}</button></div>`:''}
-          <div class="flex gap-2 pt-1">${state.rows.length?`<button onclick="UstoreExcel.doImport()" ${state.busy||state.issues.length||errors.length?'disabled':''} class="flex-1 ${state.issues.length||errors.length?'bg-gray-200 text-gray-400':'bg-green-600 text-white'} font-black py-3 rounded-xl">✅ ${state.rows.length} ${xl('ta tovarni import qilish','товаров: импортировать')}</button>`:''}<button onclick="UstoreExcel.reset()" ${state.busy?'disabled':''} class="bg-gray-100 text-gray-700 font-bold px-4 py-3 rounded-xl">${xl('Tozalash','Очистить')}</button></div>
+          <div class="flex gap-2 pt-1">${state.rows.length?`<button onclick="UstoreExcel.doImport()" ${state.busy||state.issues.length||errors.length?'disabled':''} class="flex-1 ${state.issues.length||errors.length?'bg-gray-200 text-gray-400':state.stagedImport?'bg-blue-600 text-white':'bg-green-600 text-white'} font-black py-3 rounded-xl">${state.stagedImport?`✅ ${xl('Tasdiqlash va katalogga saqlash','Подтвердить и сохранить в каталог')}`:`🛡️ ${state.rows.length} ${xl('ta qatorni serverda tekshirish','строк проверить на сервере')}`}</button>`:''}<button onclick="UstoreExcel.reset()" ${state.busy?'disabled':''} class="bg-gray-100 text-gray-700 font-bold px-4 py-3 rounded-xl">${xl('Tozalash','Очистить')}</button></div>
         </div>
       </div>`;
   }
