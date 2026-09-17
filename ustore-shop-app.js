@@ -165,6 +165,291 @@ function escapeHtml(str) {
     // tarmoqsiz ham ishlaydi, istalgan o'lchamda aniq (vektor) ko'rinadi.
     const FALLBACK_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE0IiBmaWxsPSIjZjNmNGY2Ii8+PGcgc3Ryb2tlPSIjYzdjZGQ2IiBzdHJva2Utd2lkdGg9IjQiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iMjgiIHk9IjI4IiB3aWR0aD0iNDQiIGhlaWdodD0iNDQiIHJ4PSI2Ii8+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNCIvPjxwYXRoIGQ9Ik0yOCA2MiBMNDQgNDYgTDU0IDU2IEw3MiAzOCIvPjwvZz48L3N2Zz4=';
 
+
+    // 5-TOPSHIRIQ (2026-09-17): premium media gate -------------------------
+    // Muammo: brauzer <img> larni navbatma-navbat ochgani uchun kartochkaning
+    // matni avval ko'rinib, rasmi 1-5 soniyadan keyin paydo bo'lar edi. Bu
+    // foydalanuvchiga "yarim tayyor" UI ko'rsatardi. Endi har bir render
+    // bosqichida rasmli kontent avval fon rejimida tayyorlanadi. Rasm va matn
+    // FAQAT birga ochiladi; sekin/buzilgan URL esa qat'iy timeoutdan keyin
+    // FALLBACK_IMG bilan yakunlanadi. Bitta rasm butun ilovani cheksiz
+    // ushlamaydi. Bu biznes logikasiga tegmaydi — faqat paint/reveal qatlamidir.
+    const PREMIUM_MEDIA_TIMEOUT_MS = 2600;
+    const PREMIUM_MEDIA_STAGE_MAX_MS = 3000;
+    const premiumMediaStageVersion = new WeakMap();
+    const premiumMediaReadyUrls = new Set();
+    let premiumMediaObserverInstalled = false;
+
+    const PREMIUM_MEDIA_CARD_SELECTOR = [
+      '[data-product-card-id]', '.ustore-cat-row', '.fc-home-recent-card',
+      '.fc-banner-card', '.fc-banner-slot.is-filled', '.fc-banner-list-card',
+      '.fc-bundle-list-card', '.fc-public-offer-card', '.fc-report-product-card',
+      '.fc-report-product-list > button', '.fc-bundle-detail-product-row',
+      '.fc-campaign-media-slide', '.fc-hier-picker-product',
+      '.fc-warehouse-product-row', '.fc-order-item', '.fc-billz-product-card',
+      '.fc-featured-tree-products label', '.fc-selected-products > div',
+      '.fc-product-gallery-slide', '.fc-marketing-card', '.fc-campaign-hero'
+    ].join(',');
+
+    function premiumMediaSrc(img) {
+      return String(img?.currentSrc || img?.getAttribute?.('src') || img?.src || '').trim();
+    }
+
+    function premiumMediaFallback(img) {
+      return String(img?.dataset?.fallback || FALLBACK_IMG || '').trim();
+    }
+
+    function premiumMediaCandidate(img) {
+      if (!(img instanceof HTMLImageElement)) return false;
+      const src = premiumMediaSrc(img);
+      if (!src || src === 'about:blank') return false;
+      if (img.closest('.hidden,[hidden]')) return false;
+      // Browser/UI preview elementlari src="" bilan yashirin turishi mumkin;
+      // ular sahifa kartalarini kutdirishi kerak emas.
+      const style = getComputedStyle(img);
+      if (style.display === 'none' || style.visibility === 'hidden') return false;
+      return true;
+    }
+
+    function premiumMediaCardFor(node) {
+      return node?.closest?.(PREMIUM_MEDIA_CARD_SELECTOR) || null;
+    }
+
+    function markPremiumMediaPending(root, cards) {
+      if (!root) return;
+      root.classList.add('fc-media-stage', 'is-media-preparing');
+      root.classList.remove('is-media-ready');
+      cards.forEach((card) => {
+        card.classList.add('fc-premium-media-card', 'is-media-pending');
+        card.classList.remove('is-media-ready');
+      });
+    }
+
+    function markPremiumMediaReady(root, cards) {
+      if (!root) return;
+      root.classList.remove('is-media-preparing');
+      root.classList.add('is-media-ready');
+      cards.forEach((card) => {
+        card.classList.remove('is-media-pending');
+        card.classList.add('is-media-ready');
+      });
+    }
+
+    function premiumMediaDecode(img) {
+      if (!img?.decode) return Promise.resolve();
+      return img.decode().catch(() => undefined);
+    }
+
+    function settlePremiumImage(img) {
+      return new Promise((resolve) => {
+        if (!premiumMediaCandidate(img)) return resolve();
+
+        // Ushbu sahifa uchun lazy emas: skeleton ostida rasmni HOZIR yuklash
+        // kerak. Shunda pastdagi kartalar ham scroll qilinguncha navbatda
+        // turib qolmaydi. Thumb mavjud bo'lsa renderProductCardHTML allaqachon
+        // uni tanlaydi, demak bu katta originalni majburan yuklash degani emas.
+        try { img.loading = 'eager'; } catch (_) {}
+        try { img.decoding = 'async'; } catch (_) {}
+        try { img.fetchPriority = 'high'; } catch (_) {}
+
+        let finished = false;
+        let timeoutId = null;
+        const initialSrc = premiumMediaSrc(img);
+        const finish = async () => {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timeoutId);
+          img.removeEventListener('load', onLoad);
+          img.removeEventListener('error', onError);
+          if (img.complete && img.naturalWidth > 0) await premiumMediaDecode(img);
+          const finalSrc = premiumMediaSrc(img);
+          if (finalSrc) premiumMediaReadyUrls.add(finalSrc);
+          resolve();
+        };
+        const forceFallback = () => {
+          if (finished) return;
+          const fallback = premiumMediaFallback(img);
+          if (fallback && premiumMediaSrc(img) !== fallback) {
+            try {
+              img.removeAttribute('data-full-img');
+              img.onerror = null;
+              img.src = fallback;
+            } catch (_) {}
+          }
+          // data: fallback odatda shu zahoti complete bo'ladi; baribir bitta
+          // frame beramiz — paint paytida fallback tayyor bo'lishi uchun.
+          requestAnimationFrame(() => finish());
+          setTimeout(() => finish(), 80);
+        };
+        const onLoad = () => finish();
+        const onError = () => {
+          // retryCardImage kabi mavjud handler avval thumb -> full rasmga
+          // o'tkazishi mumkin. Inline onerror bizning listenerdan OLDIN ham
+          // ishlashi mumkin, shu sabab currentSrc'ni error paytidagi qiymat
+          // bilan emas, BOSHLANG'ICH URL bilan solishtiramiz. Agar URL
+          // o'zgargan bo'lsa yangi urinishning load/error eventini kutamiz.
+          setTimeout(() => {
+            if (finished) return;
+            const nowSrc = premiumMediaSrc(img);
+            if (nowSrc && nowSrc !== initialSrc && nowSrc !== premiumMediaFallback(img)) return;
+            // data-fallback inline handler orqali allaqachon qo'yilgan bo'lsa
+            // uning load eventi kelishi uchun qisqa imkon beramiz.
+            if (nowSrc === premiumMediaFallback(img) && img.complete && img.naturalWidth > 0) return finish();
+            forceFallback();
+          }, 24);
+        };
+
+        img.addEventListener('load', onLoad);
+        img.addEventListener('error', onError);
+
+        if (img.complete && img.naturalWidth > 0) {
+          premiumMediaDecode(img).finally(finish);
+          return;
+        }
+        // Cache'da ilgari tayyor bo'lgan URL bo'lsa browser decode odatda bir
+        // task ichida tugaydi; load eventni kutamiz, ammo umumiy timeout bor.
+        if (premiumMediaReadyUrls.has(initialSrc) && img.complete) {
+          premiumMediaDecode(img).finally(finish);
+          return;
+        }
+        timeoutId = setTimeout(forceFallback, PREMIUM_MEDIA_TIMEOUT_MS);
+      });
+    }
+
+    function premiumBannerBackgroundUrl(el) {
+      if (!el) return '';
+      const inline = String(el.style?.backgroundImage || '');
+      const match = inline.match(/url\(["']?(.*?)["']?\)/i);
+      return match?.[1] || '';
+    }
+
+    function settlePremiumBackground(el) {
+      const url = premiumBannerBackgroundUrl(el);
+      if (!url || premiumMediaReadyUrls.has(url)) return Promise.resolve();
+      return new Promise((resolve) => {
+        let done = false;
+        const probe = new Image();
+        probe.referrerPolicy = 'no-referrer';
+        probe.decoding = 'async';
+        const finish = (ok) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          if (ok) premiumMediaReadyUrls.add(url);
+          else {
+            // Banner ham rasmsiz/yarim holatda chiqmaydi: URL ishlamasa
+            // tayyor local fallback fon bilan ochiladi.
+            try { el.style.backgroundImage = `url("${FALLBACK_IMG}")`; } catch (_) {}
+          }
+          resolve();
+        };
+        probe.onload = () => {
+          const decoded = probe.decode ? probe.decode().catch(() => undefined) : Promise.resolve();
+          decoded.finally(() => finish(true));
+        };
+        probe.onerror = () => finish(false);
+        const timer = setTimeout(() => finish(false), PREMIUM_MEDIA_TIMEOUT_MS);
+        probe.src = url;
+      });
+    }
+
+    function collectPremiumMedia(root) {
+      if (!root?.querySelectorAll) return { images: [], backgrounds: [], cards: new Set() };
+      const images = [...root.querySelectorAll('img')].filter(premiumMediaCandidate);
+      if (root instanceof HTMLImageElement && premiumMediaCandidate(root)) images.unshift(root);
+      const backgrounds = [...root.querySelectorAll('.fc-banner-card')].filter((el) => !!premiumBannerBackgroundUrl(el));
+      if (root.matches?.('.fc-banner-card') && premiumBannerBackgroundUrl(root)) backgrounds.unshift(root);
+      const cards = new Set();
+      images.forEach((img) => { const card = premiumMediaCardFor(img); if (card) cards.add(card); });
+      backgrounds.forEach((el) => cards.add(el));
+      return { images, backgrounds, cards };
+    }
+
+    async function stagePremiumMedia(root) {
+      if (!root || !root.isConnected) return;
+      const { images, backgrounds, cards } = collectPremiumMedia(root);
+      if (!images.length && !backgrounds.length) {
+        root.classList.remove('is-media-preparing');
+        return;
+      }
+
+      const version = (premiumMediaStageVersion.get(root) || 0) + 1;
+      premiumMediaStageVersion.set(root, version);
+      markPremiumMediaPending(root, cards);
+
+      const work = Promise.allSettled([
+        ...images.map(settlePremiumImage),
+        ...backgrounds.map(settlePremiumBackground),
+      ]);
+      // Himoya: biror browser event bermasa ham sahifa 3s dan ortiq qotmaydi.
+      await Promise.race([
+        work,
+        new Promise((resolve) => setTimeout(resolve, PREMIUM_MEDIA_STAGE_MAX_MS)),
+      ]);
+      if (!root.isConnected || premiumMediaStageVersion.get(root) !== version) return;
+
+      // Stage timeout work promise'dan oldin tugagan bo'lsa qolgan DOM rasmlarini
+      // ham fallbackga o'tkazamiz; keyin birgalikda reveal qilamiz.
+      images.forEach((img) => {
+        if (!img.complete || img.naturalWidth <= 0) {
+          const fallback = premiumMediaFallback(img);
+          if (fallback) {
+            try { img.removeAttribute('data-full-img'); img.onerror = null; img.src = fallback; } catch (_) {}
+          }
+        }
+      });
+      const reveal = () => markPremiumMediaReady(root, cards);
+      requestAnimationFrame(reveal);
+      setTimeout(reveal, 80);
+    }
+
+    function stageCurrentShopMedia() {
+      const header = document.querySelector('.ustore-topbar');
+      const app = document.getElementById('app-content');
+      const page = document.getElementById('page-container');
+      // modal-container renderModalContainer() finally blokida alohida stage
+      // qilinadi; shu yerda takrorlab, bitta rasmga ikki listener qo'ymaymiz.
+      if (header) stagePremiumMedia(header);
+      if (app && !app.closest('.hidden')) stagePremiumMedia(app);
+      if (page && !page.classList.contains('hidden') && page.childElementCount) stagePremiumMedia(page);
+    }
+
+    function installPremiumMediaObserver() {
+      if (premiumMediaObserverInstalled || !document.body) return;
+      premiumMediaObserverInstalled = true;
+      const queued = new Set();
+      let scheduled = false;
+      const flush = () => {
+        scheduled = false;
+        [...queued].forEach((root) => {
+          queued.delete(root);
+          if (!root?.isConnected) return;
+          // Agar katta root allaqachon staging qilayotgan bo'lsa, ichki cardni
+          // qaytadan alohida stage qilish shart emas.
+          if (root.parentElement?.closest?.('.fc-media-stage.is-media-preparing')) return;
+          stagePremiumMedia(root);
+        });
+      };
+      const queue = (node) => {
+        if (!(node instanceof Element)) return;
+        const candidates = [];
+        if (node.matches?.('img,.fc-banner-card')) candidates.push(node);
+        node.querySelectorAll?.('img,.fc-banner-card').forEach((el) => candidates.push(el));
+        candidates.forEach((el) => {
+          const card = premiumMediaCardFor(el) || (el.matches?.('.fc-banner-card') ? el : null);
+          if (card) queued.add(card);
+        });
+        if (queued.size && !scheduled) {
+          scheduled = true;
+          queueMicrotask(flush);
+        }
+      };
+      const observer = new MutationObserver((records) => {
+        records.forEach((record) => record.addedNodes.forEach(queue));
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     // Ommaviy katalog importi uchun ChatGPT prompti — BITTA markaziy joy
     // (28-band, "Bir nechta katalog qo'shish" oynasidagi "ChatGPT uchun
     // prompt" tugmasi shu konstantani ko'rsatadi/nusxalaydi). Matn keyinchalik
@@ -3828,6 +4113,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
       renderModalContainer();
       safeCreateIcons();
+      stageCurrentShopMedia();
       requestAnimationFrame(() => applyVisibleTextScale());
       lastRenderedUiKey = currentShopUiKey();
       if (preserveSnapshot && lastRenderedUiKey === uiKeyBeforeRender) restoreShopRenderState(preserveSnapshot);
@@ -3851,13 +4137,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               <p class="fc-confirm-title">${escapeHtml(title)}</p>
               <p class="fc-confirm-text">${escapeHtml(text)}</p>
               <div class="fc-confirm-actions">
-                <button onclick="window.__fcConfirmAnswer(false)" class="fc-btn fc-btn-secondary">${escapeHtml(cancelLabel)}</button>
+                <button onclick="window.__fcConfirmAnswer(false)" class="fc-action-icon-btn is-cancel" aria-label="${escapeHtml(cancelLabel)}" title="${escapeHtml(cancelLabel)}"><i data-lucide="x" class="w-5 h-5"></i></button>
                 <button onclick="window.__fcConfirmAnswer(true)" class="fc-btn ${danger ? 'fc-btn-danger' : 'fc-btn-primary'}">${escapeHtml(confirmLabel)}</button>
               </div>
             </div>
           </div>
         `;
         document.body.appendChild(root);
+        safeCreateIcons();
       });
     }
     window.__fcConfirmAnswer = function (val) {
@@ -5325,7 +5612,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           <div><b>${tr('Umumiy huquqiy shablon','Общий юридический шаблон')}</b><p>${tr("UStorE amaldagi O‘zbekiston qonunchiligiga tayangan umumiy shablonni beradi. Xohlasangiz shu holicha yoqing, xohlasangiz do‘koningizga moslab tahrirlang. Bu individual yuridik xulosa emas; maxsus faoliyat yoki tovarlar bo‘lsa moslashtirish tavsiya etiladi.", "UStorE предоставляет общий шаблон на основе действующего законодательства Узбекистана. Можно включить его как есть или адаптировать под магазин. Это не индивидуальное юридическое заключение; для специальных видов деятельности рекомендуется адаптация.")}</p></div>
         </div>
         <div class="fc-legal-doc-list">${docs.map(legalDocumentCardHtml).join('')}</div>
-        <div id="legal-dirty-actions" class="fc-legal-savebar fc-icon-action-bar ${legalDraftIsDirty() ? '' : 'hidden'}"><button type="button" onclick="saveLegalSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-[18px] h-[18px]"></i></button><button type="button" onclick="cancelLegalDraftChanges()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-[18px] h-[18px]"></i></button></div>
+        <div id="legal-dirty-actions" class="fc-legal-savebar fc-icon-action-bar ${legalDraftIsDirty() ? '' : 'hidden'}"><button type="button" onclick="cancelLegalDraftChanges()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-[18px] h-[18px]"></i></button><button type="button" onclick="saveLegalSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-[18px] h-[18px]"></i></button></div>
       </div>`;
       renderPageShell(container, tr('Huquqiy hujjatlar','Правовые документы'), body, { onBack: "legalDraft=null;openPage('SETTINGS')" });
     }
@@ -5593,7 +5880,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       catch (_) { return true; }
     }
     function fulfillmentDraftActionHtml(extraClass = '') {
-      return `<div id="fulfillment-dirty-actions" class="${extraClass} fc-icon-action-bar ${fulfillmentDraftDirty() ? '' : 'hidden'}"><button type="button" onclick="saveFulfillmentSettings()" class="fc-action-icon-btn is-save" ${fulfillmentSavePending ? 'disabled' : ''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-[18px] h-[18px]"></i></button><button type="button" onclick="cancelFulfillmentDraftChanges()" class="fc-action-icon-btn is-cancel" ${fulfillmentSavePending ? 'disabled' : ''} aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-[18px] h-[18px]"></i></button></div>`;
+      return `<div id="fulfillment-dirty-actions" class="${extraClass} fc-icon-action-bar ${fulfillmentDraftDirty() ? '' : 'hidden'}"><button type="button" onclick="cancelFulfillmentDraftChanges()" class="fc-action-icon-btn is-cancel" ${fulfillmentSavePending ? 'disabled' : ''} aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-[18px] h-[18px]"></i></button><button type="button" onclick="saveFulfillmentSettings()" class="fc-action-icon-btn is-save" ${fulfillmentSavePending ? 'disabled' : ''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-[18px] h-[18px]"></i></button></div>`;
     }
     function paymentViewUsesFulfillmentDraftActions() {
       if (['CASH','CARD','QR'].includes(paymentsPageView)) return true;
@@ -9044,7 +9331,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           ${warehouseBulkPanelOpen ? `<section class="fc-warehouse-bulk-card fc-warehouse-bulk-collapsible">
             <div class="fc-warehouse-section-head"><span><i data-lucide="zap" class="w-5 h-5"></i></span><div><h3>${tr("ID orqali ko'p tovar qoldig'ini yangilash","Массовое обновление остатков по ID")}</h3><p>${tr("SKU va sonini kiriting (Masalan: 111001 35)","Введите SKU и количество (например: 111001 35)")}</p></div></div>
             <textarea id="bulk-input" rows="4" class="fc-warehouse-textarea" placeholder="111001 35&#10;111002 20"></textarea>
-            <button onclick="saveBulkStock()" class="fc-btn fc-btn-primary w-full"><i data-lucide="save" class="w-4 h-4"></i>${tr("Barchasini saqlash","Сохранить все")}</button>
+            <button onclick="saveBulkStock()" class="fc-action-icon-btn is-save" aria-label="${tr('Barchasini saqlash','Сохранить все')}" title="${tr('Barchasini saqlash','Сохранить все')}"><i data-lucide="check" class="w-5 h-5"></i></button>
           </section>` : ''}
 
           <section class="fc-warehouse-browser fc-warehouse-tree-browser">
@@ -9148,7 +9435,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               ${tr('Hozirgi qoldiq', 'Текущий остаток')}: ${currentQty} → <b class="fc-text-success">${tr('Yangi qoldiq', 'Новый остаток')}: ${currentQty + qtyNum}</b>
             </p>
           ` : ''}
-          <button onclick="submitKirim()" ${warehouseKirimSaving ? 'disabled' : ''} class="fc-btn fc-btn-success w-full"><i data-lucide="save" class="w-4 h-4"></i>${warehouseKirimSaving ? tr('Saqlanmoqda...', 'Сохранение...') : tr('Kirimni saqlash', 'Сохранить приход')}</button>
+          <button onclick="submitKirim()" ${warehouseKirimSaving ? 'disabled' : ''} class="fc-action-icon-btn is-save" aria-label="${tr('Kirimni saqlash','Сохранить приход')}" title="${tr('Kirimni saqlash','Сохранить приход')}">${warehouseKirimSaving ? '<span class="fc-spinner fc-spinner-xs"></span>' : '<i data-lucide="check" class="w-5 h-5"></i>'}</button>
         </div>
       `;
 
@@ -10969,13 +11256,36 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     async function saveFeaturedCategories() {
+      if (featuredCategoriesSaving) return;
+      // Serverga aynan bosilgan paytdagi snapshot yuboriladi. Saqlash davomida
+      // admin yana belgilashni o'zgartirsa, server javobi yangi lokal tanlovni
+      // bosib yubormaydi — keyingi ✓ bilan u alohida saqlanadi.
+      const submitted = featuredCategories.map(e => ({
+        categoryId: String(e.categoryId),
+        productIds: Array.isArray(e.productIds) ? e.productIds.map(String) : [],
+      }));
+      const submittedSignature = JSON.stringify(submitted);
       featuredCategoriesSaving = true;
       render();
       try {
-        await callApi('set_marketing_settings', { featuredCategories, featured_categories: featuredCategories });
-        showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1500);
+        // MUHIM: featured kataloglar uchun dedicated endpoint ishlatiladi.
+        // set_marketing_settings bu fieldlarni DB'ga yozmaydi va shu sabab
+        // avval sahifaga qayta kirilganda tanlovlar yo'qolib qolardi.
+        const result = await callApi('set_featured_categories', { featuredCategories: submitted });
+        const currentSignature = JSON.stringify(featuredCategories.map(e => ({
+          categoryId: String(e.categoryId),
+          productIds: Array.isArray(e.productIds) ? e.productIds.map(String) : [],
+        })));
+        if (currentSignature === submittedSignature && Array.isArray(result?.featuredCategories)) {
+          featuredCategories = result.featuredCategories.map(e => ({
+            categoryId: String(e.categoryId),
+            productIds: Array.isArray(e.productIds) ? e.productIds.map(String) : [],
+          }));
+        }
+        showActionToast(tr('Bosh sahifa yangilandi', 'Главная обновлена'), 'success', 1800);
       } catch (e) {
-        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+        console.error('[featured-categories-save]', e);
+        showActionToast(tr("Saqlab bo'lmadi. Qayta urinib ko'ring.", "Не удалось сохранить. Попробуйте ещё раз."), 'error', 3000);
       } finally {
         featuredCategoriesSaving = false;
         render();
@@ -11032,18 +11342,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           </div>
         `;
       }).join('');
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-featured-page">
         <div class="fc-card"><p class="text-xs text-gray-600">${tr("Bosh sahifada ko'rinadigan kataloglarni va har biriga 6 tagacha mahsulot tanlang.", "Выберите каталоги для главной и до 6 товаров для каждого.")}</p><p class="text-[10px] text-gray-400 mt-1">${featuredCategories.length} / 8 ${tr('katalog tanlandi', 'каталогов выбрано')}</p></div>
         <div class="fc-featured-tree">${renderFeaturedTreeNodes() || `<div class="fc-empty-state"><p>${tr("Kataloglar topilmadi.", "Каталоги не найдены.")}</p></div>`}</div>
-        
-      </div>`;
-      renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body + `
-    <div class="pt-4 mt-4 border-t border-gray-100 pb-8">
-      <button type="button" onclick="saveFeaturedCategories()" class="fc-btn fc-btn-primary w-full flex items-center justify-center gap-2" style="height: 52px; border-radius: 14px; font-size: 15px;" ${featuredCategoriesSaving ? 'disabled' : ''}>
-        <i data-lucide="check" class="w-5 h-5"></i>
-        ${featuredCategoriesSaving ? tr("Saqlanmoqda...","Сохранение...") : tr("Saqlash","Сохранить")}
-      </button>
-    </div>`, { onBack: "openMarketingHubPage()" });
+      </div>
+      <button type="button" onclick="saveFeaturedCategories()" class="fc-featured-save-fab ${featuredCategoriesSaving ? 'is-saving' : ''}" ${featuredCategoriesSaving ? 'disabled' : ''} aria-label="${escapeHtml(tr('Saqlash','Сохранить'))}" title="${escapeHtml(tr('Saqlash','Сохранить'))}">
+        <span class="fc-featured-save-fab-icon"><i data-lucide="${featuredCategoriesSaving ? 'loader-circle' : 'check'}" class="w-6 h-6 ${featuredCategoriesSaving ? 'animate-spin' : ''}"></i></span>
+      </button>`;
+      renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body, { onBack: "openMarketingHubPage()" });
     }
 
     // ==================== BANNERLAR (Online Do'kon yaxshilashlari, 17-band) ====================
@@ -14323,7 +14629,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const current = parseCoordinatePair(document.getElementById('sc-coordinates')?.value) || parseCoordinatePair(shopInfoDraft?.coordinates) || [41.311081, 69.240562];
       const root = document.createElement('div');
       root.id = 'fc-osm-picker-root';
-      root.innerHTML = `<div class="fc-sheet-overlay fc-map-picker-overlay"><div class="fc-sheet fc-map-picker-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div><div class="fc-sheet-title">${tr('Joylashuvni tanlang','Выберите местоположение')}</div><p class="fc-shop-info-subtitle">OpenStreetMap</p></div><button type="button" onclick="closeOsmCoordinatePicker()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body"><div id="fc-osm-map" class="fc-osm-map"><div class="fc-map-loading"><span class="fc-spinner"></span>${tr('Xarita yuklanmoqda…','Карта загружается…')}</div></div><p class="fc-map-picker-hint"><i data-lucide="map-pin" class="w-4 h-4"></i>${tr('Nuqtani bosing yoki markerni suring.','Нажмите на точку или перетащите маркер.')}</p></div><div class="fc-sheet-footer"><button type="button" onclick="closeOsmCoordinatePicker()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button><button id="fc-osm-confirm" type="button" onclick="confirmOsmCoordinatePicker()" class="fc-btn fc-btn-primary" disabled><i data-lucide="check" class="w-4 h-4"></i>${tr('Tanlash','Выбрать')}</button></div></div></div>`;
+      root.innerHTML = `<div class="fc-sheet-overlay fc-map-picker-overlay"><div class="fc-sheet fc-map-picker-sheet"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div><div class="fc-sheet-title">${tr('Joylashuvni tanlang','Выберите местоположение')}</div><p class="fc-shop-info-subtitle">OpenStreetMap</p></div><button type="button" onclick="closeOsmCoordinatePicker()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body"><div id="fc-osm-map" class="fc-osm-map"><div class="fc-map-loading"><span class="fc-spinner"></span>${tr('Xarita yuklanmoqda…','Карта загружается…')}</div></div><p class="fc-map-picker-hint"><i data-lucide="map-pin" class="w-4 h-4"></i>${tr('Nuqtani bosing yoki markerni suring.','Нажмите на точку или перетащите маркер.')}</p></div><div class="fc-sheet-footer"><button type="button" onclick="closeOsmCoordinatePicker()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button id="fc-osm-confirm" type="button" onclick="confirmOsmCoordinatePicker()" class="fc-btn fc-btn-primary" disabled><i data-lucide="check" class="w-4 h-4"></i>${tr('Tanlash','Выбрать')}</button></div></div></div>`;
       document.body.appendChild(root);
       safeCreateIcons();
       try {
@@ -16026,25 +16332,31 @@ function renderModalContainer() {
       // REGISTRATION MODAL
     if (activePopupModal === 'ADMIN_WELCOME') {
         container.innerHTML = `
-        <div class="fixed inset-0 flex items-center justify-center p-4 transition-all duration-300" style="background: rgba(10, 10, 10, 0.8); z-index: 99999; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);" onclick="activePopupModal=null;render();">
-          <div class="bg-white w-full shadow-2xl flex flex-col overflow-hidden" style="max-w: 340px; border-radius: 28px; box-shadow: 0 24px 64px -12px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
-            <div class="pt-10 pb-8 px-8 text-center relative overflow-hidden">
-              <div class="mx-auto mb-6 flex items-center justify-center shadow-lg" style="width: 64px; height: 64px; background: #0f172a; border-radius: 20px;">
-                <i data-lucide="shield-check" style="width: 32px; height: 32px; color: #fff;"></i>
+        <div class="fc-admin-welcome-overlay" onclick="activePopupModal=null;render();">
+          <section class="fc-admin-welcome-card" role="dialog" aria-modal="true" aria-label="${tr('Xush kelibsiz', 'Добро пожаловать')}" onclick="event.stopPropagation()">
+            <div class="fc-admin-welcome-hero">
+              <div class="fc-admin-welcome-orbit" aria-hidden="true"></div>
+              <div class="fc-admin-welcome-icon" aria-hidden="true">
+                <i data-lucide="shield-check"></i>
               </div>
-              <h2 class="font-black text-gray-900 tracking-tight leading-tight mb-3" style="font-size: 22px;">${tr("Xush kelibsiz", "Добро пожаловать")}</h2>
-              <p class="text-gray-500 font-medium leading-relaxed mx-auto" style="font-size: 14px; max-width: 260px;">${tr("Do'koningizni boshqarish uchun barcha kerakli vositalar tayyor.", "Все инструменты для управления вашим магазином готовы к работе.")}</p>
+              <div class="fc-admin-welcome-copy">
+                <h2>${tr("Xush kelibsiz", "Добро пожаловать")}</h2>
+                <p>${tr("Do'koningizni boshqarish uchun barcha kerakli vositalar tayyor.", "Все инструменты для управления вашим магазином готовы к работе.")}</p>
+              </div>
             </div>
-            <div class="p-6 pt-2 flex flex-col gap-3">
-              <button type="button" onclick="activePopupModal=null; render(); setTimeout(() => openAdminCommandCenter(true), 50);" class="fc-btn fc-btn-primary w-full" style="height: 54px; border-radius: 16px; font-size: 15px;">
-                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                ${tr("Boshqaruv markazi", "Центр управления")}
+            <div class="fc-admin-welcome-actions">
+              <button type="button" onclick="activePopupModal=null; render(); setTimeout(() => openAdminCommandCenter(true), 50);" class="fc-admin-welcome-btn fc-admin-welcome-btn-primary">
+                <span class="fc-admin-welcome-btn-icon"><i data-lucide="layout-dashboard"></i></span>
+                <span class="fc-admin-welcome-btn-label">${tr("Boshqaruv markazi", "Центр управления")}</span>
+                <i data-lucide="arrow-right" class="fc-admin-welcome-btn-arrow"></i>
               </button>
-              <button type="button" onclick="activePopupModal=null; render();" class="fc-btn fc-btn-secondary w-full" style="height: 54px; border-radius: 16px; font-size: 15px; background: #f8fafc; border: 1px solid #e2e8f0;">
-                ${tr("Do'konni ko'rish", "Посмотреть магазин")}
+              <button type="button" onclick="activePopupModal=null; render();" class="fc-admin-welcome-btn fc-admin-welcome-btn-secondary">
+                <span class="fc-admin-welcome-btn-icon"><i data-lucide="store"></i></span>
+                <span class="fc-admin-welcome-btn-label">${tr("Do'konni ko'rish", "Посмотреть магазин")}</span>
+                <i data-lucide="arrow-right" class="fc-admin-welcome-btn-arrow"></i>
               </button>
             </div>
-          </div>
+          </section>
         </div>`;
         lucide.createIcons({ root: container });
         return;
@@ -16070,7 +16382,7 @@ function renderModalContainer() {
               </div>
               ${renderRegistrationLegalConsentsHtml()}
               <div class="pt-2">
-                <button id="reg-save-btn" onclick="saveRegistrationFromModal()" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl">${tr("✅ Saqlash", "✅ Сохранить")}</button>
+                <button id="reg-save-btn" onclick="saveRegistrationFromModal()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
               </div>
             </div>
           </div>
@@ -16281,7 +16593,7 @@ function renderModalContainer() {
                 <div class="fc-shop-field"><label for="m-prod-name">${tr('Tovar nomi *','Название товара *')}</label><input type="text" id="m-prod-name" value="${escapeHtml(productFormDraft.name)}" class="fc-shop-input" placeholder="${tr('Masalan: Samsung S26 Ultra','Например: Samsung S26 Ultra')}"></div>
                 <div class="fc-shop-field"><label for="m-prod-desc">${tr('Izoh / Tavsif','Описание')}</label><textarea id="m-prod-desc" rows="2" class="fc-shop-input" placeholder="${tr('Tovar haqida ma’lumot','Описание товара')}">${escapeHtml(productFormDraft.desc)}</textarea></div>
                 ${renderVariantBuilderHtml()}
-                <div class="flex space-x-2 pt-2"><button onclick="saveProductFromModal()" class="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl">${tr('Saqlash va omborga kiritish','Сохранить и добавить на склад')}</button><button onclick="cancelProductEditor()" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr('Bekor qilish','Отмена')}</button></div>
+                <div class="fc-icon-action-bar fc-modal-action-bar"><button onclick="cancelProductEditor()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveProductFromModal()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash va omborga kiritish','Сохранить и добавить на склад')}" title="${tr('Saqlash va omborga kiritish','Сохранить и добавить на склад')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
               </div>
             </div>`;
           return;
@@ -16298,7 +16610,7 @@ function renderModalContainer() {
               <div><label class="font-bold text-gray-600">${tr("Ombor qoldig'i (Soni) *",'Остаток на складе *')}</label><input type="number" id="m-prod-stock" value="${escapeHtml(productFormDraft.stock)}" placeholder="15" class="w-full mt-1 p-2 border rounded-xl"></div>
               <div><label class="font-bold text-gray-600">${tr('Izoh / Tavsif','Описание')}</label><textarea id="m-prod-desc" rows="2" placeholder="${tr('Tovar haqida ma’lumot','Описание товара')}" class="w-full mt-1 p-2 border rounded-xl">${escapeHtml(productFormDraft.desc)}</textarea></div>
               <div><label class="font-bold text-gray-600">${tr('Tovar rasmi','Фото товара')}</label>${productImageSizeHintHtml()}<div class="fc-image-picker-inline">${previewSrc ? `<img referrerpolicy="no-referrer" id="m-prod-prev" src="${escapeHtml(previewSrc)}" class="fc-image-preview-square">` : `<span class="fc-image-preview-square is-empty"><i data-lucide="image" class="w-5 h-5"></i></span><img referrerpolicy="no-referrer" id="m-prod-prev" src="" class="fc-image-preview-square hidden">`}<div class="fc-image-source-row"><button id="m-prod-image-button" type="button" onclick="openImagePickerSheet('m-prod-image-input','m-prod-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-5 h-5"></i></button><div class="fc-image-url-field"><input id="m-prod-image-url" type="url" value="${escapeHtml(tempImageUrl || productFormDraft.imageUrl || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'m-prod-prev','m-prod-image-url-error','m-prod-image-button')"><p id="m-prod-image-url-error" class="hidden"></p></div></div></div><input id="m-prod-image-input" type="file" accept="image/*" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"><input id="m-prod-image-input-files" type="file" onchange="onImagePicked(event,'m-prod-prev','m-prod-image-button','m-prod-image-url','m-prod-image-url-error')" class="hidden"></div>
-              <div class="flex space-x-2 pt-2"><button onclick="saveProductFromModal()" class="flex-1 bg-green-600 text-white font-bold py-2.5 rounded-xl">${tr('Saqlash va omborga kiritish','Сохранить и добавить на склад')}</button><button onclick="cancelProductEditor()" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr('Bekor qilish','Отмена')}</button></div>
+              <div class="fc-icon-action-bar fc-modal-action-bar"><button onclick="cancelProductEditor()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveProductFromModal()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash va omborga kiritish','Сохранить и добавить на склад')}" title="${tr('Saqlash va omborga kiritish','Сохранить и добавить на склад')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
             </div>
           </div>`;
         return;
@@ -16320,9 +16632,9 @@ function renderModalContainer() {
                 <img referrerpolicy="no-referrer" id="m-cat-prev" src="" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 hidden border mt-1">
                 <div class="fc-image-source-row mt-1"><button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="m-cat-image-url" type="url" value="" placeholder="https://..." oninput="onImageUrlInput(this.value,'m-cat-prev','m-cat-image-url-error','m-cat-image-button')"><p id="m-cat-image-url-error" class="hidden"></p></div></div>
               </div>
-              <div class="flex space-x-2 pt-2">
+              <div class="fc-icon-action-bar fc-modal-action-bar">
+                <button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
                 <button onclick="saveCategoryFromModal()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
               </div>
             </div>
           </div>
@@ -16347,9 +16659,9 @@ function renderModalContainer() {
                 <img referrerpolicy="no-referrer" id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border mt-1">
                 <div class="fc-image-source-row mt-1"><button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="ec-image-url" type="url" value="${escapeHtml(c.img || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'ec-img-prev','ec-image-url-error','ec-image-button')"><p id="ec-image-url-error" class="hidden"></p></div></div>
               </div>
-              <div class="flex space-x-2 pt-2">
+              <div class="fc-icon-action-bar fc-modal-action-bar">
+                <button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
                 <button onclick="saveCategoryEdit('${c.id}')" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
               </div>
             </div>
           </div>
@@ -16388,13 +16700,13 @@ function renderModalContainer() {
                   <button id="miq-image-button" type="button" onclick="openImagePickerSheet('miq-image-input','miq-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash','Выбрать фото')}" title="${tr('Rasm tanlash','Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
                   <div class="fc-image-url-field"><input id="miq-image-url" type="url" value="${escapeHtml(itemColor ? '' : (p.img || ''))}" placeholder="https://..." aria-label="${tr('Rasm URL manzili','URL изображения')}" oninput="document.getElementById('miq-empty-preview')?.classList.add('hidden');onImageUrlInput(this.value,'miq-img-prev','miq-image-url-error','miq-image-button')"><p id="miq-image-url-error" class="hidden"></p></div>
                 </div>
-                <button data-missing-image-save onclick="saveMissingImageQueueItem('${p.id}', ${itemColor ? JSON.stringify(itemColor) : 'null'})" ${missingImageQueueSaving ? 'disabled' : ''} class="w-full ${missingImageQueueSaving ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white'} font-black py-3 rounded-xl">${missingImageQueueSaving ? tr('Saqlanmoqda…','Сохранение…') : tr('Saqlash','Сохранить')}</button>
+                <div class="fc-icon-action-bar fc-modal-action-bar"><button data-missing-image-save onclick="saveMissingImageQueueItem('${p.id}', ${itemColor ? JSON.stringify(itemColor) : 'null'})" ${missingImageQueueSaving ? 'disabled' : ''} class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}">${missingImageQueueSaving ? '<span class="fc-spinner fc-spinner-xs"></span>' : '<i data-lucide="check" class="w-5 h-5"></i>'}</button></div>
                 <div class="grid grid-cols-2 gap-2 sticky bottom-0 bg-white pt-2">
                   <button onclick="moveMissingImageQueue(-1)" ${missingImageQueueSaving || missingImageQueueIndex === 0 ? 'disabled' : ''} class="fc-image-queue-nav" aria-label="${tr('Oldingi','Предыдущий')}" title="${tr('Oldingi','Предыдущий')}"><i data-lucide="arrow-left" class="w-5 h-5"></i></button>
                   <button onclick="moveMissingImageQueue(1)" ${missingImageQueueSaving || missingImageQueueIndex >= queue.length - 1 ? 'disabled' : ''} class="fc-image-queue-nav" aria-label="${tr('Keyingi','Следующий')}" title="${tr('Keyingi','Следующий')}"><i data-lucide="arrow-right" class="w-5 h-5"></i></button>
                 </div>
               ` : `
-                <div class="py-10 text-center space-y-3"><div class="mx-auto w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i data-lucide="circle-check" class="w-6 h-6"></i></div><p class="font-black text-emerald-700">${tr('Rasmsiz tovar qolmadi.','Товаров без фото не осталось.')}</p><button onclick="clearTempImageSelection(); activePopupModal=null; render();" class="bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl">${tr('Yopish','Закрыть')}</button></div>
+                <div class="py-10 text-center space-y-3"><div class="mx-auto w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center"><i data-lucide="circle-check" class="w-6 h-6"></i></div><p class="font-black text-emerald-700">${tr('Rasmsiz tovar qolmadi.','Товаров без фото не осталось.')}</p><button onclick="clearTempImageSelection(); activePopupModal=null; render();" class="fc-action-icon-btn is-cancel mx-auto" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button></div>
               `}
             </div>
           </div>
@@ -16454,7 +16766,7 @@ function renderModalContainer() {
                   : tr("Hozirgi sotuv narxi O'ZGARMAYDI, faqat \"eski narx\" yuqoriroq hisoblab qo'yiladi. Masalan 100 000 so'm + 20% → eski narx 125 000, yangi narx 100 000 (o'zgarmadi).", "Текущая цена продажи НЕ МЕНЯЕТСЯ, только \"старая цена\" рассчитывается выше. Например 100 000 + 20% → старая цена 125 000, новая 100 000 (без изменений).")}</p>
               </div>
               <div class="fc-sheet-footer grid grid-cols-2 gap-2">
-                <button type="button" ${discountApplyBusy?'disabled':''} onclick="activePopupModal=null;render();" class="fc-btn fc-btn-secondary">${tr('Bekor qilish','Отмена')}</button>
+                <button type="button" ${discountApplyBusy?'disabled':''} onclick="activePopupModal=null;render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
                 <button type="button" ${discountApplyBusy?'disabled':''} onclick="applyBulkDiscount()" class="fc-btn fc-btn-primary"><i data-lucide="percent" class="w-4 h-4"></i>${discountApplyBusy ? tr('Qoʻllanmoqda…','Применяется…') : tr('Qoʻllash','Применить')}</button>
               </div>
             </div>
@@ -16498,7 +16810,7 @@ function renderModalContainer() {
                       </div>
                     </div>
                   `).join('')}</div>`}
-              <button onclick="activePopupModal=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+              <button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel mx-auto" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
           </div>`;
         return;
@@ -16578,7 +16890,7 @@ function renderModalContainer() {
                 <label class="fc-mini-field"><span>${tr("Telegram ID raqami", "Telegram ID")}</span><input type="number" id="m-admin-id" placeholder="123456789"></label>
                 <p class="fc-shop-field-help">${tr("Xodimning Telegram raqamli ID sini kiriting.", "Введите числовой Telegram ID сотрудника.")}</p>
               </div>
-              <div class="fc-sheet-footer grid grid-cols-2 gap-2"><button type="button" onclick="activePopupModal=null;render();" class="fc-btn fc-btn-secondary">${tr("Bekor qilish", "Отмена")}</button><button type="button" onclick="saveAdminFromModal()" class="fc-btn fc-btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr("Qo‘shish", "Добавить")}</button></div>
+              <div class="fc-sheet-footer grid grid-cols-2 gap-2"><button type="button" onclick="activePopupModal=null;render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button type="button" onclick="saveAdminFromModal()" class="fc-btn fc-btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr("Qo‘shish", "Добавить")}</button></div>
             </div>
           </div>`;
         return;
@@ -16722,7 +17034,7 @@ function renderModalContainer() {
                 <div class="fc-icon-action-bar"><button type="button" onclick="saveBillzSaleConfig()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
                 <button onclick="disconnectBillz()" class="w-full text-center fc-text-danger font-bold py-2 fc-provider-disconnect"><i data-lucide="unlink" class="w-4 h-4"></i>${tr("Uzish", "Отключить")}</button>
               `}
-              <button onclick="activePopupModal=null; billzConnectionStatus=null; billzConfigOptions=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl fc-provider-close">${tr("Yopish", "Закрыть")}</button>
+              <button onclick="activePopupModal=null; billzConnectionStatus=null; billzConfigOptions=null; render();" class="fc-action-icon-btn is-cancel fc-provider-close mx-auto" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
           </div>
         `;
@@ -16749,7 +17061,7 @@ function renderModalContainer() {
                 <p class="text-gray-500">${tr("Endi \"To'lov sozlamalari\"da \"Uzum orqali (avtomatik)\" metodini yoqishingiz mumkin.", "Теперь вы можете включить метод \"Uzum (автоматически)\" в настройках оплаты.")}</p>
                 <button onclick="disconnectUzum()" class="w-full text-center fc-text-danger font-bold py-2">${tr("Uzish", "Отключить")}</button>
               `}
-              <button onclick="activePopupModal=null; uzumConnectionStatus=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+              <button onclick="activePopupModal=null; uzumConnectionStatus=null; render();" class="fc-action-icon-btn is-cancel mx-auto" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
           </div>
         `;
@@ -16778,7 +17090,7 @@ function renderModalContainer() {
               </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="confirmBillzImport()" ${billzImporting ? 'disabled' : ''} class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl fc-provider-primary">${billzImporting ? tr("Import qilinmoqda...", "Импортируется...") : tr("Tasdiqlash", "Подтвердить")}</button>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl fc-provider-close">${tr("Bekor qilish", "Отмена")}</button>
+                <button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel fc-provider-close" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
               </div>
             </div>
           </div>
@@ -16797,7 +17109,7 @@ function renderModalContainer() {
               <div class="flex items-center gap-2 flex-wrap justify-center">
                 <button type="button" onclick="openImagePickerSheet('shop-logo-input','shop-logo-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button>
               </div>
-              <button onclick="activePopupModal=null; render();" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-xl">${tr("Yopish", "Закрыть")}</button>
+              <button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel mx-auto" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
           </div>
         `;
@@ -16822,7 +17134,7 @@ function renderModalContainer() {
               </div>
               <div class="grid grid-cols-2 gap-2 pt-1">
                 <button onclick="confirmBannerCrop()" class="fc-btn fc-btn-primary">${tr('Tasdiqlash', 'Подтвердить')}</button>
-                <button onclick="cancelBannerCrop()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
+                <button onclick="cancelBannerCrop()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
               </div>
             </div>
           </div>
@@ -16848,7 +17160,7 @@ if (activePopupModal === 'LOGO_CROP') {
               </div>
               <div class="grid grid-cols-2 gap-2 pt-1">
                 <button onclick="confirmLogoCrop()" class="fc-btn fc-btn-primary">${tr('Tasdiqlash', 'Подтвердить')}</button>
-                <button onclick="cancelLogoCrop()" class="fc-btn fc-btn-secondary">${tr('Bekor qilish', 'Отмена')}</button>
+                <button onclick="cancelLogoCrop()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
               </div>
             </div>
           </div>
@@ -16926,7 +17238,7 @@ if (activePopupModal === 'LOGO_CROP') {
               </div>
               <div class="flex gap-2 pt-2">
                 <button onclick="submitBlockUser('${u.tgId}')" class="flex-1 fc-bg-danger text-white font-bold py-2.5 rounded-xl">${tr("🚫 Bloklash", "🚫 Заблокировать")}</button>
-                <button onclick="activePopupModal=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr("Bekor qilish", "Отмена")}</button>
+                <button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
               </div>
             </div>
           </div>
@@ -17043,11 +17355,12 @@ if (activePopupModal === 'LOGO_CROP') {
       // KATALOG FILTR/SARALASH PANELI
             if (activePopupModal === 'CAT_FILTER') {
         const activeSortMode = currentCategorySortMode();
-        const sortRowClass = (mode) => activeSortMode === mode ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+        const sortRowClass = (mode) => activeSortMode === mode ? 'is-active' : '';
         const sortRow = (mode, label, icon) => `
-          <button onclick="setCategorySortMode('${mode}')" class="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold transition-all ${sortRowClass(mode)}">
-            <div class="flex items-center gap-3"><i data-lucide="${icon}" class="w-5 h-5 opacity-70"></i><span>${label}</span></div>
-            ${activeSortMode === mode ? '<i data-lucide="check-circle-2" class="w-5 h-5 text-white"></i>' : ''}
+          <button onclick="setCategorySortMode('${mode}')" class="fc-cat-filter-sort-row ${sortRowClass(mode)}">
+            <span class="fc-cat-filter-sort-icon"><i data-lucide="${icon}"></i></span>
+            <span class="fc-cat-filter-sort-label">${label}</span>
+            <span class="fc-cat-filter-sort-check">${activeSortMode === mode ? '<i data-lucide="check"></i>' : ''}</span>
           </button>`;
         const pricePresetLabel = (min, max) => {
           const shortMoney = (v) => Number(v) >= 1000000 ? `${Number(v)/1000000} mln` : `${Math.round(Number(v)/1000)} ming`;
@@ -17066,84 +17379,101 @@ if (activePopupModal === 'LOGO_CROP') {
         }
         
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-[99] flex items-end justify-center backdrop-blur-sm transition-all duration-300" onclick="closeCategoryFilterModal();">
-            <div class="bg-white rounded-t-[2rem] p-6 max-w-md w-full shadow-2xl max-h-[90vh] flex flex-col transform transition-transform duration-300 translate-y-0" onclick="event.stopPropagation()">
-              <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
-              
-              <div class="flex items-center justify-between mb-6">
-                <h3 class="font-black text-xl text-gray-900 tracking-tight">${tr("Filtr va saralash", "Фильтр и сортировка")}</h3>
-                <button type="button" onclick="categoryFilter = { search: '', minPrice: '', maxPrice: '', sortPrice: null, sortNew: null, sortSold: null, inStockOnly: false, discountOnly: false }; categoryPage = 1; render();" class="text-sm font-bold text-gray-400 hover:text-gray-900 transition-colors">${tr("Tozalash", "Сбросить")}</button>
+          <div class="fc-cat-filter-overlay fixed inset-0 z-[99] flex items-end justify-center" onclick="closeCategoryFilterModal();">
+            <div class="fc-cat-filter-sheet max-w-md w-full flex flex-col" onclick="event.stopPropagation()">
+              <div class="fc-cat-filter-handle" aria-hidden="true"></div>
+
+              <div class="fc-cat-filter-head">
+                <div class="fc-cat-filter-title-wrap">
+                  <span class="fc-cat-filter-title-icon"><i data-lucide="sliders-horizontal"></i></span>
+                  <h3>${tr("Filtr va saralash", "Фильтр и сортировка")}</h3>
+                </div>
+                <button type="button" onclick="categoryFilter = { search: '', minPrice: '', maxPrice: '', sortPrice: null, sortNew: null, sortSold: null, inStockOnly: false, discountOnly: false }; categoryPage = 1; render();" class="fc-cat-filter-reset">
+                  <i data-lucide="rotate-ccw"></i><span>${tr("Tozalash", "Сбросить")}</span>
+                </button>
               </div>
-              
-              <div class="overflow-y-auto overflow-x-hidden -mx-6 px-6 pb-6 space-y-8 no-scrollbar">
-                
+
+              <div class="fc-cat-filter-scroll no-scrollbar">
                 <!-- Qidiruv -->
-                <div class="space-y-3">
-                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="search" class="w-4 h-4 text-gray-400"></i> ${tr("Tovar qidirish", "Поиск товара")}</label>
-                  <div class="relative">
-                    <input type="text" value="${escapeHtml(categoryFilter.search || '')}" oninput="categoryFilter.search=this.value; categoryPage=1; renderModalContainer();" placeholder="${escapeHtml(searchPlaceholderText())}" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 pl-11 pr-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
-                    <i data-lucide="search" class="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2"></i>
-                    ${categoryFilter.search ? `<button onclick="categoryFilter.search=''; categoryPage=1; renderModalContainer();" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900"><i data-lucide="x-circle" class="w-5 h-5"></i></button>` : ''}
+                <section class="fc-cat-filter-section">
+                  <div class="fc-cat-filter-section-title">
+                    <span><i data-lucide="search"></i></span>
+                    <b>${tr("Tovar qidirish", "Поиск товара")}</b>
                   </div>
-                </div>
-                
+                  <div class="fc-cat-filter-search-wrap">
+                    <i data-lucide="search" class="fc-cat-filter-search-leading"></i>
+                    <input type="text" value="${escapeHtml(categoryFilter.search || '')}" oninput="categoryFilter.search=this.value; categoryPage=1; renderModalContainer();" placeholder="${escapeHtml(searchPlaceholderText())}" class="fc-cat-filter-input fc-cat-filter-search-input">
+                    ${categoryFilter.search ? `<button onclick="categoryFilter.search=''; categoryPage=1; renderModalContainer();" class="fc-cat-filter-search-clear" aria-label="${tr('Qidiruvni tozalash','Очистить поиск')}"><i data-lucide="x"></i></button>` : ''}
+                  </div>
+                </section>
+
                 <!-- Tezkor holat filtrlari -->
-                <div class="space-y-3">
-                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-gray-400"></i> ${tr("Holat bo'yicha", "По статусу")}</label>
-                  <div class="grid grid-cols-2 gap-3">
-                    <button onclick="toggleInStockOnlyFilter()" class="flex flex-col items-start gap-2 p-4 rounded-2xl border-2 transition-all ${categoryFilter.inStockOnly ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'}">
-                      <div class="flex items-center justify-between w-full">
-                        <i data-lucide="package" class="w-6 h-6 ${categoryFilter.inStockOnly ? 'text-emerald-500' : 'text-gray-400'}"></i>
-                        ${categoryFilter.inStockOnly ? '<i data-lucide="check" class="w-5 h-5 text-emerald-500"></i>' : ''}
-                      </div>
-                      <span class="font-bold text-sm">${tr('Faqat mavjud', 'В наличии')}</span>
+                <section class="fc-cat-filter-section">
+                  <div class="fc-cat-filter-section-title">
+                    <span><i data-lucide="layers-3"></i></span>
+                    <b>${tr("Holat bo'yicha", "По статусу")}</b>
+                  </div>
+                  <div class="fc-cat-filter-status-grid">
+                    <button onclick="toggleInStockOnlyFilter()" class="fc-cat-filter-status-card is-stock ${categoryFilter.inStockOnly ? 'is-active' : ''}">
+                      <span class="fc-cat-filter-status-icon"><i data-lucide="package-check"></i></span>
+                      <span class="fc-cat-filter-status-copy">
+                        <b>${tr('Faqat mavjud', 'В наличии')}</b>
+                      </span>
+                      <span class="fc-cat-filter-status-check">${categoryFilter.inStockOnly ? '<i data-lucide="check"></i>' : ''}</span>
                     </button>
-                    <button onclick="toggleDiscountOnlyFilter()" class="flex flex-col items-start gap-2 p-4 rounded-2xl border-2 transition-all ${categoryFilter.discountOnly ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'}">
-                      <div class="flex items-center justify-between w-full">
-                        <i data-lucide="tag" class="w-6 h-6 ${categoryFilter.discountOnly ? 'text-blue-500' : 'text-gray-400'}"></i>
-                        ${categoryFilter.discountOnly ? '<i data-lucide="check" class="w-5 h-5 text-blue-500"></i>' : ''}
-                      </div>
-                      <span class="font-bold text-sm">${tr('Chegirmali', 'Со скидкой')}</span>
+                    <button onclick="toggleDiscountOnlyFilter()" class="fc-cat-filter-status-card is-discount ${categoryFilter.discountOnly ? 'is-active' : ''}">
+                      <span class="fc-cat-filter-status-icon"><i data-lucide="badge-percent"></i></span>
+                      <span class="fc-cat-filter-status-copy">
+                        <b>${tr('Chegirmali', 'Со скидкой')}</b>
+                      </span>
+                      <span class="fc-cat-filter-status-check">${categoryFilter.discountOnly ? '<i data-lucide="check"></i>' : ''}</span>
                     </button>
                   </div>
-                </div>
-                
+                </section>
+
                 <!-- Narx filtri -->
-                <div class="space-y-4">
-                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="banknote" class="w-4 h-4 text-gray-400"></i> ${tr("Narx oralig'i (so'm)", "Диапазон цен (сум)")}</label>
-                  <div class="flex items-center gap-3">
-                    <div class="relative flex-1">
-                      <input type="number" inputmode="numeric" placeholder="${tr('Dan','От')}" value="${escapeHtml(categoryFilter.minPrice)}" oninput="setCategoryPriceBound('minPrice', this.value); renderModalContainer();" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+                <section class="fc-cat-filter-section">
+                  <div class="fc-cat-filter-section-title">
+                    <span><i data-lucide="banknote"></i></span>
+                    <b>${tr("Narx oralig'i (so'm)", "Диапазон цен (сум)")}</b>
+                  </div>
+                  <div class="fc-cat-filter-price-row">
+                    <div class="fc-cat-filter-price-field">
+                      <span>${tr('Dan','От')}</span>
+                      <input type="number" inputmode="numeric" placeholder="0" value="${escapeHtml(categoryFilter.minPrice)}" oninput="setCategoryPriceBound('minPrice', this.value); renderModalContainer();" class="fc-cat-filter-input">
                     </div>
-                    <div class="w-4 h-px bg-gray-300 shrink-0"></div>
-                    <div class="relative flex-1">
-                      <input type="number" inputmode="numeric" placeholder="${tr('Gacha','До')}" value="${escapeHtml(categoryFilter.maxPrice)}" oninput="setCategoryPriceBound('maxPrice', this.value); renderModalContainer();" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+                    <span class="fc-cat-filter-price-separator"></span>
+                    <div class="fc-cat-filter-price-field">
+                      <span>${tr('Gacha','До')}</span>
+                      <input type="number" inputmode="numeric" placeholder="0" value="${escapeHtml(categoryFilter.maxPrice)}" oninput="setCategoryPriceBound('maxPrice', this.value); renderModalContainer();" class="fc-cat-filter-input">
                     </div>
                   </div>
-                  <div class="flex flex-wrap gap-2">
+                  <div class="fc-cat-filter-presets no-scrollbar">
                     ${CATEGORY_PRICE_PRESETS.map(p => `
-                      <button onclick="applyCategoryPricePreset('${p.min}','${p.max}'); renderModalContainer();" class="px-3.5 py-2 rounded-xl font-bold text-xs transition-all ${String(categoryFilter.minPrice || '') === p.min && String(categoryFilter.maxPrice || '') === p.max ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${pricePresetLabel(p.min, p.max)}</button>
+                      <button onclick="applyCategoryPricePreset('${p.min}','${p.max}'); renderModalContainer();" class="fc-cat-filter-preset ${String(categoryFilter.minPrice || '') === p.min && String(categoryFilter.maxPrice || '') === p.max ? 'is-active' : ''}">${pricePresetLabel(p.min, p.max)}</button>
                     `).join('')}
                   </div>
-                </div>
-                
+                </section>
+
                 <!-- Saralash -->
-                <div class="space-y-3">
-                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="arrow-down-up" class="w-4 h-4 text-gray-400"></i> ${tr("Saralash", "Сортировка")}</label>
-                  <div class="space-y-2">
+                <section class="fc-cat-filter-section fc-cat-filter-sort-section">
+                  <div class="fc-cat-filter-section-title">
+                    <span><i data-lucide="arrow-down-up"></i></span>
+                    <b>${tr("Saralash", "Сортировка")}</b>
+                  </div>
+                  <div class="fc-cat-filter-sort-list">
                     ${sortRow('priceAsc', tr('Narx: arzondan qimmatga', 'Сначала дешевле'), 'trending-up')}
                     ${sortRow('priceDesc', tr('Narx: qimmatdan arzonga', 'Сначала дороже'), 'trending-down')}
                     ${sortRow('new', tr('Yangi qoʻshilganlar', 'Сначала новые'), 'sparkles')}
                     ${sortRow('sold', tr('Eng koʻp sotilganlar', 'Популярные'), 'flame')}
                   </div>
-                </div>
-                
+                </section>
               </div>
-              
-              <div class="pt-4 border-t border-gray-50 bg-white">
-                <button onclick="closeCategoryFilterModal();" class="w-full fc-btn-primary fc-btn text-white font-bold text-[15px] py-4 px-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
+
+              <div class="fc-cat-filter-footer">
+                <button onclick="closeCategoryFilterModal();" class="fc-cat-filter-submit">
                   <span>${tr("Natijalarni ko'rish", "Показать результаты")}</span>
-                  <span class="bg-white/20 px-2 py-0.5 rounded-full text-xs">${filterResultCount}</span>
+                  <span class="fc-cat-filter-count">${filterResultCount}</span>
                 </button>
               </div>
             </div>
@@ -17152,7 +17482,6 @@ if (activePopupModal === 'LOGO_CROP') {
         lucide.createIcons({ root: container });
         return;
       }
-
 
       // PRODUCT DETAILS MODAL
       if (selectedProductModal) {
@@ -17320,7 +17649,7 @@ if (activePopupModal === 'LOGO_CROP') {
               </div>
               <div class="flex gap-2 pt-1">
                 <button onclick="submitRejectReceipt()" class="flex-1 fc-bg-danger text-white font-bold py-2.5 rounded-xl">❌ ${tr('Rad etish', 'Отклонить')}</button>
-                <button onclick="activePopupModal=null; rejectReceiptOrderId=null; render();" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr('Bekor qilish', 'Отмена')}</button>
+                <button onclick="activePopupModal=null; rejectReceiptOrderId=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
               </div>
             </div>
           </div>
@@ -17349,7 +17678,7 @@ if (activePopupModal === 'LOGO_CROP') {
               </div>
               <div class="flex gap-2 pt-1">
                 <button onclick="submitResubmitReceipt()" class="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl">✅ ${tr('Yuborish', 'Отправить')}</button>
-                <button onclick="closeResubmitReceiptModal()" class="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl">${tr('Bekor qilish', 'Отмена')}</button>
+                <button onclick="closeResubmitReceiptModal()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
               </div>
             </div>
           </div>
@@ -17500,6 +17829,8 @@ if (activePopupModal === 'LOGO_CROP') {
       container.innerHTML = '';
       } finally {
         safeCreateIcons();
+        const modalRoot = document.getElementById('modal-container');
+        if (modalRoot?.childElementCount) stagePremiumMedia(modalRoot);
       }
     }
 
@@ -19889,11 +20220,13 @@ if (activePopupModal === 'LOGO_CROP') {
       // fallback konvensiyasi bilan bir xil. Haqiqiy nom bootData kelgach
       // darhol (header orqali) ko'rinadi.
       const cachedShopName = String(cachedBrand?.name || tr("Do'kon", 'Магазин')).trim();
-      document.getElementById('app-content').innerHTML = `<div class="fc-boot-welcome" role="status">
-        <div class="fc-boot-welcome-mark">U</div>
-        <h2>${escapeHtml(cachedShopName)} ${tr("do'koniga xush kelibsiz!", '— добро пожаловать!')}</h2>
-        <p>${tr("Sizni ko'rganimizdan xursandmiz.", 'Мы рады вас видеть.')}</p>
-        <span class="fc-boot-welcome-loader"><i></i></span>
+      document.getElementById('app-content').innerHTML = `<div class="fc-premium-boot-skeleton" role="status" aria-label="${escapeHtml(tr('Do‘kon tayyorlanmoqda','Магазин загружается'))}">
+        <div class="fc-premium-boot-brand"><span></span><div><i></i><i></i></div></div>
+        <div class="fc-premium-boot-search"></div>
+        <div class="fc-premium-boot-banner"></div>
+        <div class="fc-premium-boot-title"></div>
+        <div class="fc-premium-boot-grid"><span></span><span></span><span></span><span></span></div>
+        <b class="fc-visually-hidden">${escapeHtml(cachedShopName)} · ${escapeHtml(tr('Yuklanmoqda','Загрузка'))}</b>
       </div>`;
 
       const hadCache = hydrateCatalogCache();
@@ -19996,6 +20329,11 @@ if (activePopupModal === 'LOGO_CROP') {
         return;
       }
 
+      // 5-TOPSHIRIQ: birinchi kirishda cache yo'q bo'lsa bo'sh/yarim katalogni
+      // bir frame ko'rsatmaymiz. Auth va haqiqiy katalog parallel yuklanadi,
+      // lekin ilk Shop UI ikkalasi tayyor bo'lgandan keyingina chiziladi.
+      if (!hadCache) await catalogPromise;
+
       setupPolling();
       switchTab('home');
       if (isAdminMode && isUserAnAdmin) requestAnimationFrame(() => showAdminWelcomeModal());
@@ -20020,4 +20358,5 @@ if (activePopupModal === 'LOGO_CROP') {
       const btn = document.querySelector('.fc-scroll-top-btn');
       if (btn) btn.classList.toggle('is-visible', window.scrollY > 300);
     });
+    installPremiumMediaObserver();
     boot();
