@@ -17043,11 +17043,12 @@ if (activePopupModal === 'LOGO_CROP') {
       // KATALOG FILTR/SARALASH PANELI
             if (activePopupModal === 'CAT_FILTER') {
         const activeSortMode = currentCategorySortMode();
-        const sortRowClass = (mode) => activeSortMode === mode ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+        const sortRowClass = (mode) => activeSortMode === mode ? 'is-active' : '';
         const sortRow = (mode, label, icon) => `
-          <button onclick="setCategorySortMode('${mode}')" class="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl font-bold transition-all ${sortRowClass(mode)}">
-            <div class="flex items-center gap-3"><i data-lucide="${icon}" class="w-5 h-5 opacity-70"></i><span>${label}</span></div>
-            ${activeSortMode === mode ? '<i data-lucide="check-circle-2" class="w-5 h-5 text-white"></i>' : ''}
+          <button onclick="setCategorySortMode('${mode}')" class="fc-cat-filter-sort-row ${sortRowClass(mode)}">
+            <span class="fc-cat-filter-sort-icon"><i data-lucide="${icon}"></i></span>
+            <span class="fc-cat-filter-sort-label">${label}</span>
+            <span class="fc-cat-filter-sort-check">${activeSortMode === mode ? '<i data-lucide="check"></i>' : ''}</span>
           </button>`;
         const pricePresetLabel = (min, max) => {
           const shortMoney = (v) => Number(v) >= 1000000 ? `${Number(v)/1000000} mln` : `${Math.round(Number(v)/1000)} ming`;
@@ -17066,84 +17067,101 @@ if (activePopupModal === 'LOGO_CROP') {
         }
         
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-[99] flex items-end justify-center backdrop-blur-sm transition-all duration-300" onclick="closeCategoryFilterModal();">
-            <div class="bg-white rounded-t-[2rem] p-6 max-w-md w-full shadow-2xl max-h-[90vh] flex flex-col transform transition-transform duration-300 translate-y-0" onclick="event.stopPropagation()">
-              <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
-              
-              <div class="flex items-center justify-between mb-6">
-                <h3 class="font-black text-xl text-gray-900 tracking-tight">${tr("Filtr va saralash", "Фильтр и сортировка")}</h3>
-                <button type="button" onclick="categoryFilter = { search: '', minPrice: '', maxPrice: '', sortPrice: null, sortNew: null, sortSold: null, inStockOnly: false, discountOnly: false }; categoryPage = 1; render();" class="text-sm font-bold text-gray-400 hover:text-gray-900 transition-colors">${tr("Tozalash", "Сбросить")}</button>
+          <div class="fc-cat-filter-overlay fixed inset-0 z-[99] flex items-end justify-center" onclick="closeCategoryFilterModal();">
+            <div class="fc-cat-filter-sheet max-w-md w-full flex flex-col" onclick="event.stopPropagation()">
+              <div class="fc-cat-filter-handle" aria-hidden="true"></div>
+
+              <div class="fc-cat-filter-head">
+                <div class="fc-cat-filter-title-wrap">
+                  <span class="fc-cat-filter-title-icon"><i data-lucide="sliders-horizontal"></i></span>
+                  <h3>${tr("Filtr va saralash", "Фильтр и сортировка")}</h3>
+                </div>
+                <button type="button" onclick="categoryFilter = { search: '', minPrice: '', maxPrice: '', sortPrice: null, sortNew: null, sortSold: null, inStockOnly: false, discountOnly: false }; categoryPage = 1; render();" class="fc-cat-filter-reset">
+                  <i data-lucide="rotate-ccw"></i><span>${tr("Tozalash", "Сбросить")}</span>
+                </button>
               </div>
-              
-              <div class="overflow-y-auto overflow-x-hidden -mx-6 px-6 pb-6 space-y-8 no-scrollbar">
-                
+
+              <div class="fc-cat-filter-scroll no-scrollbar">
                 <!-- Qidiruv -->
-                <div class="space-y-3">
-                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="search" class="w-4 h-4 text-gray-400"></i> ${tr("Tovar qidirish", "Поиск товара")}</label>
-                  <div class="relative">
-                    <input type="text" value="${escapeHtml(categoryFilter.search || '')}" oninput="categoryFilter.search=this.value; categoryPage=1; renderModalContainer();" placeholder="${escapeHtml(searchPlaceholderText())}" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 pl-11 pr-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
-                    <i data-lucide="search" class="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2"></i>
-                    ${categoryFilter.search ? `<button onclick="categoryFilter.search=''; categoryPage=1; renderModalContainer();" class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900"><i data-lucide="x-circle" class="w-5 h-5"></i></button>` : ''}
+                <section class="fc-cat-filter-section">
+                  <div class="fc-cat-filter-section-title">
+                    <span><i data-lucide="search"></i></span>
+                    <b>${tr("Tovar qidirish", "Поиск товара")}</b>
                   </div>
-                </div>
-                
+                  <div class="fc-cat-filter-search-wrap">
+                    <i data-lucide="search" class="fc-cat-filter-search-leading"></i>
+                    <input type="text" value="${escapeHtml(categoryFilter.search || '')}" oninput="categoryFilter.search=this.value; categoryPage=1; renderModalContainer();" placeholder="${escapeHtml(searchPlaceholderText())}" class="fc-cat-filter-input fc-cat-filter-search-input">
+                    ${categoryFilter.search ? `<button onclick="categoryFilter.search=''; categoryPage=1; renderModalContainer();" class="fc-cat-filter-search-clear" aria-label="${tr('Qidiruvni tozalash','Очистить поиск')}"><i data-lucide="x"></i></button>` : ''}
+                  </div>
+                </section>
+
                 <!-- Tezkor holat filtrlari -->
-                <div class="space-y-3">
-                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="layers" class="w-4 h-4 text-gray-400"></i> ${tr("Holat bo'yicha", "По статусу")}</label>
-                  <div class="grid grid-cols-2 gap-3">
-                    <button onclick="toggleInStockOnlyFilter()" class="flex flex-col items-start gap-2 p-4 rounded-2xl border-2 transition-all ${categoryFilter.inStockOnly ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'}">
-                      <div class="flex items-center justify-between w-full">
-                        <i data-lucide="package" class="w-6 h-6 ${categoryFilter.inStockOnly ? 'text-emerald-500' : 'text-gray-400'}"></i>
-                        ${categoryFilter.inStockOnly ? '<i data-lucide="check" class="w-5 h-5 text-emerald-500"></i>' : ''}
-                      </div>
-                      <span class="font-bold text-sm">${tr('Faqat mavjud', 'В наличии')}</span>
+                <section class="fc-cat-filter-section">
+                  <div class="fc-cat-filter-section-title">
+                    <span><i data-lucide="layers-3"></i></span>
+                    <b>${tr("Holat bo'yicha", "По статусу")}</b>
+                  </div>
+                  <div class="fc-cat-filter-status-grid">
+                    <button onclick="toggleInStockOnlyFilter()" class="fc-cat-filter-status-card is-stock ${categoryFilter.inStockOnly ? 'is-active' : ''}">
+                      <span class="fc-cat-filter-status-icon"><i data-lucide="package-check"></i></span>
+                      <span class="fc-cat-filter-status-copy">
+                        <b>${tr('Faqat mavjud', 'В наличии')}</b>
+                      </span>
+                      <span class="fc-cat-filter-status-check">${categoryFilter.inStockOnly ? '<i data-lucide="check"></i>' : ''}</span>
                     </button>
-                    <button onclick="toggleDiscountOnlyFilter()" class="flex flex-col items-start gap-2 p-4 rounded-2xl border-2 transition-all ${categoryFilter.discountOnly ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-gray-100 bg-white text-gray-500 hover:border-gray-200'}">
-                      <div class="flex items-center justify-between w-full">
-                        <i data-lucide="tag" class="w-6 h-6 ${categoryFilter.discountOnly ? 'text-blue-500' : 'text-gray-400'}"></i>
-                        ${categoryFilter.discountOnly ? '<i data-lucide="check" class="w-5 h-5 text-blue-500"></i>' : ''}
-                      </div>
-                      <span class="font-bold text-sm">${tr('Chegirmali', 'Со скидкой')}</span>
+                    <button onclick="toggleDiscountOnlyFilter()" class="fc-cat-filter-status-card is-discount ${categoryFilter.discountOnly ? 'is-active' : ''}">
+                      <span class="fc-cat-filter-status-icon"><i data-lucide="badge-percent"></i></span>
+                      <span class="fc-cat-filter-status-copy">
+                        <b>${tr('Chegirmali', 'Со скидкой')}</b>
+                      </span>
+                      <span class="fc-cat-filter-status-check">${categoryFilter.discountOnly ? '<i data-lucide="check"></i>' : ''}</span>
                     </button>
                   </div>
-                </div>
-                
+                </section>
+
                 <!-- Narx filtri -->
-                <div class="space-y-4">
-                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="banknote" class="w-4 h-4 text-gray-400"></i> ${tr("Narx oralig'i (so'm)", "Диапазон цен (сум)")}</label>
-                  <div class="flex items-center gap-3">
-                    <div class="relative flex-1">
-                      <input type="number" inputmode="numeric" placeholder="${tr('Dan','От')}" value="${escapeHtml(categoryFilter.minPrice)}" oninput="setCategoryPriceBound('minPrice', this.value); renderModalContainer();" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+                <section class="fc-cat-filter-section">
+                  <div class="fc-cat-filter-section-title">
+                    <span><i data-lucide="banknote"></i></span>
+                    <b>${tr("Narx oralig'i (so'm)", "Диапазон цен (сум)")}</b>
+                  </div>
+                  <div class="fc-cat-filter-price-row">
+                    <div class="fc-cat-filter-price-field">
+                      <span>${tr('Dan','От')}</span>
+                      <input type="number" inputmode="numeric" placeholder="0" value="${escapeHtml(categoryFilter.minPrice)}" oninput="setCategoryPriceBound('minPrice', this.value); renderModalContainer();" class="fc-cat-filter-input">
                     </div>
-                    <div class="w-4 h-px bg-gray-300 shrink-0"></div>
-                    <div class="relative flex-1">
-                      <input type="number" inputmode="numeric" placeholder="${tr('Gacha','До')}" value="${escapeHtml(categoryFilter.maxPrice)}" oninput="setCategoryPriceBound('maxPrice', this.value); renderModalContainer();" class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 px-4 text-sm font-medium focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none">
+                    <span class="fc-cat-filter-price-separator"></span>
+                    <div class="fc-cat-filter-price-field">
+                      <span>${tr('Gacha','До')}</span>
+                      <input type="number" inputmode="numeric" placeholder="0" value="${escapeHtml(categoryFilter.maxPrice)}" oninput="setCategoryPriceBound('maxPrice', this.value); renderModalContainer();" class="fc-cat-filter-input">
                     </div>
                   </div>
-                  <div class="flex flex-wrap gap-2">
+                  <div class="fc-cat-filter-presets no-scrollbar">
                     ${CATEGORY_PRICE_PRESETS.map(p => `
-                      <button onclick="applyCategoryPricePreset('${p.min}','${p.max}'); renderModalContainer();" class="px-3.5 py-2 rounded-xl font-bold text-xs transition-all ${String(categoryFilter.minPrice || '') === p.min && String(categoryFilter.maxPrice || '') === p.max ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${pricePresetLabel(p.min, p.max)}</button>
+                      <button onclick="applyCategoryPricePreset('${p.min}','${p.max}'); renderModalContainer();" class="fc-cat-filter-preset ${String(categoryFilter.minPrice || '') === p.min && String(categoryFilter.maxPrice || '') === p.max ? 'is-active' : ''}">${pricePresetLabel(p.min, p.max)}</button>
                     `).join('')}
                   </div>
-                </div>
-                
+                </section>
+
                 <!-- Saralash -->
-                <div class="space-y-3">
-                  <label class="text-sm font-bold text-gray-900 flex items-center gap-2"><i data-lucide="arrow-down-up" class="w-4 h-4 text-gray-400"></i> ${tr("Saralash", "Сортировка")}</label>
-                  <div class="space-y-2">
+                <section class="fc-cat-filter-section fc-cat-filter-sort-section">
+                  <div class="fc-cat-filter-section-title">
+                    <span><i data-lucide="arrow-down-up"></i></span>
+                    <b>${tr("Saralash", "Сортировка")}</b>
+                  </div>
+                  <div class="fc-cat-filter-sort-list">
                     ${sortRow('priceAsc', tr('Narx: arzondan qimmatga', 'Сначала дешевле'), 'trending-up')}
                     ${sortRow('priceDesc', tr('Narx: qimmatdan arzonga', 'Сначала дороже'), 'trending-down')}
                     ${sortRow('new', tr('Yangi qoʻshilganlar', 'Сначала новые'), 'sparkles')}
                     ${sortRow('sold', tr('Eng koʻp sotilganlar', 'Популярные'), 'flame')}
                   </div>
-                </div>
-                
+                </section>
               </div>
-              
-              <div class="pt-4 border-t border-gray-50 bg-white">
-                <button onclick="closeCategoryFilterModal();" class="w-full fc-btn-primary fc-btn text-white font-bold text-[15px] py-4 px-4 rounded-2xl shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2">
+
+              <div class="fc-cat-filter-footer">
+                <button onclick="closeCategoryFilterModal();" class="fc-cat-filter-submit">
                   <span>${tr("Natijalarni ko'rish", "Показать результаты")}</span>
-                  <span class="bg-white/20 px-2 py-0.5 rounded-full text-xs">${filterResultCount}</span>
+                  <span class="fc-cat-filter-count">${filterResultCount}</span>
                 </button>
               </div>
             </div>
@@ -17152,7 +17170,6 @@ if (activePopupModal === 'LOGO_CROP') {
         lucide.createIcons({ root: container });
         return;
       }
-
 
       // PRODUCT DETAILS MODAL
       if (selectedProductModal) {
