@@ -2168,3 +2168,12 @@ html { overflow-anchor: none; }
 .plat-provision-bot-profile>button,.plat-provision-bot-profile>small{grid-column:1/-1}
 .plat-provision-bot-profile>button{min-height:38px;margin:0;display:flex;align-items:center;justify-content:center;gap:7px}
 @media(max-width:374px){.plat-provision-bot-profile{grid-template-columns:1fr}}
+/* Shop backup/restore — danger zone ichida ham aniq, lekin asosiy delete
+   tugmasi bilan chalkashmaydigan premium utilita ko'rinishi. */
+.plat-admin-list-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.plat-admin-list-title-row h1{margin:0}
+.plat-restore-shop-btn{width:auto!important;margin:0!important;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;padding:9px 12px!important}
+.plat-backup-before-delete{margin:14px 0 4px;padding:12px;border:1px solid rgba(59,130,246,.22);border-radius:14px;background:rgba(59,130,246,.06);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.plat-backup-before-delete>div{min-width:0}.plat-backup-before-delete b{display:block;font-size:13px;color:var(--text,#162033)}.plat-backup-before-delete small{display:block;margin-top:3px;font-size:11px;line-height:1.45;color:var(--muted,#667085)}
+.plat-backup-before-delete button{width:auto!important;min-width:112px;margin:0!important;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 11px!important;white-space:nowrap}
+@media(max-width:420px){.plat-admin-list-title-row{align-items:flex-start}.plat-restore-shop-btn{font-size:11px!important}.plat-backup-before-delete{align-items:stretch;flex-direction:column}.plat-backup-before-delete button{width:100%!important}}

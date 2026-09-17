@@ -29,6 +29,14 @@
     return;
   }
   const CONFIG = window.APP_CONFIG;
+  let platformSupabaseClient = null;
+  function platformSbClient() {
+    if (!platformSupabaseClient) {
+      if (!window.supabase?.createClient) throw new Error('Supabase moduli yuklanmadi. Sahifani yangilang.');
+      platformSupabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+    }
+    return platformSupabaseClient;
+  }
 
   async function callPlatformApi(action, payload, options) {
     const initData = tg?.initData || '';
@@ -126,6 +134,7 @@
     chart: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20V7"/>',
     copy: '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
     upload: '<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 14v5a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-5"/>',
+    download: '<path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 14v5a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-5"/>',
     file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/>',
     swap: '<path d="M7 7h12l-3-3"/><path d="m19 7-3 3"/><path d="M17 17H5l3 3"/><path d="m5 17 3-3"/>',
     send: '<path d="m3 11 18-8-8 18-2-7-8-3z"/><path d="m11 14 4-4"/>',
@@ -339,6 +348,8 @@
   let connectSuccess = null;
   let pendingBotToken = '';
   let selectedShopDetails = null; // adminShops ichidan tanlangan bitta qator
+  let shopBackupBusy = false;
+  let shopRestoreBusy = false;
 
   // Admin: so'rovlar
   let requestsFilter = 'NEW';
@@ -2909,8 +2920,9 @@
     return `
       <div class="plat-admin-list-head">
         <span class="plat-admin-eyebrow">Platforma katalogi</span>
-        <h1>Do'konlar</h1>
+        <div class="plat-admin-list-title-row"><h1>Do'konlar</h1><button type="button" class="secondary plat-restore-shop-btn ${shopRestoreBusy ? 'plat-btn-dimmed' : ''}" onclick="pickShopBackupForRestore()">${shopRestoreBusy ? '<span class="spinner"></span> Tiklanmoqda' : `${pIcon('upload',15)} ZIPdan tiklash`}</button></div>
         <p>Barcha do'konlar holati va obunalarini bitta joydan boshqaring.</p>
+        <input id="plat-shop-backup-restore-input" type="file" hidden onchange="restoreShopFromZip(event)">
       </div>
       <div class="plat-admin-summary-strip">
         <div><b>${counts.all}</b><small>Jami</small></div><div><b>${counts.active}</b><small>Faol</small></div><div><b>${counts.frozen}</b><small>Muzlatilgan</small></div><div><b>${counts.provisioning}</b><small>Sozlanmoqda</small></div>
@@ -3478,6 +3490,7 @@
         <span class="plat-admin-eyebrow">Xavfli hudud</span>
         <h2>Danger Zone</h2>
         <p>Bu do'konni butunlay o'chirish — barcha ma'lumot, bot ulanishi va integratsiyalar qaytarib bo'lmas tarzda yo'qoladi.</p>
+        <div class="plat-backup-before-delete"><div><b>Avval ZIP nusxa oling</b><small>Mahsulot, buyurtma, mijoz, sozlama, marketing va rasmlar. Maxfiy kalitlar kiritilmaydi.</small></div><button type="button" class="secondary ${shopBackupBusy ? 'plat-btn-dimmed' : ''}" onclick="downloadShopBackup('${s.id}')">${shopBackupBusy ? '<span class="spinner"></span>' : pIcon('download',15)} ${shopBackupBusy ? 'Tayyorlanmoqda' : 'ZIP olish'}</button></div>
         ${renderTerminateSection(s.id, s.shopName || s.publicCode)}
       </section>
     `;
@@ -3612,7 +3625,8 @@
     lifecycleActionSubmitting = true;
     render();
     try {
-      await callPlatformApi('platform_terminate_shop', { shopId, reason });
+      const result = await callPlatformApi('platform_terminate_shop', { shopId, reason });
+      if (result.backupDownloadUrl) downloadUrl(result.backupDownloadUrl, 'ustore-shop-backup.zip');
       terminateStep = null;
       terminateReasonDraft = '';
       // Lifecycle round v2: TERMINATE endi do'konni Supabase'dan BUTUNLAY
@@ -3622,9 +3636,47 @@
       selectedShopDetails = null;
       await reloadAdminShops();
       switchTab('shops');
-      showActionToast("Do'kon butunlay o'chirildi.");
+      showActionToast("Do'kon o'chirildi. ZIP nusxa yuklab olindi.");
     } catch (e) { showToast(e.message || String(e), 'error'); }
     finally { lifecycleActionSubmitting = false; render(); }
+  }
+
+  function downloadUrl(url, filename) {
+    const a = document.createElement('a');
+    a.href = url; a.download = filename || ''; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  async function downloadShopBackup(shopId) {
+    if (shopBackupBusy) return;
+    shopBackupBusy = true; render();
+    try {
+      const result = await callPlatformApi('platform_create_shop_backup', { shopId });
+      downloadUrl(result.downloadUrl, 'ustore-shop-backup.zip');
+      showActionToast(`ZIP tayyor: ${result.rowCount || 0} ta yozuv, ${result.fileCount || 0} ta fayl.`);
+    } catch (e) { showToast(e.message || String(e), 'error'); }
+    finally { shopBackupBusy = false; render(); }
+  }
+  function pickShopBackupForRestore() {
+    if (shopRestoreBusy) return;
+    const input = document.getElementById('plat-shop-backup-restore-input');
+    if (input) { input.value = ''; input.click(); }
+  }
+  async function restoreShopFromZip(event) {
+    const file = event?.target?.files?.[0];
+    if (!file || shopRestoreBusy) return;
+    if (!/\.zip$/i.test(file.name) || file.size > 500 * 1024 * 1024) return showToast('Faqat UStorE ZIP nusxasi (500 MB gacha) qabul qilinadi.', 'warning');
+    const confirmed = await showConfirm("ZIP ichidagi do'kon biznes ma'lumotlari tiklanadi. Bot va to'lov/BILLZ kalitlarini qayta ulash kerak bo'ladi. Davom etilsinmi?");
+    if (!confirmed) return;
+    shopRestoreBusy = true; render();
+    try {
+      const prepared = await callPlatformApi('platform_prepare_shop_restore_upload', { size: file.size });
+      const { error: uploadError } = await platformSbClient().storage.from('shop-backups').uploadToSignedUrl(prepared.path, prepared.token, file, { contentType: 'application/zip', upsert: false });
+      if (uploadError) throw uploadError;
+      const result = await callPlatformApi('platform_restore_shop_backup', { uploadPath: prepared.path });
+      await reloadAdminShops();
+      showActionToast(`Do'kon tiklandi. ${result.fileCount || 0} ta fayl qaytarildi. Endi bot va integratsiyalarni ulang.`);
+    } catch (e) { showToast(e.message || String(e), 'error'); }
+    finally { shopRestoreBusy = false; render(); }
   }
 
   // Billz (billz.ai) integratsiyasi — boshqarilgan/beta chiqarilish: faqat
@@ -4734,6 +4786,9 @@
   window.submitFreezeShop = submitFreezeShop;
   window.submitReactivateShop = submitReactivateShop;
   window.submitTerminateShop = submitTerminateShop;
+  window.downloadShopBackup = downloadShopBackup;
+  window.pickShopBackupForRestore = pickShopBackupForRestore;
+  window.restoreShopFromZip = restoreShopFromZip;
   window.toggleBillzAccess = toggleBillzAccess;
   window.toggleClickAccess = toggleClickAccess;
   window.togglePaymeAccess = togglePaymeAccess;
