@@ -165,291 +165,6 @@ function escapeHtml(str) {
     // tarmoqsiz ham ishlaydi, istalgan o'lchamda aniq (vektor) ko'rinadi.
     const FALLBACK_IMG = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE0IiBmaWxsPSIjZjNmNGY2Ii8+PGcgc3Ryb2tlPSIjYzdjZGQ2IiBzdHJva2Utd2lkdGg9IjQiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iMjgiIHk9IjI4IiB3aWR0aD0iNDQiIGhlaWdodD0iNDQiIHJ4PSI2Ii8+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNCIvPjxwYXRoIGQ9Ik0yOCA2MiBMNDQgNDYgTDU0IDU2IEw3MiAzOCIvPjwvZz48L3N2Zz4=';
 
-
-    // 5-TOPSHIRIQ (2026-09-17): premium media gate -------------------------
-    // Muammo: brauzer <img> larni navbatma-navbat ochgani uchun kartochkaning
-    // matni avval ko'rinib, rasmi 1-5 soniyadan keyin paydo bo'lar edi. Bu
-    // foydalanuvchiga "yarim tayyor" UI ko'rsatardi. Endi har bir render
-    // bosqichida rasmli kontent avval fon rejimida tayyorlanadi. Rasm va matn
-    // FAQAT birga ochiladi; sekin/buzilgan URL esa qat'iy timeoutdan keyin
-    // FALLBACK_IMG bilan yakunlanadi. Bitta rasm butun ilovani cheksiz
-    // ushlamaydi. Bu biznes logikasiga tegmaydi — faqat paint/reveal qatlamidir.
-    const PREMIUM_MEDIA_TIMEOUT_MS = 2600;
-    const PREMIUM_MEDIA_STAGE_MAX_MS = 3000;
-    const premiumMediaStageVersion = new WeakMap();
-    const premiumMediaReadyUrls = new Set();
-    let premiumMediaObserverInstalled = false;
-
-    const PREMIUM_MEDIA_CARD_SELECTOR = [
-      '[data-product-card-id]', '.ustore-cat-row', '.fc-home-recent-card',
-      '.fc-banner-card', '.fc-banner-slot.is-filled', '.fc-banner-list-card',
-      '.fc-bundle-list-card', '.fc-public-offer-card', '.fc-report-product-card',
-      '.fc-report-product-list > button', '.fc-bundle-detail-product-row',
-      '.fc-campaign-media-slide', '.fc-hier-picker-product',
-      '.fc-warehouse-product-row', '.fc-order-item', '.fc-billz-product-card',
-      '.fc-featured-tree-products label', '.fc-selected-products > div',
-      '.fc-product-gallery-slide', '.fc-marketing-card', '.fc-campaign-hero'
-    ].join(',');
-
-    function premiumMediaSrc(img) {
-      return String(img?.currentSrc || img?.getAttribute?.('src') || img?.src || '').trim();
-    }
-
-    function premiumMediaFallback(img) {
-      return String(img?.dataset?.fallback || FALLBACK_IMG || '').trim();
-    }
-
-    function premiumMediaCandidate(img) {
-      if (!(img instanceof HTMLImageElement)) return false;
-      const src = premiumMediaSrc(img);
-      if (!src || src === 'about:blank') return false;
-      if (img.closest('.hidden,[hidden]')) return false;
-      // Browser/UI preview elementlari src="" bilan yashirin turishi mumkin;
-      // ular sahifa kartalarini kutdirishi kerak emas.
-      const style = getComputedStyle(img);
-      if (style.display === 'none' || style.visibility === 'hidden') return false;
-      return true;
-    }
-
-    function premiumMediaCardFor(node) {
-      return node?.closest?.(PREMIUM_MEDIA_CARD_SELECTOR) || null;
-    }
-
-    function markPremiumMediaPending(root, cards) {
-      if (!root) return;
-      root.classList.add('fc-media-stage', 'is-media-preparing');
-      root.classList.remove('is-media-ready');
-      cards.forEach((card) => {
-        card.classList.add('fc-premium-media-card', 'is-media-pending');
-        card.classList.remove('is-media-ready');
-      });
-    }
-
-    function markPremiumMediaReady(root, cards) {
-      if (!root) return;
-      root.classList.remove('is-media-preparing');
-      root.classList.add('is-media-ready');
-      cards.forEach((card) => {
-        card.classList.remove('is-media-pending');
-        card.classList.add('is-media-ready');
-      });
-    }
-
-    function premiumMediaDecode(img) {
-      if (!img?.decode) return Promise.resolve();
-      return img.decode().catch(() => undefined);
-    }
-
-    function settlePremiumImage(img) {
-      return new Promise((resolve) => {
-        if (!premiumMediaCandidate(img)) return resolve();
-
-        // Ushbu sahifa uchun lazy emas: skeleton ostida rasmni HOZIR yuklash
-        // kerak. Shunda pastdagi kartalar ham scroll qilinguncha navbatda
-        // turib qolmaydi. Thumb mavjud bo'lsa renderProductCardHTML allaqachon
-        // uni tanlaydi, demak bu katta originalni majburan yuklash degani emas.
-        try { img.loading = 'eager'; } catch (_) {}
-        try { img.decoding = 'async'; } catch (_) {}
-        try { img.fetchPriority = 'high'; } catch (_) {}
-
-        let finished = false;
-        let timeoutId = null;
-        const initialSrc = premiumMediaSrc(img);
-        const finish = async () => {
-          if (finished) return;
-          finished = true;
-          clearTimeout(timeoutId);
-          img.removeEventListener('load', onLoad);
-          img.removeEventListener('error', onError);
-          if (img.complete && img.naturalWidth > 0) await premiumMediaDecode(img);
-          const finalSrc = premiumMediaSrc(img);
-          if (finalSrc) premiumMediaReadyUrls.add(finalSrc);
-          resolve();
-        };
-        const forceFallback = () => {
-          if (finished) return;
-          const fallback = premiumMediaFallback(img);
-          if (fallback && premiumMediaSrc(img) !== fallback) {
-            try {
-              img.removeAttribute('data-full-img');
-              img.onerror = null;
-              img.src = fallback;
-            } catch (_) {}
-          }
-          // data: fallback odatda shu zahoti complete bo'ladi; baribir bitta
-          // frame beramiz — paint paytida fallback tayyor bo'lishi uchun.
-          requestAnimationFrame(() => finish());
-          setTimeout(() => finish(), 80);
-        };
-        const onLoad = () => finish();
-        const onError = () => {
-          // retryCardImage kabi mavjud handler avval thumb -> full rasmga
-          // o'tkazishi mumkin. Inline onerror bizning listenerdan OLDIN ham
-          // ishlashi mumkin, shu sabab currentSrc'ni error paytidagi qiymat
-          // bilan emas, BOSHLANG'ICH URL bilan solishtiramiz. Agar URL
-          // o'zgargan bo'lsa yangi urinishning load/error eventini kutamiz.
-          setTimeout(() => {
-            if (finished) return;
-            const nowSrc = premiumMediaSrc(img);
-            if (nowSrc && nowSrc !== initialSrc && nowSrc !== premiumMediaFallback(img)) return;
-            // data-fallback inline handler orqali allaqachon qo'yilgan bo'lsa
-            // uning load eventi kelishi uchun qisqa imkon beramiz.
-            if (nowSrc === premiumMediaFallback(img) && img.complete && img.naturalWidth > 0) return finish();
-            forceFallback();
-          }, 24);
-        };
-
-        img.addEventListener('load', onLoad);
-        img.addEventListener('error', onError);
-
-        if (img.complete && img.naturalWidth > 0) {
-          premiumMediaDecode(img).finally(finish);
-          return;
-        }
-        // Cache'da ilgari tayyor bo'lgan URL bo'lsa browser decode odatda bir
-        // task ichida tugaydi; load eventni kutamiz, ammo umumiy timeout bor.
-        if (premiumMediaReadyUrls.has(initialSrc) && img.complete) {
-          premiumMediaDecode(img).finally(finish);
-          return;
-        }
-        timeoutId = setTimeout(forceFallback, PREMIUM_MEDIA_TIMEOUT_MS);
-      });
-    }
-
-    function premiumBannerBackgroundUrl(el) {
-      if (!el) return '';
-      const inline = String(el.style?.backgroundImage || '');
-      const match = inline.match(/url\(["']?(.*?)["']?\)/i);
-      return match?.[1] || '';
-    }
-
-    function settlePremiumBackground(el) {
-      const url = premiumBannerBackgroundUrl(el);
-      if (!url || premiumMediaReadyUrls.has(url)) return Promise.resolve();
-      return new Promise((resolve) => {
-        let done = false;
-        const probe = new Image();
-        probe.referrerPolicy = 'no-referrer';
-        probe.decoding = 'async';
-        const finish = (ok) => {
-          if (done) return;
-          done = true;
-          clearTimeout(timer);
-          if (ok) premiumMediaReadyUrls.add(url);
-          else {
-            // Banner ham rasmsiz/yarim holatda chiqmaydi: URL ishlamasa
-            // tayyor local fallback fon bilan ochiladi.
-            try { el.style.backgroundImage = `url("${FALLBACK_IMG}")`; } catch (_) {}
-          }
-          resolve();
-        };
-        probe.onload = () => {
-          const decoded = probe.decode ? probe.decode().catch(() => undefined) : Promise.resolve();
-          decoded.finally(() => finish(true));
-        };
-        probe.onerror = () => finish(false);
-        const timer = setTimeout(() => finish(false), PREMIUM_MEDIA_TIMEOUT_MS);
-        probe.src = url;
-      });
-    }
-
-    function collectPremiumMedia(root) {
-      if (!root?.querySelectorAll) return { images: [], backgrounds: [], cards: new Set() };
-      const images = [...root.querySelectorAll('img')].filter(premiumMediaCandidate);
-      if (root instanceof HTMLImageElement && premiumMediaCandidate(root)) images.unshift(root);
-      const backgrounds = [...root.querySelectorAll('.fc-banner-card')].filter((el) => !!premiumBannerBackgroundUrl(el));
-      if (root.matches?.('.fc-banner-card') && premiumBannerBackgroundUrl(root)) backgrounds.unshift(root);
-      const cards = new Set();
-      images.forEach((img) => { const card = premiumMediaCardFor(img); if (card) cards.add(card); });
-      backgrounds.forEach((el) => cards.add(el));
-      return { images, backgrounds, cards };
-    }
-
-    async function stagePremiumMedia(root) {
-      if (!root || !root.isConnected) return;
-      const { images, backgrounds, cards } = collectPremiumMedia(root);
-      if (!images.length && !backgrounds.length) {
-        root.classList.remove('is-media-preparing');
-        return;
-      }
-
-      const version = (premiumMediaStageVersion.get(root) || 0) + 1;
-      premiumMediaStageVersion.set(root, version);
-      markPremiumMediaPending(root, cards);
-
-      const work = Promise.allSettled([
-        ...images.map(settlePremiumImage),
-        ...backgrounds.map(settlePremiumBackground),
-      ]);
-      // Himoya: biror browser event bermasa ham sahifa 3s dan ortiq qotmaydi.
-      await Promise.race([
-        work,
-        new Promise((resolve) => setTimeout(resolve, PREMIUM_MEDIA_STAGE_MAX_MS)),
-      ]);
-      if (!root.isConnected || premiumMediaStageVersion.get(root) !== version) return;
-
-      // Stage timeout work promise'dan oldin tugagan bo'lsa qolgan DOM rasmlarini
-      // ham fallbackga o'tkazamiz; keyin birgalikda reveal qilamiz.
-      images.forEach((img) => {
-        if (!img.complete || img.naturalWidth <= 0) {
-          const fallback = premiumMediaFallback(img);
-          if (fallback) {
-            try { img.removeAttribute('data-full-img'); img.onerror = null; img.src = fallback; } catch (_) {}
-          }
-        }
-      });
-      const reveal = () => markPremiumMediaReady(root, cards);
-      requestAnimationFrame(reveal);
-      setTimeout(reveal, 80);
-    }
-
-    function stageCurrentShopMedia() {
-      const header = document.querySelector('.ustore-topbar');
-      const app = document.getElementById('app-content');
-      const page = document.getElementById('page-container');
-      // modal-container renderModalContainer() finally blokida alohida stage
-      // qilinadi; shu yerda takrorlab, bitta rasmga ikki listener qo'ymaymiz.
-      if (header) stagePremiumMedia(header);
-      if (app && !app.closest('.hidden')) stagePremiumMedia(app);
-      if (page && !page.classList.contains('hidden') && page.childElementCount) stagePremiumMedia(page);
-    }
-
-    function installPremiumMediaObserver() {
-      if (premiumMediaObserverInstalled || !document.body) return;
-      premiumMediaObserverInstalled = true;
-      const queued = new Set();
-      let scheduled = false;
-      const flush = () => {
-        scheduled = false;
-        [...queued].forEach((root) => {
-          queued.delete(root);
-          if (!root?.isConnected) return;
-          // Agar katta root allaqachon staging qilayotgan bo'lsa, ichki cardni
-          // qaytadan alohida stage qilish shart emas.
-          if (root.parentElement?.closest?.('.fc-media-stage.is-media-preparing')) return;
-          stagePremiumMedia(root);
-        });
-      };
-      const queue = (node) => {
-        if (!(node instanceof Element)) return;
-        const candidates = [];
-        if (node.matches?.('img,.fc-banner-card')) candidates.push(node);
-        node.querySelectorAll?.('img,.fc-banner-card').forEach((el) => candidates.push(el));
-        candidates.forEach((el) => {
-          const card = premiumMediaCardFor(el) || (el.matches?.('.fc-banner-card') ? el : null);
-          if (card) queued.add(card);
-        });
-        if (queued.size && !scheduled) {
-          scheduled = true;
-          queueMicrotask(flush);
-        }
-      };
-      const observer = new MutationObserver((records) => {
-        records.forEach((record) => record.addedNodes.forEach(queue));
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-    }
-
     // Ommaviy katalog importi uchun ChatGPT prompti — BITTA markaziy joy
     // (28-band, "Bir nechta katalog qo'shish" oynasidagi "ChatGPT uchun
     // prompt" tugmasi shu konstantani ko'rsatadi/nusxalaydi). Matn keyinchalik
@@ -4113,7 +3828,6 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
       renderModalContainer();
       safeCreateIcons();
-      stageCurrentShopMedia();
       requestAnimationFrame(() => applyVisibleTextScale());
       lastRenderedUiKey = currentShopUiKey();
       if (preserveSnapshot && lastRenderedUiKey === uiKeyBeforeRender) restoreShopRenderState(preserveSnapshot);
@@ -17829,8 +17543,6 @@ if (activePopupModal === 'LOGO_CROP') {
       container.innerHTML = '';
       } finally {
         safeCreateIcons();
-        const modalRoot = document.getElementById('modal-container');
-        if (modalRoot?.childElementCount) stagePremiumMedia(modalRoot);
       }
     }
 
@@ -20220,13 +19932,11 @@ if (activePopupModal === 'LOGO_CROP') {
       // fallback konvensiyasi bilan bir xil. Haqiqiy nom bootData kelgach
       // darhol (header orqali) ko'rinadi.
       const cachedShopName = String(cachedBrand?.name || tr("Do'kon", 'Магазин')).trim();
-      document.getElementById('app-content').innerHTML = `<div class="fc-premium-boot-skeleton" role="status" aria-label="${escapeHtml(tr('Do‘kon tayyorlanmoqda','Магазин загружается'))}">
-        <div class="fc-premium-boot-brand"><span></span><div><i></i><i></i></div></div>
-        <div class="fc-premium-boot-search"></div>
-        <div class="fc-premium-boot-banner"></div>
-        <div class="fc-premium-boot-title"></div>
-        <div class="fc-premium-boot-grid"><span></span><span></span><span></span><span></span></div>
-        <b class="fc-visually-hidden">${escapeHtml(cachedShopName)} · ${escapeHtml(tr('Yuklanmoqda','Загрузка'))}</b>
+      document.getElementById('app-content').innerHTML = `<div class="fc-boot-welcome" role="status">
+        <div class="fc-boot-welcome-mark">U</div>
+        <h2>${escapeHtml(cachedShopName)} ${tr("do'koniga xush kelibsiz!", '— добро пожаловать!')}</h2>
+        <p>${tr("Sizni ko'rganimizdan xursandmiz.", 'Мы рады вас видеть.')}</p>
+        <span class="fc-boot-welcome-loader"><i></i></span>
       </div>`;
 
       const hadCache = hydrateCatalogCache();
@@ -20329,11 +20039,6 @@ if (activePopupModal === 'LOGO_CROP') {
         return;
       }
 
-      // 5-TOPSHIRIQ: birinchi kirishda cache yo'q bo'lsa bo'sh/yarim katalogni
-      // bir frame ko'rsatmaymiz. Auth va haqiqiy katalog parallel yuklanadi,
-      // lekin ilk Shop UI ikkalasi tayyor bo'lgandan keyingina chiziladi.
-      if (!hadCache) await catalogPromise;
-
       setupPolling();
       switchTab('home');
       if (isAdminMode && isUserAnAdmin) requestAnimationFrame(() => showAdminWelcomeModal());
@@ -20358,5 +20063,4 @@ if (activePopupModal === 'LOGO_CROP') {
       const btn = document.querySelector('.fc-scroll-top-btn');
       if (btn) btn.classList.toggle('is-visible', window.scrollY > 300);
     });
-    installPremiumMediaObserver();
     boot();
