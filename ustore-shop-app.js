@@ -11154,6 +11154,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function findFeaturedEntry(catId) { return featuredCategories.find(e => e.categoryId === catId); }
     function toggleFeaturedCategory(catId) {
+      if (featuredCategoriesSaving) return;
       const idx = featuredCategories.findIndex(e => e.categoryId === catId);
       if (idx >= 0) featuredCategories.splice(idx, 1);
       else {
@@ -11164,6 +11165,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
     // 2-band: har tanlangan katalog uchun admin alohida maks 6 ta mahsulot tanlaydi.
     function toggleFeaturedCategoryProduct(catId, productId) {
+      if (featuredCategoriesSaving) return;
       const entry = findFeaturedEntry(catId);
       if (!entry) return;
       const idx = entry.productIds.indexOf(productId);
@@ -11175,20 +11177,54 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       render();
     }
 
+    function cleanFeaturedSelection(entries, details) {
+      const catIds = new Set(details?.invalidCategoryIds || []);
+      const productIds = new Set(details?.invalidProductIds || []);
+      return entries.filter(e => !catIds.has(e.categoryId)).map(e => ({
+        categoryId: e.categoryId, productIds: e.productIds.filter(id => !productIds.has(id)),
+      }));
+    }
+
+    function featuredSaveErrorMessage(error) {
+      const message = String(error?.message || '');
+      if (/featured_category_ids|schema cache/i.test(message)) return tr("Saqlash uchun bazadagi 090 yangilanishini o‘rnating.", 'Для сохранения установите обновление базы 090.');
+      if (/forbidden/.test(message)) return tr('Marketingni o‘zgartirish huquqi yo‘q.', 'Нет прав на изменение маркетинга.');
+      if (/invalid_category|invalid_product/.test(message)) return tr('Katalog yoki tovar o‘zgargan. Sahifani qayta ochib tanlang.', 'Каталог или товар изменился. Откройте страницу заново.');
+      if (/Failed to fetch|Network|vaqt tugadi|Server javob bermadi/i.test(message)) return tr('Serverga ulanib bo‘lmadi. Tanlov ekranda qoldi, qayta urinib ko‘ring.', 'Нет связи с сервером. Выбор сохранён на экране, повторите попытку.');
+      return tr('Saqlanmadi. Sabab: ', 'Не сохранено. Причина: ') + message.slice(0, 240);
+    }
+
     async function saveFeaturedCategories() {
+      if (featuredCategoriesSaving) return;
       featuredCategoriesSaving = true;
       render();
       try {
-        const payload = featuredCategories.map((entry) => ({
+        let payload = featuredCategories.map((entry) => ({
           categoryId: String(entry.categoryId),
           productIds: (entry.productIds || []).slice(0, 6).map(String),
         })).slice(0, 8);
-        const result = await callApi('set_featured_categories', { featuredCategories: payload });
-        featuredCategories = Array.isArray(result?.featuredCategories) ? result.featuredCategories : payload;
-        showActionToast(tr('✅ Saqlandi', '✅ Сохранено'), 'success', 1500);
+        let result;
+        let removedStaleSelection = false;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            result = await callApi('set_featured_categories', { featuredCategories: payload });
+            break;
+          } catch (error) {
+            if (attempt === 2 || !['invalid_category', 'invalid_product'].includes(error?.message)) throw error;
+            // Remove only IDs explicitly rejected by the shop-scoped server.
+            // The catalog list may be paginated; never prune against that list.
+            const cleaned = cleanFeaturedSelection(payload, error.details);
+            if (JSON.stringify(cleaned) === JSON.stringify(payload)) throw error;
+            payload = cleaned;
+            removedStaleSelection = true;
+          }
+        }
+        if (result?.ok !== true || !Array.isArray(result.featuredCategories)) throw new Error(tr('Server saqlashni tasdiqlamadi.', 'Сервер не подтвердил сохранение.'));
+        featuredCategories = result.featuredCategories;
+        showActionToast(removedStaleSelection ? tr('Saqlandi. O‘chirilgan katalog/tovarlar tanlovdan chiqarildi.', 'Сохранено. Удалённые каталоги/товары исключены.') : tr('✅ Saqlandi', '✅ Сохранено'), 'success', 3500);
       } catch (e) {
         console.error('Featured categories save failed:', e);
-        showActionToast(tr("❌ Amalga oshmadi", "❌ Не удалось"), 'error', 1500);
+        showActionToast(featuredSaveErrorMessage(e), 'error', 7000);
       } finally {
         featuredCategoriesSaving = false;
         render();
@@ -11252,8 +11288,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       </div>`;
       renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body + `
         <div class="fc-featured-save-float fc-icon-action-bar">
-          <button type="button" onclick="saveFeaturedCategories()" class="fc-action-icon-btn is-save" ${featuredCategoriesSaving ? 'disabled' : ''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}">
-            <i data-lucide="check" class="w-[18px] h-[18px]"></i>${featuredCategoriesSaving ? '<span class="fc-save-busy-dot" aria-hidden="true"></span>' : ''}
+          <button type="button" onclick="saveFeaturedCategories()" class="fc-action-icon-btn is-save" ${featuredCategoriesSaving ? 'disabled' : ''} aria-busy="${featuredCategoriesSaving}" aria-label="${featuredCategoriesSaving ? tr('Saqlanmoqda','Сохранение') : tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}">
+            ${featuredCategoriesSaving ? '<span class="fc-featured-save-spinner" aria-hidden="true"></span>' : '<i data-lucide="check" class="w-[18px] h-[18px]"></i>'}
           </button>
         </div>`, { onBack: "openMarketingHubPage()" });
     }

@@ -5915,7 +5915,7 @@ body.fc-admin-mode .fc-action-icon-btn.is-cancel{background:#f8fafc!important;bo
 body.fc-admin-mode .fc-action-icon-btn.is-cancel>i,body.fc-admin-mode .fc-action-icon-btn.is-cancel>svg{color:#64748b!important}
 body.fc-admin-mode .fc-action-icon-btn:active{transform:scale(.96)!important;box-shadow:0 2px 7px rgba(15,23,42,.06)!important}
 .fc-featured-save-float{position:fixed!important;right:max(16px,calc((100vw - 430px)/2 + 16px));bottom:calc(78px + env(safe-area-inset-bottom));z-index:45}
-.fc-featured-save-float .fc-action-icon-btn{position:relative}.fc-save-busy-dot{position:absolute;right:5px;top:5px;width:8px;height:8px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:fcSupportSpin .7s linear infinite}
+.fc-featured-save-float .fc-action-icon-btn{position:relative;display:grid!important;place-items:center}.fc-featured-save-spinner{display:block;width:28px;height:28px;box-sizing:border-box;border:3px solid #bfdbfe;border-top-color:#2563eb;border-right-color:#2563eb;border-radius:50%;animation:fcSupportSpin .7s linear infinite}.fc-featured-save-float .fc-action-icon-btn[aria-busy="true"]{opacity:1!important;cursor:wait}
 @media(min-width:768px){.fc-featured-save-float{bottom:20px}}
 
 .fc-cat-filter-overlay{background:rgba(15,23,42,.42);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
