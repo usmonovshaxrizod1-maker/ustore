@@ -1090,9 +1090,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     let abandonedCartsPage = 1, abandonedCartsPageSize = 30, abandonedCartsTotalPages = 1, abandonedCartsTotalCount = 0;
     let abandonedCartsSearch = '', abandonedCartsAgeBucket = 'ALL', abandonedCartsReminderFilter = 'ALL';
     let abandonedCartsSummary = { total:0, new:0, active:0, old:0, archive:0, eligible:0 };
-    let abandonedCartSelectedIds = new Set(), abandonedCampaign = null, abandonedCampaignPollTimer = null;
+    let abandonedCartSelectedIds = new Set(), abandonedSelectAllMatching = false, abandonedCampaign = null, abandonedCampaignPollTimer = null;
     let canViewAuditLog = false, auditLogEntries = [], auditLogLoaded = false, auditLogLoading = false;
-    let auditLogPage = 1, auditLogTotalPages = 1, auditLogTotalCount = 0, auditLogSearch = '', auditLogAction = '', auditLogEntity = '', auditLogDatePreset = '7D';
+    let auditLogPage = 1, auditLogTotalPages = 1, auditLogTotalCount = 0, auditLogSearch = '', auditLogAction = '', auditLogEntity = '', auditLogDateFrom = '', auditLogDateTo = '';
     // Promo-kod (Online Do'kon yaxshilashlari, 1-band) — admin ro'yxati + forma.
     let promoList = [];
     let promoListLoaded = false, promoListLoading = false;
@@ -1206,6 +1206,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     let supportTicketOrderId = null; // openSupportModal(orderId) orqali kelgan kontekst
     let supportTicketType = 'SUPPORT'; // 'SUPPORT' | 'RETURN'
     let supportMessages = []; // hozir ochiq chatning xabarlari
+    let supportPendingFirstMessage = null; // yangi ticketning server javobini kutayotgan birinchi xabari
     let supportMessagesLoading = false;
     let openSupportTicketId = null; // mijoz tomonda hozir ochiq chat
     let supportReplyTarget = null; // {id, body, sender} — "shu xabarga javob" preview
@@ -2489,6 +2490,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function openSupportModal(orderId, ticketType) {
       clearSupportAttachmentDraft();
+      supportPendingFirstMessage = null;
       supportTicketOrderId = orderId || null;
       supportTicketType = ticketType === 'RETURN' ? 'RETURN' : 'SUPPORT';
       openSupportTicketId = null;
@@ -2552,30 +2554,21 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const attachmentDraft = supportAttachmentDraft;
       if (!body && !attachmentDraft) return showAppNotice(tr("Murojaat matnini yozing yoki rasm biriktiring.", "Напишите сообщение или прикрепите изображение."));
       if (!openSupportTicketId) {
-        // Hali ochiq thread yo'q (birinchi xabar) — optimistik ko'rsatish
-        // shart emas, yangi ticket/thread shu zahoti to'liq render bilan paydo bo'ladi.
-        supportSendingMessage = true;
+        // Birinchi xabar ham server javobini kutmasdan chatda ko'rinadi.
+        // Server javob berguncha kichik aylana, muvaffaqiyatda ✓, xatoda
+        // qayta yuborish tugmasi chiqadi.
+        const tempId = `pending-first-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        supportPendingFirstMessage = {
+          id: tempId, ticketId: null, sender: 'USER', body,
+          attachment: attachmentDraft ? { url: attachmentDraft.previewUrl, name: attachmentDraft.name, size: attachmentDraft.size, mimeType: attachmentDraft.mimeType } : null,
+          attachmentDraft, createdAt: new Date().toISOString(), readAt: null,
+          orderId: supportTicketOrderId, ticketType: supportTicketType,
+          pending: true, failed: false, firstTicket: true,
+        };
+        if (textarea) textarea.value = '';
+        supportAttachmentDraft = null;
         render();
-        showActionToast(tr("⏳ Yuborilmoqda...", "⏳ Отправка..."), 'saving');
-        try {
-          const attachment = await uploadSupportAttachmentDraft(attachmentDraft);
-          const data = await callApi('create_support_ticket', { message: body, orderId: supportTicketOrderId, ticketType: supportTicketType, attachment });
-          if(data.message.attachment&&attachmentDraft)data.message.attachment.url=attachmentDraft.previewUrl;
-          supportTickets = [{ ...data.ticket, lastMessage: { sender: data.message.sender, body: data.message.body, createdAt: data.message.createdAt }, messageCount: 1 }, ...supportTickets];
-          openSupportTicketId = data.ticket.id;
-          supportMessages = [data.message];
-          supportAttachmentDraft = null;
-          startSupportThreadPoll(data.ticket.id);
-          if (supportTicketType === 'RETURN') ordersLoaded = false;
-          showActionToast(tr("✅ Yuborildi", "✅ Отправлено"), 'success', 1500);
-        } catch (e) {
-          console.error(e);
-          showActionToast(tr("❌ Yuborilmadi", "❌ Не отправлено"), 'error', 2000);
-          showAppNotice(tr("Xatolik: ", "Ошибка: ") + (e.message || e));
-        } finally {
-          supportSendingMessage = false;
-          render();
-        }
+        await sendPendingFirstSupportMessage(tempId);
         return;
       }
       // POLISH ROUND (task 6, optimistik yuborish): xabar darhol "Yuborilmoqda..."
@@ -2609,6 +2602,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // Muvaffaqiyatsiz optimistik xabarni qayta yuboradi (o'sha tempId'ning
     // o'zida — yangi bubble yaratilmaydi, faqat holati "pending"ga qaytadi).
     async function retrySupportMessage(tempId) {
+      if (supportPendingFirstMessage?.id === tempId && supportPendingFirstMessage.failed) {
+        await sendPendingFirstSupportMessage(tempId);
+        return;
+      }
       const m = supportMessages.find((x) => x.id === tempId);
       if (!m || !m.failed) return;
       supportMessages = supportMessages.map((x) => (x.id === tempId ? { ...x, pending: true, failed: false } : x));
@@ -2627,6 +2624,41 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         supportMessages = supportMessages.map((x) => (x.id === tempId ? { ...x, pending: false, failed: true } : x));
       } finally {
         patchSupportThread({ forceBottom: true });
+      }
+    }
+    async function sendPendingFirstSupportMessage(tempId) {
+      const message = supportPendingFirstMessage;
+      if (!message || message.id !== tempId || supportSendingMessage) return;
+      supportSendingMessage = true;
+      supportPendingFirstMessage = { ...message, pending: true, failed: false };
+      render();
+      try {
+        const attachment = await uploadSupportAttachmentDraft(message.attachmentDraft || null);
+        const data = await callApi('create_support_ticket', {
+          message: message.body,
+          orderId: message.orderId || null,
+          ticketType: message.ticketType || 'SUPPORT',
+          attachment,
+        });
+        if (data.message.attachment && message.attachment?.url) data.message.attachment.url = message.attachment.url;
+        supportTickets = [{
+          ...data.ticket,
+          lastMessage: { sender: data.message.sender, body: data.message.body, createdAt: data.message.createdAt },
+          messageCount: 1,
+        }, ...supportTickets.filter((ticket) => String(ticket.id) !== String(data.ticket.id))];
+        openSupportTicketId = data.ticket.id;
+        supportMessages = [data.message];
+        supportPendingFirstMessage = null;
+        startSupportThreadPoll(data.ticket.id);
+        if (message.ticketType === 'RETURN') ordersLoaded = false;
+      } catch (e) {
+        console.error(e);
+        if (supportPendingFirstMessage?.id === tempId) {
+          supportPendingFirstMessage = { ...supportPendingFirstMessage, pending: false, failed: true };
+        }
+      } finally {
+        supportSendingMessage = false;
+        render();
       }
     }
     // 7-band: FAQAT mijoz o'zi murojaatni tugatadi.
@@ -2764,10 +2796,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               ${m.attachment?.url ? `<button type="button" class="fc-chat-image" onclick="openSupportImageViewer('${escapeHtml(m.attachment.url)}')"><img src="${escapeHtml(m.attachment.url)}" alt="${escapeHtml(m.attachment.name||tr('Biriktirilgan rasm','Прикреплённое изображение'))}" loading="lazy" referrerpolicy="no-referrer"></button>` : ''}
               ${m.body ? `<div class="fc-chat-text">${escapeHtml(m.body)}</div>` : ''}
               <div class="fc-chat-meta">
-                <span class="fc-chat-time">${isPending ? tr('Yuborilmoqda...', 'Отправка...') : isFailed ? tr('Yuborilmadi', 'Не отправлено') : new Date(m.createdAt).toLocaleString()}</span>
+                <span class="fc-chat-time">${isPending ? `<span class="fc-chat-pending-dot" aria-label="${tr('Yuborilmoqda','Отправка')}"></span>` : isFailed ? `<span class="fc-chat-error"><i data-lucide="circle-alert" class="w-3.5 h-3.5"></i>${tr('Yuborilmadi', 'Не отправлено')}</span>` : new Date(m.createdAt).toLocaleString()}</span>
                 ${mine && !isPending && !isFailed ? `<span class="fc-chat-ticks ${m.readAt ? 'is-read' : ''}">${m.readAt ? '✓✓' : '✓'}</span>` : ''}
               </div>
-              ${isFailed ? `<button type="button" class="fc-chat-retry-btn" onclick="retrySupportMessage('${m.id}')">${tr('Qayta yuborish', 'Отправить снова')}</button>` : ''}
+              ${isFailed ? `<button type="button" class="fc-chat-retry-btn" onclick="retrySupportMessage('${m.id}')"><i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>${tr('Qayta yuborish', 'Отправить снова')}</button>` : ''}
               ${(!isPending && !isFailed) ? `<span class="fc-chat-reply-btn" onclick="setSupportReplyTarget(${m.id})">↩ ${tr('Javob','Ответ')}</span>` : ''}
             </div>
           </div>`;
@@ -3462,12 +3494,80 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // yo'q bo'lishi yoki o'chirilgan bo'lishi mumkin), faqat u ham
     // ishlamasa zaxira belgiga o'tamiz. onerror ikki marta ishlab, cheksiz
     // aylanib qolmasligi uchun har qadamda o'zi tozalanadi.
-    function revealCoordinatedImage(el) {
-      const card = el?.closest?.('.fc-image-sync-card');
-      if (!card) return;
-      card.classList.remove('is-loading');
-      card.classList.add('is-ready');
+    // TASK5: bounded browser image cache; never delay text or hide a card.
+    const catalogImageCache = new Map();
+    const catalogImageOrigins = new Set();
+    function warmCatalogImage(source, priority = 'low') {
+      if (!source || !/^(https?:|data:image\/|blob:|\/)/i.test(source)) return;
+      let url;
+      try { url = new URL(source, document.baseURI).href; } catch (_) { return; }
+      const existing = catalogImageCache.get(url);
+      if (existing) {
+        if (priority === 'high') existing.fetchPriority = 'high';
+        return;
+      }
+      // No unbounded prefetch of thousands of inventory images.
+      if ([...catalogImageCache.values()].filter(image => !image.complete).length >= 16) return;
+      const origin = new URL(url).origin;
+      if (url.startsWith('https:') && !catalogImageOrigins.has(origin) && catalogImageOrigins.size < 4) {
+        const link = document.createElement('link');
+        link.rel = 'preconnect'; link.href = origin;
+        document.head.appendChild(link); catalogImageOrigins.add(origin);
+      }
+      const image = new Image();
+      image.referrerPolicy = 'no-referrer'; image.decoding = 'async';
+      image.fetchPriority = priority;
+      catalogImageCache.set(url, image);
+      image.src = url;
+      if (catalogImageCache.size > 96) {
+        const oldest = [...catalogImageCache].find(([, item]) => item.complete);
+        if (oldest) catalogImageCache.delete(oldest[0]);
+      }
     }
+    function warmCatalogBranch(parentId = null) {
+      categories.filter(c => (c.parentId || null) === parentId)
+        .sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0)).slice(0,8)
+        .forEach(c => warmCatalogImage(c.img));
+      products.filter(p => (p.categoryId || null) === parentId && p.status !== 'DELETED')
+        .slice(0,4).forEach(p => {
+          const variant = defaultVariantSelection(p)?.variant || canonicalFallbackVariant(p);
+          warmCatalogImage(variant ? variantDisplayImage(p, variant.size, variant.color) : (p.thumbImg || p.img));
+        });
+    }
+    // Begin warming the next category on touch/hover, before navigation.
+    document.addEventListener('pointerover', event => {
+      const row = event.target.closest?.('[data-category-row-id]');
+      if (row) warmCatalogBranch(row.getAttribute('data-category-row-id'));
+    }, { passive: true });
+    document.addEventListener('pointerdown', event => {
+      const row = event.target.closest?.('[data-category-row-id]');
+      if (row) warmCatalogBranch(row.getAttribute('data-category-row-id'));
+    }, { passive: true });
+    function captureCatalogImageNodes() {
+      const nodes = new Map();
+      document.querySelectorAll('#app-content img, #page-container img').forEach(image => {
+        const key = image.getAttribute('src');
+        if (!key || !image.complete || !image.naturalWidth) return;
+        if (!nodes.has(key)) nodes.set(key, []);
+        nodes.get(key).push(image);
+      });
+      return nodes;
+    }
+    function restoreCatalogImageNodes(nodes) {
+      document.querySelectorAll('#app-content img, #page-container img').forEach(image => {
+        const old = nodes.get(image.getAttribute('src'))?.shift();
+        if (!old || old === image) return;
+        // Keep the decoded image; refresh handlers, alt text and geometry.
+        for (const attr of [...old.attributes]) {
+          if (attr.name !== 'src' && !image.hasAttribute(attr.name)) old.removeAttribute(attr.name);
+        }
+        for (const attr of [...image.attributes]) {
+          if (attr.name !== 'src' && old.getAttribute(attr.name) !== attr.value) old.setAttribute(attr.name, attr.value);
+        }
+        image.replaceWith(old);
+      });
+    }
+    function revealCoordinatedImage(_el) { /* Compatibility: no card visibility gate. */ }
     function retryCardImage(el) {
       const full = el.getAttribute('data-full-img');
       if (full && el.src !== full) { el.removeAttribute('data-full-img'); el.src = full; return; }
@@ -3826,6 +3926,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function render() {
+      const decodedImageNodes = captureCatalogImageNodes();
       const uiKeyBeforeRender = currentShopUiKey();
       const preserveSnapshot = lastRenderedUiKey === uiKeyBeforeRender ? captureShopRenderState() : null;
       if (authReady) document.body.dataset.appReady = 'true';
@@ -3897,6 +3998,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       }
 
       renderModalContainer();
+      restoreCatalogImageNodes(decodedImageNodes);
       safeCreateIcons();
       requestAnimationFrame(() => applyVisibleTextScale());
       lastRenderedUiKey = currentShopUiKey();
@@ -5188,7 +5290,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         <div class="fc-card space-y-3 text-xs">
           ${openTicket ? `
             <div class="flex items-center justify-between border-b pb-2">
-              <h3 class="font-bold text-sm text-gray-900">💬 ${openTicket.orderId ? `#${openTicket.orderId}` : tr('Murojaat', 'Обращение')}</h3>
+              <h3 class="font-bold text-sm text-gray-900">${openTicket.orderId ? `#${openTicket.orderId}` : tr('Murojaat', 'Обращение')}</h3>
               <span class="fc-badge ${openTicket.status === 'CLOSED' ? 'fc-badge-muted' : (openTicket.status === 'OPEN' ? 'fc-badge-warning' : 'fc-badge-success')}">${openTicket.status === 'CLOSED' ? tr('Tugallangan', 'Завершено') : (openTicket.status === 'OPEN' ? tr('Yangi', 'Новое') : tr('Javob berilgan', 'Отвечено'))}</span>
             </div>
             <div class="fc-chat-thread-wrap">
@@ -5206,10 +5308,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             ${supportTicketOrderId ? `<p class="text-[10px] text-gray-500">${tr('Buyurtma', 'Заказ')} #${supportTicketOrderId} ${tr('bo‘yicha murojaat', 'по этому заказу')}</p>` : ''}
             <div>
               <label class="font-bold text-gray-600">${tr('Murojaatingiz', 'Ваше обращение')}</label>
+              ${supportPendingFirstMessage ? `<div id="support-thread-list" class="fc-chat-thread-list fc-support-first-message">${renderSupportThreadHtml([supportPendingFirstMessage], false)}</div>` : ''}
               ${supportComposerHtml('sup-message',tr('Savolingiz yoki muammoingizni yozing...', 'Опишите ваш вопрос или проблему...'),'submitSupportComposer')}
             </div>
             ${supportTicketsLoading ? `<p class="text-center text-gray-400 py-2">${tr('Yuklanmoqda...', 'Загрузка...')}</p>` : ''}
-            ${(!supportTicketsLoading && !supportTickets.length) ? `
+            ${(!supportTicketsLoading && !supportTickets.length && !supportPendingFirstMessage) ? `
               <div class="fc-empty-state">
                 <i data-lucide="message-circle" class="w-8 h-8"></i>
                 <p>${tr('Hali murojaatlar yo‘q.', 'Пока нет обращений.')}</p>
@@ -5234,13 +5337,15 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       `;
     }
 
-    // 3-band: user card — Ism Familiya / Telefon • ID (2-qatorli), aniq ajralgan,
-    // yangi xabar bo'lsa aniq indikator. Ism/telefon usersSummary'dan (agar
-    // yuklangan bo'lsa), bo'lmasa faqat ID ko'rsatiladi (fallback).
+    // User kartasida ism-familiya va telefon ticket bilan birga serverdan
+    // keladi. usersSummary faqat eski javoblar uchun zaxira manba.
     function supportUserCardInfo(tgId) {
+      const ticket = [...adminSupportTickets, ...supportTickets].find((item) => String(item.tgId) === String(tgId) && item.customer);
+      const customer = ticket?.customer || null;
       const u = usersSummary.find(x => String(x.tgId) === String(tgId));
-      const name = (u?.userName && String(u.userName) !== String(tgId)) ? u.userName : tr('Noma’lum foydalanuvchi', 'Неизвестный пользователь');
-      return { name, phone: u?.phone || null, tgId };
+      const summaryName = (u?.userName && String(u.userName) !== String(tgId)) ? u.userName : null;
+      const name = customer?.name || summaryName || `${tr('Mijoz', 'Клиент')} ${tgId}`;
+      return { name, phone: customer?.phone || u?.phone || null, tgId };
     }
 
     function renderAdminSupportBodyHtml() {
@@ -5894,8 +5999,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function renderBannerCarouselHtml() {
       if (!activeBanners.length) return '';
       const cardHtml = (b, index) => `
-        <div role="button" tabindex="0" onclick="openBannerTarget('${b.id}')" onkeydown="if(event.key==='Enter'||event.key===' ')openBannerTarget('${b.id}')" class="fc-banner-card fc-image-sync-card is-loading" data-banner-id="${escapeHtml(b.id)}" style="background-image:url('${escapeHtml(b.imageUrl)}')">
-          <img src="${escapeHtml(b.imageUrl)}" class="fc-image-sync-probe" alt="" aria-hidden="true" loading="${index < 3 ? 'eager' : 'lazy'}" fetchpriority="${index < 3 ? 'high' : 'auto'}" decoding="async" referrerpolicy="no-referrer" onload="revealCoordinatedImage(this)" onerror="revealCoordinatedImage(this)">
+        <div role="button" tabindex="0" onclick="openBannerTarget('${b.id}')" onkeydown="if(event.key==='Enter'||event.key===' ')openBannerTarget('${b.id}')" class="fc-banner-card fc-image-card" data-banner-id="${escapeHtml(b.id)}">
+          <img src="${escapeHtml(b.imageUrl)}" class="fc-banner-image" alt="" loading="${index < 3 ? 'eager' : 'lazy'}" fetchpriority="${index < 3 ? 'high' : 'auto'}" decoding="async" referrerpolicy="no-referrer" onload="revealCoordinatedImage(this)" onerror="revealCoordinatedImage(this)">
           ${b.mode === 'TEMPLATE' ? `<div class="fc-banner-overlay">
             ${b.title ? `<h3>${escapeHtml(b.title)}</h3>` : ''}
             ${b.subtitle ? `<p>${escapeHtml(b.subtitle)}</p>` : ''}
@@ -6616,7 +6721,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const byId = new Map(products.map(p => [String(p.id), p]));
       const list = recentViewProductIds.map(id => byId.get(String(id))).filter(productVisibleInCurrentMode).slice(0, 6);
       if (!list.length) return '';
-      return `<section class="fc-home-recent fc-home-default-block"><div class="fc-home-recent-head"><div><span>${tr('Siz uchun','Для вас')}</span><h3>${tr('Yaqinda ko‘rilgan','Недавно просмотренные')}</h3></div><button type="button" onclick="openPage('RECENT','nav-profile')">${tr('Barchasi','Все')} →</button></div><div class="fc-home-recent-row">${list.map((p,index)=>`<button type="button" onclick="openProductDetailModal('${p.id}')" class="fc-home-recent-card fc-image-sync-card is-loading"><img referrerpolicy="no-referrer" src="${escapeHtml(p.thumbImg || p.img || FALLBACK_IMG)}" data-full-img="${escapeHtml(p.img || '')}" onload="revealCoordinatedImage(this)" onerror="retryCardImage(this)" loading="${index<6?'eager':'lazy'}" fetchpriority="${index<6?'high':'auto'}" decoding="async"><span><b>${escapeHtml(productName(p))}</b><strong>${money(productDefaultDisplayPrice(p))}</strong></span></button>`).join('')}</div></section>`;
+      return `<section class="fc-home-recent fc-home-default-block"><div class="fc-home-recent-head"><div><span>${tr('Siz uchun','Для вас')}</span><h3>${tr('Yaqinda ko‘rilgan','Недавно просмотренные')}</h3></div><button type="button" onclick="openPage('RECENT','nav-profile')">${tr('Barchasi','Все')} →</button></div><div class="fc-home-recent-row">${list.map((p,index)=>`<button type="button" onclick="openProductDetailModal('${p.id}')" class="fc-home-recent-card fc-image-card"><img referrerpolicy="no-referrer" src="${escapeHtml(p.thumbImg || p.img || FALLBACK_IMG)}" data-full-img="${escapeHtml(p.img || '')}" onload="revealCoordinatedImage(this)" onerror="retryCardImage(this)" loading="${index<6?'eager':'lazy'}" fetchpriority="${index<6?'high':'auto'}" decoding="async"><span><b>${escapeHtml(productName(p))}</b><strong>${money(productDefaultDisplayPrice(p))}</strong></span></button>`).join('')}</div></section>`;
     }
     function rerenderRecentHome() {
       const root = document.getElementById('home-recent-root');
@@ -6945,12 +7050,13 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         ? (fallbackVariant ? variantDisplayImage(p, fallbackVariant.size, fallbackVariant.color) : (p.thumbImg || p.img || ''))
         : (p.thumbImg || p.img || '');
       const cardFullImg = vars.length ? cardImg : (p.img || cardImg);
+      if (idx < 6) warmCatalogImage(cardImg, idx < 2 ? 'high' : 'low');
       const cardPrice = fallbackVariant ? variantPrice(p, fallbackVariant.size, fallbackVariant.color) : p.price;
       const cardOldPrice = fallbackVariant ? (fallbackVariant.oldPrice ?? null) : p.oldPrice;
       const hasDiscount = !!(cardOldPrice && Number(cardOldPrice) > Number(cardPrice));
 
       return `
-        <div data-product-card-id="${escapeHtml(p.id)}" onclick="handleProductCardClick('${p.id}', event)" onpointerdown="startProductLongPress('${p.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="fc-image-sync-card is-loading bg-white rounded-2xl p-3 shadow-sm border ${bulkSelecting && bulkSelectedProductIds.has(String(p.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex flex-col justify-between relative cursor-pointer hover:shadow-md transition-all">
+        <div data-product-card-id="${escapeHtml(p.id)}" onclick="handleProductCardClick('${p.id}', event)" onpointerdown="startProductLongPress('${p.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="fc-image-card bg-white rounded-2xl p-3 shadow-sm border ${bulkSelecting && bulkSelectedProductIds.has(String(p.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex flex-col justify-between relative cursor-pointer hover:shadow-md transition-all">
           ${bulkSelecting ? `<div class="absolute top-2 left-2 z-30 w-7 h-7 rounded-full flex items-center justify-center font-black ${bulkSelectedProductIds.has(String(p.id)) ? 'bg-blue-600 text-white' : 'bg-white/95 text-gray-400 border'}">${bulkSelectedProductIds.has(String(p.id)) ? '<i data-lucide="check" class="w-4 h-4"></i>' : ''}</div>` : ''}
           <div>
             <div class="relative">
@@ -7008,6 +7114,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     // 2. CATEGORIES TAB
     function renderCategories(container) {
+      warmCatalogBranch(adminCatParentId);
       const currentCat = categories.find(c => c.id === adminCatParentId);
       const subCats = categories.filter(c => c.parentId === adminCatParentId).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
       const recursiveProductCounts = buildRecursiveProductCountMap();
@@ -7057,7 +7164,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           <!-- SUBCATEGORIES LIST -->
           <div class="space-y-2" data-catalog-drag-list="category">
             ${subCats.map((sub, subIdx) => `
-              <div data-category-row-id="${sub.id}" onclick="handleCategoryRowClick('${sub.id}', event)" onpointerdown="startCategoryLongPress('${sub.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="ustore-cat-row ${sub.img ? 'fc-image-sync-card is-loading' : 'is-ready'} p-3.5 rounded-2xl border ${bulkCategorySelectMode && bulkSelectedCategoryIds.has(String(sub.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex items-center justify-between shadow-sm cursor-pointer">
+              <div data-category-row-id="${sub.id}" onclick="handleCategoryRowClick('${sub.id}', event)" onpointerdown="startCategoryLongPress('${sub.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="ustore-cat-row fc-image-card p-3.5 rounded-2xl border ${bulkCategorySelectMode && bulkSelectedCategoryIds.has(String(sub.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex items-center justify-between shadow-sm cursor-pointer">
                 <div class="flex items-center space-x-3">
                   ${sub.img && (sub.img.startsWith('http') || sub.img.startsWith('data:')) ?
                     `<img referrerpolicy="no-referrer" src="${escapeHtml(sub.img)}" data-full-img="" onload="revealCoordinatedImage(this)" onerror="retryCardImage(this)" class="w-8 h-8 object-contain bg-gray-50 rounded-lg p-0.5" loading="${subIdx < 8 ? 'eager' : 'lazy'}" fetchpriority="${subIdx < 8 ? 'high' : 'auto'}" decoding="async">` :
@@ -11146,7 +11253,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       renderPageShell(container, tr('Bosh sahifa kataloglari', 'Каталоги на главной'), body + `
         <div class="fc-featured-save-float fc-icon-action-bar">
           <button type="button" onclick="saveFeaturedCategories()" class="fc-action-icon-btn is-save" ${featuredCategoriesSaving ? 'disabled' : ''} aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}">
-            ${featuredCategoriesSaving ? '<span class="fc-spinner fc-spinner-xs"></span>' : '<i data-lucide="check" class="w-[18px] h-[18px]"></i>'}
+            <i data-lucide="check" class="w-[18px] h-[18px]"></i>${featuredCategoriesSaving ? '<span class="fc-save-busy-dot" aria-hidden="true"></span>' : ''}
           </button>
         </div>`, { onBack: "openMarketingHubPage()" });
     }
@@ -11659,16 +11766,36 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     let abandonedCartSearchTimer = null;
     function setAbandonedCartSearch(value) {
-      abandonedCartsSearch = String(value || ''); abandonedCartsPage = 1;
+      abandonedCartsSearch = String(value || ''); abandonedCartsPage = 1; clearAbandonedCartSelection(false);
       clearTimeout(abandonedCartSearchTimer);
       abandonedCartSearchTimer = setTimeout(() => loadAbandonedCartsLazy(true), 320);
     }
-    function setAbandonedCartAge(value) { abandonedCartsAgeBucket = value; abandonedCartsPage = 1; loadAbandonedCartsLazy(true); }
-    function setAbandonedCartReminderFilter(value) { abandonedCartsReminderFilter = value; abandonedCartsPage = 1; loadAbandonedCartsLazy(true); }
+    function setAbandonedCartAge(value) { abandonedCartsAgeBucket = value; abandonedCartsPage = 1; clearAbandonedCartSelection(false); loadAbandonedCartsLazy(true); }
+    function setAbandonedCartReminderFilter(value) { abandonedCartsReminderFilter = value; abandonedCartsPage = 1; clearAbandonedCartSelection(false); loadAbandonedCartsLazy(true); }
     function goToAbandonedCartPage(page) { abandonedCartsPage = Math.max(1, Math.min(abandonedCartsTotalPages, Number(page) || 1)); loadAbandonedCartsLazy(true); }
-    function toggleAbandonedCartSelection(tgId) { const id=String(tgId); abandonedCartSelectedIds.has(id)?abandonedCartSelectedIds.delete(id):abandonedCartSelectedIds.add(id); render(); }
-    function selectEligibleAbandonedOnPage() { abandonedCarts.filter(c=>c.reminderEligible).forEach(c=>abandonedCartSelectedIds.add(String(c.tgId))); render(); }
-    function clearAbandonedCartSelection() { abandonedCartSelectedIds.clear(); render(); }
+    function isAbandonedCartSelected(cart) { return abandonedSelectAllMatching ? !!cart.reminderEligible : abandonedCartSelectedIds.has(String(cart.tgId)); }
+    function toggleAbandonedCartSelection(tgId) {
+      const id=String(tgId);
+      // "Hammasi" rejimidan bitta kartani o'zgartirish — tushunarli va
+      // xavfsiz sahifa-tanloviga qaytadi; ko'rinmaydigan savatlar yashirincha
+      // tanlangan holda qolmaydi.
+      if (abandonedSelectAllMatching) {
+        abandonedSelectAllMatching = false;
+        abandonedCartSelectedIds = new Set(abandonedCarts.filter(c=>c.reminderEligible).map(c=>String(c.tgId)));
+      }
+      abandonedCartSelectedIds.has(id)?abandonedCartSelectedIds.delete(id):abandonedCartSelectedIds.add(id);
+      render();
+    }
+    function selectEligibleAbandonedOnPage() {
+      abandonedSelectAllMatching=false;
+      abandonedCarts.filter(c=>c.reminderEligible).forEach(c=>abandonedCartSelectedIds.add(String(c.tgId)));
+      render();
+    }
+    function selectAllEligibleAbandonedMatching() {
+      if (!(abandonedCartsSummary.eligible > 0)) return showActionToast(tr('Hozir xabar yuborish mumkin bo‘lgan savat yo‘q','Сейчас нет корзин для отправки'),'error',1700);
+      abandonedCartSelectedIds.clear(); abandonedSelectAllMatching=true; render();
+    }
+    function clearAbandonedCartSelection(shouldRender=true) { abandonedCartSelectedIds.clear(); abandonedSelectAllMatching=false; if(shouldRender)render(); }
 
     function cartAgeLabel(updatedAt) {
       const mins = Math.max(0, Math.round((Date.now() - new Date(updatedAt).getTime()) / 60000));
@@ -11682,9 +11809,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const rows = abandonedCartsLoading && !abandonedCartsLoaded
         ? `<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...', 'Загрузка...')}</p></div>`
         : abandonedCarts.length ? abandonedCarts.map(c => `
-          <div class="fc-card fc-abandoned-card ${abandonedCartSelectedIds.has(String(c.tgId)) ? 'is-selected' : ''}">
+          <div class="fc-card fc-abandoned-card ${isAbandonedCartSelected(c) ? 'is-selected' : ''}">
             <div class="flex items-center justify-between gap-2">
-              <button type="button" class="fc-abandoned-select" onclick="toggleAbandonedCartSelection('${escapeHtml(String(c.tgId))}')" aria-label="${tr('Tanlash','Выбрать')}" aria-pressed="${abandonedCartSelectedIds.has(String(c.tgId))}">${abandonedCartSelectedIds.has(String(c.tgId)) ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}</button>
+              <button type="button" class="fc-abandoned-select" onclick="toggleAbandonedCartSelection('${escapeHtml(String(c.tgId))}')" aria-label="${tr('Tanlash','Выбрать')}" aria-pressed="${isAbandonedCartSelected(c)}">${isAbandonedCartSelected(c) ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}</button>
               <div class="min-w-0 flex-1"><b class="text-sm">${escapeHtml(c.customerName || c.username || c.phone || ('#' + c.tgId))}</b>${c.phone ? `<p class="text-[10px] text-gray-400">${escapeHtml(c.phone)}</p>` : ''}</div>
               <b class="text-sm text-blue-600 shrink-0">${money(c.cartValue)}</b>
             </div>
@@ -11696,11 +11823,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const body = `<div class="space-y-3 fc-abandoned-page">
         <div class="fc-abandoned-summary"><div><b>${abandonedCartsSummary.total||0}</b><span>${tr('Jami','Всего')}</span></div><div><b>${abandonedCartsSummary.eligible||0}</b><span>${tr('Yuborish mumkin','Можно отправить')}</span></div><div><b>${abandonedCartsSummary.archive||0}</b><span>${tr('Arxiv','Архив')}</span></div></div>
         <div class="fc-abandoned-toolbar"><div class="fc-abandoned-search"><i data-lucide="search" class="w-4 h-4"></i><input value="${escapeHtml(abandonedCartsSearch)}" oninput="setAbandonedCartSearch(this.value)" placeholder="${tr('Mijoz, telefon yoki Telegram ID','Клиент, телефон или Telegram ID')}"></div><div class="fc-abandoned-filters"><select onchange="setAbandonedCartAge(this.value)"><option value="ALL" ${abandonedCartsAgeBucket==='ALL'?'selected':''}>${tr('Barcha davrlar','Все периоды')}</option><option value="NEW" ${abandonedCartsAgeBucket==='NEW'?'selected':''}>30m–24h</option><option value="ACTIVE" ${abandonedCartsAgeBucket==='ACTIVE'?'selected':''}>1–3 ${tr('kun','дн.')}</option><option value="OLD" ${abandonedCartsAgeBucket==='OLD'?'selected':''}>3–7 ${tr('kun','дн.')}</option><option value="ARCHIVE" ${abandonedCartsAgeBucket==='ARCHIVE'?'selected':''}>7+ ${tr('kun','дн.')}</option></select><select onchange="setAbandonedCartReminderFilter(this.value)"><option value="ALL" ${abandonedCartsReminderFilter==='ALL'?'selected':''}>${tr('Barcha holatlar','Все статусы')}</option><option value="READY" ${abandonedCartsReminderFilter==='READY'?'selected':''}>${tr('Yuborishga tayyor','Готовы к отправке')}</option><option value="SENT" ${abandonedCartsReminderFilter==='SENT'?'selected':''}>${tr('Yuborilgan','Отправлено')}</option></select></div></div>
-        <div class="fc-abandoned-bulk"><button type="button" onclick="selectEligibleAbandonedOnPage()">${tr('Sahifadagi moslarini tanlash','Выбрать подходящие на странице')}</button><button type="button" onclick="createAbandonedCartCampaign(true)">${tr(`Barcha mos ${abandonedCartsSummary.eligible||0} ta savatga yuborish`,`Отправить всем подходящим: ${abandonedCartsSummary.eligible||0}`)}</button></div>
+        <div class="fc-abandoned-bulk"><button type="button" onclick="selectEligibleAbandonedOnPage()"><span>☑️</span><b>${tr('Shu sahifadagilar','На этой странице')}</b><small>${tr('Xabar yuborish mumkinlarini tanlash','Выбрать доступные')}</small></button><button type="button" onclick="selectAllEligibleAbandonedMatching()"><span>✅</span><b>${tr('Filtrga mos hammasi','Все по фильтру')}</b><small>${tr(`${abandonedCartsSummary.eligible||0} ta savatni tanlash`,`Выбрать корзин: ${abandonedCartsSummary.eligible||0}`)}</small></button></div>
         ${abandonedCampaign ? `<div class="fc-abandoned-progress"><div><b>${tr('Yuborish jarayoni','Рассылка')}</b><span>${abandonedCampaign.sentCount||0}/${abandonedCampaign.totalCount||0}</span></div><progress max="${abandonedCampaign.totalCount||1}" value="${(abandonedCampaign.sentCount||0)+(abandonedCampaign.skippedCount||0)+(abandonedCampaign.failedCount||0)}"></progress><small>${tr('O‘tkazib yuborildi','Пропущено')}: ${abandonedCampaign.skippedCount||0} · ${tr('Xato','Ошибки')}: ${abandonedCampaign.failedCount||0}</small></div>` : ''}
         <div class="space-y-2">${rows}</div>
         ${abandonedCartsTotalPages>1?`<div class="fc-abandoned-pages"><button onclick="goToAbandonedCartPage(${abandonedCartsPage-1})" ${abandonedCartsPage<=1?'disabled':''}><i data-lucide="chevron-left" class="w-4 h-4"></i></button><span>${abandonedCartsPage} / ${abandonedCartsTotalPages} · ${abandonedCartsTotalCount}</span><button onclick="goToAbandonedCartPage(${abandonedCartsPage+1})" ${abandonedCartsPage>=abandonedCartsTotalPages?'disabled':''}><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div>`:''}
-        ${abandonedCartSelectedIds.size?`<div class="fc-abandoned-selection"><button type="button" onclick="clearAbandonedCartSelection()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Tanlashni bekor qilish','Отменить выбор')}"><i data-lucide="x" class="w-4 h-4"></i></button><span>${abandonedCartSelectedIds.size}</span><button type="button" onclick="createAbandonedCartCampaign(false)" class="fc-btn fc-btn-primary"><i data-lucide="send" class="w-4 h-4"></i>${tr('Navbatga qo‘shish','Добавить в очередь')}</button></div>`:''}
+        ${(abandonedSelectAllMatching||abandonedCartSelectedIds.size)?`<div class="fc-abandoned-selection"><button type="button" onclick="clearAbandonedCartSelection()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Tanlashni bekor qilish','Отменить выбор')}"><i data-lucide="x" class="w-4 h-4"></i></button><span class="fc-abandoned-selected-count"><b>👥 ${abandonedSelectAllMatching?(abandonedCartsSummary.eligible||0):abandonedCartSelectedIds.size}</b><small>${tr('tanlandi','выбрано')}</small></span><button type="button" onclick="createAbandonedCartCampaign(${abandonedSelectAllMatching?'true':'false'})" class="fc-btn fc-btn-primary"><span>📨</span>${tr('Navbatga qo‘shish','Добавить в очередь')}</button></div>`:''}
       </div>`;
       renderPageShell(container, tr('Tashlab ketilgan savatlar', 'Брошенные корзины'), body);
     }
@@ -11716,7 +11843,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (!allEligible && !abandonedCartSelectedIds.size) return;
       try {
         const data = await callApi('create_abandoned_cart_campaign', { allEligible: !!allEligible, tgIds: allEligible ? [] : [...abandonedCartSelectedIds], filters: { ageBucket: abandonedCartsAgeBucket, reminderFilter: abandonedCartsReminderFilter } });
-        abandonedCartSelectedIds.clear(); abandonedCampaign = data.campaign; render();
+        clearAbandonedCartSelection(false); abandonedCampaign = data.campaign; render();
         showActionToast(tr('Xabarnomalar navbatga qo‘shildi','Напоминания добавлены в очередь'),'success',1600);
         startAbandonedCampaignPoll(data.campaign.id);
       } catch (e) { showActionToast(tr('Mos savat topilmadi yoki navbat yaratilmadi','Подходящих корзин нет или очередь не создана'),'error',2000); }
@@ -11730,9 +11857,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // ==================== AMALLAR JURNALI ====================
     function openAuditLogPage() { if (!canViewAuditLog) return; openPage('AUDIT_LOG','nav-profile'); loadAuditLogLazy(true); }
     function auditDateRange() {
-      if (auditLogDatePreset === 'ALL') return {};
-      const days = auditLogDatePreset === '1D' ? 1 : auditLogDatePreset === '30D' ? 30 : 7;
-      return { dateFrom: new Date(Date.now() - days * 86400000).toISOString() };
+      const range = {};
+      if (auditLogDateFrom) range.dateFrom = new Date(`${auditLogDateFrom}T00:00:00`).toISOString();
+      if (auditLogDateTo) range.dateTo = new Date(`${auditLogDateTo}T23:59:59.999`).toISOString();
+      return range;
     }
     async function loadAuditLogLazy(force=false) {
       if (!canViewAuditLog || auditLogLoading || (auditLogLoaded && !force)) return;
@@ -11745,15 +11873,31 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function setAuditLogSearch(value){auditLogSearch=String(value||'');auditLogPage=1;clearTimeout(auditSearchTimer);auditSearchTimer=setTimeout(()=>loadAuditLogLazy(true),300);}
     function setAuditLogAction(value){auditLogAction=value;auditLogPage=1;loadAuditLogLazy(true)}
     function setAuditLogEntity(value){auditLogEntity=value;auditLogPage=1;loadAuditLogLazy(true)}
-    function setAuditLogDatePreset(value){auditLogDatePreset=value;auditLogPage=1;loadAuditLogLazy(true)}
+    function setAuditLogDateFrom(value){auditLogDateFrom=String(value||'');if(auditLogDateTo&&auditLogDateFrom>auditLogDateTo)auditLogDateTo=auditLogDateFrom;auditLogPage=1;loadAuditLogLazy(true)}
+    function setAuditLogDateTo(value){auditLogDateTo=String(value||'');if(auditLogDateFrom&&auditLogDateTo<auditLogDateFrom)auditLogDateFrom=auditLogDateTo;auditLogPage=1;loadAuditLogLazy(true)}
+    function clearAuditLogDates(){auditLogDateFrom='';auditLogDateTo='';auditLogPage=1;loadAuditLogLazy(true)}
     function goToAuditLogPage(value){auditLogPage=Math.max(1,Math.min(auditLogTotalPages,Number(value)||1));loadAuditLogLazy(true)}
-    function auditActionLabel(action){const map={ORDER_STATUS_UPDATED:tr('Buyurtma holati o‘zgartirildi','Статус заказа изменён'),ORDER_CANCELLED:tr('Buyurtma bekor qilindi','Заказ отменён'),PRODUCT_ADDED:tr('Tovar qo‘shildi','Товар добавлен'),PRODUCT_UPDATED:tr('Tovar tahrirlandi','Товар изменён'),PRODUCT_DELETED:tr('Tovar o‘chirildi','Товар удалён'),STAFF_ROLES_UPDATED:tr('Xodim rollari yangilandi','Роли сотрудника обновлены'),SUPPORT_TICKET_ANSWERED:tr('Murojaatga javob berildi','Ответ на обращение'),ABANDONED_CART_CAMPAIGN_QUEUED:tr('Savat xabarnomalari navbatga qo‘shildi','Напоминания о корзинах поставлены в очередь')};return map[action]||String(action||'').replaceAll('_',' ').toLowerCase();}
+    const AUDIT_ACTION_LABELS_UZ={
+      ORDER_STATUS_UPDATED:'Buyurtma holati o‘zgartirildi',ORDER_CANCELLED:'Buyurtma bekor qilindi',ORDER_INTERNAL_NOTE_UPDATED:'Buyurtma ichki izohi yangilandi',ORDER_POLICIES_UPDATED:'Buyurtma qoidalari yangilandi',ORDER_RETURN_UPDATED:'Qaytarish holati yangilandi',SHIPMENT_UPDATED:'Yetkazma yangilandi',
+      PRODUCT_ADDED:'Tovar qo‘shildi',PRODUCT_CREATED:'Tovar yaratildi',PRODUCT_UPDATED:'Tovar tahrirlandi',PRODUCT_DELETED:'Tovar o‘chirildi',PRODUCT_DUPLICATED:'Tovar nusxalandi',PRODUCT_FEATURED_CHANGED:'Tovarning bosh sahifadagi holati o‘zgartirildi',PRODUCT_SORT_CHANGED:'Tovarlar tartibi o‘zgartirildi',PRODUCT_VISIBILITY_CHANGED:'Tovar ko‘rinishi o‘zgartirildi',PRODUCTS_BULK_MOVED:'Tovarlar ommaviy ko‘chirildi',PRODUCTS_BULK_TRASHED:'Tovarlar ommaviy savatga tashlandi',PRODUCTS_BULK_DISCOUNT_APPLIED:'Tovarlarga ommaviy chegirma qo‘llandi',PRODUCTS_BULK_DISCOUNT_CLEARED:'Tovarlardagi ommaviy chegirma olib tashlandi',BULK_STOCK_UPDATED:'Qoldiqlar ommaviy yangilandi',STOCK_KIRIM:'Omborga kirim qilindi',
+      CATEGORY_CREATED:'Katalog yaratildi',CATEGORY_UPDATED:'Katalog tahrirlandi',CATEGORY_DELETED:'Katalog o‘chirildi',CATEGORY_MOVED:'Katalog ko‘chirildi',CATEGORIES_REORDERED:'Kataloglar tartibi o‘zgartirildi',CATEGORIES_BULK_CREATED:'Kataloglar ommaviy yaratildi',FEATURED_CATEGORIES_UPDATED:'Bosh sahifa kataloglari saqlandi',
+      BANNER_CREATED:'Banner yaratildi',BANNER_UPDATED:'Banner yangilandi',BANNER_DELETED:'Banner o‘chirildi',DESIGN_SETTINGS_UPDATED:'Dizayn sozlamalari yangilandi',MARKETING_SETTINGS_UPDATED:'Marketing sozlamalari yangilandi',PROMO_CREATED:'Promo-kod yaratildi',PROMO_UPDATED:'Promo-kod yangilandi',PROMO_DELETED:'Promo-kod o‘chirildi',PROMO_DEACTIVATED:'Promo-kod faolsizlantirildi',BUNDLE_CREATED:'Aksiya yaratildi',BUNDLE_UPDATED:'Aksiya yangilandi',BUNDLE_DELETED:'Aksiya o‘chirildi',DISCOUNT_TIER_CREATED:'Chegirma bosqichi yaratildi',DISCOUNT_TIER_UPDATED:'Chegirma bosqichi yangilandi',DISCOUNT_TIER_DELETED:'Chegirma bosqichi o‘chirildi',DISCOUNT_TIER_GROUP_CREATED:'Chegirma guruhi yaratildi',DISCOUNT_TIER_GROUP_UPDATED:'Chegirma guruhi yangilandi',DISCOUNT_TIER_GROUP_DELETED:'Chegirma guruhi o‘chirildi',AUTOMATIC_GIFT_CREATED:'Avtomatik sovg‘a yaratildi',AUTOMATIC_GIFT_UPDATED:'Avtomatik sovg‘a yangilandi',AUTOMATIC_GIFT_DEACTIVATED:'Avtomatik sovg‘a to‘xtatildi',AUTOMATIC_GIFT_DELETED:'Avtomatik sovg‘a o‘chirildi',REWARD_RULE_CREATED:'Sovg‘a qoidasi yaratildi',REWARD_RULE_UPDATED:'Sovg‘a qoidasi yangilandi',REWARD_RULE_DELETED:'Sovg‘a qoidasi o‘chirildi',CUSTOMER_DISCOUNT_CREATED:'Mijozga chegirma berildi',CUSTOMER_DISCOUNT_CANCELLED:'Mijoz chegirmasi bekor qilindi',CUSTOMER_DISCOUNT_BATCH_UPDATED:'Chegirma kampaniyasi yangilandi',CUSTOMER_DISCOUNT_BATCH_CANCELLED:'Chegirma kampaniyasi bekor qilindi',
+      STAFF_INVITED:'Xodim taklif qilindi',STAFF_INVITE_ACCEPTED:'Xodim taklifni qabul qildi',STAFF_INVITE_CANCELLED:'Xodim taklifi bekor qilindi',STAFF_REMOVED:'Xodim olib tashlandi',STAFF_ROLES_UPDATED:'Xodim huquqlari yangilandi',STAFF_BLOCKED:'Xodim bloklandi',STAFF_UNBLOCKED:'Xodim blokdan chiqarildi',ROLE_CREATED:'Lavozim yaratildi',ROLE_UPDATED:'Lavozim yangilandi',ROLE_DELETED:'Lavozim o‘chirildi',OWNERSHIP_TRANSFERRED:'Do‘kon egaligi o‘tkazildi',ADMIN_ADDED:'Admin qo‘shildi',ADMIN_REMOVED:'Admin olib tashlandi',
+      SUPPORT_TICKET_CREATED:'Yangi murojaat yaratildi',SUPPORT_TICKET_ANSWERED:'Murojaatga javob berildi',SUPPORT_TICKET_MESSAGE:'Murojaatga xabar yozildi',SUPPORT_TICKET_CLOSED:'Murojaat tugatildi',ABANDONED_CART_CAMPAIGN_QUEUED:'Savat xabarnomalari navbatga qo‘shildi',
+      BILLZ_CONNECTED:'BILLZ ulandi',BILLZ_DISCONNECTED:'BILLZ uzildi',BILLZ_PRODUCT_IMPORTED:'BILLZ mahsuloti import qilindi',BILLZ_PRODUCT_RESTORED:'BILLZ mahsuloti tiklandi',BILLZ_PRODUCTS_UNLINKED:'BILLZ bog‘lanishlari uzildi',BILLZ_SALE_CONFIG_UPDATED:'BILLZ savdo sozlamasi yangilandi',CLICK_CONNECTED:'Click ulandi',CLICK_DISCONNECTED:'Click uzildi',CLICK_TEST_PAYMENT_STARTED:'Click test to‘lovi boshlandi',PAYME_CONNECTED:'Payme ulandi',PAYME_DISCONNECTED:'Payme uzildi',PAYME_TEST_PAYMENT_STARTED:'Payme test to‘lovi boshlandi',UZUM_CONNECTED:'Uzum ulandi',UZUM_DISCONNECTED:'Uzum uzildi',
+      PAYMENT_RECEIPT_UPLOADED:'To‘lov cheki yuklandi',PAYMENT_RECEIPT_APPROVED:'To‘lov cheki tasdiqlandi',PAYMENT_RECEIPT_REJECTED:'To‘lov cheki rad etildi',EXCEL_IMPORT_STARTED:'Excel import boshlandi',EXCEL_IMPORT_CHUNK:'Excel importining bir qismi bajarildi',EXCEL_IMPORT_ROLLED_BACK:'Excel importi bekor qilindi',
+      SHOP_CONTACT_UPDATED:'Do‘kon ma’lumotlari yangilandi',SHOP_LOGO_UPDATED:'Do‘kon logotipi yangilandi',START_MESSAGE_UPDATED:'Boshlang‘ich xabar yangilandi',FULFILLMENT_CONFIG_UPDATED:'Yetkazib berish va to‘lov sozlamalari yangilandi',LOW_STOCK_THRESHOLD_UPDATED:'Kam qoldiq chegarasi yangilandi',LEGAL_DOCUMENTS_UPDATED:'Huquqiy hujjatlar yangilandi',DELIVERY_BRANCHES_TRANSLATED:'Yetkazib berish filiallari tarjima qilindi',ORDERS_PAUSED:'Buyurtma qabul qilish to‘xtatildi',ORDERS_RESUMED:'Buyurtma qabul qilish davom ettirildi',ORDER_CONFIRMED_BY_CUSTOMER:'Mijoz buyurtmani olganini tasdiqladi',ORDER_STATUS_CHANGED:'Buyurtma holati o‘zgartirildi',
+      USER_WARNED:'Mijoz ogohlantirildi',USER_BLOCKED:'Mijoz bloklandi',USER_UNBLOCKED:'Mijoz blokdan chiqarildi',TRASH_ITEMS_RESTORED:'Savatdagi yozuvlar tiklandi',TRASH_ITEMS_PURGED:'Savatdagi yozuvlar butunlay o‘chirildi',TRASH_RESTORED:'Savat tiklandi',TRASH_PURGED_NOW:'Savat hozir tozalandi'
+    };
+    const AUDIT_ENTITY_LABELS_UZ={order:'Buyurtma',order_return:'Qaytarish',product:'Tovar',products:'Tovarlar',category:'Katalog',categories:'Kataloglar',shop_settings:'Do‘kon sozlamalari',design_settings:'Dizayn sozlamalari',shop_legal_documents:'Huquqiy hujjatlar',delivery_branches:'Yetkazib berish filiallari',support_ticket:'Murojaat',app_user:'Mijoz',staff:'Xodim',role:'Lavozim',shop_membership:'Xodim a’zoligi',staff_invite:'Xodim taklifi',promotion:'Promo-kod',banner:'Banner',bundle:'Aksiya',discount_tier:'Chegirma bosqichi',discount_tier_group:'Chegirma guruhi',reward_rule:'Sovg‘a qoidasi',automatic_gift_rule:'Avtomatik sovg‘a',customer_discount:'Mijoz chegirmasi',customer_discount_batch:'Chegirma kampaniyasi',payment:'To‘lov',shipment:'Yetkazma',import_batch:'Excel importi',excel_import:'Excel importi',cart:'Savat',trash_batch:'O‘chirilganlar savati',abandoned_cart_campaign:'Tashlab ketilgan savatlar kampaniyasi',billz_connections:'BILLZ ulanishi',click_connections:'Click ulanishi',payme_connections:'Payme ulanishi',uzum_connections:'Uzum ulanishi'};
+    function auditActionLabel(action){const key=String(action||'');if(uiLang==='uz'&&AUDIT_ACTION_LABELS_UZ[key])return AUDIT_ACTION_LABELS_UZ[key];return key.replaceAll('_',' ').toLowerCase().replace(/^./,c=>c.toUpperCase());}
+    function auditEntityLabel(entity){const key=String(entity||'');if(uiLang==='uz'&&AUDIT_ENTITY_LABELS_UZ[key])return AUDIT_ENTITY_LABELS_UZ[key];return key.replaceAll('_',' ').toLowerCase().replace(/^./,c=>c.toUpperCase());}
     function closeAuditDetail(){document.getElementById('fc-audit-detail-root')?.remove()}
-    function openAuditDetail(id){const row=auditLogEntries.find(x=>String(x.id)===String(id));if(!row)return;closeAuditDetail();const root=document.createElement('div');root.id='fc-audit-detail-root';root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)closeAuditDetail()"><div class="fc-sheet fc-audit-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Amal tafsiloti','Детали действия')}</div><button type="button" onclick="closeAuditDetail()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body"><div class="fc-audit-detail-grid"><div><small>${tr('Amal','Действие')}</small><b>${escapeHtml(auditActionLabel(row.action))}</b></div><div><small>${tr('Xodim','Сотрудник')}</small><b>${escapeHtml(row.adminName||row.adminTgId)}</b><code>${escapeHtml(row.adminTgId)}</code></div><div><small>${tr('Vaqt','Время')}</small><b>${new Date(row.createdAt).toLocaleString()}</b></div><div><small>${tr('Obyekt','Объект')}</small><b>${escapeHtml(row.entityType||'—')} ${row.entityId?`#${escapeHtml(row.entityId)}`:''}</b></div></div>${row.details?`<pre>${escapeHtml(JSON.stringify(row.details,null,2))}</pre>`:''}</div></div></div>`;document.body.appendChild(root);safeCreateIcons();}
+    function openAuditDetail(id){const row=auditLogEntries.find(x=>String(x.id)===String(id));if(!row)return;closeAuditDetail();const root=document.createElement('div');root.id='fc-audit-detail-root';root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)closeAuditDetail()"><div class="fc-sheet fc-audit-detail"><div class="fc-sheet-handle"></div><div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Amal tafsiloti','Детали действия')}</div><button type="button" onclick="closeAuditDetail()" class="fc-btn fc-btn-icon"><i data-lucide="x" class="w-4 h-4"></i></button></div><div class="fc-sheet-body"><div class="fc-audit-detail-grid"><div><small>${tr('Amal','Действие')}</small><b>${escapeHtml(auditActionLabel(row.action))}</b></div><div><small>${tr('Xodim','Сотрудник')}</small><b>${escapeHtml(row.adminName||row.adminTgId)}</b><code>${escapeHtml(row.adminTgId)}</code></div><div><small>${tr('Vaqt','Время')}</small><b>${new Date(row.createdAt).toLocaleString()}</b></div><div><small>${tr('Obyekt','Объект')}</small><b>${escapeHtml(auditEntityLabel(row.entityType)||'—')} ${row.entityId?`#${escapeHtml(row.entityId)}`:''}</b></div></div>${row.details?`<pre>${escapeHtml(JSON.stringify(row.details,null,2))}</pre>`:''}</div></div></div>`;document.body.appendChild(root);safeCreateIcons();}
     function renderAuditLogPage(container){
       const actions=[...new Set(auditLogEntries.map(x=>x.action).filter(Boolean))],entities=[...new Set(auditLogEntries.map(x=>x.entityType).filter(Boolean))];
-      const rows=auditLogLoading&&!auditLogLoaded?`<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...','Загрузка...')}</p></div>`:auditLogEntries.length?auditLogEntries.map(row=>`<button type="button" onclick="openAuditDetail('${row.id}')" class="fc-audit-row"><span class="fc-audit-row-icon"><i data-lucide="activity" class="w-4 h-4"></i></span><span><b>${escapeHtml(auditActionLabel(row.action))}</b><small>${escapeHtml(row.adminName||row.adminTgId)} · ${new Date(row.createdAt).toLocaleString()}</small></span><em>${escapeHtml(row.entityType||'')}${row.entityId?` #${escapeHtml(row.entityId)}`:''}</em><i data-lucide="chevron-right" class="w-4 h-4"></i></button>`).join(''):`<div class="fc-empty-state"><i data-lucide="clipboard-list" class="w-7 h-7"></i><p>${tr('Amallar topilmadi','Действия не найдены')}</p></div>`;
-      const body=`<div class="fc-audit-page"><div class="fc-audit-search"><i data-lucide="search" class="w-4 h-4"></i><input value="${escapeHtml(auditLogSearch)}" oninput="setAuditLogSearch(this.value)" placeholder="${tr('Amal yoki obyektni qidirish','Поиск действия или объекта')}"></div><div class="fc-audit-filters"><select onchange="setAuditLogDatePreset(this.value)"><option value="1D" ${auditLogDatePreset==='1D'?'selected':''}>${tr('Bugun','Сегодня')}</option><option value="7D" ${auditLogDatePreset==='7D'?'selected':''}>7 ${tr('kun','дней')}</option><option value="30D" ${auditLogDatePreset==='30D'?'selected':''}>30 ${tr('kun','дней')}</option><option value="ALL" ${auditLogDatePreset==='ALL'?'selected':''}>${tr('Barcha vaqt','Всё время')}</option></select><select onchange="setAuditLogAction(this.value)"><option value="">${tr('Barcha amallar','Все действия')}</option>${actions.map(v=>`<option value="${escapeHtml(v)}" ${auditLogAction===v?'selected':''}>${escapeHtml(auditActionLabel(v))}</option>`).join('')}</select><select onchange="setAuditLogEntity(this.value)"><option value="">${tr('Barcha obyektlar','Все объекты')}</option>${entities.map(v=>`<option value="${escapeHtml(v)}" ${auditLogEntity===v?'selected':''}>${escapeHtml(v)}</option>`).join('')}</select></div><div class="fc-audit-count">${auditLogTotalCount} ${tr('ta yozuv','записей')}</div><div class="fc-audit-list">${rows}</div>${auditLogTotalPages>1?`<div class="fc-audit-pages"><button onclick="goToAuditLogPage(${auditLogPage-1})" ${auditLogPage<=1?'disabled':''}><i data-lucide="chevron-left" class="w-4 h-4"></i></button><span>${auditLogPage} / ${auditLogTotalPages}</span><button onclick="goToAuditLogPage(${auditLogPage+1})" ${auditLogPage>=auditLogTotalPages?'disabled':''}><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div>`:''}</div>`;
+      const rows=auditLogLoading&&!auditLogLoaded?`<div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Yuklanmoqda...','Загрузка...')}</p></div>`:auditLogEntries.length?auditLogEntries.map(row=>`<button type="button" onclick="openAuditDetail('${row.id}')" class="fc-audit-row"><span class="fc-audit-row-icon"><i data-lucide="activity" class="w-4 h-4"></i></span><span><b>${escapeHtml(auditActionLabel(row.action))}</b><small>${escapeHtml(row.adminName||row.adminTgId)} · ${new Date(row.createdAt).toLocaleString()}</small></span><em>${escapeHtml(auditEntityLabel(row.entityType)||'')}${row.entityId?` #${escapeHtml(row.entityId)}`:''}</em><i data-lucide="chevron-right" class="w-4 h-4"></i></button>`).join(''):`<div class="fc-empty-state"><i data-lucide="clipboard-list" class="w-7 h-7"></i><p>${tr('Amallar topilmadi','Действия не найдены')}</p></div>`;
+      const body=`<div class="fc-audit-page"><div class="fc-audit-search"><i data-lucide="search" class="w-4 h-4"></i><input value="${escapeHtml(auditLogSearch)}" oninput="setAuditLogSearch(this.value)" placeholder="${tr('Amal yoki obyektni qidirish','Поиск действия или объекта')}"></div><div class="fc-audit-date-range"><label><span>📅 ${tr('Boshlanish sanasi','Дата начала')}</span><input type="date" value="${escapeHtml(auditLogDateFrom)}" onchange="setAuditLogDateFrom(this.value)"></label><label><span>📅 ${tr('Tugash sanasi','Дата окончания')}</span><input type="date" value="${escapeHtml(auditLogDateTo)}" onchange="setAuditLogDateTo(this.value)"></label>${auditLogDateFrom||auditLogDateTo?`<button type="button" onclick="clearAuditLogDates()" aria-label="${tr('Sanalarni tozalash','Очистить даты')}"><i data-lucide="x" class="w-4 h-4"></i></button>`:''}</div><div class="fc-audit-filters"><select onchange="setAuditLogAction(this.value)"><option value="">${tr('Barcha amallar','Все действия')}</option>${actions.map(v=>`<option value="${escapeHtml(v)}" ${auditLogAction===v?'selected':''}>${escapeHtml(auditActionLabel(v))}</option>`).join('')}</select><select onchange="setAuditLogEntity(this.value)"><option value="">${tr('Barcha obyektlar','Все объекты')}</option>${entities.map(v=>`<option value="${escapeHtml(v)}" ${auditLogEntity===v?'selected':''}>${escapeHtml(auditEntityLabel(v))}</option>`).join('')}</select></div><div class="fc-audit-count">${auditLogTotalCount} ${tr('ta yozuv','записей')}</div><div class="fc-audit-list">${rows}</div>${auditLogTotalPages>1?`<div class="fc-audit-pages"><button onclick="goToAuditLogPage(${auditLogPage-1})" ${auditLogPage<=1?'disabled':''}><i data-lucide="chevron-left" class="w-4 h-4"></i></button><span>${auditLogPage} / ${auditLogTotalPages}</span><button onclick="goToAuditLogPage(${auditLogPage+1})" ${auditLogPage>=auditLogTotalPages?'disabled':''}><i data-lucide="chevron-right" class="w-4 h-4"></i></button></div>`:''}</div>`;
       renderPageShell(container,tr('Amallar jurnali','Журнал действий'),body);
     }
 
@@ -16162,13 +16306,6 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
     async function saveBulkMoveCategories(){const ids=[...bulkSelectedCategoryIds];if(!ids.length)return;const newParentId=movePickerParentId||null;showActionToast(tr('Ko‘chirilmoqda...','Перемещение...'),'saving');try{for(const id of ids)await callApi('move_category',{categoryId:id,newParentId});await loadCatalog();activePopupModal=null;bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();showActionToast(tr('Kataloglar ko‘chirildi','Каталоги перемещены'),'success',1500);}catch(e){console.error(e);await loadCatalog();activePopupModal=null;bulkSelectedCategoryIds.clear();bulkCategorySelectMode=false;render();showAppNotice(tr('Ko‘chirishda xatolik: ','Ошибка перемещения: ')+(e.message||e));}}
 
     
-    function showAdminWelcomeModal() {
-      const today = new Date().toDateString();
-      if (localStorage.getItem('fc_admin_welcome_date') === today) return;
-      localStorage.setItem('fc_admin_welcome_date', today);
-      activePopupModal = 'ADMIN_WELCOME';
-      render();
-    }
 function renderModalContainer() {
       // TASK 1.8 root-cause fix (2026-09-01): ko'plab chaqiruv nuqtalari
       // (rang/o'lcham inline CRUD, va h.k.) bu funksiyadan keyin
@@ -16196,32 +16333,6 @@ function renderModalContainer() {
       if (isCatalogEditorModalOpen()) { syncProductFormDraftFromDom(); syncVariantBuilderFromDom(); }
 
       // REGISTRATION MODAL
-    if (activePopupModal === 'ADMIN_WELCOME') {
-        container.innerHTML = `
-        <div class="fc-welcome-overlay fixed inset-0 flex items-center justify-center p-4 transition-all duration-300" onclick="activePopupModal=null;render();">
-          <div class="fc-welcome-card w-full flex flex-col overflow-hidden" onclick="event.stopPropagation()">
-            <div class="pt-7 pb-5 px-6 text-center relative overflow-hidden">
-              <div class="fc-welcome-icon mx-auto mb-4 flex items-center justify-center">
-                <i data-lucide="shield-check" class="w-7 h-7"></i>
-              </div>
-              <h2 class="font-black tracking-tight leading-tight mb-2">${tr("Xush kelibsiz", "Добро пожаловать")}</h2>
-              <p class="font-medium leading-relaxed mx-auto">${tr("Do'koningizni boshqarish uchun barcha kerakli vositalar tayyor.", "Все инструменты для управления вашим магазином готовы к работе.")}</p>
-            </div>
-            <div class="px-6 pb-6 pt-2 flex flex-col gap-2.5">
-              <button type="button" onclick="activePopupModal=null; render(); setTimeout(() => openAdminCommandCenter(true), 50);" class="fc-welcome-primary w-full">
-                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                ${tr("Boshqaruv markazi", "Центр управления")}
-              </button>
-              <button type="button" onclick="activePopupModal=null; render();" class="fc-welcome-secondary w-full">
-                ${tr("Do'konni ko'rish", "Посмотреть магазин")}
-              </button>
-            </div>
-          </div>
-        </div>`;
-        lucide.createIcons({ root: container });
-        return;
-    }
-
       if (activePopupModal === 'REGISTRATION') {
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; render();">
@@ -19952,6 +20063,7 @@ if (activePopupModal === 'LOGO_CROP') {
         const cached = readStoredObject(CATALOG_CACHE_KEY, null);
         if (!cached || !Array.isArray(cached.products) || !Array.isArray(cached.categories)) return false;
         products = cached.products; categories = cached.categories;
+        warmCatalogBranch();
         return true;
       } catch { return false; }
     }
@@ -19985,6 +20097,7 @@ if (activePopupModal === 'LOGO_CROP') {
       const catalogRes = await callApi('get_catalog', {});
       products = (catalogRes.products || []).map(mapProductFromDB);
       categories = (catalogRes.categories || []).map(mapCategoryFromDB);
+      warmCatalogBranch();
       saveCatalogCache();
       catalogLoading = false;
       const ms = Math.round(performance.now() - perfStarted);
@@ -20166,7 +20279,6 @@ if (activePopupModal === 'LOGO_CROP') {
 
       setupPolling();
       switchTab('home');
-      if (isAdminMode && isUserAnAdmin) requestAnimationFrame(() => showAdminWelcomeModal());
       // (catalogPromise xatosi endi yuqorida, yaratilgan joyida ushlanadi.)
       void catalogPromise;
 
