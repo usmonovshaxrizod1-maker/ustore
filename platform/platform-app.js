@@ -226,6 +226,10 @@
   let dashboardShopId = null;
   let currentTab = 'home'; // user: home|shops|subscription|help|profile ; admin: dashboard|shops|requests|tariffs|profile
   let activePage = null;
+  // ASTRA-4c: protected central-Telegram credential screen. Passwords live
+  // only in this in-memory state after an explicit issue/reset response; they
+  // are never persisted to localStorage/sessionStorage or appended to URLs.
+  let webCredentialState = { loading: false, valid: false, credentialExists: false, login: '', issuedPassword: null, expiresAt: null, busy: false, notice: '', error: '' };
   // ROOT-CAUSE FIX (2026-08-31, scroll-jump follow-up): `.plat-page` has a
   // slide-in CSS animation meant for GENUINE navigation (opening a page).
   // But renderNow() always fully replaces #app's innerHTML — including
@@ -547,6 +551,7 @@
       if (data.lifecycleSettings && typeof data.lifecycleSettings === 'object') platformLifecycleSettings = { ...platformLifecycleSettings, ...data.lifecycleSettings };
       if (dashboardShopId && !myShops.some((shop) => shop.id === dashboardShopId)) dashboardShopId = null;
       currentTab = isAdminMode ? 'dashboard' : 'home';
+      if ((window.location.search || '').split('&').some((part) => part === '?screen=web-credentials' || part === 'screen=web-credentials')) activePage = 'WEB_CREDENTIALS';
     } catch (e) {
       const message = String(e?.message || e || '');
       if (message.startsWith('forbidden:') || message.startsWith('auth_failed:')) {
@@ -561,6 +566,7 @@
       loading = false;
       bootInFlight = false;
       render();
+      if (!accessDenied && !bootError && activePage === 'WEB_CREDENTIALS') loadWebCredentialStatus();
       if (!accessDenied && !bootError && !isAdminMode && myShops.length) loadMySupportTickets();
     }
   }
@@ -794,6 +800,7 @@
 
   function renderActivePage() {
     const p = activePage;
+    if (p === 'WEB_CREDENTIALS') return pageShell('Web login va parol', renderWebCredentialsBody(), { onBack: 'closeWebCredentialFlow()' });
     if (p === 'TARIFFS') return pageShell('Tarifni tanlang', renderTariffListBody(), { onBack: tariffsBackAction() });
     if (p === 'SUBSCRIPTION_TARGET') return pageShell('Obunani rasmiylashtirish', renderSubscriptionTargetBody(), { onBack: "openPage('TARIFFS')" });
     if (p === 'PAYMENT') return pageShell(paymentPageTitle(), renderPaymentBody(), { onBack: paymentBackAction() });
@@ -858,6 +865,92 @@
   // ======================================================================
   // FOYDALANISH SHARTLARI / MAXFIYLIK SIYOSATI (5-band, spec 20/21-bo'limlar)
   // ======================================================================
+  async function loadWebCredentialStatus() {
+    webCredentialState = { ...webCredentialState, loading: true, error: '', notice: '', issuedPassword: null };
+    render();
+    try {
+      const data = await callPlatformApi('platform_web_credentials_status', {});
+      webCredentialState = {
+        ...webCredentialState, loading: false, valid: data.valid === true,
+        credentialExists: data.credentialExists === true, login: String(data.login || ''),
+        expiresAt: data.expiresAt || null, error: '', notice: '', issuedPassword: null,
+      };
+    } catch (_) {
+      webCredentialState = { ...webCredentialState, loading: false, valid: false, error: 'Credential holatini tekshirib bo‘lmadi. /login orqali qayta oching.' };
+    }
+    render();
+  }
+
+  function renderWebCredentialsBody() {
+    const s = webCredentialState;
+    if (s.loading) return `<div class="plat-credential-card"><span class="plat-boot-spinner"></span><b>Himoyalangan credential holati tekshirilmoqda...</b></div>`;
+    if (!s.valid && !s.issuedPassword && !s.notice) {
+      return `<div class="plat-credential-card is-warning"><span>${pIcon('lock',24)}</span><h2>Himoyalangan havola kerak</h2><p>${escapeHtml(s.error || "UStorE markaziy botiga /login yuboring va shu oynani bot bergan tugmadan qayta oching.")}</p><button class="secondary" onclick="closeWebCredentialFlow()">Yopish</button></div>`;
+    }
+    const passwordBlock = s.issuedPassword ? `<div class="plat-credential-secret"><span>Yangi parol</span><code>${escapeHtml(s.issuedPassword)}</code><button class="secondary" onclick="copyWebCredentialPassword()">${pIcon('copy',15)} Nusxalash</button><small>Parol faqat shu javobda ko‘rsatiladi. Uni xavfsiz joyga saqlang.</small></div>` : '';
+    const existingNote = s.credentialExists && !s.issuedPassword
+      ? `<div class="plat-settings-note">${pIcon('info',17)}<span>Login mavjud. Xavfsizlik sabab eski parolni qayta ko‘rsatib bo‘lmaydi; parol kerak bo‘lsa aniq “Yangi parol yaratish” amalini tanlang.</span></div>` : '';
+    const actionArea = s.valid ? `<div class="plat-credential-actions">
+      ${!s.credentialExists ? `<button class="primary" ${s.busy?'disabled':''} onclick="issueWebCredentials()">Boshlang‘ich login-parol olish</button>` : `<button class="primary" ${s.busy?'disabled':''} onclick="resetWebCredentials()">Yangi parol yaratish</button>`}
+      <div class="plat-credential-login-edit"><label><span>Login</span><input id="web-credential-login" autocomplete="username" value="${escapeHtml(s.login || '')}" placeholder="yangi.login"></label><button class="secondary" ${s.busy?'disabled':''} onclick="changeWebCredentialLogin()">Loginni almashtirish</button></div>
+    </div>` : '';
+    return `<div class="plat-credential-card">
+      <span class="plat-admin-eyebrow">Markaziy Telegram tasdig‘i</span><h2>Web kirishini boshqarish</h2>
+      <p>Bu oyna faqat UStorE markaziy botining tekshirilgan Telegram sessiyasida ishlaydi. Parol bot chatiga yuborilmaydi.</p>
+      ${s.login ? `<div class="plat-credential-login"><span>Login</span><strong>${escapeHtml(s.login)}</strong></div>` : ''}
+      ${existingNote}${passwordBlock}${s.notice ? `<div class="notice success">${escapeHtml(s.notice)}</div>` : ''}${s.error ? `<div class="notice error">${escapeHtml(s.error)}</div>` : ''}
+      ${actionArea}
+      <button class="secondary plat-credential-return" onclick="closeWebCredentialFlow()">Yopish va saytga qaytish</button>
+    </div>`;
+  }
+
+  async function issueWebCredentials() {
+    if (!webCredentialState.valid || webCredentialState.busy) return;
+    webCredentialState = { ...webCredentialState, busy: true, error: '', notice: '', issuedPassword: null }; render();
+    try {
+      const data = await callPlatformApi('platform_issue_web_credentials', {});
+      webCredentialState = { ...webCredentialState, busy: false, valid: false, credentialExists: true, login: String(data.login || webCredentialState.login || ''), issuedPassword: data.created ? String(data.password || '') : null, notice: data.created ? 'Login va yangi parol yaratildi.' : 'Login avval yaratilgan. Eski parol qayta ko‘rsatilmaydi; yangi parol uchun /login orqali qayta ochib reset qiling.', error: '' };
+    } catch (e) { webCredentialState = { ...webCredentialState, busy: false, valid: false, error: e?.message || 'Credential yaratib bo‘lmadi.' }; }
+    render();
+  }
+
+  async function resetWebCredentials() {
+    if (!webCredentialState.valid || webCredentialState.busy) return;
+    if (!(await showConfirm('Yangi parol yaratiladi va oldingi web sessiyalar bekor qilinadi. Davom etasizmi?', { title: 'Yangi parol yaratish', danger: true, confirmLabel: 'Yaratish' }))) return;
+    webCredentialState = { ...webCredentialState, busy: true, error: '', notice: '', issuedPassword: null }; render();
+    try {
+      const data = await callPlatformApi('platform_reset_web_credentials', {});
+      webCredentialState = { ...webCredentialState, busy: false, valid: false, credentialExists: true, login: String(data.login || webCredentialState.login || ''), issuedPassword: String(data.password || ''), notice: 'Yangi parol yaratildi. Eski web sessiyalar bekor qilindi.', error: '' };
+    } catch (e) { webCredentialState = { ...webCredentialState, busy: false, valid: false, error: e?.message || 'Parolni yangilab bo‘lmadi.' }; }
+    render();
+  }
+
+  async function changeWebCredentialLogin() {
+    if (!webCredentialState.valid || webCredentialState.busy) return;
+    const input = document.getElementById('web-credential-login');
+    const login = String(input?.value || '').trim();
+    if (!login) return showToast('Login kiriting.', 'warning');
+    webCredentialState = { ...webCredentialState, busy: true, error: '', notice: '' }; render();
+    try {
+      const data = await callPlatformApi('platform_change_web_login', { login });
+      webCredentialState = { ...webCredentialState, busy: false, valid: false, login: String(data.login || login), notice: 'Login almashtirildi. Yana amal qilish uchun /login oqimini qayta oching.', error: '' };
+    } catch (e) { webCredentialState = { ...webCredentialState, busy: false, valid: false, error: e?.message || 'Loginni almashtirib bo‘lmadi.' }; }
+    render();
+  }
+
+  async function copyWebCredentialPassword() {
+    const value = String(webCredentialState.issuedPassword || '');
+    if (!value) return;
+    try { await navigator.clipboard.writeText(value); showToast('Parol nusxalandi.', 'success'); }
+    catch (_) { showToast('Nusxalab bo‘lmadi. Parolni qo‘lda belgilang.', 'warning'); }
+  }
+
+  function closeWebCredentialFlow() {
+    webCredentialState = { ...webCredentialState, issuedPassword: null };
+    try { if (tg?.close) { tg.close(); return; } } catch (_) {}
+    if (window.history.length > 1) window.history.back(); else window.location.href = window.location.pathname;
+  }
+
   function renderTermsBody() {
     return `
       <div class="plat-legal">
@@ -4707,6 +4800,12 @@
 
   // ---- Global handler eksporti (inline onclick uchun) -------------------
   window.openPage = openPage;
+  window.loadWebCredentialStatus = loadWebCredentialStatus;
+  window.issueWebCredentials = issueWebCredentials;
+  window.resetWebCredentials = resetWebCredentials;
+  window.changeWebCredentialLogin = changeWebCredentialLogin;
+  window.copyWebCredentialPassword = copyWebCredentialPassword;
+  window.closeWebCredentialFlow = closeWebCredentialFlow;
   window.closePage = closePage;
   window.retryBoot = retryBoot;
   window.retryCurrentView = retryCurrentView;

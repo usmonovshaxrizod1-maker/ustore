@@ -2177,3 +2177,12 @@ html { overflow-anchor: none; }
 .plat-backup-before-delete>div{min-width:0}.plat-backup-before-delete b{display:block;font-size:13px;color:var(--text,#162033)}.plat-backup-before-delete small{display:block;margin-top:3px;font-size:11px;line-height:1.45;color:var(--muted,#667085)}
 .plat-backup-before-delete button{width:auto!important;min-width:112px;margin:0!important;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 11px!important;white-space:nowrap}
 @media(max-width:420px){.plat-admin-list-title-row{align-items:flex-start}.plat-restore-shop-btn{font-size:11px!important}.plat-backup-before-delete{align-items:stretch;flex-direction:column}.plat-backup-before-delete button{width:100%!important}}
+
+/* ASTRA-4c — protected central Telegram credential screen */
+.plat-credential-card{display:grid;gap:14px;max-width:620px;margin:0 auto;padding:20px;border:1px solid var(--border,#263348);border-radius:18px;background:var(--card,#111a28)}
+.plat-credential-card h2,.plat-credential-card p{margin:0}.plat-credential-card>p{color:var(--muted,#9aa8ba);line-height:1.55}
+.plat-credential-card.is-warning{margin-top:20px;text-align:center;justify-items:center}.plat-credential-login,.plat-credential-secret{display:grid;gap:7px;padding:14px;border-radius:14px;background:rgba(255,255,255,.045)}
+.plat-credential-login span,.plat-credential-secret span{font-size:12px;color:var(--muted,#9aa8ba)}.plat-credential-login strong{font-size:18px;word-break:break-all}
+.plat-credential-secret code{display:block;padding:12px;border-radius:10px;background:rgba(0,0,0,.24);font-size:17px;word-break:break-all;user-select:all}.plat-credential-secret small{color:var(--muted,#9aa8ba)}
+.plat-credential-actions{display:grid;gap:12px}.plat-credential-login-edit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}.plat-credential-login-edit label{display:grid;gap:6px}.plat-credential-login-edit label span{font-size:12px;color:var(--muted,#9aa8ba)}.plat-credential-login-edit input{width:100%;min-height:44px}
+.plat-credential-return{margin-top:4px}@media(max-width:620px){.plat-credential-login-edit{grid-template-columns:1fr}.plat-credential-card{border-radius:14px;padding:16px}}
