@@ -177,13 +177,15 @@ function loadAuthFeatureModule() {
   return authFeatureModulePromise;
 }
 function loadLoginFeatureModule() {
-  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js');
+  // A cached older login module must not be paired with a newer app.js after
+  // a manual GitHub Pages upload. Refresh this auth module as a release unit.
+  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20260926b');
   return loginFeatureModulePromise;
 }
 function watchTelegramLogin(controller) {
   const resume = () => {
-    if (document.visibilityState !== 'hidden' && controller.hasPendingTelegramSignIn()) {
-      void controller.resumeTelegramSignIn();
+    if (document.visibilityState !== 'hidden' && controller.hasPendingTelegramSignIn?.()) {
+      void controller.resumeTelegramSignIn?.();
     }
   };
   globalThis.addEventListener?.('pageshow', resume);
