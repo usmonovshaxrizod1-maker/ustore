@@ -23,4 +23,8 @@ window.APP_CONFIG = {
   SUPABASE_URL: "https://jzdpogwxonvaagxotgyi.supabase.co",
   SUPABASE_KEY: "sb_publishable_tTKrRO3jWBa2MfRBJb73NQ_JP8EtkFZ",
   IMAGES_BUCKET: "images",
+  // Central platform hostname. Keep empty until the owned production domain is confirmed.
+  USTORE_BASE_HOSTNAME: "",
+  // Optional shared WEB hosts allowed to resolve shop via ?bot_id=. Never add custom shop domains.
+  USTORE_WEB_BOT_ID_HOSTNAMES: [],
 };

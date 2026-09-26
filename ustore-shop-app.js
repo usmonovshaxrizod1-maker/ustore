@@ -4080,6 +4080,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         case 'ROLES': renderRolesPage(container); break;
         case 'SETTINGS': renderSettingsPage(container); break;
         case 'ORDER_PAUSE_SETTINGS': renderOrderPauseSettingsPage(container); break;
+        case 'DOMAINS_SETTINGS': renderDomainsSettingsPage(container); break;
         case 'DASHBOARD': renderDashboardPage(container); break;
         case 'FAVORITES': renderFavoritesPage(container); break;
         case 'RECENT': renderRecentPage(container); break;
@@ -5533,6 +5534,61 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // modal bo'lib ochiladi (murakkab mavjud mantiqqa tegilmadi) — yopilganda
     // ostidagi shu sahifa qayta ko'rinadi. Bot /start endi shu yerda, alohida
     // qatordan boshqa joyga ko'chirilmagan.
+    let domainsFeatureMountSeq = 0;
+    function canManageDomainsPage() {
+      return staffRole === 'OWNER' || (staffRole === 'STAFF' && canViewAuditLog && hasPermission('domains.manage'));
+    }
+    function openDomainsSettingsPage() {
+      if (!isUserAnAdmin || !isAdminMode || !canManageDomainsPage()) {
+        showActionToast(tr("Domenlarni boshqarish huquqingiz yo'q", 'Нет доступа к управлению доменами'), 'error', 2500);
+        return;
+      }
+      openPage('DOMAINS_SETTINGS', 'nav-profile');
+    }
+    async function mountDomainsSettingsFeature() {
+      const mountId = ++domainsFeatureMountSeq;
+      const host = document.getElementById('fc-domains-feature-host');
+      if (!host || activePage !== 'DOMAINS_SETTINGS') return;
+      try {
+        const mod = await import('./web/features/domains/index.js');
+        if (mountId !== domainsFeatureMountSeq || activePage !== 'DOMAINS_SETTINGS') return;
+        const port = mod.createMiniAppDomainsPort(callApi);
+        const context = {
+          shop: { id: 'mini-app-shop', name: 'UStorE', slug: '', lifecycle: 'ACTIVE', currency: 'UZS', logoUrl: null, canonicalWebUrl: null },
+          actor: {
+            accountId: String(currentUser?.id || currentUser?.tgId || tgId || 'telegram'),
+            displayName: currentProfileDisplayName(), telegramLinked: true,
+            shopRole: staffRole === 'OWNER' ? 'OWNER' : 'STAFF',
+            roleCodes: staffRole === 'STAFF' && canViewAuditLog && hasPermission('domains.manage') ? ['MANAGER'] : [],
+            permissions: Array.isArray(myPermissions) ? [...myPermissions] : [],
+          },
+          capabilities: { domains: canManageDomainsPage() }, mode: 'telegram',
+        };
+        const feature = mod.createDomainsFeature({
+          port, context, language: uiLang,
+          clipboard: navigator.clipboard,
+          confirm: async (message) => fcConfirm(tr('Tasdiqlash','Подтверждение'), message),
+          onToast: ({ message, tone }) => showActionToast(message, tone === 'danger' ? 'error' : tone, 2800),
+          openUrl: (url) => { try { Telegram?.WebApp?.openLink ? Telegram.WebApp.openLink(url) : window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { window.open(url, '_blank', 'noopener,noreferrer'); } },
+        });
+        host.replaceChildren(feature.element);
+        await feature.load();
+      } catch (error) {
+        console.error('[DOMAINS_UI_MOUNT_FAILED]', error);
+        if (mountId !== domainsFeatureMountSeq) return;
+        host.innerHTML = `<div class="fc-empty-state"><i data-lucide="triangle-alert" class="w-6 h-6"></i><p>${tr('Domenlar bo‘limini yuklab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось загрузить раздел доменов. Попробуйте снова.')}</p><button type="button" onclick="mountDomainsSettingsFeature()" class="fc-btn fc-btn-secondary">${tr('Qayta urinish','Повторить')}</button></div>`;
+        safeCreateIcons();
+      }
+    }
+    function renderDomainsSettingsPage(container) {
+      if (!canManageDomainsPage()) {
+        renderPageShell(container, tr('Domenlar','Домены'), `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Bu bo'lim faqat do'kon egasi va MANAGER uchun.",'Раздел доступен только владельцу и MANAGER.')}</p></div>`, { onBack:"openPage('SETTINGS','nav-profile')" });
+        return;
+      }
+      renderPageShell(container, tr('Domenlar','Домены'), `<div id="fc-domains-feature-host"><div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Domenlar yuklanmoqda...','Загрузка доменов...')}</p></div></div>`, { onBack:"openPage('SETTINGS','nav-profile')" });
+      setTimeout(() => mountDomainsSettingsFeature(), 0);
+    }
+
     function settingsMenuRowHtml({ icon, title, subtitle = '', status = '', onclick }) {
       return profileMenuRowHtml({ icon, title, subtitle, onclick, badge: status });
     }
@@ -5563,6 +5619,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         { icon:'credit-card', title:tr("To'lov parametrlari",'Параметры оплаты'), subtitle:tr('Naqd, karta, ekvayring va QR','Наличные, карта, эквайринг и QR'), onclick:'openPaymentSettingsPage()' },
         { icon:'rotate-ccw', title:tr('Qaytarish va bekor qilish','Возврат и отмена'), subtitle:tr('Bekor qilish va qaytarish qoidalari','Правила отмены и возврата'), onclick:'openOrderPolicySettingsPage()' },
         { icon:'file-lock-2', title:tr('Huquqiy hujjatlar','Правовые документы'), subtitle:tr('Shartlar va maxfiylik hujjatlari','Условия и конфиденциальность'), onclick:'openLegalSettingsPage()' },
+        ...(canManageDomainsPage() ? [{ icon:'globe-2', title:tr('Domenlar','Домены'), subtitle:tr('UStorE subdomeni va shaxsiy domen','Субдомен UStorE и собственный домен'), onclick:'openDomainsSettingsPage()' }] : []),
         { icon:'palette', title:tr('Dizayn','Дизайн'), subtitle:tr('Storefront uslubi va ranglari','Стиль и цвета витрины'), onclick:'openDesignSettings()' },
         { icon:'bot', title:tr('Bot /start xabari','Сообщение бота /start'), subtitle:tr('Birinchi xabar va rasm','Первое сообщение и изображение'), onclick:"activePopupModal='START_MESSAGE'; render();" },
       ];
@@ -14366,7 +14423,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         catalog: tr('Katalog', 'Каталог'), products: tr('Mahsulotlar', 'Товары'), stock: tr('Ombor', 'Склад'),
         orders: tr('Buyurtmalar', 'Заказы'), customers: tr('Mijozlar', 'Клиенты'), support: tr('Support', 'Поддержка'),
         reports: tr('Hisobotlar', 'Отчёты'), marketing: tr('Marketing', 'Маркетинг'), shop: tr("Do'kon", 'Магазин'),
-        staff: tr('Xodimlar', 'Сотрудники'),
+        staff: tr('Xodimlar', 'Сотрудники'), domains: tr('Domenlar', 'Домены'),
       };
       return map[prefix] || prefix;
     }
@@ -14389,6 +14446,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         'shop.settings.manage': tr("Do'kon sozlamalari", 'Настройки магазина'),
         'integrations.manage': tr('Integratsiyalar (Billz, Click)', 'Интеграции (Billz, Click)'),
         'staff.manage': tr('Xodimlarni boshqarish', 'Управление сотрудниками'),
+        'domains.manage': tr('Domenlarni boshqarish', 'Управление доменами'),
       };
       return map[perm] || perm;
     }
@@ -14767,7 +14825,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             <div class="fc-profile-admin-group-title">${tr("Do'kon boshqaruvi",'Управление магазином')}</div>
             <div class="fc-profile-menu">
               ${hasPermission('reports.view') ? profileMenuRowHtml({ icon: 'bar-chart-3', title: tr('Hisobotlar', 'Отчёты'), subtitle: tr("Savdo, mijozlar va mahsulotlar bo'yicha to'liq tahlil", 'Полная аналитика по продажам, клиентам и товарам'), onclick: "openReportsPage()" }) : ''}
-              ${hasPermission('shop.settings.manage') ? profileMenuRowHtml({ icon: 'settings-2', title: tr("Do'kon parametrlari", 'Параметры магазина'), subtitle: tr("Do'kon, yetkazib berish, to'lov va dizayn sozlamalari", 'Магазин, доставка, оплата и дизайн'), onclick: 'openShopParams()' }) : ''}
+              ${hasPermission('shop.settings.manage') ? profileMenuRowHtml({ icon: 'settings-2', title: tr("Do'kon parametrlari", 'Параметры магазина'), subtitle: tr("Do'kon, yetkazib berish, to'lov va dizayn sozlamalari", 'Магазин, доставка, оплата и дизайн'), onclick: 'openShopParams()' }) : ''}${canManageDomainsPage() ? profileMenuRowHtml({ icon: 'globe-2', title: tr('Domenlar','Домены'), subtitle: tr('Subdomen va shaxsiy domenni boshqarish','Управление субдоменом и собственным доменом'), onclick: 'openDomainsSettingsPage()' }) : ''}
             </div>
           </section>
           ${hasPermission('marketing.manage') ? `<section class="fc-profile-admin-group"><div class="fc-profile-admin-group-title">${tr('Savdo va marketing','Продажи и маркетинг')}</div><div class="fc-profile-menu">${profileMenuRowHtml({ icon: 'megaphone', title: tr('Marketing', 'Маркетинг'), subtitle: tr('Bannerlar, aksiyalar, promo-kodlar, chegirmalar', 'Баннеры, акции, промокоды, скидки'), onclick: 'openMarketingHubPage()' })}${profileMenuRowHtml({ icon: 'shopping-cart', title: tr('Tashlab ketilgan savatlar', 'Брошенные корзины'), subtitle: tr("Buyurtma bermagan mijozlarning savatlari", 'Корзины клиентов, не оформивших заказ'), onclick: 'openAbandonedCartsPage()' })}</div></section>` : ''}
@@ -19946,6 +20004,7 @@ if (activePopupModal === 'LOGO_CROP') {
       if (['REPORTS','DASHBOARD'].includes(page)) return hasPermission('reports.view');
       if (['MARKETING_HUB','MARKETING_SETTINGS','BANNERS','BUNDLES','PROMO_CODES','DISCOUNT_TIERS','REWARD_RULES','FEATURED_CATEGORIES','ABANDONED_CARTS'].includes(page)) return hasPermission('marketing.manage');
       if (['SETTINGS','DESIGN','FULFILLMENT'].includes(page)) return hasPermission('shop.settings.manage');
+      if (page === 'DOMAINS_SETTINGS') return staffRole === 'OWNER' || (staffRole === 'STAFF' && canViewAuditLog && hasPermission('domains.manage'));
       if (['STAFF','ROLES'].includes(page)) return staffRole === 'OWNER' || hasPermission('staff.manage');
       if (page === 'AUDIT_LOG') return canViewAuditLog;
       if (page === 'SUPPORT') return hasPermission('support.manage');

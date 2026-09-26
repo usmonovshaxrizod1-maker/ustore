@@ -2,6 +2,47 @@
 (() => {
   const EXCELJS_LOCAL = './vendor/exceljs.min.js?v=4.4.0';
   const EXCELJS_LOAD_TIMEOUT_MS = 9000;
+  const bridge = {
+    api: null,
+    getCategories: null,
+    getProducts: null,
+    onChange: null,
+    onCatalogMutation: null,
+    onImportComplete: null,
+    reloadCatalog: null,
+  };
+  function configure(options = {}) {
+    for (const key of Object.keys(bridge)) if (Object.prototype.hasOwnProperty.call(options, key)) bridge[key] = options[key];
+    try { bridge.onChange?.(state); } catch (e) { console.error(e); }
+    return true;
+  }
+  async function apiCall(action, payload) {
+    if (typeof bridge.api === 'function') return bridge.api(action, payload || {});
+    return callApi(action, payload || {});
+  }
+  // Legacy hardening invariant remains the same: the engine stages rows before commit.
+  // The premium-web bridge routes the same callApi('stage_import_products', ...) action through adminPort.
+  function currentCategories() {
+    if (typeof bridge.getCategories === 'function') return bridge.getCategories() || [];
+    try { return Array.isArray(categories) ? categories : []; } catch { return []; }
+  }
+  function currentProducts() {
+    if (typeof bridge.getProducts === 'function') return bridge.getProducts() || [];
+    try { return Array.isArray(products) ? products : []; } catch { return []; }
+  }
+  function catalogMutation(kind, value) {
+    if (typeof bridge.onCatalogMutation === 'function') { try { bridge.onCatalogMutation(kind, value); } catch (e) { console.error(e); } return; }
+    try { if (kind === 'category') upsertLocalCategory(value); else upsertLocalProduct(value); } catch {}
+  }
+  function persistCatalogCache() {
+    if (typeof bridge.onCatalogMutation === 'function') return;
+    try { saveCatalogCache(); } catch {}
+  }
+  async function reloadCatalogCompat() {
+    if (typeof bridge.reloadCatalog === 'function') return bridge.reloadCatalog();
+    try { return await loadCatalog(); } catch {}
+  }
+
   const state = {
     busy: false,
     busyText: '',
@@ -105,7 +146,7 @@ Oxirida qisqa hisobot bering:
   function esc(v) {
     try { return escapeHtml(v); } catch { return String(v ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   }
-  function rerender() { try { render(); } catch (e) { console.error(e); } }
+  function rerender() { try { bridge.onChange?.(state); } catch (e) { console.error(e); } if (typeof bridge.onChange === 'function') return; try { render(); } catch (e) { console.error(e); } }
   function xl(uz, ru) {
     try { return (window.ustoreGetLang?.() === 'ru') ? ru : uz; } catch { return uz; }
   }
@@ -243,7 +284,7 @@ Oxirida qisqa hisobot bering:
     if(!inTelegram){try{pendingWindow=window.open('about:blank','_blank');}catch{}}
     state.busy=true;state.busyText=xl('Shablon tayyorlanmoqda…','Шаблон готовится…');state.templateStatus=null;rerender();
     try{
-      const data=await callApi('get_excel_template_url',{});
+      const data=await apiCall('get_excel_template_url',{});
       const url=String(data?.url||'');const fileName=String(data?.fileName||'Tovar_import_shablon.xlsx');
       const mode=startTemplateDownload(url,fileName,pendingWindow);
       state.templateStatus={type:'success',message:mode==='telegram-link'?xl('Shablon brauzerda ochildi — yuklab olish boshlanadi.','Шаблон открыт в браузере — начнётся загрузка.'):xl('Shablonni yuklab olish boshlandi.','Загрузка шаблона началась.')};
@@ -435,12 +476,12 @@ Oxirida qisqa hisobot bering:
 
   function buildCategoryMaps() {
     const byParent=new Map();
-    for(const c of categories){
+    for(const c of currentCategories()){
       const k=parentKey(c.parentId);
       if(!byParent.has(k))byParent.set(k,[]);
       byParent.get(k).push(c);
     }
-    const byId=new Map(categories.map(c=>[String(c.id),c]));
+    const byId=new Map(currentCategories().map(c=>[String(c.id),c]));
     const aliasMap=new Map((state.aliases||[]).map(a=>[`${parentKey(a.parent_category_id)}|${norm(a.alias_normalized)}`,String(a.target_category_id)]));
     return {byParent,byId,aliasMap};
   }
@@ -533,7 +574,7 @@ Oxirida qisqa hisobot bering:
   function analyzeRows() {
     const issues=[...(state.baseRowIssues||[])];
     const exactSeen=new Map(); const productSeen=new Map();
-    const activeProducts=(products||[]).filter(p=>String(p.status||'').toUpperCase()!=='DELETED');
+    const activeProducts=currentProducts().filter(p=>String(p.status||'').toUpperCase()!=='DELETED');
     for(const r of state.rows){
       if(r.price<0)issues.push(makeRowIssue('ERROR','PRICE_NEGATIVE',r.excelRow,xl(`Qator ${rowLabel(r.excelRow)}: narx manfiy bo'lishi mumkin emas.`,`Строка ${rowLabel(r.excelRow)}: цена не может быть отрицательной.`),xl("0 yoki undan katta narx yozing.","Укажите цену от 0.")));
       if(r.oldPriceRaw&&r.oldPrice===null)issues.push(makeRowIssue('ERROR','OLD_PRICE_INVALID',r.excelRow,xl(`Qator ${rowLabel(r.excelRow)}: eski narx noto'g'ri.`,`Строка ${rowLabel(r.excelRow)}: неверная старая цена.`),xl("Eski narxni son bilan yozing yoki bo'sh qoldiring.","Укажите старую цену числом или оставьте пустой.")));
@@ -816,7 +857,7 @@ Oxirida qisqa hisobot bering:
     state.busy=true;state.busyText=xl('Excel tekshirilmoqda...','Excel проверяется...');state.result=null;rerender();
     try{
       const ExcelJS=await ensureExcelJS();
-      const aliasPromise=callApi('get_category_aliases',{}).catch(()=>({aliases:[]}));
+      const aliasPromise=apiCall('get_category_aliases',{}).catch(()=>({aliases:[]}));
       const [arrayBuffer,aliasData]=await Promise.all([file.arrayBuffer(),aliasPromise]);
       state.aliases=aliasData.aliases||[]; state.file=file; state.fileName=file.name; state.fileHash='';
       if(!looksLikeXlsxZip(arrayBuffer)){
@@ -975,7 +1016,7 @@ Oxirida qisqa hisobot bering:
     const stagedBatchId=state.stagedImport?.batchId;
     if(stagedBatchId){
       state.busy=true;state.busyText=xl('Vaqtinchalik import tozalanmoqda...','Очистка временного импорта...');rerender();
-      try{await callApi('rollback_import_batch',{batchId:stagedBatchId});}catch(e){console.error('staged import cleanup failed',e);}
+      try{await apiCall('rollback_import_batch',{batchId:stagedBatchId});}catch(e){console.error('staged import cleanup failed',e);}
     }
     Object.assign(state,{busy:false,busyText:'',file:null,fileName:'',fileHash:'',rows:[],issues:[],decisions:{},baseRowIssues:[],rowIssues:[],sourceRows:[],progressDone:0,progressTotal:0,templateStatus:null,result:null,stagedImport:null,editingRow:null,editSequential:false});rerender();
   }
@@ -1014,7 +1055,7 @@ Oxirida qisqa hisobot bering:
         prepared.push({excelRow:r.sourceExcelRow||sourceRowNumber(r.excelRow),categoryPath:resolved.canonical,name:r.name,nameRu:r.nameRu||null,price:r.price,oldPrice:r.oldPrice,stock:r.stock,desc:r.desc,descRu:r.descRu||null,variants:r.variants});
       }
       const chunks=[];for(let i=0;i<prepared.length;i+=75)chunks.push(prepared.slice(i,i+75));
-      const started=await callApi('start_import_batch',{fileName:state.fileName,fileHash:state.fileHash,totalRows:prepared.length});
+      const started=await apiCall('start_import_batch',{fileName:state.fileName,fileHash:state.fileHash,totalRows:prepared.length});
       // 2026-09-10: import_batches.id — UUID (matn), raqam EMAS. Avval bu yerda
       // Number(...) qilinardi -> NaN -> har safar 'import_batch_start_failed'.
       batchId=started.batchId ? String(started.batchId) : null;
@@ -1022,7 +1063,7 @@ Oxirida qisqa hisobot bering:
       state.lastBatch={id:batchId,fileName:state.fileName,status:'IN_PROGRESS',totalRows:prepared.length,importedRows:0};
       let stagedRows=0;
       for(let i=0;i<chunks.length;i++){
-        const data=await callApi('stage_import_products',{
+        const data=await apiCall('stage_import_products',{
           rows:chunks[i],approvedNewPaths:i===0?[...approvedMap.values()]:[],aliases:i===0?[...aliasMap.values()]:[],
           batchId,isFinal:i===chunks.length-1,offset:stagedRows
         });
@@ -1036,13 +1077,13 @@ Oxirida qisqa hisobot bering:
     }catch(e){
       console.error(e);
       let autoRolledBack=false;
-      if(batchId){try{await callApi('rollback_import_batch',{batchId});autoRolledBack=true;}catch(re){console.error('auto rollback failed',re);}}
+      if(batchId){try{await apiCall('rollback_import_batch',{batchId});autoRolledBack=true;}catch(re){console.error('auto rollback failed',re);}}
       const raw=e.message||String(e); const serverRows=Array.isArray(e.details?.errors)?e.details.errors:[];
       const serverMessage=serverRows.length?serverRows.slice(0,10).map(x=>xl(`Qator ${x.row}: ${x.error}`,`Строка ${x.row}: ${x.error}`)).join(' · '):'';
       const friendly=raw==='duplicate_import'?xl('Bu fayl avval muvaffaqiyatli import qilingan. Duplicate import bloklandi.','Этот файл уже успешно импортирован. Повторный импорт заблокирован.'):raw==='import_in_progress'?xl('Bu fayl bo‘yicha import allaqachon ketmoqda. Ikkinchi import bloklandi.','Импорт этого файла уже выполняется. Повторный запуск заблокирован.'):(serverMessage||raw);
       state.result={ok:false,batchId,error:autoRolledBack?friendly:`${friendly}${batchId?xl(' Avtomatik rollback tugamadi; batchni qo‘lda bekor qiling.',' Автоматический откат не завершён; отмените batch вручную.'):''}`,rolledBack:autoRolledBack};
       if(batchId)state.lastBatch={...state.lastBatch,status:autoRolledBack?'ROLLED_BACK':'FAILED'};
-      else if(raw==='import_in_progress'){try{const last=await callApi('get_last_import_batch',{});state.lastBatch=last.batch||state.lastBatch;}catch{}}
+      else if(raw==='import_in_progress'){try{const last=await apiCall('get_last_import_batch',{});state.lastBatch=last.batch||state.lastBatch;}catch{}}
     }finally{state.busy=false;state.busyText='';state.progressDone=0;state.progressTotal=0;rerender();}
   }
 
@@ -1056,27 +1097,27 @@ Oxirida qisqa hisobot bering:
     try{
       let imported=0;const createdCats=[];const importedProducts=[];
       for(let i=0;i<chunks.length;i++){
-        const data=await callApi('bulk_import_products',{
+        const data=await apiCall('bulk_import_products',{
           rows:chunks[i],approvedNewPaths:staged.approvedNewPaths,aliases:i===0?staged.aliases:[],
           batchId,isFinal:i===chunks.length-1,offset:imported
         });
         imported+=Number(data.imported)||0;
         state.progressDone=imported;state.busyText=xl(`Saqlanmoqda: ${imported} / ${prepared.length}`,`Сохранение: ${imported} / ${prepared.length}`);
         state.lastBatch={...state.lastBatch,importedRows:imported,status:i===chunks.length-1?'COMPLETED':'IN_PROGRESS'};
-        (data.categories||[]).forEach(c=>{createdCats.push(c);try{upsertLocalCategory(c);}catch{}});
-        (data.products||[]).forEach(p=>{importedProducts.push(p);try{upsertLocalProduct(p);}catch{}});
+        (data.categories||[]).forEach(c=>{createdCats.push(c);catalogMutation('category',c);});
+        (data.products||[]).forEach(p=>{importedProducts.push(p);catalogMutation('product',p);});
         rerender();
       }
-      try{saveCatalogCache();}catch{}
+      persistCatalogCache();
       const uniqueCategories=new Set(createdCats.map(c=>String(c.id))).size;
       state.stagedImport=null;
       state.result={ok:true,batchId,imported,createdCategories:uniqueCategories,rasmsiz:importedProducts.filter(p=>!p.img).length,warnings:state.rowIssues.filter(x=>x.severity==='WARNING').length};
       state.lastBatch={...state.lastBatch,status:'COMPLETED',importedRows:imported};
-      setTimeout(()=>{if(state.result?.ok&&activePopupModal==='EXCEL_IMPORT'){activePopupModal=null;try{saveCatalogCache();}catch{}render();}},1500);
+      setTimeout(()=>{if(!state.result?.ok)return;if(typeof bridge.onImportComplete==='function'){try{bridge.onImportComplete(state.result);}catch(e){console.error(e);}return;}try{if(activePopupModal==='EXCEL_IMPORT'){activePopupModal=null;persistCatalogCache();render();}}catch{}},1500);
     }catch(e){
       console.error(e);
       let autoRolledBack=false;
-      try{await callApi('rollback_import_batch',{batchId});autoRolledBack=true;}catch(re){console.error('auto rollback failed',re);}
+      try{await apiCall('rollback_import_batch',{batchId});autoRolledBack=true;}catch(re){console.error('auto rollback failed',re);}
       const raw=e.message||String(e);const serverRows=Array.isArray(e.details?.errors)?e.details.errors:[];
       const serverMessage=serverRows.length?serverRows.slice(0,10).map(x=>xl(`Qator ${x.row}: ${x.error}`,`Строка ${x.row}: ${x.error}`)).join(' · '):'';
       state.stagedImport=null;
@@ -1090,7 +1131,7 @@ Oxirida qisqa hisobot bering:
     const id=state.result?.batchId||state.lastBatch?.id; if(!id)return;
     if(!confirm(xl(`Import #${id} bekor qilinsinmi? Shu importdagi tovarlar o'chiriladi.`,`Отменить импорт #${id}? Товары из этого импорта будут удалены.`)))return;
     state.busy=true;state.busyText=xl('Import bekor qilinmoqda...','Импорт отменяется...');rerender();
-    try{await callApi('rollback_import_batch',{batchId:id});state.stagedImport=null;state.result={...(state.result||{}),staged:false,batchId:id,rolledBack:true,ok:false,error:xl('Import admin tomonidan bekor qilindi','Импорт отменён администратором')};state.lastBatch={...(state.lastBatch||{}),id,status:'ROLLED_BACK'};await loadCatalog();}
+    try{await apiCall('rollback_import_batch',{batchId:id});state.stagedImport=null;state.result={...(state.result||{}),staged:false,batchId:id,rolledBack:true,ok:false,error:xl('Import admin tomonidan bekor qilindi','Импорт отменён администратором')};state.lastBatch={...(state.lastBatch||{}),id,status:'ROLLED_BACK'};await reloadCatalogCompat();}
     catch(e){alert(xl('❌ Bekor qilishda xato: ','❌ Ошибка отмены: ')+(e.message||e));}
     finally{state.busy=false;state.busyText='';rerender();}
   }
@@ -1231,9 +1272,9 @@ Oxirida qisqa hisobot bering:
 
   async function prepare(){
     if(state.prepared)return true; state.prepared=true;
-    try{const data=await callApi('get_last_import_batch',{});state.lastBatch=data.batch||null;}
+    try{const data=await apiCall('get_last_import_batch',{});state.lastBatch=data.batch||null;}
     catch(e){console.warn('Last import batch unavailable',e);}
     return true;
   }
-  window.UstoreExcel={prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,addVariantRow,removeVariantRow,doImport,rollbackBatch,reset,copyExcelChatGptPrompt,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload,parseVariantTextToRows,serializeVariantRows,looksLikeXlsxZip}};
+  window.UstoreExcel={configure,getSnapshot:()=>state,prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,addVariantRow,removeVariantRow,doImport,rollbackBatch,reset,copyExcelChatGptPrompt,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload,parseVariantTextToRows,serializeVariantRows,looksLikeXlsxZip}};
 })();
