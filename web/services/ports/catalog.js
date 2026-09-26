@@ -1,5 +1,5 @@
 import { createPort } from './simple.js';
-const CATALOG_METHODS = ['listCategories', 'listProducts', 'getProduct', 'search'];
+const CATALOG_METHODS = ['listCategories', 'listProducts', 'getProduct', 'listBundles', 'getBundle', 'search'];
 
 export const createCatalogPort = adapter => createPort(adapter, CATALOG_METHODS, 'catalog');
 

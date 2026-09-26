@@ -1,4 +1,5 @@
-import { createCard, createStatePanel } from '../../components/ui.js';
+import { createButton, createCard, createStatePanel } from '../../components/ui.js';
+import { createBundleCollage } from '../bundle/bundle.js';
 
 function publicProducts(items) {
   return (Array.isArray(items) ? items : []).filter((product) => product?.is_visible !== false && product?.status !== 'DELETED');
@@ -18,7 +19,7 @@ function categoryBranchIds(categories, rootId) {
   return ids;
 }
 
-export function buildHomeModel({ categories = [], products = [], activeBanners = [], featuredCategories = [] } = {}) {
+export function buildHomeModel({ categories = [], products = [], bundles = [], activeBanners = [], featuredCategories = [] } = {}) {
   const safeProducts = publicProducts(products);
   const safeCategories = (Array.isArray(categories) ? categories : []).filter(Boolean);
   const byCategory = new Map(safeCategories.map((category) => [String(category.id), category]));
@@ -33,6 +34,7 @@ export function buildHomeModel({ categories = [], products = [], activeBanners =
   }).filter((block) => block && block.products.length);
   return {
     banners: (Array.isArray(activeBanners) ? activeBanners : []).filter((banner) => banner?.isActive !== false).slice(0, 5),
+    bundles: (Array.isArray(bundles) ? bundles : []).filter((bundle) => bundle?.id && bundle?.name).slice(0, 12),
     featuredBlocks,
     featuredProducts: safeProducts.filter((product) => product.is_featured).slice(0, 12),
     latestProducts: [...safeProducts].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))).slice(0, 12),
@@ -41,17 +43,20 @@ export function buildHomeModel({ categories = [], products = [], activeBanners =
 
 export async function loadHomeModel({ catalogPort, bootMarketing = {} } = {}) {
   if (!catalogPort) throw new TypeError('catalogPort kerak');
-  const [categoriesResult, productsResult] = await Promise.all([
+  const [categoriesResult, productsResult, bundlesResult] = await Promise.all([
     catalogPort.listCategories({ parentId: null }),
     catalogPort.listProducts({}),
+    catalogPort.listBundles({}),
   ]);
   if (!categoriesResult.ok) return categoriesResult;
   if (!productsResult.ok) return productsResult;
+  if (!bundlesResult.ok) return bundlesResult;
   return {
     ok: true,
     data: buildHomeModel({
       categories: categoriesResult.data.items,
       products: productsResult.data.items,
+      bundles: bundlesResult.data.items,
       activeBanners: bootMarketing.activeBanners || [],
       featuredCategories: bootMarketing.featuredCategories || [],
     }),
@@ -73,14 +78,14 @@ function appendProductGrid(doc, section, products, onOpenProduct) {
   section.append(grid);
 }
 
-export function createHomeView({ model, state = 'ready', onOpenProduct, onOpenCategory, onOpenBanner, onRetry } = {}, documentRef = globalThis.document) {
+export function createHomeView({ model, state = 'ready', addingBundleId = null, onOpenProduct, onOpenCategory, onOpenBanner, onOpenBundle, onAddBundle, onRetry } = {}, documentRef = globalThis.document) {
   if (!documentRef?.createElement) throw new Error('Home UI uchun DOM kerak');
   const doc = documentRef;
   const root = doc.createElement('section'); root.className = 'uw-home'; root.dataset.feature = 'home';
   if (state === 'loading') { root.append(createStatePanel({ kind: 'loading', title: 'Yuklanmoqda', message: 'Do‘kon ma’lumotlari yuklanmoqda…' }, doc)); return { element: root }; }
   if (state === 'unavailable') { root.append(createStatePanel({ kind: 'error', title: 'Do‘kon vaqtincha mavjud emas', message: 'Keyinroq qayta urinib ko‘ring.', actionLabel: onRetry ? 'Qayta urinish' : '', onAction: onRetry }, doc)); return { element: root }; }
   if (state === 'error') { root.append(createStatePanel({ kind: 'error', title: 'Bosh sahifa yuklanmadi', message: 'Server yoki tarmoq javob bermadi. Mahsulotlar yo‘q deb ko‘rsatilmaydi.', actionLabel: onRetry ? 'Qayta urinish' : '', onAction: onRetry }, doc)); return { element: root }; }
-  if (!model || (!model.featuredBlocks?.length && !model.featuredProducts?.length && !model.latestProducts?.length && !model.banners?.length)) {
+  if (!model || (!model.featuredBlocks?.length && !model.featuredProducts?.length && !model.latestProducts?.length && !model.banners?.length && !model.bundles?.length)) {
     root.append(createStatePanel({ kind: 'empty', title: 'Hozircha mahsulotlar yo‘q', message: 'Do‘kon katalogi to‘ldirilganda shu yerda ko‘rinadi.' }, doc)); return { element: root };
   }
 
@@ -100,6 +105,27 @@ export function createHomeView({ model, state = 'ready', onOpenProduct, onOpenCa
       strip.append(hero);
     });
     root.append(strip);
+  }
+
+  if (model.bundles?.length) {
+    const section = doc.createElement('section'); section.className = 'uw-home-section uw-home-bundles'; section.dataset.section = 'bundles';
+    section.append(text(doc, 'h2', 'Aksiya to‘plamlari', 'uw-section-title'));
+    const grid = doc.createElement('div'); grid.className = 'uw-bundle-grid';
+    for (const bundle of model.bundles) {
+      const saving = Number(bundle.savings) > 0 ? ` · ${Number(bundle.savings).toLocaleString('uz-UZ')} so‘m tejash` : '';
+      const card = createCard({
+        title:bundle.name,
+        description:`${Number(bundle.bundlePrice || 0).toLocaleString('uz-UZ')} so‘m${saving}`,
+        body:createBundleCollage(bundle, doc),
+        actions:[
+          createButton({ label:'Batafsil', variant:'secondary', onClick:()=>onOpenBundle?.(bundle) }, doc),
+          createButton({ label:addingBundleId === String(bundle.id) ? 'Qo‘shilmoqda…' : 'Savatga qo‘shish', busy:addingBundleId === String(bundle.id), disabled:Boolean(addingBundleId), onClick:()=>onAddBundle?.(bundle) }, doc),
+        ],
+      }, doc);
+      card.className += ' uw-bundle-card'; card.dataset.bundleId = String(bundle.id);
+      grid.append(card);
+    }
+    section.append(grid); root.append(section);
   }
 
   for (const block of model.featuredBlocks || []) {

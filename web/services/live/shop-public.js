@@ -24,13 +24,13 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
   if (!/^\d+$/.test(locator)) throw new TypeError('botId raqam bo‘lishi kerak');
   if (typeof fetchImpl !== 'function') throw new TypeError('fetch kerak');
 
-  async function request(action) {
+  async function request(action, payload = {}) {
     const headers = { 'content-type': 'application/json' };
     const token = tokenStore?.get?.();
     if (token) headers.authorization = `UStoreSession ${token}`;
     let response;
     try {
-      response = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify({ action, clientMode: 'web', botId: locator }), credentials: 'omit' });
+      response = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify({ action, payload, clientMode: 'web', botId: locator }), credentials: 'omit' });
     } catch (_) {
       return fail('NETWORK_ERROR', 'Shop serveriga ulanib bo‘lmadi.', { retryable: true });
     }
@@ -45,6 +45,12 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
     const result = await request('get_catalog');
     if (!result.ok) return result;
     return ok({ products: Array.isArray(result.data.products) ? result.data.products : [], categories: Array.isArray(result.data.categories) ? result.data.categories : [] });
+  }
+
+  async function bundleData() {
+    const result = await request('get_web_bundles');
+    if (!result.ok) return result;
+    return ok({ bundles: Array.isArray(result.data.bundles) ? result.data.bundles : [] });
   }
 
   return Object.freeze({
@@ -70,7 +76,7 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
       async listCategories(input = {}) {
         const result = await catalogData(); if (!result.ok) return result;
         const parentId = input.parentId ?? null;
-        const items = result.data.categories.filter((row) => (row.parent_id ?? null) === parentId);
+        const items = result.data.categories.filter((row) => input.all === true || (row.parent_id ?? null) === parentId);
         return ok(toPage(items, null, items.length));
       },
       async listProducts(input = {}) {
@@ -84,6 +90,16 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
         const result = await catalogData(); if (!result.ok) return result;
         const product = result.data.products.find((row) => row.id === input.productId);
         return product ? ok(product) : fail('NOT_FOUND', 'Mahsulot topilmadi.');
+      },
+      async listBundles() {
+        const result = await bundleData(); if (!result.ok) return result;
+        return ok(toPage(result.data.bundles, null, result.data.bundles.length));
+      },
+      async getBundle(input = {}) {
+        if (!input.bundleId) return fail('VALIDATION_ERROR', 'Bundle ID kerak.');
+        const result = await bundleData(); if (!result.ok) return result;
+        const bundle = result.data.bundles.find((row) => String(row.id) === String(input.bundleId));
+        return bundle ? ok(bundle) : fail('NOT_FOUND', 'Aksiya topilmadi.');
       },
       async search(input = {}) {
         const query = normalizedText(input.query);

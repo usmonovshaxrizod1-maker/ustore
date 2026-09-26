@@ -79,6 +79,37 @@
 .uw-section-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--uw-space-4); }
 .uw-section-link { border: 0; background: transparent; color: var(--uw-color-link); font-weight: var(--uw-weight-semibold); cursor: pointer; }
 
+/* Post-P1 task 2 — customer bundle cards/detail */
+.uw-bundle-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--uw-space-4); }
+.uw-bundle-card { min-width: 0; }
+.uw-bundle-card .uw-card__body { order: -1; }
+.uw-bundle-card .uw-card__actions { display: flex; flex-wrap: wrap; gap: var(--uw-space-2); }
+.uw-bundle-collage { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--uw-space-2); }
+.uw-bundle-collage__tile { aspect-ratio: 1; display: grid; place-items: center; overflow: hidden; border-radius: var(--uw-radius-md); background: var(--uw-color-surface-subtle); color: var(--uw-color-primary-hover); font-size: var(--uw-text-xl); font-weight: var(--uw-weight-bold); }
+.uw-bundle-collage__tile img { width: 100%; height: 100%; object-fit: contain; }
+.uw-bundle-detail { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(20rem, .95fr); gap: clamp(1.5rem, 4vw, 4rem); align-items: start; }
+.uw-bundle-detail__media { padding: var(--uw-space-3); border: 1px solid var(--uw-color-border); border-radius: var(--uw-radius-xl); background: var(--uw-color-surface); }
+.uw-bundle-detail__content { display: grid; gap: var(--uw-space-4); position: sticky; top: var(--uw-space-4); }
+.uw-bundle-detail__content h1 { margin: 0; font-size: var(--uw-text-3xl); }
+.uw-bundle-detail__description { margin: 0; color: var(--uw-color-text-muted); }
+.uw-bundle-badge { width: max-content; padding: .25rem .65rem; border-radius: 999px; background: var(--uw-color-success-soft); color: var(--uw-color-success); font-size: var(--uw-text-sm); font-weight: var(--uw-weight-semibold); }
+.uw-bundle-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--uw-space-3); }
+.uw-bundle-price strong { font-size: var(--uw-text-2xl); }
+.uw-bundle-price s { color: var(--uw-color-text-muted); }
+.uw-bundle-price span { color: var(--uw-color-success); font-weight: var(--uw-weight-semibold); }
+.uw-bundle-composition { display: grid; gap: var(--uw-space-2); }
+.uw-bundle-composition h2 { margin: 0; font-size: var(--uw-text-lg); }
+.uw-bundle-composition ul { display: grid; gap: var(--uw-space-2); margin: 0; padding: 0; list-style: none; }
+.uw-bundle-composition li { display: flex; justify-content: space-between; gap: var(--uw-space-3); padding: var(--uw-space-2) 0; border-bottom: 1px solid var(--uw-color-border); }
+@media (max-width: 63.999rem) {
+  .uw-bundle-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .uw-bundle-detail { grid-template-columns: 1fr; }
+  .uw-bundle-detail__content { position: static; }
+}
+@media (max-width: 35.999rem) {
+  .uw-bundle-grid { grid-template-columns: 1fr; }
+}
+
 .uw-catalog-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--uw-space-3); margin-bottom: var(--uw-space-5); }
 .uw-catalog-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
 .uw-catalog-search input, .uw-catalog-sort, .uw-catalog-search button, .uw-catalog-filter-button { min-height: var(--uw-control-height-md); border: 1px solid var(--uw-color-border-strong); background: var(--uw-color-surface); color: var(--uw-color-text); }
@@ -113,6 +144,7 @@
 .uw-cart-line__info { min-width: 0; display: grid; gap: var(--uw-space-1); }
 .uw-cart-line__info h3, .uw-cart-line__info p { margin: 0; }
 .uw-cart-line__info p { color: var(--uw-color-text-muted); font-size: var(--uw-text-sm); }
+.uw-cart-line__info .uw-cart-line__saving { color: var(--uw-color-success); font-weight: var(--uw-weight-semibold); }
 .uw-cart-line__badge { width: max-content; padding: .15rem .45rem; border-radius: 999px; background: var(--uw-color-primary-soft); color: var(--uw-color-primary-hover); font-size: var(--uw-text-xs); font-weight: var(--uw-weight-semibold); }
 .uw-cart-line__price { white-space: nowrap; }
 .uw-cart-line__controls { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--uw-space-2); }

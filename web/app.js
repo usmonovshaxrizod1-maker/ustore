@@ -124,6 +124,11 @@ function normalizeHost(value) {
 function isLocalPlatformHost(locationRef = globalThis.location) {
   return ['localhost','127.0.0.1','[::1]'].includes(normalizeHost(locationRef?.hostname));
 }
+function previewBase(locationRef = globalThis.location, config = globalThis.APP_CONFIG || {}) {
+  const base = String(config.USTORE_WEB_PREVIEW_PATH || '');
+  return normalizeHost(locationRef?.hostname) === 'usmonovshaxrizod1-maker.github.io'
+    && base === '/ustore/web/' && locationRef?.pathname === base ? base : '';
+}
 function configuredPlatformHostname(config = globalThis.APP_CONFIG || {}) {
   return normalizeHost(config.USTORE_BASE_HOSTNAME || '');
 }
@@ -135,7 +140,7 @@ function isConfiguredPlatformOrigin(locationRef = globalThis.location, config = 
 function isExplicitPlatformRoute(routeState) { return routeState?.route?.platform === true; }
 function platformHomeTarget() { return isConfiguredPlatformOrigin() ? '/' : '/platform'; }
 function platformLoginTarget() { return '/platform/login'; }
-function allowExplicitPlatformRoute() { return isConfiguredPlatformOrigin() || isLocalPlatformHost(); }
+function allowExplicitPlatformRoute() { return isConfiguredPlatformOrigin() || isLocalPlatformHost() || !!previewBase(); }
 function platformCanonical(pathname = '/') {
   const host = configuredPlatformHostname();
   return host ? buildCanonicalUrl(`https://${host}`, pathname) : null;
@@ -403,7 +408,7 @@ async function renderPlatformPortal(routeState, epoch) {
 }
 
 async function renderHome(routeState, epoch) {
-  const mod = await import('./features/home/index.js');
+  const [mod, bundleMod, cartMod] = await Promise.all([import('./features/home/index.js'), import('./features/bundle/index.js'), import('./features/cart/index.js')]);
   const result = await mod.loadHomeModel({ catalogPort: shopRuntime.services.catalog });
   if (epoch !== renderEpoch) return;
   if (result.ok) applyShopPublicMetadata({
@@ -412,15 +417,41 @@ async function renderHome(routeState, epoch) {
     pathname: '/',
     imageUrl: context.shop.logoUrl || null,
   });
-  const view = result.ok
-    ? mod.createHomeView({ model:result.data, onOpenProduct:(p)=>go(`/product/${encodeURIComponent(p.id)}`), onOpenCategory:(c)=>go(`/catalog?category=${encodeURIComponent(c.id)}`) })
-    : mod.createHomeView({ model:null, state: result.error?.code === 'SHOP_UNAVAILABLE' ? 'unavailable' : 'error', onRetry:()=>renderRoute(routeState) });
-  mountShell(routeState, view.element, context.shop.name);
+  if (!result.ok) {
+    const view = mod.createHomeView({ model:null, state: result.error?.code === 'SHOP_UNAVAILABLE' ? 'unavailable' : 'error', onRetry:()=>renderRoute(routeState) });
+    mountShell(routeState, view.element, context.shop.name); return;
+  }
+  const cartController = cartMod.createCartController({
+    cartPort:shopRuntime.services.cart, catalogPort:shopRuntime.services.catalog, shopId:context.shop.id,
+    authenticated:Boolean(context.actor), guestStore:cartMod.createGuestCartStore(),
+  });
+  const wrap = document.createElement('div'); const notice = document.createElement('div');
+  let addingBundleId = null; let addResult = null;
+  const rerender = () => {
+    const view = mod.createHomeView({
+      model:result.data, addingBundleId,
+      onOpenProduct:(p)=>go(`/product/${encodeURIComponent(p.id)}`),
+      onOpenCategory:(c)=>go(`/catalog?category=${encodeURIComponent(c.id)}`),
+      onOpenBundle:(bundle)=>go(`/bundle/${encodeURIComponent(bundle.id)}`),
+      onAddBundle:async(bundle)=>{
+        if (addingBundleId) return;
+        addingBundleId=String(bundle.id); addResult=null; rerender();
+        const line=bundleMod.bundleCartLine(bundle);
+        addResult=line ? await cartController.addLine(line) : {ok:false,error:{message:'Aksiya ma’lumoti to‘liq emas.'}};
+        addingBundleId=null; rerender();
+      },
+    });
+    if (addResult?.ok) notice.replaceChildren(stateView('success','Aksiya savatga qo‘shildi',context.actor ? 'To‘plam savatingizga bitta aksiya sifatida saqlandi.' : 'To‘plam saqlandi. Savatni ochganda tizimga kirib davom etasiz.','Savatga o‘tish',()=>go('/cart')));
+    else if (addResult?.error) notice.replaceChildren(stateView('error','Aksiya qo‘shilmadi',addResult.error.message || 'Qayta urinib ko‘ring.'));
+    else notice.replaceChildren();
+    wrap.replaceChildren(view.element, notice);
+  };
+  rerender(); mountShell(routeState, wrap, context.shop.name);
 }
 async function renderCatalog(routeState, epoch) {
   const mod = await import('./features/catalog/index.js');
   const [cats, products] = await Promise.all([
-    shopRuntime.services.catalog.listCategories({ parentId:null }),
+    shopRuntime.services.catalog.listCategories({ all:true }),
     shopRuntime.services.catalog.listProducts({}),
   ]);
   if (epoch !== renderEpoch) return;
@@ -439,8 +470,15 @@ async function renderCatalog(routeState, epoch) {
   mountShell(routeState, view.element, routeState.route.id === 'search' ? 'Qidiruv' : 'Katalog');
 }
 async function renderProduct(routeState, epoch) {
-  const mod = await import('./features/product/index.js');
-  const controller = mod.createProductDetailController({ catalogPort:shopRuntime.services.catalog, productId:routeState.params.productId });
+  const [mod, cartMod] = await Promise.all([import('./features/product/index.js'), import('./features/cart/index.js')]);
+  const cartController = cartMod.createCartController({
+    cartPort:shopRuntime.services.cart, catalogPort:shopRuntime.services.catalog, shopId:context.shop.id,
+    authenticated:Boolean(context.actor), guestStore:cartMod.createGuestCartStore(),
+  });
+  const controller = mod.createProductDetailController({
+    catalogPort:shopRuntime.services.catalog, productId:routeState.params.productId,
+    onAddToCart:(line)=>cartController.addLine(line),
+  });
   const result = await controller.load();
   if (epoch !== renderEpoch) return;
   if (!result.ok) { applyPrivateMetadata('Mahsulot topilmadi — UStorE', 'Mavjud bo‘lmagan mahsulot sahifasi indekslanmaydi.'); mountShell(routeState,stateView('error','Mahsulot topilmadi',result.error?.message||'Mahsulotni yuklab bo‘lmadi.','Katalogga qaytish',()=>go('/catalog')),'Mahsulot'); return; }
@@ -450,21 +488,65 @@ async function renderProduct(routeState, epoch) {
   const productMeta = applyShopPublicMetadata({ title: `${product.name} — ${context.shop.name}`, description: productDescription, pathname: productPath, imageUrl: product.img || null, type: 'product' });
   const wrap = document.createElement('div');
   const notice = document.createElement('div');
+  let adding = false;
+  let addResult = null;
   const rerender = () => {
     const view = mod.createProductDetailView({
       product, selection:controller.getSelection(),
       onSelectColor:(v)=>{controller.selectColor(v);rerender();}, onSelectSize:(v)=>{controller.selectSize(v);rerender();},
-      onAddToCart:()=>{ notice.replaceChildren(stateView('warning','Savatga qo‘shish vaqtincha yopiq','Hozircha bu sahifadan savatga mahsulot qo‘shib bo‘lmaydi.')); },
+      adding,
+      onAddToCart:async()=>{
+        if (adding) return;
+        adding=true; addResult=null; rerender();
+        const result=await controller.addToCart();
+        adding=false; addResult=result; rerender();
+      },
       onShare:()=>sharePage({ title: productMeta.title, text: productMeta.description, url: productMeta.canonicalUrl }),
     });
+    if (addResult?.ok) notice.replaceChildren(stateView('success','Savatga qo‘shildi',context.actor ? 'Tanlangan mahsulot savatingizga saqlandi.' : 'Tanlov saqlandi. Savatni ochganda tizimga kirib davom etasiz.','Savatga o‘tish',()=>go('/cart')));
+    else if (addResult?.error) notice.replaceChildren(stateView('error','Savatga qo‘shilmadi',addResult.error.message || 'Qayta urinib ko‘ring.'));
+    else notice.replaceChildren();
     wrap.replaceChildren(view.element, notice);
   };
   rerender(); mountShell(routeState, wrap, product?.name || 'Mahsulot');
 }
+async function renderBundle(routeState, epoch) {
+  const [mod, cartMod] = await Promise.all([import('./features/bundle/index.js'), import('./features/cart/index.js')]);
+  const cartController = cartMod.createCartController({
+    cartPort:shopRuntime.services.cart, catalogPort:shopRuntime.services.catalog, shopId:context.shop.id,
+    authenticated:Boolean(context.actor), guestStore:cartMod.createGuestCartStore(),
+  });
+  const controller = mod.createBundleDetailController({
+    catalogPort:shopRuntime.services.catalog, bundleId:routeState.params.bundleId,
+    onAddToCart:(line)=>cartController.addLine(line),
+  });
+  const result = await controller.load();
+  if (epoch !== renderEpoch) return;
+  if (!result.ok) {
+    applyPrivateMetadata('Aksiya topilmadi — UStorE', 'Mavjud bo‘lmagan aksiya sahifasi indekslanmaydi.');
+    mountShell(routeState,stateView('error','Aksiya topilmadi',result.error?.message || 'Aksiyani yuklab bo‘lmadi.','Bosh sahifaga qaytish',()=>go('/')),'Aksiya'); return;
+  }
+  const bundle = controller.getBundle();
+  const bundlePath = `/bundle/${encodeURIComponent(bundle.id)}`;
+  applyShopPublicMetadata({ title:`${bundle.name} — ${context.shop.name}`, description:bundle.description || `${bundle.name} aksiya to‘plami.`, pathname:bundlePath, imageUrl:bundle.coverImageUrl || bundle.resolvedItems?.find((item)=>item.img)?.img || null, type:'product' });
+  const wrap = document.createElement('div'); const notice = document.createElement('div');
+  let adding=false; let addResult=null;
+  const rerender=()=>{
+    const view=mod.createBundleDetailView({ bundle, adding, onAddToCart:async()=>{
+      if(adding)return; adding=true;addResult=null;rerender();
+      addResult=await controller.addToCart(); adding=false;rerender();
+    }});
+    if(addResult?.ok)notice.replaceChildren(stateView('success','Aksiya savatga qo‘shildi','To‘plam savatda bitta aksiya sifatida saqlandi.','Savatga o‘tish',()=>go('/cart')));
+    else if(addResult?.error)notice.replaceChildren(stateView('error','Aksiya qo‘shilmadi',addResult.error.message||'Qayta urinib ko‘ring.'));
+    else notice.replaceChildren();
+    wrap.replaceChildren(view.element,notice);
+  };
+  rerender(); mountShell(routeState,wrap,bundle.name || 'Aksiya');
+}
 async function renderCart(routeState, epoch) {
   const mod = await import('./features/cart/index.js');
   if (epoch !== renderEpoch) return;
-  const controller = mod.createCartController({ cartPort:shopRuntime.services.cart, shopId:context.shop.id, authenticated:true, guestStore:mod.createGuestCartStore() });
+  const controller = mod.createCartController({ cartPort:shopRuntime.services.cart, catalogPort:shopRuntime.services.catalog, shopId:context.shop.id, authenticated:true, guestStore:mod.createGuestCartStore() });
   const view = reactive(controller, (state) => {
     const box = document.createElement('div'); box.append(mod.createCartView({controller,state}).element);
     if (state.cart?.lines?.length) box.append(createButton({ label:'Checkoutga o‘tish', onClick:()=>go('/checkout') }));
@@ -476,7 +558,7 @@ async function renderCart(routeState, epoch) {
 async function renderCheckout(routeState, epoch) {
   const cartMod = await import('./features/cart/index.js');
   const checkMod = await import('./features/checkout/index.js');
-  const cartController = cartMod.createCartController({ cartPort:shopRuntime.services.cart, shopId:context.shop.id, authenticated:true, guestStore:cartMod.createGuestCartStore() });
+  const cartController = cartMod.createCartController({ cartPort:shopRuntime.services.cart, catalogPort:shopRuntime.services.catalog, shopId:context.shop.id, authenticated:true, guestStore:cartMod.createGuestCartStore() });
   const cartResult = await cartController.load();
   if (epoch !== renderEpoch) return;
   const cart = cartController.getState().cart;
@@ -518,11 +600,54 @@ async function renderSupport(routeState, epoch) {
 async function renderAdmin(routeState, epoch) {
   const actor=context.actor; const id=routeState.route.id; let view=null, controller=null, title='Boshqaruv';
   if(id==='admin-overview') { mountShell(routeState,stateView('empty','Boshqaruv paneli','Asosiy admin modullar chap menyuda. Serverda mavjud bo‘lmagan KPI yasalmaydi.'),'Boshqaruv'); return; }
-  if(id==='admin-products') { const m=await import('./features/admin-products/index.js');controller=m.createAdminProductsController({adminPort:shopRuntime.services.admin,actor});view=reactive(controller,s=>m.createAdminProductsView({controller,state:s,onEditProduct:()=>{}}));title='Mahsulotlar'; }
+  if(id==='admin-product-edit'||id==='admin-product-new') {
+    const assets=await import('./runtime/admin-assets.js');await assets.loadImageIO();
+    const m=await import('./features/admin-products/editor-page.js');
+    let categories=[];
+    if(id==='admin-product-new'){
+      const result=await shopRuntime.services.catalog.listCategories({all:true});
+      if(!result.ok)throw new Error(result.error?.message||'Katalog yuklanmadi');categories=result.data.items;
+    }
+    if(epoch!==renderEpoch)return;
+    view=m.createAdminProductEditorPage({adminPort:shopRuntime.services.admin,actor,productId:routeState.params.productId,categories,onBack:()=>go('/admin/products')});
+    controller=view;title='Mahsulotni tahrirlash';
+  }
+  else if(id==='admin-categories') {
+    if(!(actor.permissions||[]).some(p=>p==='*'||p==='catalog.manage')){mountShell(routeState,stateView('permission','Ruxsat yo‘q'));return;}
+    const cats=await shopRuntime.services.catalog.listCategories({all:true});if(!cats.ok)throw new Error(cats.error?.message||'Katalog yuklanmadi');
+    const box=document.createElement('div');box.append(createButton({label:'Yangi katalog',onClick:()=>go('/admin/categories/new')}));
+    for(const c of cats.data.items)box.append(createButton({label:c.name,variant:'secondary',onClick:()=>go(`/admin/categories/${encodeURIComponent(c.id)}/edit`)}));
+    view={element:box};title='Kataloglar';
+  }
+  else if(id==='admin-category-new'||id==='admin-category-edit') {
+    const assets=await import('./runtime/admin-assets.js');await assets.loadImageIO();
+    const m=await import('./features/admin-products/index.js');
+    const cats=await shopRuntime.services.catalog.listCategories({all:true});
+    if(!cats.ok)throw new Error(cats.error?.message||'Katalog yuklanmadi');
+    controller=m.createAdminCategoryEditorController({adminPort:shopRuntime.services.admin,actor});
+    const category=cats.data.items.find(c=>String(c.id)===String(routeState.params.categoryId));
+    if(id==='admin-category-edit'&&!category){mountShell(routeState,stateView('error','Katalog topilmadi'));return;}
+    const opened=id==='admin-category-edit'?controller.openEdit(category,cats.data.items):controller.openCreate({categories:cats.data.items});
+    if(!opened.ok){mountShell(routeState,stateView('permission','Ruxsat yo‘q',opened.error.message));return;}
+    const host=document.createElement('div');let key=null;
+    const unsub=controller.subscribe(s=>{const next=JSON.stringify([s.busy,s.error,s.success,s.mode,s.draft.id,s.draft.imageFile?.name]);if(key===next)return;key=next;host.replaceChildren(createButton({label:'Mahsulotlarga qaytish',onClick:()=>go('/admin/products')}),m.createAdminCategoryEditorView({controller}).element);});
+    view={element:host,destroy:unsub};title=id==='admin-category-edit'?'Katalogni tahrirlash':'Yangi katalog';
+  }
+  else if(id==='admin-imports') {
+    const m=await import('./features/admin-imports/page.js');
+    view=await m.createAdminImportsPage({adminPort:shopRuntime.services.admin,catalogPort:shopRuntime.services.catalog,actor,onBack:()=>go('/admin/products')});controller=view;title='Import';
+  }
+  else if(id==='admin-products') { const m=await import('./features/admin-products/index.js');controller=m.createAdminProductsController({adminPort:shopRuntime.services.admin,actor});view=reactive(controller,s=>{
+    const box=document.createElement('div');const permissions=actor.permissions||[];const can=p=>permissions.includes('*')||permissions.includes(p);
+    if(can('products.manage'))box.append(createButton({label:'Yangi mahsulot',onClick:()=>go('/admin/products/new')}));
+    if(can('catalog.manage')){box.append(createButton({label:'Kataloglar',onClick:()=>go('/admin/categories')}));box.append(createButton({label:'Yangi katalog',onClick:()=>go('/admin/categories/new')}));for(const c of s.categories||[])box.append(createButton({label:`Katalog: ${c.name}`,variant:'ghost',onClick:()=>go(`/admin/categories/${encodeURIComponent(c.id)}/edit`)}));}
+    if(can('products.import_export')||can('integrations.manage'))box.append(createButton({label:'Import va BILLZ',onClick:()=>go('/admin/imports')}));
+    box.append(m.createAdminProductsView({controller,state:s,onEditProduct:(product)=>go(`/admin/products/${encodeURIComponent(product.id)}/edit`)}));return box;
+  });title='Mahsulotlar'; }
   else if(id==='admin-orders'||id==='admin-order') { const m=await import('./features/admin-orders/index.js');controller=m.createAdminOrdersController({adminPort:shopRuntime.services.admin,actor});view=reactive(controller,s=>m.createAdminOrdersView({controller,state:s}));title='Buyurtmalar'; }
   else if(id==='admin-inventory') { const m=await import('./features/admin-inventory/index.js');controller=m.createAdminInventoryController({adminPort:shopRuntime.services.admin,actor});view=reactive(controller,s=>m.createAdminInventoryView({controller,state:s}));title='Ombor'; }
   else if(id==='admin-marketing') { const m=await import('./features/admin-marketing/index.js');controller=m.createAdminMarketingController({adminPort:shopRuntime.services.admin,actor});view=m.createAdminMarketingView({controller});title='Marketing'; }
-  else if(id==='admin-reports') { const m=await import('./features/admin-reports/index.js');controller=m.createAdminReportsController({adminPort:shopRuntime.services.admin,actor,telegramWebApp:globalThis.Telegram?.WebApp});view=m.renderAdminReports({controller});title='Hisobotlar'; }
+  else if(id==='admin-reports') { const assets=await import('./runtime/admin-assets.js');await assets.loadReportPdf();const m=await import('./features/admin-reports/index.js');controller=m.createAdminReportsController({adminPort:shopRuntime.services.admin,actor,telegramWebApp:globalThis.Telegram?.WebApp});view=m.renderAdminReports({controller});title='Hisobotlar'; }
   else if(id==='admin-team') { const m=await import('./features/admin-team/index.js');controller=m.createAdminTeamController({adminPort:shopRuntime.services.admin,actor});view=m.renderAdminTeam({controller});title='Jamoa'; }
   else if(id==='admin-support') { const m=await import('./features/support/index.js');controller=m.createAdminSupportController({adminPort:shopRuntime.services.admin});view=reactive(controller,s=>m.createAdminSupportView({controller,state:s}));title='Yordam'; }
   else if(id==='admin-settings') { const m=await import('./features/admin-settings/index.js');controller=m.createAdminSettingsController({adminPort:shopRuntime.services.admin,actor,locale:uiLocale,onLocaleChange:(next)=>setUiLocale(next)});view=reactive(controller,s=>m.createAdminSettingsView({controller,state:s}));title='Sozlamalar'; }
@@ -544,7 +669,7 @@ async function renderRoute(routeState, reason = 'refresh') {
     }
     if(routeState.route?.id==='auth-origin-callback') { await renderOriginCallback(routeState,epoch); return; }
     if(!routeState.found) { mount(createNotFoundView({locale:uiLocale,onHome:()=>go('/')})); return; }
-    const centralOrigin = isConfiguredPlatformOrigin();
+    const centralOrigin = isConfiguredPlatformOrigin() || (!!previewBase() && routeState.route?.id === 'home' && !new URLSearchParams(location.search).has('bot_id'));
     if ((centralOrigin && routeState.route?.id === 'home') || isExplicitPlatformRoute(routeState)) {
       armSlowRouteState(epoch, { title:'UStorE platformasi yuklanmoqda', message:'Sessiya va kerakli modul yuklanmoqda. Sekin tarmoqda bu biroz vaqt olishi mumkin.' });
     }
@@ -569,6 +694,7 @@ async function renderRoute(routeState, reason = 'refresh') {
       case 'home': return renderHome(routeState,epoch);
       case 'catalog': case 'search': return renderCatalog(routeState,epoch);
       case 'product': return renderProduct(routeState,epoch);
+      case 'bundle': return renderBundle(routeState,epoch);
       case 'cart': return renderCart(routeState,epoch);
       case 'checkout': return renderCheckout(routeState,epoch);
       case 'orders': case 'order': return renderOrders(routeState,epoch);
@@ -583,5 +709,5 @@ async function renderRoute(routeState, reason = 'refresh') {
   }
 }
 
-router=createRouter({onChange:(state,reason)=>renderRoute(state,reason)});
+router=createRouter({previewBase:previewBase(),onChange:(state,reason)=>renderRoute(state,reason)});
 router.start();

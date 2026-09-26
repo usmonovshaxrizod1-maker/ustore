@@ -55,11 +55,11 @@ function totalStock(product) {
   return variants.length ? variants.reduce((sum, variant) => sum + (Number(variant?.qty ?? variant?.stock) || 0), 0) : Number(product?.stock) || 0;
 }
 
-export function applyCatalogQuery(products, state) {
+export function applyCatalogQuery(products, state, categories = []) {
   let items = (Array.isArray(products) ? products : []).filter((product) => product?.is_visible !== false && product?.status !== 'DELETED');
   const q = String(state?.q || '').toLocaleLowerCase('uz-UZ');
   if (q) items = items.filter((product) => [product.name, product.name_ru, product.sku, product.description, product.description_ru].some((value) => String(value || '').toLocaleLowerCase('uz-UZ').includes(q)));
-  if (state?.categoryId) items = items.filter((product) => product.category_id === state.categoryId);
+  if(state?.categoryId){const selected=new Set([state.categoryId]);let changed=true;while(changed){changed=false;for(const row of categories){if(selected.has(row.parent_id)&&!selected.has(row.id)){selected.add(row.id);changed=true;}}}items=items.filter(product=>selected.has(product.category_id));}
   if (state?.minPrice != null) items = items.filter((product) => currentPrice(product) >= state.minPrice);
   if (state?.maxPrice != null) items = items.filter((product) => currentPrice(product) <= state.maxPrice);
   if (state?.inStock) items = items.filter((product) => totalStock(product) > 0);
@@ -114,7 +114,7 @@ export function createCatalogView({ products = [], categories = [], query = {}, 
   const filterButton = doc.createElement('button'); filterButton.type = 'button'; filterButton.className = 'uw-catalog-filter-button'; filterButton.textContent = 'Filtrlar';
   toolbar.append(search, sort, filterButton); root.append(toolbar);
 
-  const filtered = applyCatalogQuery(products, query);
+  const filtered = applyCatalogQuery(products, query, categories);
   const page = paginateCatalog(filtered, query.page, 24);
   const layout = doc.createElement('div'); layout.className = 'uw-catalog-layout';
 
@@ -123,7 +123,8 @@ export function createCatalogView({ products = [], categories = [], query = {}, 
     if (mode === 'desktop') panel.setAttribute('aria-label', 'Katalog filtrlari');
     const tree = buildCategoryTree(categories);
     const all = doc.createElement('button'); all.type = 'button'; all.textContent = 'Barcha kataloglar'; all.dataset.categoryId = ''; all.addEventListener('click', () => notify({ categoryId: null })); panel.append(all);
-    for (const category of tree) { const item = doc.createElement('button'); item.type = 'button'; item.className = 'uw-catalog-category'; item.textContent = category.name; item.dataset.categoryId = category.id; item.dataset.active = query.categoryId === category.id ? 'true' : 'false'; item.addEventListener('click', () => notify({ categoryId: category.id })); panel.append(item); }
+    const flattened=[];const visited=new Set();function visit(rows,depth=0){for(const row of rows){if(visited.has(row.id))continue;visited.add(row.id);flattened.push({...row,depth});visit(row.children,depth+1);}}visit(tree);
+    for (const category of flattened) { const item = doc.createElement('button'); item.type = 'button'; item.className = 'uw-catalog-category'; item.textContent = category.name; item.style.marginInlineStart = `${category.depth * 12}px`; item.dataset.categoryId = category.id; item.dataset.active = query.categoryId === category.id ? 'true' : 'false'; item.addEventListener('click', () => notify({ categoryId: category.id })); panel.append(item); }
     for (const [label, key] of [['Faqat qoldiqda bor','inStock'],['Faqat chegirmali','discount']]) {
       const row = doc.createElement('label'); row.className = 'uw-catalog-check'; const input = doc.createElement('input'); input.type = 'checkbox'; input.checked = Boolean(query[key]); input.addEventListener('change', () => notify({ [key]: input.checked })); const span = doc.createElement('span'); span.textContent = label; row.append(input, span); panel.append(row);
     }

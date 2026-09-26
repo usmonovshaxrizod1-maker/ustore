@@ -144,14 +144,25 @@ export function createAdminProductEditorController({ adminPort, actor, imageIO =
   const set = (patch) => { state = { ...state, ...patch }; emit(); return snapshot(); };
   const deny = () => fail('FORBIDDEN', 'Mahsulotlarni boshqarish uchun ruxsat yo‘q.');
 
+  let mutationPending=null, mutationName=null;
+  function protect(name, action) {
+    return (...args)=>{
+      if(mutationPending) return name===mutationName?mutationPending:Promise.resolve(fail('CONFLICT','Saqlash tugashini kuting.'));
+      mutationName=name;
+      mutationPending=Promise.resolve().then(()=>action(...args)).catch(()=>fail('NETWORK_ERROR','Saqlash natijasini tekshiring.',{retryable:true})).then(result=>{
+        set({busy:null,error:result.ok?null:result.error,success:result.ok?'Mahsulot saqlandi.':null});return result;
+      }).finally(()=>{mutationPending=null;mutationName=null;});
+      set({busy:name,error:null,success:null});return mutationPending;
+    };
+  }
   function openCreate({ categories = [], categoryId = null } = {}) {
-    if (!capabilities.products) return deny();
+    if (!capabilities.products) { const result=deny(); set({status:'permission',error:result.error}); return result; }
     set({ status: 'ready', mode: 'create', draft: emptyDraft(categoryId), categories: clone(categories), error: null, fieldErrors: {}, busy: null });
     return ok(snapshot());
   }
 
   async function load(productId) {
-    if (!capabilities.products) return deny();
+    if (!capabilities.products) { const result=deny(); set({status:'permission',error:result.error}); return result; }
     const id = idText(productId); if (!id) return fieldError('Mahsulot ID kerak.');
     set({ status: 'loading', mode: 'edit', error: null, fieldErrors: {} });
     const result = await adminPort.invoke('get_admin_product_editor', { productId: id });
@@ -161,22 +172,22 @@ export function createAdminProductEditorController({ adminPort, actor, imageIO =
     return ok(snapshot());
   }
 
-  function setField(field, value) {
+  function setField(field, value) { if(mutationPending)return snapshot();
     const allowed = new Set(['name','description','categoryId','price','oldPrice','stock','badge','imageUrl']);
     if (!allowed.has(field)) return snapshot();
     set({ draft: { ...state.draft, [field]: value }, fieldErrors: { ...state.fieldErrors, [field]: undefined } });
     return snapshot();
   }
-  function chooseImageFile(file) { const v = validateImageFile(file); if (!v.ok) { set({ error: v.error }); return v; } set({ draft: { ...state.draft, imageFile: file }, error: null }); return ok(true); }
-  function clearImageFile() { set({ draft: { ...state.draft, imageFile: null } }); return snapshot(); }
-  function addVariant(seed = {}) { set({ draft: { ...state.draft, variants: [...state.draft.variants, normalizeEditableVariant(seed)] } }); return snapshot(); }
-  function removeVariant(index) { const variants = [...state.draft.variants]; if (index >= 0 && index < variants.length) variants.splice(index, 1); set({ draft: { ...state.draft, variants } }); return snapshot(); }
-  function setVariantField(index, field, value) {
+  function chooseImageFile(file) { if(mutationPending)return snapshot(); const v = validateImageFile(file); if (!v.ok) { set({ error: v.error }); return v; } set({ draft: { ...state.draft, imageFile: file }, error: null }); return ok(true); }
+  function clearImageFile() { if(mutationPending)return snapshot(); set({ draft: { ...state.draft, imageFile: null } }); return snapshot(); }
+  function addVariant(seed = {}) { if(mutationPending)return snapshot(); set({ draft: { ...state.draft, variants: [...state.draft.variants, normalizeEditableVariant(seed)] } }); return snapshot(); }
+  function removeVariant(index) { if(mutationPending)return snapshot(); const variants = [...state.draft.variants]; if (index >= 0 && index < variants.length) variants.splice(index, 1); set({ draft: { ...state.draft, variants } }); return snapshot(); }
+  function setVariantField(index, field, value) { if(mutationPending)return snapshot();
     const allowed = new Set(['size','color','colorRu','qty','price','oldPrice','img','colorImg']);
     if (!allowed.has(field) || !state.draft.variants[index]) return snapshot();
     const variants = [...state.draft.variants]; variants[index] = { ...variants[index], [field]: value }; set({ draft: { ...state.draft, variants } }); return snapshot();
   }
-  function chooseVariantImageFile(index, file) {
+  function chooseVariantImageFile(index, file) { if(mutationPending)return snapshot();
     const v = validateImageFile(file); if (!v.ok) { set({ error: v.error }); return v; }
     if (!state.draft.variants[index]) return fieldError('Variant topilmadi.');
     const variants = [...state.draft.variants]; variants[index] = { ...variants[index], imageFile: file }; set({ draft: { ...state.draft, variants }, error: null }); return ok(true);
@@ -277,7 +288,7 @@ export function createAdminProductEditorController({ adminPort, actor, imageIO =
   return Object.freeze({
     subscribe(fn) { listeners.add(fn); fn(snapshot()); return () => listeners.delete(fn); }, getState: snapshot,
     openCreate, load, setField, chooseImageFile, clearImageFile, addVariant, removeVariant, setVariantField, chooseVariantImageFile,
-    createProduct, saveBasics, savePrice, saveCategory, saveStock, saveImage, saveVariants,
+    createProduct:protect('create',createProduct), saveBasics:protect('basics',saveBasics), savePrice:protect('price',savePrice), saveCategory:protect('category',saveCategory), saveStock:protect('stock',saveStock), saveImage:protect('image',saveImage), saveVariants:protect('variants',saveVariants),
   });
 }
 
@@ -289,10 +300,18 @@ export function createAdminCategoryEditorController({ adminPort, actor, imageIO 
   const deny = () => fail('FORBIDDEN', 'Kataloglarni boshqarish uchun ruxsat yo‘q.');
   function openCreate({ categories = [], parentId = null } = {}) { if (!capabilities.catalog) return deny(); set({ status:'ready', mode:'create', categories:clone(categories), draft:{id:null,name:'',parentId:idText(parentId),imageUrl:'',imageFile:null}, originalImageUrl:'', error:null }); return ok(snapshot()); }
   function openEdit(category, categories = []) { if (!capabilities.catalog) return deny(); set({ status:'ready', mode:'edit', categories:clone(categories), draft:{id:idText(category?.id),name:text(category?.name),parentId:idText(category?.parent_id ?? category?.parentId),imageUrl:text(category?.img),imageFile:null}, originalImageUrl:text(category?.img), error:null }); return ok(snapshot()); }
-  function setField(field,value){ if(!['name','parentId','imageUrl'].includes(field)) return snapshot(); set({draft:{...state.draft,[field]:value}}); return snapshot(); }
-  function chooseImageFile(file){ const v=validateImageFile(file); if(!v.ok){set({error:v.error});return v;} set({draft:{...state.draft,imageFile:file},error:null}); return ok(true); }
+  let pending=null;
+  function setField(field,value){ if(pending)return snapshot(); if(!['name','parentId','imageUrl'].includes(field)) return snapshot(); set({draft:{...state.draft,[field]:value}}); return snapshot(); }
+  function chooseImageFile(file){if(pending)return snapshot(); const v=validateImageFile(file); if(!v.ok){set({error:v.error});return v;} set({draft:{...state.draft,imageFile:file},error:null}); return ok(true); }
   async function save(){ if(!capabilities.catalog) return deny(); const name=text(state.draft.name); if(!name) return fieldError('Katalog nomini kiriting.',{name:'Katalog nomini kiriting.'}); let imageUpload=null; if(state.draft.imageFile){const p=await imageUploadFromFile(state.draft.imageFile,imageIO);if(!p.ok)return p;imageUpload=p.data;} set({busy:true,error:null}); let result; if(state.mode==='create'){result=await adminPort.invoke('add_category',{name,parentId:idText(state.draft.parentId),img:imageUpload?null:(text(state.draft.imageUrl)||null),imageUpload});}else{const imageChanged=text(state.draft.imageUrl)!==text(state.originalImageUrl);const editPayload={categoryId:state.draft.id,name,parentId:idText(state.draft.parentId),imageUpload};if(!imageUpload&&imageChanged)editPayload.img=text(state.draft.imageUrl)||null;result=await adminPort.invoke('edit_category',editPayload);} if(!result.ok){set({busy:false,error:result.error});return result;} const category=result.data?.category||{}; set({busy:false,error:null,mode:'edit',originalImageUrl:text(category.img),draft:{id:idText(category.id),name:text(category.name),parentId:idText(category.parent_id),imageUrl:text(category.img),imageFile:null}}); return result; }
-  return Object.freeze({ subscribe(fn){listeners.add(fn);fn(snapshot());return()=>listeners.delete(fn);}, getState:snapshot, openCreate, openEdit, setField, chooseImageFile, save });
+  function saveProtected(){
+    if(pending)return pending;
+    pending=Promise.resolve().then(save).catch(()=>fail('NETWORK_ERROR','Katalogni saqlash natijasini tekshiring.',{retryable:true})).then(result=>{
+      set({busy:false,error:result.ok?null:result.error,success:result.ok?'Katalog saqlandi.':null});return result;
+    }).finally(()=>{pending=null;});
+    set({busy:true,error:null,success:null});return pending;
+  }
+  return Object.freeze({ subscribe(fn){listeners.add(fn);fn(snapshot());return()=>listeners.delete(fn);}, getState:snapshot, openCreate, openEdit, setField, chooseImageFile, save:saveProtected });
 }
 
 function elText(doc, tag, className, value) { const node = doc.createElement(tag); if (className) node.className = className; node.textContent = String(value ?? ''); return node; }
@@ -329,11 +348,13 @@ export function createAdminProductEditorView({ controller, documentRef = globalT
 
   const variants=doc.createElement('div'); variants.className='uw-variant-editor'; (d.variants||[]).forEach((row,index)=>{const card=doc.createElement('div');card.className='uw-variant-editor__row'; const color=createTextField({label:'Rang',value:row.color||''},doc);color.input.addEventListener('input',()=>controller.setVariantField(index,'color',color.input.value)); const size=createTextField({label:'O‘lcham',value:row.size||''},doc);size.input.addEventListener('input',()=>controller.setVariantField(index,'size',size.input.value)); const qty=createTextField({label:'Qoldiq',type:'number',value:row.qty,inputMode:'numeric'},doc);qty.input.addEventListener('input',()=>controller.setVariantField(index,'qty',qty.input.value)); const vp=createTextField({label:'Narx',type:'number',value:row.price??'',inputMode:'decimal'},doc);vp.input.addEventListener('input',()=>controller.setVariantField(index,'price',vp.input.value)); const vo=createTextField({label:'Eski narx',type:'number',value:row.oldPrice??'',inputMode:'decimal'},doc);vo.input.addEventListener('input',()=>controller.setVariantField(index,'oldPrice',vo.input.value)); const vurl=createTextField({label:'Rang rasmi URL',value:row.colorImg||''},doc);vurl.input.addEventListener('input',()=>controller.setVariantField(index,'colorImg',vurl.input.value)); card.append(color.element,size.element,qty.element,vp.element,vo.element,vurl.element); const vpkr=filePicker(doc,{label:'Rang rasmi',onFile:(file)=>controller.chooseVariantImageFile(index,file),className:'uw-image-drop--compact'});card.append(vpkr.wrap,createButton({label:'Variantni olib tashlash',variant:'ghost',size:'sm',onClick:()=>controller.removeVariant(index)},doc));variants.append(card);}); variants.append(createButton({label:'+ Variant qo‘shish',variant:'secondary',onClick:()=>controller.addVariant({price:d.price||''})},doc)); root.append(createCard({title:'Rang / o‘lcham / narx / qoldiq',description:'Har kombinatsiya mustaqil narx va rasmga ega bo‘lishi mumkin.',body:variants,actions:state.mode==='edit'?[createButton({label:'Variantlarni saqlash',busy:state.busy==='variants',onClick:()=>controller.saveVariants()},doc)]:[]},doc));
   if(state.mode==='create') root.append(createButton({label:'Mahsulotni yaratish',busy:state.busy==='create',onClick:()=>controller.createProduct()},doc));
+  if(state.success) root.append(createStatePanel({kind:'success',title:state.success},doc));
   if(state.error) root.append(createStatePanel({kind:'error',title:'Saqlash bajarilmadi',message:state.error.message||'Xatolik yuz berdi.'},doc));
+  if(state.busy)root.querySelectorAll?.('input,select,button').forEach(node=>{node.disabled=true;});
   return {element:root};
 }
 
 export function createAdminCategoryEditorView({ controller, documentRef = globalThis.document } = {}) {
   const doc=documentRef;if(!doc?.createElement)throw new Error('DOM document kerak');const state=controller.getState();const d=state.draft;const root=doc.createElement('section');root.className='uw-admin-category-editor';root.dataset.feature='admin-category-editor';
-  const name=createTextField({label:'Katalog nomi',value:d.name,required:true},doc);name.input.addEventListener('input',()=>controller.setField('name',name.input.value));const parent=createSelectField({label:'Ichki katalog',value:d.parentId||'',options:[{value:'',label:'Asosiy katalog'},...(state.categories||[]).filter(c=>String(c.id)!==String(d.id||'')).map(c=>({value:c.id,label:c.name}))],help:'Katalogni boshqa ota katalogga ko‘chirishda server siklni tekshiradi.'},doc);parent.select.addEventListener('change',()=>controller.setField('parentId',parent.select.value||null));const url=createTextField({label:'Rasm URL',value:d.imageUrl,placeholder:'https://…'},doc);url.input.addEventListener('input',()=>controller.setField('imageUrl',url.input.value));const body=doc.createElement('div');body.className='uw-editor-grid';body.append(name.element,parent.element,url.element);const picker=filePicker(doc,{label:'Katalog rasmi',onFile:(file)=>controller.chooseImageFile(file)});body.append(picker.wrap);root.append(createCard({title:state.mode==='create'?'Yangi katalog':'Katalogni tahrirlash',body,actions:[createButton({label:state.mode==='create'?'Katalog yaratish':'Saqlash',busy:state.busy,onClick:()=>controller.save()},doc)]},doc));if(state.error)root.append(createStatePanel({kind:'error',title:'Saqlash bajarilmadi',message:state.error.message||'Xatolik yuz berdi.'},doc));return{element:root};
+  const name=createTextField({label:'Katalog nomi',value:d.name,required:true},doc);name.input.addEventListener('input',()=>controller.setField('name',name.input.value));const parent=createSelectField({label:'Ichki katalog',value:d.parentId||'',options:[{value:'',label:'Asosiy katalog'},...(state.categories||[]).filter(c=>String(c.id)!==String(d.id||'')).map(c=>({value:c.id,label:c.name}))],help:'Katalogni boshqa ota katalogga ko‘chirishda server siklni tekshiradi.'},doc);parent.select.addEventListener('change',()=>controller.setField('parentId',parent.select.value||null));const url=createTextField({label:'Rasm URL',value:d.imageUrl,placeholder:'https://…'},doc);url.input.addEventListener('input',()=>controller.setField('imageUrl',url.input.value));const body=doc.createElement('div');body.className='uw-editor-grid';body.append(name.element,parent.element,url.element);const picker=filePicker(doc,{label:'Katalog rasmi',onFile:(file)=>controller.chooseImageFile(file)});body.append(picker.wrap);root.append(createCard({title:state.mode==='create'?'Yangi katalog':'Katalogni tahrirlash',body,actions:[createButton({label:state.mode==='create'?'Katalog yaratish':'Saqlash',busy:state.busy,onClick:()=>controller.save()},doc)]},doc));if(state.success)root.append(createStatePanel({kind:'success',title:state.success},doc));if(state.error)root.append(createStatePanel({kind:'error',title:'Saqlash bajarilmadi',message:state.error.message||'Xatolik yuz berdi.'},doc));if(state.busy)root.querySelectorAll?.('input,select,button').forEach(node=>{node.disabled=true;});return{element:root};
 }

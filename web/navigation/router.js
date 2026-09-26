@@ -67,9 +67,13 @@ export function createRouteMatcher(routes = WEB_ROUTES) {
   };
 }
 
-function currentTarget(windowRef) {
+function currentTarget(windowRef, previewBase = '') {
   const location = windowRef?.location;
   if (!location) return '/';
+  if (previewBase && location.pathname.startsWith(previewBase)) {
+    const hash = String(location.hash || '');
+    return hash.startsWith('#/') ? hash.slice(1) : '/';
+  }
   return `${location.pathname || '/'}${location.search || ''}${location.hash || ''}`;
 }
 
@@ -79,9 +83,12 @@ export function createRouter(options = {}) {
     throw new Error('Router requires a browser-like window with history and location.');
   }
   const matchRoute = createRouteMatcher(options.routes || WEB_ROUTES);
+  // GitHub Pages project URLs have no SPA history fallback. Keep the production
+  // origin at / while using hash routes only inside the exact preview directory.
+  const previewBase = /^\/[a-z0-9-]+\/web\/$/i.test(options.previewBase || '') ? options.previewBase : '';
   const listeners = new Set();
   let started = false;
-  let state = matchRoute(currentTarget(windowRef));
+  let state = matchRoute(currentTarget(windowRef, previewBase));
 
   const emit = (reason) => {
     for (const listener of listeners) listener(state, reason);
@@ -90,22 +97,28 @@ export function createRouter(options = {}) {
   };
 
   const read = (reason = 'read') => {
-    state = matchRoute(currentTarget(windowRef));
+    state = matchRoute(currentTarget(windowRef, previewBase));
     return emit(reason);
   };
 
   const onPopState = () => read('popstate');
+  const onHashChange = () => read('hashchange');
+  const hrefFor = (target) => previewBase
+    ? `${previewBase}${windowRef.location.search || ''}#${target}`
+    : target;
 
   return {
     start() {
       if (!started) {
         windowRef.addEventListener('popstate', onPopState);
+        if (previewBase) windowRef.addEventListener('hashchange', onHashChange);
         started = true;
       }
       return read('start');
     },
     destroy() {
       if (started) windowRef.removeEventListener?.('popstate', onPopState);
+      if (started && previewBase) windowRef.removeEventListener?.('hashchange', onHashChange);
       started = false;
       listeners.clear();
     },
@@ -117,13 +130,13 @@ export function createRouter(options = {}) {
     },
     navigate(target, historyState = {}) {
       const normalized = normalizeInternalTarget(target);
-      windowRef.history.pushState(historyState, '', normalized);
+      windowRef.history.pushState(historyState, '', hrefFor(normalized));
       state = matchRoute(normalized);
       return emit('navigate');
     },
     replace(target, historyState = {}) {
       const normalized = normalizeInternalTarget(target);
-      windowRef.history.replaceState(historyState, '', normalized);
+      windowRef.history.replaceState(historyState, '', hrefFor(normalized));
       state = matchRoute(normalized);
       return emit('replace');
     },

@@ -24,7 +24,13 @@ export function createExcelImportController({ adminPort, actor, excelEngine, get
   function approveNew(index){ excelEngine.approveNewAt(Number(index)); return snapshot(); }
   async function rollback({confirmed=false}={}){ if(!confirmed)return fail('VALIDATION_ERROR','Rollback alohida tasdiqlanishi kerak.'); await excelEngine.rollbackBatch({confirmed:true}); return ok(snapshot()); }
   async function reset(){ await excelEngine.reset(); return ok(snapshot()); }
-  return Object.freeze({getState:snapshot,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},load,chooseFile,process,downloadTemplate,acceptSuggestion,approveNew,rollback,reset});
+  let running=null;
+  function guarded(action){return (...args)=>{
+    if(!allowed)return Promise.resolve(deny());
+    if(running)return Promise.resolve(fail('CONFLICT','Import amali tugashini kuting.'));
+    running=Promise.resolve().then(()=>action(...args)).catch(error=>{const result=fail('NETWORK_ERROR',error.message||'Import bajarilmadi.',{retryable:true});update({error:result.error});return result;}).finally(()=>{running=null;});return running;
+  };}
+  return Object.freeze({getState:snapshot,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},load:guarded(load),chooseFile:guarded(chooseFile),process:guarded(process),downloadTemplate:guarded(downloadTemplate),acceptSuggestion:guarded(acceptSuggestion),approveNew:guarded(approveNew),rollback:guarded(rollback),reset:guarded(reset)});
 }
 
 function normalizeBillzItem(raw={}){ return {billzProductId:String(raw.billzProductId||''),name:text(raw.name)||'Nomsiz',description:raw.description||null,price:Math.max(0,Number(raw.price)||0),stock:Math.max(0,Number(raw.stock)||0),isVariative:raw.isVariative===true,variants:Array.isArray(raw.variants)?clone(raw.variants):[]}; }

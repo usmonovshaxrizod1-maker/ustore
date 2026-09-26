@@ -34,14 +34,21 @@ export function createProductDetailController({ catalogPort, productId, onAddToC
       if (!product || !selection) throw new Error('Product not loaded');
       const selected = selection.getState();
       if (!selected.canAdd) return { ok: false, error: { code: 'VALIDATION_ERROR', message: 'Tanlangan kombinatsiya mavjud emas.', retryable: false } };
-      const line = { productId: product.id, size: selected.size, color: selected.color, qty: 1, sku: selected.sku };
-      onAddToCart?.(line);
-      return { ok: true, data: line };
+      const line = {
+        productId: product.id, size: selected.size, color: selected.color, quantity: 1, sku: selected.sku,
+        name: product.name, unitPrice: selected.price, imageUrl: selected.image || product.img || null,
+        optionLabel: [selected.color, selected.size].filter(Boolean).join(' · '),
+        ...(selected.variant?.id ? { variantId: selected.variant.id } : {}),
+      };
+      const added = onAddToCart?.(line);
+      if (added && typeof added.then === 'function') return added.then((result) => result?.ok === false ? result : { ok: true, data: result?.data || line });
+      if (added?.ok === false) return added;
+      return { ok: true, data: added?.data || line };
     },
   };
 }
 
-export function createProductDetailView({ product, selection, gallery = buildProductGallery(product), onSelectColor, onSelectSize, onAddToCart, onShare } = {}, documentRef = globalThis.document) {
+export function createProductDetailView({ product, selection, gallery = buildProductGallery(product), onSelectColor, onSelectSize, onAddToCart, onShare, adding = false } = {}, documentRef = globalThis.document) {
   if (!documentRef?.createElement) throw new Error('Product detail UI uchun DOM kerak');
   const doc = documentRef;
   const root = doc.createElement('article'); root.className = 'uw-product-detail'; root.dataset.feature = 'product-detail';
@@ -78,7 +85,7 @@ export function createProductDetailView({ product, selection, gallery = buildPro
     info.append(sizeWrap);
   }
   const actions = doc.createElement('div'); actions.className = 'uw-product-detail__actions';
-  const add = createButton({ label: current.canAdd ? 'Savatga qo‘shish' : 'Mavjud emas', disabled: !current.canAdd, onClick: onAddToCart }, doc); add.className += ' uw-product-detail__add';
+  const add = createButton({ label: current.canAdd ? (adding ? 'Savatga qo‘shilmoqda' : 'Savatga qo‘shish') : 'Mavjud emas', disabled: !current.canAdd, busy: adding, onClick: onAddToCart }, doc); add.className += ' uw-product-detail__add';
   actions.append(add);
   if (typeof onShare === 'function') {
     const shareStatus = doc.createElement('span'); shareStatus.className = 'uw-product-detail__share-status'; shareStatus.setAttribute('role', 'status'); shareStatus.setAttribute('aria-live', 'polite');

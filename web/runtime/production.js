@@ -1,3 +1,4 @@
+import {createSignedStorageClient} from '../services/live/storage.js';
 import { createLiveServiceProvider } from '../services/core-provider.js';
 import {
   createLiveAuthAdapter,
@@ -69,7 +70,7 @@ export async function createProductionShopRuntime({
   const locator = tenant.botId;
 
   const publicAdapters = createLiveShopPublicAdapters({ endpoint: authRuntime.endpoints.shop, botId: locator, fetchImpl, tokenStore: authRuntime.tokenStore });
-  const privateAdapters = createLiveShopPrivateAdapters({ endpoint: authRuntime.endpoints.shop, botId: locator, fetchImpl, tokenStore: authRuntime.tokenStore, storageClient });
+  const privateAdapters = createLiveShopPrivateAdapters({ endpoint: authRuntime.endpoints.shop, botId: locator, fetchImpl, tokenStore: authRuntime.tokenStore, storageClient:storageClient||createSignedStorageClient({supabaseUrl:config.SUPABASE_URL,fetchImpl}) });
   const liveAdapters = {
     context: publicAdapters.context,
     auth: authRuntime.auth,

@@ -23,8 +23,10 @@ window.APP_CONFIG = {
   SUPABASE_URL: "https://jzdpogwxonvaagxotgyi.supabase.co",
   SUPABASE_KEY: "sb_publishable_tTKrRO3jWBa2MfRBJb73NQ_JP8EtkFZ",
   IMAGES_BUCKET: "images",
-  // Central platform hostname. Keep empty until the owned production domain is confirmed.
-  USTORE_BASE_HOSTNAME: "",
+  // Central platform hostname; DNS activation is independent of this public value.
+  USTORE_BASE_HOSTNAME: "ustr.uz",
   // Optional shared WEB hosts allowed to resolve shop via ?bot_id=. Never add custom shop domains.
-  USTORE_WEB_BOT_ID_HOSTNAMES: [],
+  USTORE_WEB_BOT_ID_HOSTNAMES: ["ustr.uz", "www.ustr.uz", "usmonovshaxrizod1-maker.github.io"],
+  // Only this exact GitHub Pages preview path enables platform preview routing.
+  USTORE_WEB_PREVIEW_PATH: "/ustore/web/",
 };

@@ -23,7 +23,6 @@ function mapServerError(body, status) {
 }
 function lineKey(line = {}) {
   if (line.bundleId) return `bundle:${line.bundleId}`;
-  if (line.variantId) return `product:${line.productId}|variant:${line.variantId}`;
   return `product:${line.productId}|${line.size || ''}|${line.color || ''}`;
 }
 function normalizeCart(cart, shopId) {
@@ -65,10 +64,14 @@ export function createLiveShopPrivateAdapters({ endpoint, botId, fetchImpl = glo
     return ok(body || {});
   }
 
-  async function replaceCart(cart) {
-    const result = await request('web_cart_replace', { cart: normalizeCart(cart, locator) });
-    if (!result.ok) return result;
-    return ok(normalizeCart(result.data.cart, result.data.cart?.shopId));
+  const uncertain=new Map();
+  async function mutateCart(operation,line={}) {
+    const signature=JSON.stringify({operation,line});
+    const mutationId=uncertain.get(signature)||globalThis.crypto.randomUUID();
+    uncertain.set(signature,mutationId);
+    const result=await request('web_cart_mutate',{operation,line,mutationId});
+    if(result.ok||result.error?.code!=='NETWORK_ERROR')uncertain.delete(signature);
+    return result.ok?ok(normalizeCart(result.data.cart,result.data.cart?.shopId)):result;
   }
 
   return Object.freeze({
@@ -85,16 +88,28 @@ export function createLiveShopPrivateAdapters({ endpoint, botId, fetchImpl = glo
         return result.ok ? ok(normalizeCart(result.data.cart, result.data.cart?.shopId)) : result;
       },
       async updateLine(input) {
-        if (!input?.lineKey || !Number.isInteger(input.quantity) || input.quantity < 0) return fail('VALIDATION_ERROR', 'Savat qatori noto‘g‘ri.');
-        const loaded = await request('web_cart_load'); if (!loaded.ok) return loaded;
-        const cart = normalizeCart(loaded.data.cart, loaded.data.cart?.shopId);
-        const exists = cart.lines.some((row) => row.lineKey === input.lineKey);
-        if (!exists) return fail('NOT_FOUND', 'Savat qatori topilmadi.');
-        cart.lines = cart.lines.map((row) => row.lineKey === input.lineKey ? { ...row, quantity: input.quantity } : row).filter((row) => row.quantity > 0);
-        return replaceCart(cart);
+        if (!input?.lineKey || !Number.isInteger(input.quantity) || input.quantity < 0 || input.quantity > 99) return fail('VALIDATION_ERROR', 'Savat qatori noto‘g‘ri.');
+        return mutateCart('set',{lineKey:input.lineKey,quantity:input.quantity});
+      },
+      async addLine(input) {
+        const productId = String(input?.productId || '').trim();
+        const bundleId = String(input?.bundleId || '').trim();
+        const quantity = Math.trunc(Number(input?.quantity ?? input?.qty ?? 1));
+        if ((!productId && !bundleId) || (productId && bundleId) || !Number.isInteger(quantity) || quantity <= 0 || quantity > 99) {
+          return fail('VALIDATION_ERROR', 'Savatga qo‘shiladigan qator noto‘g‘ri.');
+        }
+        const nextLine = {
+          ...(bundleId ? { bundleId } : { productId }),
+          quantity,
+          size: input?.size == null ? null : String(input.size),
+          color: input?.color == null ? null : String(input.color),
+          variantId: input?.variantId == null ? null : String(input.variantId),
+        };
+        nextLine.lineKey = lineKey(nextLine);
+        return mutateCart('add',nextLine);
       },
       async clear() {
-        const result = await request('web_cart_clear');
+        const result = await mutateCart('clear');
         return result.ok ? ok({ cleared: true }) : result;
       },
       async quote(input = {}) {

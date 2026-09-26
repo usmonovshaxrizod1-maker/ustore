@@ -1,6 +1,7 @@
 import { createButton, createStatePanel, createTextField } from '../../components/ui.js';
+import { findVariant, variantDisplayImage, variantPrice } from '../product/variant-model.js';
 
-const MAX_QUANTITY = 999;
+const MAX_QUANTITY = 99;
 
 function makeGuestMergeKey() {
   const id = globalThis.crypto?.randomUUID?.();
@@ -46,15 +47,22 @@ export function createGuestCartStore(storage = globalThis.localStorage) {
 
 export function cartLineKind(line) {
   if (line?.bundleId) return 'BUNDLE';
-  if (line?.variantId) return 'VARIANT';
+  if (line?.variantId || line?.size || line?.color) return 'VARIANT';
   return 'PRODUCT';
+}
+
+export function cartLineKey(line = {}) {
+  if (line.bundleId) return `bundle:${String(line.bundleId)}`;
+  const productId = String(line.productId || '').trim();
+  if (!productId) return '';
+  return `product:${productId}|${line.size || ''}|${line.color || ''}`;
 }
 
 export function normalizeCartLine(line) {
   const quantity = Math.max(0, Math.min(MAX_QUANTITY, Math.trunc(safeNumber(line?.quantity, 0))));
   return {
     ...line,
-    lineKey: String(line?.lineKey || ''),
+    lineKey: String(line?.lineKey || cartLineKey(line)),
     quantity,
     unitPrice: safeNumber(line?.unitPrice),
     kind: cartLineKind(line),
@@ -101,11 +109,13 @@ function money(value) {
   return `${new Intl.NumberFormat('uz-UZ').format(Math.round(safeNumber(value)))} so‘m`;
 }
 
-export function createCartController({ cartPort, shopId, guestStore = null, authenticated = false } = {}) {
+export function createCartController({ cartPort, catalogPort = null, shopId, guestStore = null, authenticated = false } = {}) {
   if (!cartPort) throw new TypeError('cartPort kerak');
   if (!shopId) throw new TypeError('shopId kerak');
   let state = { cart: null, quote: null, loading: false, busy: false, error: null, promoCode: '' };
   let quoteGeneration = 0;
+  const productCache = new Map();
+  const bundleCache = new Map();
   const listeners = new Set();
   const snapshot = () => ({ ...state, cart: state.cart ? structuredClone(state.cart) : null, quote: state.quote ? structuredClone(state.quote) : null });
   const emit = () => listeners.forEach((listener) => listener(snapshot()));
@@ -116,6 +126,51 @@ export function createCartController({ cartPort, shopId, guestStore = null, auth
       else guestStore.clear(shopId);
     }
   };
+  const localResult = (cart) => ({ ok: true, data: cart });
+  async function hydrateCart(cart) {
+    if (!catalogPort?.getProduct && !catalogPort?.getBundle) return cart;
+    const ids = [...new Set(cart.lines.map((line) => String(line.productId || '')).filter(Boolean))];
+    const bundleIds = [...new Set(cart.lines.map((line) => String(line.bundleId || '')).filter(Boolean))];
+    await Promise.all(ids.filter((id) => catalogPort?.getProduct && !productCache.has(id)).map(async (id) => {
+      const result = await catalogPort.getProduct({ productId:id });
+      productCache.set(id, result?.ok ? result.data : null);
+    }).concat(bundleIds.filter((id) => catalogPort?.getBundle && !bundleCache.has(id)).map(async (id) => {
+      const result = await catalogPort.getBundle({ bundleId:id });
+      bundleCache.set(id, result?.ok ? result.data : null);
+    })));
+    return {
+      ...cart,
+      lines:cart.lines.map((line) => {
+        if (line.bundleId) {
+          const bundle = bundleCache.get(String(line.bundleId));
+          if (!bundle) return line;
+          const items = Array.isArray(bundle.resolvedItems) ? bundle.resolvedItems : [];
+          return normalizeCartLine({
+            ...line,
+            name:bundle.name || line.name,
+            unitPrice:safeNumber(bundle.bundlePrice, line.unitPrice),
+            regularTotal:safeNumber(bundle.regularTotal),
+            savings:safeNumber(bundle.savings),
+            imageUrl:bundle.coverImageUrl || items.find((item) => item?.img)?.img || line.imageUrl || '',
+            optionLabel:items.map((item) => `${item.name || item.productId}${Number(item.qty) > 1 ? ` × ${Number(item.qty)}` : ''}`).join(' + '),
+          });
+        }
+        if (!line.productId) return line;
+        const product = productCache.get(String(line.productId));
+        if (!product) return line;
+        const variant = findVariant(product, line.size, line.color);
+        return normalizeCartLine({
+          ...line,
+          name:product.name || line.name,
+          unitPrice:variantPrice(product, line.size, line.color),
+          imageUrl:variantDisplayImage(product, line.size, line.color, line.imageUrl || ''),
+          optionLabel:[line.color, line.size].filter(Boolean).join(' · '),
+          variantId:line.variantId || variant?.id || null,
+          maxQuantity:Math.min(MAX_QUANTITY,Math.max(0,Number(variant?.qty ?? product.stock ?? MAX_QUANTITY))),
+        });
+      }),
+    };
+  }
   async function quoteCurrent(promoCode = state.promoCode) {
     if (!state.cart) return null;
     const generation = ++quoteGeneration;
@@ -136,10 +191,12 @@ export function createCartController({ cartPort, shopId, guestStore = null, auth
       if (stored && !stored.mergeKey) stored = guestStore.save(shopId, stored);
       const result = stored ? (authenticated
         ? await cartPort.mergeGuest({ guestCart: stored, idempotencyKey: stored.mergeKey })
-        : { ok: true, data: stored }) : await cartPort.load({ shopId });
+        : localResult(stored)) : (authenticated
+          ? await cartPort.load({ shopId })
+          : localResult({ shopId, currency: 'UZS', lines: [] }));
       if (!result.ok) { set({ loading: false, error: result.error }); return result; }
       let cart;
-      try { cart = normalizeCart(result.data, shopId); }
+      try { cart = await hydrateCart(normalizeCart(result.data, shopId)); }
       catch (_) { const error = { code: 'CONTRACT_MISMATCH', message: 'Savatcha do‘kon kontekstiga mos emas.', retryable: false }; set({ loading: false, error }); return { ok: false, error }; }
       if (authenticated && stored) {
         const current = guestStore.load(shopId);
@@ -147,23 +204,61 @@ export function createCartController({ cartPort, shopId, guestStore = null, auth
       }
       set({ loading: false, cart, error: null });
       persistGuest();
-      await quoteCurrent();
+      if (authenticated && cart.lines.length) await quoteCurrent();
       return { ok: true, data: cart };
+    },
+    async addLine(input = {}) {
+      if (state.busy || state.loading) return null;
+      if (!state.cart) {
+        const loaded = await this.load();
+        if (!loaded?.ok) return loaded;
+      }
+      const productId = String(input.productId || '').trim();
+      const bundleId = String(input.bundleId || '').trim();
+      const quantity = Math.trunc(Number(input.quantity ?? input.qty ?? 1));
+      if ((!productId && !bundleId) || (productId && bundleId) || quantity <= 0 || quantity > 99) {
+        const error = { code:'VALIDATION_ERROR', message:'Savatga qo‘shiladigan mahsulot noto‘g‘ri.', retryable:false };
+        set({ error }); return { ok:false, error };
+      }
+      const identity = bundleId ? { bundleId } : { productId };
+      const line = normalizeCartLine({ ...input, ...identity, quantity, lineKey:cartLineKey({ ...input, ...identity }) });
+      const current = state.cart.lines.find((row) => cartLineKey(row) === line.lineKey);
+      if (current && current.quantity + quantity > (current.maxQuantity ?? MAX_QUANTITY)) {
+        const error = { code:'VALIDATION_ERROR', message:'Tanlangan miqdor qoldiq yoki 99 dona chegarasidan oshdi.', retryable:false };
+        set({ error }); return { ok:false, error };
+      }
+      ++quoteGeneration;
+      set({ busy:true, error:null, quote:null });
+      const result = authenticated
+        ? await cartPort.addLine(line)
+        : localResult({ ...state.cart, lines: current
+          ? state.cart.lines.map((row) => cartLineKey(row) === line.lineKey ? { ...row, quantity:row.quantity + quantity } : row)
+          : [...state.cart.lines, line] });
+      if (!result.ok) { set({ busy:false, error:result.error }); return result; }
+      let cart;
+      try { cart = await hydrateCart(normalizeCart(result.data, shopId)); }
+      catch (_) { const error = {code:'CONTRACT_MISMATCH',message:'Savatcha do‘kon kontekstiga mos emas.',retryable:false}; set({busy:false,error,quote:null}); return {ok:false,error}; }
+      set({ busy:false, cart, error:null });
+      persistGuest();
+      if (authenticated) await quoteCurrent();
+      return { ok:true, data:cart };
     },
     async setQuantity(lineKey, quantity) {
       if (state.busy || state.loading || !state.cart) return null;
-      const next = Math.max(0, Math.min(MAX_QUANTITY, Math.trunc(Number(quantity) || 0)));
+      const next = Math.max(0, Math.min(state.cart.lines.find(line=>line.lineKey===lineKey)?.maxQuantity ?? MAX_QUANTITY, Math.trunc(Number(quantity) || 0)));
       ++quoteGeneration;
       set({ busy: true, error: null, quote: null });
-      const result = await cartPort.updateLine({ lineKey, quantity: next });
+      const result = authenticated
+        ? await cartPort.updateLine({ lineKey, quantity: next })
+        : localResult({ ...state.cart, lines: state.cart.lines.map((row) => row.lineKey === lineKey ? { ...row, quantity:next } : row).filter((row) => row.quantity > 0) });
       if (!result.ok) { set({ busy: false, error: result.error }); return result; }
       let cart;
-      try { cart = normalizeCart(result.data, shopId); }
+      try { cart = await hydrateCart(normalizeCart(result.data, shopId)); }
       catch (_) { const error = {code:'CONTRACT_MISMATCH',message:'Savatcha do‘kon kontekstiga mos emas.',retryable:false}; set({busy:false,error,quote:null}); return {ok:false,error}; }
       if (next === 0) cart = { ...cart, lines: cart.lines.filter((line) => line.lineKey !== lineKey) };
       set({ busy: false, cart, error: null });
       persistGuest();
-      await quoteCurrent();
+      if (authenticated && cart.lines.length) await quoteCurrent();
       return { ok: true, data: cart };
     },
     removeLine(lineKey) { return this.setQuantity(lineKey, 0); },
@@ -171,7 +266,7 @@ export function createCartController({ cartPort, shopId, guestStore = null, auth
       if (state.busy || state.loading) return null;
       ++quoteGeneration;
       set({ busy: true, error: null, quote: null });
-      const result = await cartPort.clear({ shopId });
+      const result = authenticated ? await cartPort.clear({ shopId }) : localResult({ cleared:true });
       if (!result.ok) { set({ busy: false, error: result.error }); return result; }
       const cart = { ...(state.cart || { shopId, currency: 'UZS' }), shopId, lines: [] };
       set({ busy: false, cart, quote: null, error: null, promoCode: '' });
@@ -205,6 +300,9 @@ function cartLineView(doc, line, controller, busy) {
   const name = doc.createElement('h3'); name.textContent = line.name;
   info.append(badge, name);
   if (line.optionLabel) { const option = doc.createElement('p'); option.textContent = line.optionLabel; info.append(option); }
+  if (line.kind === 'BUNDLE' && safeNumber(line.savings) > 0) {
+    const saving = doc.createElement('p'); saving.className = 'uw-cart-line__saving'; saving.textContent = `Tejash: ${money(safeNumber(line.savings) * line.quantity)}`; info.append(saving);
+  }
   const price = doc.createElement('strong'); price.className = 'uw-cart-line__price'; price.textContent = money(line.unitPrice * line.quantity);
   const controls = doc.createElement('div'); controls.className = 'uw-cart-line__controls';
   controls.append(
@@ -212,7 +310,7 @@ function cartLineView(doc, line, controller, busy) {
   );
   const qty = doc.createElement('span'); qty.className = 'uw-cart-line__quantity'; qty.textContent = String(line.quantity); qty.setAttribute('aria-label', `Miqdor ${line.quantity}`); controls.append(qty);
   controls.append(
-    createButton({ label: '+', variant: 'secondary', size: 'sm', disabled: busy || line.quantity >= MAX_QUANTITY, ariaLabel: `${line.name} miqdorini oshirish`, onClick: () => controller.setQuantity(line.lineKey, line.quantity + 1) }, doc),
+    createButton({ label: '+', variant: 'secondary', size: 'sm', disabled: busy || line.quantity >= (line.maxQuantity ?? MAX_QUANTITY), ariaLabel: `${line.name} miqdorini oshirish`, onClick: () => controller.setQuantity(line.lineKey, line.quantity + 1) }, doc),
     createButton({ label: 'Olib tashlash', variant: 'ghost', size: 'sm', disabled: busy, onClick: () => controller.removeLine(line.lineKey) }, doc),
   );
   row.append(info, price, controls);

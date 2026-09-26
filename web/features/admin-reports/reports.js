@@ -1,3 +1,5 @@
+import {loadAdminAsset} from '../../runtime/admin-assets.js';
+import {buildReportWorkbook,downloadReport} from './export.js';
 import { createButton, createCard, createSelectField, createStatePanel, createTextField } from '../../components/ui.js';
 import { fail, ok } from '../../services/ports/result.js';
 
@@ -42,27 +44,28 @@ function buildPdf(data, tab, windowRef=globalThis.window) {
   const JsPdf = windowRef?.jspdf?.jsPDF;
   if (!JsPdf) return fail('CAPABILITY_UNAVAILABLE','PDF kutubxonasi yuklanmagan.');
   const doc = new JsPdf({ unit:'mm', format:'a4' });
+  if(windowRef?.UstoreReportFont){doc.addFileToVFS('DejaVuSans.ttf',windowRef.UstoreReportFont);doc.addFont('DejaVuSans.ttf','Ustore','normal');doc.setFont('Ustore');}
   let y=16;
-  const line=(label,value)=>{ doc.setFontSize?.(10); doc.text?.(`${label}: ${value}`,14,y); y+=6; if(y>280){doc.addPage?.();y=16;} };
+  const line=(label,value)=>{ doc.setFontSize?.(10); const lines=doc.splitTextToSize?.(`${label}: ${value}`,180)||[`${label}: ${value}`];for(const text of lines){if(y>280){doc.addPage?.();y=16;}doc.text?.(text,14,y);y+=6;} };
   doc.setFontSize?.(16); doc.text?.(`UStorE — ${LABEL_BY_TAB[tab]} hisobot`,14,y); y+=9;
   line('Davr', `${dateLabel(data?.dateFrom)} — ${dateLabel(data?.dateTo)}`);
   if (tab === 'overview') {
     line('Tasdiqlangan tushum', money(data?.totalSales)); line('Buyurtmalar', data?.orderCount ?? 0); line('O‘rtacha buyurtma', money(data?.avgOrderValue)); line('Sotilgan birlik', data?.totalUnitsSold ?? 0);
-    for (const row of (data?.topProducts || []).slice(0,12)) line(row.name || 'Mahsulot', money(row.revenue));
+    for (const row of (data?.topProducts || [])) line(row.name || 'Mahsulot', money(row.revenue));
   } else if (tab === 'sales') {
     line('Tasdiqlangan tushum', money(data?.totalSales)); line('Jami buyurtmalar', data?.totalOrders ?? 0); line('Sotuv buyurtmalari', data?.soldOrderCount ?? 0); line('O‘rtacha buyurtma', money(data?.avgOrderValue));
-    for (const row of (data?.byProduct || []).slice(0,15)) line(row.name || 'Mahsulot', `${row.unitsSold ?? 0} dona · ${money(row.revenue)}`);
+    for (const row of (data?.byProduct || [])) line(row.name || 'Mahsulot', `${row.unitsSold ?? 0} dona · ${money(row.revenue)}`);
   } else if (tab === 'customers') {
     const k=data?.kpi || {}; line('Jami mijozlar',k.totalCustomers ?? 0); line('Yangi mijozlar',k.newCustomers ?? 0); line('Qayta xarid qilganlar',k.repeatCustomers ?? 0); line('O‘rtacha xarid',money(k.avgCustomerSpend));
-    for (const row of (data?.customers || []).slice(0,30)) line(row.name || row.tgId || 'Mijoz', `${row.totalOrders ?? 0} buyurtma · ${money(row.totalSpent)}${data?.piiVisible && row.phone ? ` · ${row.phone}` : ''}`);
+    for (const row of (data?.customers || [])) line(row.name || row.tgId || 'Mijoz', `${row.totalOrders ?? 0} buyurtma · ${money(row.totalSpent)}${data?.piiVisible && row.phone ? ` · ${row.phone}` : ''}`);
   } else {
     line('Jami tushum',money(data?.totalSales)); line('Natijalar',data?.totalCount ?? 0);
-    for (const row of (data?.products || []).slice(0,30)) line(row.name || row.productId || 'Mahsulot', `${row.unitsSold ?? 0} dona · ${money(row.revenue)}`);
+    for (const row of (data?.products || [])) line(row.name || row.productId || 'Mahsulot', `${row.unitsSold ?? 0} dona · ${money(row.revenue)}`);
   }
   return ok(doc);
 }
 
-export function createAdminReportsController({ adminPort, actor, telegramWebApp, windowRef=globalThis.window } = {}) {
+export function createAdminReportsController({ adminPort, actor, telegramWebApp, windowRef=globalThis.window, excelLoader=()=>loadAdminAsset('vendor/exceljs.min.js','ExcelJS'), downloadXlsx=downloadReport } = {}) {
   if (!adminPort?.invoke) throw new TypeError('adminPort.invoke kerak.');
   const listeners=new Set();
   const allowed=can(actor,'reports.view');
@@ -82,6 +85,24 @@ export function createAdminReportsController({ adminPort, actor, telegramWebApp,
   function setCustomRange(dateFrom,dateTo){ return patch({period:'custom',dateFrom:text(dateFrom),dateTo:text(dateTo),error:null}); }
   function setCustomerFilters(values={}) { return patch({filters:{...state.filters,customers:{...state.filters.customers,...clone(values),page:values.search!==undefined||values.segment!==undefined?1:(values.page??state.filters.customers.page)}}}); }
   function setProductFilters(values={}) { return patch({filters:{...state.filters,products:{...state.filters.products,...clone(values),page:values.view!==undefined?1:(values.page??state.filters.products.page)}}}); }
+  async function exportExcel(){
+    if(!allowed)return fail('FORBIDDEN','Hisobotlarni ko‘rish huquqi yo‘q.');
+    if(state.exporting)return fail('CONFLICT','Eksport bajarilmoqda.');
+    const tab=state.activeTab;const payload=reportPayload(state,tab);if(!payload.ok)return payload;
+    if(!state.data[tab])return fail('VALIDATION_ERROR','Avval hisobotni yuklang.');
+    patch({exporting:true,exportError:null});
+    try{
+      let data=clone(state.data[tab]);
+      if(['customers','products'].includes(tab)){
+        const key=tab;let combined=[];let page=1,totalPages=1;
+        do{const r=await adminPort.invoke(ACTION_BY_TAB[tab],{...payload.data,page,pageSize:100});if(!r.ok)throw new Error(r.error?.message||'Hisobot yuklanmadi.');
+          data=r.data;totalPages=Math.max(1,Number(data.totalPages)||1);if(totalPages>500)throw new Error('Davrni qisqartiring: eksport 50 000 qatordan oshdi.');combined.push(...(data[key]||[]));page++;
+        }while(page<=totalPages);
+        data={...data,[key]:combined};
+      }
+      const ExcelJS=await excelLoader();const bytes=await buildReportWorkbook(data,tab,ExcelJS);await downloadXlsx(bytes,`ustore-${tab}.xlsx`);patch({exporting:false});return ok(true);
+    }catch(error){const r=fail('NETWORK_ERROR',error.message||'Excel eksport bajarilmadi.',{retryable:true});patch({exporting:false,exportError:r.error});return r;}
+  }
   async function exportPdf() {
     const tab=state.activeTab, data=state.data[tab];
     if(!data) return patch({exportError:fail('VALIDATION_ERROR','Avval hisobotni yuklang.').error});
@@ -97,7 +118,7 @@ export function createAdminReportsController({ adminPort, actor, telegramWebApp,
       return patch({exporting:false,exportError:null});
     } catch (_) { return patch({exporting:false,exportError:fail('NETWORK_ERROR','PDF eksport bajarilmadi.').error}); }
   }
-  return Object.freeze({ getState:snapshot, subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);}, load, setTab, setPeriod, setCustomRange, setCustomerFilters, setProductFilters, exportPdf, exportExcel(){return fail('CAPABILITY_UNAVAILABLE','Hisobotlar uchun Excel/XLSX eksport backendda mavjud emas.');} });
+  return Object.freeze({ getState:snapshot, subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);}, load, setTab, setPeriod, setCustomRange, setCustomerFilters, setProductFilters, exportPdf, exportExcel });
 }
 
 function metric(doc,label,value){const n=doc.createElement('div');n.className='uw-report-metric';const a=doc.createElement('span');a.textContent=label;const b=doc.createElement('strong');b.textContent=String(value);n.append(a,b);return n;}
@@ -112,7 +133,7 @@ export function renderAdminReports({ controller, documentRef=globalThis.document
     if(state.period==='custom'){const row=doc.createElement('div');row.className='uw-inline-fields';const f=createTextField({label:'Boshlanish',type:'date',value:state.dateFrom},doc),t=createTextField({label:'Tugash',type:'date',value:state.dateTo},doc);const apply=()=>controller.setCustomRange(f.input.value,t.input.value);f.input.addEventListener('change',apply);t.input.addEventListener('change',apply);row.append(f.element,t.element,createButton({label:'Qo‘llash',variant:'secondary',onClick:()=>controller.load()},doc));root.append(toolbar,row);}else root.append(toolbar);
     if(state.activeTab==='customers'){const row=doc.createElement('div');row.className='uw-inline-fields';const q=createTextField({label:'Qidiruv',value:state.filters.customers.search},doc);q.input.addEventListener('change',()=>{controller.setCustomerFilters({search:q.input.value});controller.load();});const s=createSelectField({label:'Segment',value:state.filters.customers.segment,options:['ALL','TOP_ORDERS','TOP_SPEND','REPEAT','NEW','NEVER_ORDERED','DORMANT','HIGH_CANCEL'].map(v=>({value:v,label:v}))},doc);s.select.addEventListener('change',()=>{controller.setCustomerFilters({segment:s.select.value});controller.load();});row.append(q.element,s.element);root.append(row);}
     if(state.activeTab==='products'){const row=doc.createElement('div');row.className='uw-inline-fields';const s=createSelectField({label:'Ko‘rinish',value:state.filters.products.view,options:['TOP_REVENUE','TOP_SOLD','LEAST_SOLD','NEVER_SOLD','LOW_STOCK','OUT_OF_STOCK','TRENDING_UP','TRENDING_DOWN'].map(v=>({value:v,label:v}))},doc);s.select.addEventListener('change',()=>{controller.setProductFilters({view:s.select.value});controller.load();});row.append(s.element);root.append(row);}
-    const actions=doc.createElement('div');actions.className='uw-feature-actions';actions.append(createButton({label:'Yangilash',variant:'secondary',busy:state.status==='loading',onClick:()=>controller.load()},doc),createButton({label:'PDF',variant:'secondary',busy:state.exporting,onClick:()=>controller.exportPdf()},doc),createButton({label:'Excel',variant:'ghost',disabled:true,ariaLabel:'Excel eksport backendda mavjud emas'},doc));root.append(actions);
+    const actions=doc.createElement('div');actions.className='uw-feature-actions';actions.append(createButton({label:'Yangilash',variant:'secondary',busy:state.status==='loading',onClick:()=>controller.load()},doc),createButton({label:'PDF',variant:'secondary',busy:state.exporting,onClick:()=>controller.exportPdf()},doc),createButton({label:'Excel',variant:'ghost',busy:state.exporting,onClick:()=>controller.exportExcel()},doc));root.append(actions);
     if(state.status==='loading'){root.append(createStatePanel({kind:'loading',title:'Hisobot yuklanmoqda…',message:'Serverdagi tasdiqlangan raqamlar olinmoqda.'},doc));return;}if(state.status==='error'){root.append(createStatePanel({kind:'error',title:'Hisobot yuklanmadi',message:state.error?.message||'Xato',actionLabel:'Qayta urinish',onAction:()=>controller.load()},doc));return;}root.append(renderData(doc,state));if(state.exportError)root.append(createStatePanel({kind:'error',title:'Eksport bajarilmadi',message:state.exportError.message},doc));};
   render(); const unsubscribe=controller.subscribe(render); return {element:root,destroy:unsubscribe};
 }
