@@ -108,7 +108,12 @@ export function createLiveAuthAdapter({ endpoint, fetchImpl = globalThis.fetch, 
       const result = await request('sign_in_password', { login: input?.login || '', password: input?.password || '' });
       if (!result.ok) return result;
       tokenStore.set(result.data.session?.token || '');
+      challenges.clear();
       return ok({ actor: result.data.actor || null, accountId: result.data.accountId, session: result.data.session });
+    },
+    hasPendingTelegramSignIn() {
+      const challenge = challenges.get();
+      return !!(challenge?.state && challenge?.browserVerifier);
     },
     async beginTelegramSignIn(input) {
       const result = await request('begin_telegram_sign_in', { returnTo: input?.returnTo || '/' });
@@ -152,6 +157,7 @@ export function createLiveAuthAdapter({ endpoint, fetchImpl = globalThis.fetch, 
       if (!challenge?.state || !challenge?.browserVerifier) return fail('VALIDATION_ERROR', 'Telegram challenge topilmadi.');
       const result = await request('get_telegram_sign_in_status', challenge);
       if (!result.ok) return result;
+      if (['INVALID', 'EXPIRED', 'REJECTED', 'CONSUMED'].includes(result.data.challenge?.status)) challenges.clear();
       return ok(result.data.challenge);
     },
     async completeTelegramSignIn({ approvedAccountId, confirmed }) {

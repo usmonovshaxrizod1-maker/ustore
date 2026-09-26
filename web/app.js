@@ -180,6 +180,26 @@ function loadLoginFeatureModule() {
   if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js');
   return loginFeatureModulePromise;
 }
+function watchTelegramLogin(controller) {
+  const resume = () => {
+    if (document.visibilityState !== 'hidden' && controller.hasPendingTelegramSignIn()) {
+      void controller.resumeTelegramSignIn();
+    }
+  };
+  globalThis.addEventListener?.('pageshow', resume);
+  globalThis.addEventListener?.('focus', resume);
+  document.addEventListener?.('visibilitychange', resume);
+  const poll = globalThis.setInterval?.(() => {
+    if (document.visibilityState !== 'hidden' && controller.getState().telegramPhase === 'waiting') resume();
+  }, 2500);
+  remember(() => {
+    globalThis.removeEventListener?.('pageshow', resume);
+    globalThis.removeEventListener?.('focus', resume);
+    document.removeEventListener?.('visibilitychange', resume);
+    if (poll != null) globalThis.clearInterval?.(poll);
+  });
+  resume();
+}
 function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.' } = {}) {
   const timer = globalThis.setTimeout?.(() => {
     if (epoch !== renderEpoch) return;
@@ -236,7 +256,7 @@ async function renderCentralHandoff(routeState, epoch) {
       onRedirect: (url) => location.assign(url),
     });
     const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot }));
-    mount(view); return;
+    mount(view); watchTelegramLogin(controller); return;
   }
   const controller = authFeature.createCentralOriginHandoffController({ authPort: authRuntime.auth, state, onRedirect:(url)=>location.assign(url) });
   const view = reactive(controller, (snapshot) => authFeature.createCentralOriginHandoffView({ controller, state:snapshot }));
@@ -314,6 +334,7 @@ async function renderPlatformLogin(routeState, epoch) {
   const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state: snapshot }));
   shell.append(top, view.element);
   mount(shell); remember(view.destroy);
+  watchTelegramLogin(controller);
 }
 
 

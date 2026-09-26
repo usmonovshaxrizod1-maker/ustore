@@ -5,6 +5,7 @@ const AUTH_ERROR_COPY = Object.freeze({
   RATE_LIMITED: { title: 'Urinishlar ko‘p', message: 'Birozdan keyin qayta urinib ko‘ring.' },
   SESSION_EXPIRED: { title: 'Sessiya tugagan', message: 'Qayta kirishingiz kerak.' },
   NETWORK_ERROR: { title: 'Tarmoq xatosi', message: 'Internet aloqasini tekshirib, qayta urinib ko‘ring.' },
+  FORBIDDEN: { title: 'Kirishga ruxsat berilmadi', message: 'Bu sayt manzili Telegram orqali kirish uchun serverda ruxsat etilmagan.' },
   CAPABILITY_UNAVAILABLE: { title: 'Hozircha mavjud emas', message: 'Bu kirish usuli vaqtincha mavjud emas.' },
 });
 
@@ -23,7 +24,7 @@ export function mapAuthError(error) {
 export function createLoginController({ authPort, returnTo = '/', onSignedIn, onRedirect } = {}) {
   if (!authPort) throw new TypeError('authPort kerak');
   let draft = { login: '', password: '' };
-  let state = { tab: 'telegram', busy: false, passwordVisible: false, error: null };
+  let state = { tab: 'telegram', busy: false, passwordVisible: false, error: null, telegramPhase: 'idle', telegramAccount: null };
   const listeners = new Set();
   const emit = () => listeners.forEach((listener) => listener({ ...state }));
   const set = (patch) => { state = { ...state, ...patch }; emit(); return state; };
@@ -55,11 +56,47 @@ export function createLoginController({ authPort, returnTo = '/', onSignedIn, on
     },
     async signInTelegram() {
       if (state.busy) return null;
-      set({ busy: true, error: null });
+      set({ busy: true, error: null, telegramPhase: 'starting', telegramAccount: null });
       const result = await authPort.beginTelegramSignIn({ returnTo });
-      if (!result.ok) { set({ busy: false, error: mapAuthError(result.error) }); return result; }
-      set({ busy: false, error: null });
+      if (!result.ok) { set({ busy: false, telegramPhase: 'idle', error: mapAuthError(result.error) }); return result; }
+      set({ busy: false, error: null, telegramPhase: 'waiting' });
       onRedirect?.(result.data.redirectUrl);
+      return result;
+    },
+    hasPendingTelegramSignIn() { return authPort.hasPendingTelegramSignIn?.() === true; },
+    async resumeTelegramSignIn() {
+      if (!authPort.hasPendingTelegramSignIn?.()) return null;
+      if (state.telegramPhase === 'idle') set({ tab: 'telegram', telegramPhase: 'waiting', error: null });
+      return this.checkTelegramSignIn();
+    },
+    async checkTelegramSignIn() {
+      if (state.busy || state.telegramPhase === 'approved' || !authPort.hasPendingTelegramSignIn?.()) return null;
+      if (typeof authPort.getTelegramSignInStatus !== 'function') return null;
+      set({ busy: true, error: null, telegramPhase: 'checking' });
+      const result = await authPort.getTelegramSignInStatus();
+      if (!result.ok) { set({ busy: false, telegramPhase: 'waiting', error: mapAuthError(result.error) }); return result; }
+      const challenge = result.data || {};
+      if (challenge.status === 'APPROVED' && challenge.approvedAccountId && challenge.requiresExplicitConfirmation === true) {
+        set({ busy: false, telegramPhase: 'approved', telegramAccount: {
+          id: challenge.approvedAccountId, name: challenge.displayName || 'Telegram foydalanuvchisi', hint: challenge.telegramHint || '',
+        } });
+      } else if (challenge.status === 'PENDING') {
+        set({ busy: false, telegramPhase: 'waiting', telegramAccount: null });
+      } else {
+        set({ busy: false, telegramPhase: 'idle', telegramAccount: null, error: {
+          title: 'Telegram tasdig‘i tugadi', message: 'Kirish so‘rovi muddati tugagan yoki yaroqsiz. Qayta boshlang.', code: 'SESSION_EXPIRED',
+        } });
+      }
+      return result;
+    },
+    async confirmTelegramSignIn() {
+      const accountId = state.telegramAccount?.id;
+      if (state.busy || state.telegramPhase !== 'approved' || !accountId) return null;
+      set({ busy: true, error: null });
+      const result = await authPort.completeTelegramSignIn({ approvedAccountId: accountId, confirmed: true });
+      if (!result.ok) { set({ busy: false, error: mapAuthError(result.error) }); return result; }
+      set({ busy: false, telegramPhase: 'idle', telegramAccount: null });
+      onSignedIn?.(result.data);
       return result;
     },
   };
@@ -96,8 +133,20 @@ export function createLoginView({ controller, state = controller?.getState?.() |
   }
 
   if (state.tab === 'telegram') {
-    const telegramAction = createButton({ label: state.busy ? 'Ochilmoqda…' : 'Telegram’da davom etish', busy: state.busy, onClick: () => controller.signInTelegram() }, doc);
-    const telegram = createCard({ title: 'Telegram orqali kirish', description: 'Tasdiqlash UStorE’ning markaziy Telegram oqimida bajariladi.', body: telegramAction }, doc);
+    const telegramBody = doc.createElement('div');
+    if (state.telegramPhase === 'approved' && state.telegramAccount) {
+      const profile = doc.createElement('p');
+      profile.textContent = `${state.telegramAccount.name}${state.telegramAccount.hint ? ` (${state.telegramAccount.hint})` : ''} — shu Telegram profilingizmi?`;
+      telegramBody.append(profile, createButton({ label: state.busy ? 'Kirilmoqda…' : 'Ha, shu profil bilan kirish', busy: state.busy, onClick: () => controller.confirmTelegramSignIn() }, doc));
+    } else {
+      if (state.telegramPhase === 'waiting' || state.telegramPhase === 'checking') {
+        const waiting = doc.createElement('p');
+        waiting.textContent = 'Botda tasdiqlaganingizdan so‘ng brauzerga qayting. Kirish shu yerda yakunlanadi.';
+        telegramBody.append(waiting, createButton({ label: state.busy ? 'Tekshirilmoqda…' : 'Tasdiqni tekshirish', busy: state.busy, onClick: () => controller.checkTelegramSignIn() }, doc));
+      }
+      telegramBody.append(createButton({ label: state.telegramPhase === 'starting' ? 'Ochilmoqda…' : 'Telegram’da davom etish', busy: state.busy, onClick: () => controller.signInTelegram() }, doc));
+    }
+    const telegram = createCard({ title: 'Telegram orqali kirish', description: 'Tasdiqlash UStorE’ning markaziy Telegram oqimida bajariladi.', body: telegramBody }, doc);
     telegram.dataset.authPanel = 'telegram';
     body.append(telegram);
   } else {
