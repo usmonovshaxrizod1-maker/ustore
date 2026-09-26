@@ -1,0 +1,56 @@
+export const PLATFORM_ROUTES = Object.freeze([
+  { id: 'platform-home', path: '/platform', navId: null, platform: true },
+  { id: 'platform-login', path: '/platform/login', navId: null, platform: true },
+  { id: 'platform-admin', path: '/platform/admin', navId: 'overview', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-shops', path: '/platform/admin/shops', navId: 'shops', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-shop', path: '/platform/admin/shops/:shopId', navId: 'shops', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-requests', path: '/platform/admin/requests', navId: 'requests', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-request', path: '/platform/admin/requests/:requestId', navId: 'requests', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-support', path: '/platform/admin/support', navId: 'support', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-support-ticket', path: '/platform/admin/support/:ticketId', navId: 'support', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-tariffs', path: '/platform/admin/tariffs', navId: 'tariffs', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-analytics', path: '/platform/admin/analytics', navId: 'analytics', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-settings', path: '/platform/admin/settings', navId: 'settings', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-app', path: '/platform/app', navId: 'app', platform: true, platformAuth: true },
+  { id: 'platform-shops', path: '/platform/shops', navId: 'shops', platform: true, platformAuth: true },
+  { id: 'platform-shop', path: '/platform/shops/:shopId', navId: 'shops', platform: true, platformAuth: true },
+  { id: 'platform-subscriptions', path: '/platform/subscriptions', navId: 'subscriptions', platform: true, platformAuth: true },
+  { id: 'platform-requests', path: '/platform/requests', navId: 'requests', platform: true, platformAuth: true },
+  { id: 'platform-request', path: '/platform/requests/:requestId', navId: 'requests', platform: true, platformAuth: true },
+  { id: 'platform-support', path: '/platform/support', navId: 'support', platform: true, platformAuth: true },
+  { id: 'platform-support-ticket', path: '/platform/support/:ticketId', navId: 'support', platform: true, platformAuth: true },
+  { id: 'platform-profile', path: '/platform/profile', navId: 'profile', platform: true, platformAuth: true },
+]);
+
+export const CUSTOMER_ROUTES = Object.freeze([
+  { id: 'home', path: '/', navId: 'home' },
+  { id: 'catalog', path: '/catalog', navId: 'catalog' },
+  { id: 'search', path: '/search', navId: 'catalog' },
+  { id: 'product', path: '/product/:productId', navId: 'catalog' },
+  { id: 'cart', path: '/cart', navId: 'cart' },
+  { id: 'checkout', path: '/checkout', navId: 'cart' },
+  { id: 'orders', path: '/orders', navId: 'profile', auth: true },
+  { id: 'order', path: '/orders/:orderId', navId: 'profile', auth: true },
+  { id: 'profile', path: '/profile', navId: 'profile', auth: true },
+  { id: 'favorites', path: '/favorites', navId: 'profile', auth: true },
+  { id: 'sessions', path: '/profile/sessions', navId: 'profile', auth: true },
+  { id: 'support', path: '/support', navId: 'profile', auth: true },
+  { id: 'auth-origin-handoff', path: '/auth/handoff', navId: null },
+  { id: 'auth-origin-callback', path: '/auth/callback', navId: null },
+]);
+
+export const ADMIN_ROUTES = Object.freeze([
+  { id: 'admin-overview', path: '/admin', navId: 'overview', admin: true },
+  { id: 'admin-products', path: '/admin/products', navId: 'products', admin: true },
+  { id: 'admin-orders', path: '/admin/orders', navId: 'orders', admin: true },
+  { id: 'admin-order', path: '/admin/orders/:orderId', navId: 'orders', admin: true },
+  { id: 'admin-inventory', path: '/admin/inventory', navId: 'inventory', admin: true },
+  { id: 'admin-marketing', path: '/admin/marketing', navId: 'marketing', admin: true },
+  { id: 'admin-reports', path: '/admin/reports', navId: 'reports', admin: true },
+  { id: 'admin-team', path: '/admin/team', navId: 'team', admin: true },
+  { id: 'admin-support', path: '/admin/support', navId: 'support', admin: true },
+  { id: 'admin-settings', path: '/admin/settings', navId: 'settings', admin: true },
+  { id: 'admin-domains', path: '/admin/domains', navId: 'domains', admin: true },
+]);
+
+export const WEB_ROUTES = Object.freeze([...PLATFORM_ROUTES, ...CUSTOMER_ROUTES, ...ADMIN_ROUTES]);
