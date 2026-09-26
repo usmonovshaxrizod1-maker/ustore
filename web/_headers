@@ -1,0 +1,47 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  X-Frame-Options: DENY
+
+/admin
+  X-Robots-Tag: noindex, nofollow, noarchive
+/admin/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/auth/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/cart
+  X-Robots-Tag: noindex, nofollow, noarchive
+/checkout
+  X-Robots-Tag: noindex, nofollow, noarchive
+/orders*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/profile*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/favorites
+  X-Robots-Tag: noindex, nofollow, noarchive
+/support*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/search
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform/login
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform/app
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform/shops*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform/subscriptions*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform/requests*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform/support*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform/profile*
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform/admin
+  X-Robots-Tag: noindex, nofollow, noarchive
+/platform/admin/*
+  X-Robots-Tag: noindex, nofollow, noarchive

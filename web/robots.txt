@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /auth/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /profile
+Disallow: /favorites
+Disallow: /sessions
+Disallow: /support
+Disallow: /search
+Disallow: /platform/login
+Disallow: /platform/app
+Disallow: /platform/shops
+Disallow: /platform/subscriptions
+Disallow: /platform/requests
+Disallow: /platform/support
+Disallow: /platform/profile
+Disallow: /platform/admin
+
+# Dynamic shop/product sitemap and route-level social preview HTML require the
+# production server/prerender layer. No fake sitemap URL is advertised here.
