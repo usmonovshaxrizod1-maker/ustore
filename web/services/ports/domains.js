@@ -1,6 +1,6 @@
 import { createPort } from './simple.js';
 const REQUIRED = ['list','add','verify','setPrimary','remove'];
-const OPTIONAL = ['getMiniAppTarget','setMiniAppTarget'];
+const OPTIONAL = ['changeSubdomain','getMiniAppTarget','setMiniAppTarget'];
 export function createDomainsPort(adapter) {
   const base = createPort(adapter, REQUIRED, 'domains');
   const port = { ...base };

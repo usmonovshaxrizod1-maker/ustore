@@ -11,6 +11,10 @@
 .uw-auth-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--uw-space-2); }
 .uw-auth__body, .uw-auth-form { display: grid; gap: var(--uw-space-4); }
 .uw-auth-password-row { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: var(--uw-space-2); }
+.uw-auth-credential-help { display: grid; gap: var(--uw-space-3); font-size: var(--uw-text-sm); color: var(--uw-color-text-muted); }
+.uw-auth-credential-help ol { margin: 0; padding-inline-start: 1.4rem; display: grid; gap: var(--uw-space-2); }
+.uw-auth-credential-help p { margin: 0; }
+.uw-auth-credential-help a { justify-self: start; text-decoration: none; text-align: center; }
 .uw-credential-management { display: grid; gap: var(--uw-space-4); }
 
 .uw-home { display: grid; gap: var(--uw-space-10); }

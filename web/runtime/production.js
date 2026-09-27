@@ -4,13 +4,14 @@ import {
   createLiveAuthAdapter,
   createSessionStorageTokenStore,
   createSessionStorageChallengeStore,
+  createSessionStorageOfficialTelegramStore,
   createLiveShopPublicAdapters,
   createLiveShopPrivateAdapters,
   createLiveAdminAdapter,
   createLivePlatformAdapter,
   createLiveDomainsAdapter,
   createLiveTenantResolver,
-} from '../services/live/index.js';
+} from '../services/live/index.js?v=20260926cred2';
 
 function safeBaseUrl(value) {
   const url = new URL(String(value || ''));
@@ -37,7 +38,8 @@ export function createProductionAuthRuntime({
   const endpoints = productionEndpoints(config);
   const sessions = tokenStore || createSessionStorageTokenStore(sessionStorage);
   const challengeStore = createSessionStorageChallengeStore(sessionStorage);
-  const auth = createLiveAuthAdapter({ endpoint: endpoints.auth, fetchImpl, tokenStore: sessions, challengeStore });
+  const officialTelegramStore = createSessionStorageOfficialTelegramStore(sessionStorage);
+  const auth = createLiveAuthAdapter({ endpoint: endpoints.auth, fetchImpl, tokenStore: sessions, challengeStore, officialTelegramStore });
   return Object.freeze({ endpoints, tokenStore: sessions, auth });
 }
 

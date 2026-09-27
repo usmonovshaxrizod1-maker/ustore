@@ -2,6 +2,7 @@ import { fail, ok, STABLE_ERROR_CODES } from '../ports/result.js';
 
 const ERROR_SET = new Set(STABLE_ERROR_CODES);
 const CHALLENGE_KEY = 'ustore:web:telegram-challenge:v1';
+const OFFICIAL_TELEGRAM_KEY = 'ustore:web:official-telegram:v1';
 const ORIGIN_HANDOFF_KEY = 'ustore:web:origin-handoff:v1';
 const SESSION_TOKEN_KEY = 'ustore:web:session-token:v1';
 
@@ -50,6 +51,24 @@ export function createSessionStorageChallengeStore(storage = globalThis.sessionS
   });
 }
 
+export function createSessionStorageOfficialTelegramStore(storage = globalThis.sessionStorage) {
+  if (!storage?.getItem || !storage?.setItem || !storage?.removeItem) throw new TypeError('sessionStorage-compatible storage kerak');
+  return Object.freeze({
+    get() { try { return JSON.parse(storage.getItem(OFFICIAL_TELEGRAM_KEY) || 'null'); } catch (_) { return null; } },
+    set(value) { storage.setItem(OFFICIAL_TELEGRAM_KEY, JSON.stringify(value)); },
+    clear() { storage.removeItem(OFFICIAL_TELEGRAM_KEY); },
+  });
+}
+
+function randomBase64Url() {
+  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function codeChallenge(verifier) {
+  const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+  return btoa(String.fromCharCode(...digest)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 export function createSessionStorageOriginHandoffStore(storage = globalThis.sessionStorage) {
   if (!storage?.getItem || !storage?.setItem || !storage?.removeItem) throw new TypeError('sessionStorage-compatible storage kerak');
   return Object.freeze({
@@ -61,16 +80,17 @@ export function createSessionStorageOriginHandoffStore(storage = globalThis.sess
   });
 }
 
-export function createLiveAuthAdapter({ endpoint, fetchImpl = globalThis.fetch, tokenStore = createMemoryTokenStore(), challengeStore = null } = {}) {
+export function createLiveAuthAdapter({ endpoint, fetchImpl = globalThis.fetch, tokenStore = createMemoryTokenStore(), challengeStore = null, officialTelegramStore = null } = {}) {
   const url = safeEndpoint(endpoint);
   if (typeof fetchImpl !== 'function') throw new TypeError('fetch kerak');
   const challenges = challengeStore || { get: () => null, set: () => {}, clear: () => {} };
+  const official = officialTelegramStore || { get: () => null, set: () => {}, clear: () => {} };
 
   let signInGeneration = 0;
   let sessionRequest = null;
   async function request(action, payload = {}, { auth = false } = {}) {
     const tokenAtStart = tokenStore.get();
-    const producesSession = ['sign_in_password','exchange_telegram_sign_in','exchange_origin_handoff'].includes(action);
+    const producesSession = ['sign_in_password','exchange_telegram_sign_in','exchange_telegram_oidc','exchange_origin_handoff'].includes(action);
     const generation = producesSession ? ++signInGeneration : signInGeneration;
     if (['sign_out','revoke_all_sessions','change_password'].includes(action)) ++signInGeneration;
     const headers = { 'content-type': 'application/json' };
@@ -109,7 +129,40 @@ export function createLiveAuthAdapter({ endpoint, fetchImpl = globalThis.fetch, 
       if (!result.ok) return result;
       tokenStore.set(result.data.session?.token || '');
       challenges.clear();
+      official.clear();
       return ok({ actor: result.data.actor || null, accountId: result.data.accountId, session: result.data.session });
+    },
+    async beginOfficialTelegramSignIn(input) {
+      const verifier = randomBase64Url();
+      const result = await request('begin_telegram_oidc', {
+        returnTo: input?.returnTo || '/platform/app', codeChallenge: await codeChallenge(verifier),
+      });
+      if (!result.ok) return result;
+      const challenge = result.data.challenge || {};
+      if (!/^[A-Za-z0-9_-]{43}$/.test(challenge.state || '') ||
+          !/^[A-Za-z0-9_-]{43}$/.test(challenge.browserVerifier || '') ||
+          !challenge.expiresAt || new Date(challenge.expiresAt).getTime() <= Date.now())
+        return fail('CONTRACT_MISMATCH', 'Telegram Login javobi noto‘liq.');
+      let url;
+      try { url = new URL(challenge.redirectUrl); } catch (_) { return fail('CONTRACT_MISMATCH', 'Telegram Login manzili noto‘g‘ri.'); }
+      if (url.origin !== 'https://oauth.telegram.org' || url.pathname !== '/auth' || url.searchParams.get('state') !== challenge.state)
+        return fail('CONTRACT_MISMATCH', 'Telegram Login manzili noto‘g‘ri.');
+      official.set({ state: challenge.state, browserVerifier: challenge.browserVerifier,
+        codeVerifier: verifier, expiresAt: challenge.expiresAt });
+      return ok({ redirectUrl: url.href });
+    },
+    async completeOfficialTelegramSignIn({ code, state }) {
+      const pending = official.get();
+      if (!pending || pending.state !== state || new Date(pending.expiresAt).getTime() <= Date.now()) {
+        official.clear();
+        return fail('SESSION_EXPIRED', 'Telegram orqali kirish muddati tugadi. Qayta urinib ko‘ring.');
+      }
+      official.clear(); // Authorization code is one-time, including on failed exchanges.
+      const result = await request('exchange_telegram_oidc', { code, state,
+        browserVerifier: pending.browserVerifier, codeVerifier: pending.codeVerifier });
+      if (!result.ok) return result;
+      tokenStore.set(result.data.session.token);
+      return ok({ accountId: result.data.accountId, session: result.data.session, returnTo: result.data.returnTo });
     },
     hasPendingTelegramSignIn() {
       const challenge = challenges.get();

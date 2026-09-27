@@ -4,6 +4,7 @@ const AUTH_METHODS = [
 ];
 
 const OPTIONAL_AUTH_METHODS = [
+  'beginOfficialTelegramSignIn', 'completeOfficialTelegramSignIn',
   'getTelegramSignInStatus', 'completeTelegramSignIn', 'changeLogin', 'changePassword',
   'beginOriginHandoff', 'getOriginHandoff', 'authorizeOriginHandoff', 'exchangeOriginHandoff',
 ];

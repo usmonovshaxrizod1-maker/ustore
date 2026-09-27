@@ -15,7 +15,8 @@ export function createLiveDomainsAdapter({ endpoint, botId, tokenStore, fetchImp
       if (tokenStore.get() !== token) return fail('SESSION_EXPIRED', 'Kirish holati o‘zgardi.');
       if (!response.ok || data?.error) {
         const code = STABLE_ERROR_CODES.includes(data?.error) ? data.error : response.status === 401 ? 'SESSION_EXPIRED' : response.status === 403 ? 'FORBIDDEN' : 'NETWORK_ERROR';
-        return fail(code, 'Domen amali bajarilmadi.', { retryable: code === 'NETWORK_ERROR' });
+        const message = code === 'SUBDOMAIN_TAKEN' ? 'Bu subdomen band. Boshqa nom tanlang.' : 'Domen amali bajarilmadi.';
+        return fail(code, message, { retryable: code === 'NETWORK_ERROR' });
       }
       if (!data || typeof data !== 'object' || Array.isArray(data)) return fail('CONTRACT_MISMATCH', 'Domen javobi noto‘liq.');
       const valid = action === 'domains_list' ? Array.isArray(data.items)
@@ -34,6 +35,7 @@ export function createLiveDomainsAdapter({ endpoint, botId, tokenStore, fetchImp
     async list() { const r = await request('domains_list'); return r.ok ? ok(r.data.items) : r; },
     add: input => domain('domains_add', { hostname: input?.hostname }),
     reserveSlug: input => domain('domains_reserve_slug', { slug: input?.slug }),
+    changeSubdomain: input => domain('domains_change_slug', { slug: input?.slug }),
     verify: input => domain('domains_verify', { domainId: input?.domainId }),
     setPrimary: input => domain('domains_set_primary', { domainId: input?.domainId }),
     async remove(input) { return request('domains_remove', { domainId: input?.domainId }); },

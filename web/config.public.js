@@ -25,6 +25,8 @@ window.APP_CONFIG = {
   IMAGES_BUCKET: "images",
   // Central platform hostname; DNS activation is independent of this public value.
   USTORE_BASE_HOSTNAME: "ustr.uz",
+  // Public Telegram username only. The bot token stays in Supabase secrets.
+  USTORE_PLATFORM_BOT_USERNAME: "ustoreuz_bot",
   // Optional shared WEB hosts allowed to resolve shop via ?bot_id=. Never add custom shop domains.
   USTORE_WEB_BOT_ID_HOSTNAMES: ["ustr.uz", "www.ustr.uz", "usmonovshaxrizod1-maker.github.io"],
   // Only this exact GitHub Pages preview path enables platform preview routing.

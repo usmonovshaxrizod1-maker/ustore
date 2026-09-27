@@ -169,7 +169,7 @@ function applyShopPublicMetadata({ title, description, pathname = '/', imageUrl 
   return metadataManager.publicPage({ title, description, canonicalUrl, imageUrl, type, locale: uiLocale, siteName: context?.shop?.name || 'UStorE' });
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20260926cred2');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
@@ -179,28 +179,8 @@ function loadAuthFeatureModule() {
 function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
-  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20260926b');
+  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20260926cred2');
   return loginFeatureModulePromise;
-}
-function watchTelegramLogin(controller) {
-  const resume = () => {
-    if (document.visibilityState !== 'hidden' && controller.hasPendingTelegramSignIn?.()) {
-      void controller.resumeTelegramSignIn?.();
-    }
-  };
-  globalThis.addEventListener?.('pageshow', resume);
-  globalThis.addEventListener?.('focus', resume);
-  document.addEventListener?.('visibilitychange', resume);
-  const poll = globalThis.setInterval?.(() => {
-    if (document.visibilityState !== 'hidden' && controller.getState().telegramPhase === 'waiting') resume();
-  }, 2500);
-  remember(() => {
-    globalThis.removeEventListener?.('pageshow', resume);
-    globalThis.removeEventListener?.('focus', resume);
-    document.removeEventListener?.('visibilitychange', resume);
-    if (poll != null) globalThis.clearInterval?.(poll);
-  });
-  resume();
 }
 function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.' } = {}) {
   const timer = globalThis.setTimeout?.(() => {
@@ -258,7 +238,7 @@ async function renderCentralHandoff(routeState, epoch) {
       onRedirect: (url) => location.assign(url),
     });
     const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot }));
-    mount(view); watchTelegramLogin(controller); return;
+    mount(view); remember(view.destroy); return;
   }
   const controller = authFeature.createCentralOriginHandoffController({ authPort: authRuntime.auth, state, onRedirect:(url)=>location.assign(url) });
   const view = reactive(controller, (snapshot) => authFeature.createCentralOriginHandoffView({ controller, state:snapshot }));
@@ -336,7 +316,8 @@ async function renderPlatformLogin(routeState, epoch) {
   const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state: snapshot }));
   shell.append(top, view.element);
   mount(shell); remember(view.destroy);
-  watchTelegramLogin(controller);
+  // Official Telegram OAuth redirects back with code/state; no polling or
+  // second approval in this tab is needed.
 }
 
 
@@ -733,4 +714,39 @@ async function renderRoute(routeState, reason = 'refresh') {
 }
 
 router=createRouter({previewBase:previewBase(),onChange:(state,reason)=>renderRoute(state,reason)});
-router.start();
+async function startWebApp() {
+  const params = new URLSearchParams(location.search);
+  if ((params.has('code') || params.has('state') || params.has('error')) && allowExplicitPlatformRoute() &&
+      (location.pathname === '/' || !!previewBase())) {
+    mount(stateView('loading', 'Telegram kirishi tekshirilmoqda', 'Bir oz kuting.'));
+    try {
+      const [runtime, callback, authStore] = await Promise.all([
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20260926cred2'), import('./services/live/auth.js?v=20260926cred2'),
+      ]);
+      const result = await callback.completeOfficialTelegramCallback({
+        locationRef: location, historyRef: history,
+        authPort: runtime.createProductionAuthRuntime().auth,
+        pendingStore: authStore.createSessionStorageOfficialTelegramStore(sessionStorage),
+      });
+      if (result?.ok && typeof result.data?.returnTo === 'string' &&
+          (result.data.returnTo.startsWith('/platform/') || result.data.returnTo.startsWith('/auth/origin/handoff?'))) {
+        const path = result.data.returnTo;
+        history.replaceState(history.state, '', previewBase() ? `${previewBase()}#${path}` : path);
+        router.start();
+        return;
+      }
+      mount(stateView('error', 'Telegram orqali kirish amalga oshmadi',
+        result?.error?.message || 'Kirishni qaytadan boshlang.', 'Kirish sahifasi', () => { router.start(); router.replace('/platform/login'); })));
+      return;
+    } catch (_) {
+      const clean = new URL(location.href);
+      for (const key of ['code', 'state', 'error', 'error_description']) clean.searchParams.delete(key);
+      history.replaceState(history.state, '', `${clean.pathname}${clean.search}${clean.hash}`);
+      mount(stateView('error', 'Telegram orqali kirish amalga oshmadi',
+        'Qayta urinib ko‘ring.', 'Kirish sahifasi', () => { router.start(); router.replace('/platform/login'); })));
+      return;
+    }
+  }
+  router.start();
+}
+void startWebApp();
