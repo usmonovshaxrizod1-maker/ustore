@@ -57,9 +57,9 @@ export function createLoginController({ authPort, returnTo = '/', onSignedIn, on
     async signInTelegram() {
       if (state.busy) return null;
       set({ busy: true, error: null, telegramPhase: 'starting', telegramAccount: null });
-      const result = await authPort.beginTelegramSignIn({ returnTo });
+      const result = await authPort.beginOfficialTelegramSignIn({ returnTo });
       if (!result.ok) { set({ busy: false, telegramPhase: 'idle', error: mapAuthError(result.error) }); return result; }
-      set({ busy: false, error: null, telegramPhase: 'waiting' });
+      set({ busy: false, error: null, telegramPhase: 'redirecting' });
       onRedirect?.(result.data.redirectUrl);
       return result;
     },
@@ -134,19 +134,8 @@ export function createLoginView({ controller, state = controller?.getState?.() |
 
   if (state.tab === 'telegram') {
     const telegramBody = doc.createElement('div');
-    if (state.telegramPhase === 'approved' && state.telegramAccount) {
-      const profile = doc.createElement('p');
-      profile.textContent = `${state.telegramAccount.name}${state.telegramAccount.hint ? ` (${state.telegramAccount.hint})` : ''} — shu Telegram profilingizmi?`;
-      telegramBody.append(profile, createButton({ label: state.busy ? 'Kirilmoqda…' : 'Ha, shu profil bilan kirish', busy: state.busy, onClick: () => controller.confirmTelegramSignIn() }, doc));
-    } else {
-      if (state.telegramPhase === 'waiting' || state.telegramPhase === 'checking') {
-        const waiting = doc.createElement('p');
-        waiting.textContent = 'Botda tasdiqlaganingizdan so‘ng brauzerga qayting. Kirish shu yerda yakunlanadi.';
-        telegramBody.append(waiting, createButton({ label: state.busy ? 'Tekshirilmoqda…' : 'Tasdiqni tekshirish', busy: state.busy, onClick: () => controller.checkTelegramSignIn() }, doc));
-      }
-      telegramBody.append(createButton({ label: state.telegramPhase === 'starting' ? 'Ochilmoqda…' : 'Telegram’da davom etish', busy: state.busy, onClick: () => controller.signInTelegram() }, doc));
-    }
-    const telegram = createCard({ title: 'Telegram orqali kirish', description: 'Tasdiqlash UStorE’ning markaziy Telegram oqimida bajariladi.', body: telegramBody }, doc);
+    telegramBody.append(createButton({ label: state.busy ? 'Ochilmoqda…' : 'Telegram’da davom etish', busy: state.busy, onClick: () => controller.signInTelegram() }, doc));
+    const telegram = createCard({ title: 'Telegram orqali kirish', description: 'Telegram profilingiz bilan tasdiqlang. Tasdiqdan keyin saytga avtomatik qaytasiz.', body: telegramBody }, doc);
     telegram.dataset.authPanel = 'telegram';
     body.append(telegram);
   } else {
@@ -162,7 +151,32 @@ export function createLoginView({ controller, state = controller?.getState?.() |
     const submit = createButton({ label: state.busy ? 'Tekshirilmoqda…' : 'Kirish', type: 'submit', busy: state.busy }, doc);
     form.append(loginField.element, passwordRow, submit);
     form.addEventListener('submit', (event) => { event?.preventDefault?.(); controller.signInPassword({ login: loginField.input.value, password: passwordField.input.value }); });
-    body.append(form);
+    const helpBody = doc.createElement('div');
+    helpBody.className = 'uw-auth-credential-help';
+    const steps = doc.createElement('ol');
+    for (const step of [
+      'Telegramdagi do‘kon botingiz yoki UStorE platforma botining Mini App’ini oching.',
+      'Mini App’da Profil → Web login va parol bo‘limini bosing.',
+      'Tizim bergan login va parolni shu saytga kiriting.',
+    ]) {
+      const item = doc.createElement('li'); item.textContent = step; steps.append(item);
+    }
+    const note = doc.createElement('p');
+    note.textContent = 'Parol faqat yaratilganda ko‘rsatiladi. Unutsangiz, o‘sha bo‘limda yangisini yarating. Telegram orqali kirish ham ayni akkauntingizni ochadi.';
+    helpBody.append(steps, note);
+    const bot = String(globalThis.APP_CONFIG?.USTORE_PLATFORM_BOT_USERNAME || '').replace(/^@/, '');
+    if (/^[A-Za-z0-9_]{5,32}$/.test(bot)) {
+      const link = doc.createElement('a');
+      link.className = 'uw-button uw-button--secondary uw-button--md';
+      link.href = `https://t.me/${bot}?start=credentials`;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'UStorE Mini App botini ochish ↗';
+      helpBody.append(link);
+    }
+    const help = createCard({ title: 'Login va parolni qayerdan olaman?', body: helpBody }, doc);
+    help.dataset.authHelp = 'credentials';
+    body.append(form, help);
   }
 
   root.append(heading, tabs, body);

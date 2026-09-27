@@ -27,6 +27,10 @@ function canManage(context) {
   return actor.shopRole === 'OWNER' || (roles.includes('MANAGER') && (permissions.includes('*') || permissions.includes('domains.manage')));
 }
 function safeHost(value) { return String(value || '').trim().toLowerCase().replace(/\.$/, ''); }
+function normalizeSlug(value) {
+  const slug = String(value || '').trim().toLowerCase();
+  return { slug, valid: /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(slug) };
+}
 export function normalizeDomainInput(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return { raw, hostname: '', valid: false, changed: false, reason: 'EMPTY' };
@@ -109,7 +113,7 @@ export function createDomainsFeature(options = {}, documentRef) {
   let destroyed = false;
   if (!port || ['list','add','verify','setPrimary','remove'].some((name) => typeof port[name] !== 'function')) throw new TypeError('domains port incomplete');
 
-  const state = { items: [], loading: false, error: null, busy: new Set(), adding: false, addOpen: false, hostname: '', miniApp: null, miniAppBusy: false };
+  const state = { items: [], loading: false, error: null, busy: new Set(), adding: false, addOpen: false, hostname: '', editingSubdomainId: null, subdomainSlug: '', miniApp: null, miniAppBusy: false };
   const root = doc.createElement('section');
   root.className = `uw-domains${context?.mode === 'telegram' ? ' is-telegram' : ''}`;
   root.dataset.feature = 'domains';
@@ -185,6 +189,31 @@ export function createDomainsFeature(options = {}, documentRef) {
     }
     state.error = null; toast(success, 'success'); await load(); return result;
   }
+  async function changeSubdomain(domain) {
+    if (state.busy.has(domain.id) || typeof port.changeSubdomain !== 'function') return;
+    const normalized = normalizeSlug(state.subdomainSlug);
+    if (!normalized.valid) {
+      state.error = { code:'VALIDATION_ERROR', message:t(language,'Subdomen 3–40 belgidan iborat bo‘lsin: kichik lotin harflari, raqam va tire.','Субдомен должен содержать 3–40 символов: строчные латинские буквы, цифры и дефис.') };
+      render(); return;
+    }
+    const currentSlug = String(domain.hostname || '').split('.')[0];
+    if (normalized.slug === currentSlug) { state.editingSubdomainId=null; state.error=null; render(); return; }
+    const base = String(domain.hostname || '').split('.').slice(1).join('.');
+    if (!await confirm(t(language,`${domain.hostname} manzili ${normalized.slug}.${base} ga almashtirilsinmi? Eski havola ishlamay qoladi.`,`Изменить ${domain.hostname} на ${normalized.slug}.${base}? Старая ссылка перестанет работать.`))) return;
+    state.busy.add(domain.id); state.error=null; render();
+    const result = await port.changeSubdomain({ slug: normalized.slug });
+    state.busy.delete(domain.id);
+    if (!result?.ok) {
+      const taken = result?.error?.code === 'SUBDOMAIN_TAKEN' || result?.error?.code === 'CONFLICT';
+      state.error = taken
+        ? { code:'SUBDOMAIN_TAKEN', message:t(language,'Bu subdomen band. Boshqa nom tanlang.','Этот субдомен занят. Выберите другое имя.') }
+        : (result?.error || {code:'NETWORK_ERROR',message:t(language,'Subdomen almashtirilmadi','Не удалось изменить субдомен')});
+      toast(state.error.message,'danger'); render(); return;
+    }
+    state.editingSubdomainId=null; state.subdomainSlug='';
+    toast(t(language,'Subdomen almashtirildi. Yangi manzil DNS va HTTPS tayyor bo‘lgach faollashadi.','Субдомен изменён. Новый адрес станет активным после готовности DNS и HTTPS.'),'success');
+    await load();
+  }
   function domainCard(domain) {
     const card = doc.createElement('article'); card.className = 'uw-domain-card'; card.dataset.status = domain.status;
     const head = doc.createElement('div'); head.className = 'uw-domain-card__head';
@@ -213,6 +242,12 @@ export function createDomainsFeature(options = {}, documentRef) {
     const actions = doc.createElement('div'); actions.className = 'uw-domain-actions';
     const busy = state.busy.has(domain.id);
     actions.append(button(t(language,'Nusxalash','Копировать'), () => copy(domain.hostname, t(language,'Domen','Домен')), { disabled: busy }));
+    if (domain.kind === 'SUBDOMAIN' && typeof port.changeSubdomain === 'function') {
+      actions.append(button(t(language,'Subdomenni almashtirish','Изменить субдомен'), () => {
+        state.editingSubdomainId = state.editingSubdomainId === domain.id ? null : domain.id;
+        state.subdomainSlug = String(domain.hostname || '').split('.')[0]; state.error=null; render();
+      }, { disabled: busy }));
+    }
     if (domain.status === 'ACTIVE') actions.append(button(t(language,'Ochish','Открыть'), () => openUrl(`https://${domain.hostname}`), { disabled: busy }));
     if (['DRAFT','PENDING_DNS','VERIFYING','PENDING_TLS','ERROR'].includes(domain.status)) {
       actions.append(button(busy ? t(language,'Tekshirilmoqda…','Проверка…') : domain.status === 'ERROR' ? t(language,'Qayta urinish','Повторить') : t(language,'Tekshirish','Проверить'), () => run(domain.id, 'verify', () => port.verify({ domainId: domain.id }), t(language,'Tekshirish boshlandi','Проверка запущена')), { disabled: busy, primary: true }));
@@ -241,6 +276,19 @@ export function createDomainsFeature(options = {}, documentRef) {
       await run(domain.id, 'remove', () => port.remove({ domainId: domain.id }), t(language,'Domenni uzish boshlandi','Отключение домена начато'));
     }, { disabled: busy, danger: true }));
     card.append(actions);
+    if (domain.kind === 'SUBDOMAIN' && state.editingSubdomainId === domain.id) {
+      const editor=doc.createElement('div'); editor.className='uw-domain-add uw-subdomain-edit';
+      const field=doc.createElement('div'); field.className='uw-domain-add__field';
+      const label=doc.createElement('label'); label.textContent=t(language,'Yangi subdomen','Новый субдомен');
+      const input=doc.createElement('input'); input.type='text'; input.autocomplete='off'; input.maxLength=40; input.value=state.subdomainSlug;
+      input.placeholder='fitcore'; input.disabled=busy;
+      input.addEventListener('input',()=>{ state.subdomainSlug=input.value.toLowerCase().replace(/[^a-z0-9-]/g,''); });
+      input.addEventListener('keydown',(event)=>{ if(event.key==='Enter'){event.preventDefault();changeSubdomain(domain);} });
+      const suffix=doc.createElement('small'); suffix.className='uw-domain-normalization'; suffix.textContent=`.${String(domain.hostname||'').split('.').slice(1).join('.')}`;
+      label.append(input); field.append(label,suffix);
+      editor.append(field,button(busy?t(language,'Saqlanmoqda…','Сохранение…'):t(language,'Almashtirish','Изменить'),()=>changeSubdomain(domain),{primary:true,disabled:busy}));
+      card.append(editor);
+    }
     if (domain.lastCheckedAt) { const checked = doc.createElement('small'); checked.className = 'uw-domain-checked'; checked.textContent = `${t(language,'Oxirgi tekshiruv','Последняя проверка')}: ${new Date(domain.lastCheckedAt).toLocaleString(language === 'ru' ? 'ru-RU' : 'uz-UZ')}`; card.append(checked); }
     return card;
   }
@@ -267,12 +315,12 @@ export function createDomainsFeature(options = {}, documentRef) {
     }
     const header = doc.createElement('header'); header.className = 'uw-domains__header';
     const copy = doc.createElement('div'); const h = doc.createElement('h2'); h.textContent = t(language,'Domenlar','Домены');
-    const p = doc.createElement('p'); p.textContent = t(language,'UStorE subdomeni va shaxsiy domenlarni boshqaring. DNS va HTTPS holatlari alohida tekshiriladi.','Управляйте субдоменом UStorE и собственными доменами. DNS и HTTPS проверяются отдельно.'); copy.append(h,p);
-    header.append(copy, button(t(language,'Domen qo‘shish','Добавить домен'), () => { state.addOpen = !state.addOpen; render(); }, { primary:true, disabled: state.loading })); root.append(header);
+    const p = doc.createElement('p'); p.textContent = t(language,'UStorE subdomenini almashtiring yoki o‘zingiz sotib olgan domenni ulang. DNS va HTTPS holatlari alohida tekshiriladi.','Измените субдомен UStorE или подключите купленный вами домен. DNS и HTTPS проверяются отдельно.'); copy.append(h,p);
+    header.append(copy, button(t(language,'O‘z domenimni ulash','Подключить свой домен'), () => { state.addOpen = !state.addOpen; render(); }, { primary:true, disabled: state.loading })); root.append(header);
     if (state.addOpen) {
       const form = doc.createElement('div'); form.className = 'uw-domain-add';
       const field = doc.createElement('div'); field.className = 'uw-domain-add__field';
-      const label = doc.createElement('label'); label.textContent = t(language,'Shaxsiy domen','Свой домен');
+      const label = doc.createElement('label'); label.textContent = t(language,'O‘zingiz sotib olgan domen','Купленный вами домен');
       const input = doc.createElement('input'); input.type='text'; input.autocomplete='off'; input.inputMode='url'; input.placeholder='fitcore.uz'; input.value=state.hostname; input.disabled=state.adding;
       const hint = doc.createElement('small'); hint.className = 'uw-domain-normalization'; hint.setAttribute('aria-live','polite');
       const updateHint = (value) => {
@@ -334,11 +382,17 @@ export function createMiniAppDomainsPort(callApi) {
   if (typeof callApi !== 'function') throw new TypeError('callApi required');
   const wrap = async (action, payload = {}, map = (x) => x) => {
     try { return { ok: true, data: map(await callApi(action, payload)) }; }
-    catch (error) { return { ok:false, error:{ code:String(error?.code || 'NETWORK_ERROR'), message:String(error?.message || 'Amal bajarilmadi'), retryable:true } }; }
+    catch (error) {
+      const raw = String(error?.message || '');
+      const code = raw === 'SUBDOMAIN_TAKEN' ? 'SUBDOMAIN_TAKEN' : String(error?.code || 'NETWORK_ERROR');
+      const message = code === 'SUBDOMAIN_TAKEN' ? 'Bu subdomen band. Boshqa nom tanlang.' : String(raw || 'Amal bajarilmadi');
+      return { ok:false, error:{ code, message, retryable:code === 'NETWORK_ERROR' } };
+    }
   };
   return Object.freeze({
     list: () => wrap('domains_list', {}, (x) => x?.items || []),
     add: ({ hostname }) => wrap('domains_add', { hostname }, (x) => x?.domain),
+    changeSubdomain: ({ slug }) => wrap('domains_change_slug', { slug }, (x) => x?.domain),
     verify: ({ domainId }) => wrap('domains_verify', { domainId }, (x) => x?.domain),
     setPrimary: ({ domainId }) => wrap('domains_set_primary', { domainId }, (x) => x?.domain),
     remove: ({ domainId }) => wrap('domains_remove', { domainId }),
