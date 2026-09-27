@@ -2081,6 +2081,18 @@ input, select, textarea { max-width: 100%; min-width: 0; }
    Profile / shop public card / orders / delivery — modern pass
    ============================================================ */
 .fc-profile-card{display:grid;grid-template-columns:3.75rem minmax(0,1fr) 2.5rem;gap:.8rem;align-items:center;background:#fff;border:1px solid var(--fc-border);border-radius:1.15rem;padding:1rem;box-shadow:0 4px 18px rgba(15,23,42,.045)}
+.fc-web-credential-card{display:grid;gap:1rem;color:var(--fc-text,#1e293b)}
+.fc-web-credential-card h2{margin:0;font-size:1.15rem;font-weight:700}
+.fc-web-credential-card p{margin:0;line-height:1.55}
+.fc-web-credential-login,.fc-web-credential-secret{display:grid;gap:.45rem;padding:1rem;background:var(--fc-surface,#fff);border:1px solid var(--fc-border);border-radius:.85rem;min-width:0}
+.fc-web-credential-login span,.fc-web-credential-secret span{font-size:.75rem;opacity:.75}
+.fc-web-credential-secret code{display:block;font-size:1.05rem;overflow-wrap:anywhere;user-select:all}
+.fc-web-credential-secret small,.fc-web-credential-note{font-size:.8rem;color:var(--fc-text-muted,#64748b)}
+.fc-web-credential-error{font-size:.85rem;color:var(--fc-danger,#b91c1c)}
+.fc-web-credential-actions{display:grid;gap:.8rem}
+.fc-web-credential-edit{display:grid;gap:.5rem;font-size:.85rem;font-weight:600}
+.fc-web-credential-edit input{width:100%;min-height:2.75rem;border:1px solid var(--fc-border);border-radius:.75rem;background:var(--fc-surface,#fff);padding:.65rem .8rem;color:inherit}
+.fc-web-credential-edit small{font-size:.75rem;line-height:1.45;color:var(--fc-muted,#64748b)}
 .fc-profile-avatar{width:3.75rem;height:3.75rem;border-radius:1rem;overflow:hidden;background:#eff6ff;display:flex;align-items:center;justify-content:center;color:var(--fc-primary)}
 .fc-profile-avatar-img{width:100%;height:100%;object-fit:cover;object-position:center center;display:block;flex:0 0 100%}.fc-profile-avatar-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex:0 0 100%}.fc-profile-avatar-fallback.hidden{display:none!important}
 .fc-profile-copy{min-width:0}.fc-profile-eyebrow,.fc-shop-public-eyebrow{text-transform:uppercase;letter-spacing:.06em;font-size:.58rem;font-weight:800;color:#94a3b8}.fc-profile-copy h2{font-size:1rem;font-weight:800;color:#0f172a;line-height:1.25;margin-top:.12rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fc-profile-username{font-size:.72rem;color:#2563eb;font-weight:700;margin-top:.12rem}.fc-profile-phone{font-size:.72rem;color:#64748b;margin-top:.12rem}.fc-profile-edit{min-width:2.5rem!important;min-height:2.5rem!important}

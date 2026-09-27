@@ -16,4 +16,10 @@ window.APP_CONFIG = {
   SUPABASE_URL: "https://YOUR_USTORE_PROJECT_REF.supabase.co",
   SUPABASE_KEY: "YOUR_USTORE_SUPABASE_PUBLISHABLE_OR_ANON_KEY",
   IMAGES_BUCKET: "images",
+  // Central platform hostname. Keep empty until the owned production domain is confirmed.
+  USTORE_BASE_HOSTNAME: "",
+  // Public central bot username; never the bot token.
+  USTORE_PLATFORM_BOT_USERNAME: "",
+  // Optional shared WEB hosts allowed to resolve shop via ?bot_id=. Never add custom shop domains.
+  USTORE_WEB_BOT_ID_HOSTNAMES: [],
 };

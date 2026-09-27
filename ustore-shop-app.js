@@ -1303,6 +1303,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // POLISH ROUND 1-bosqich: page-shell — modal (backdrop) emas, to'liq sahifa
     // (Qo'llab-quvvatlash/Sozlamalar/Dashboard/Ombor-Holat). null = hech qanday page ochiq emas.
     let activePage = null;
+    let webCredentialState = { loading: false, busy: false, valid: false, credentialExists: false, login: '', issuedPassword: null, error: '', notice: '' };
+    function forgetWebCredentialSecret() { webCredentialState.issuedPassword = null; }
     let warehouseMissingImageOnly = false;
     // 11-16-band: Ombor tabi ichida ikki sub-bo'lim — Holat (summary, default)
     // va Qoldiqni yangilash (mavjud daraxt+SKU tezkor yangilash, o'zgarishsiz saqlangan).
@@ -2878,6 +2880,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function switchTab(tab) {
+      forgetWebCredentialSecret();
       currentTab = tab;
       activePage = null; // istalgan bottom-nav tugmasi bosilsa ochiq page (Support va h.k.) yopiladi
       stopSupportThreadPoll(); // task 6: ochiq bo'lgan support thread poll'i bottom-nav bosilganda ham to'xtashi kerak
@@ -4074,6 +4077,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       // a single modern Reports entry and does not render a duplicate row.
       const legacyDashboardAction = { onclick: "openDashboardLite()" };
       switch (activePage) {
+        case 'WEB_CREDENTIALS': renderWebCredentialsPage(container); break;
         case 'SUPPORT': renderSupportPage(container); break;
         case 'PLATFORM_ADMINS': renderPlatformAdminsPage(container); break;
         case 'STAFF': renderStaffPage(container); break;
@@ -4121,6 +4125,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function openPage(pageId, navBtnId) {
+      if (pageId !== 'WEB_CREDENTIALS') forgetWebCredentialSecret();
       activePage = pageId;
       render();
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('text-blue-600', 'font-bold'));
@@ -4131,6 +4136,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function closePage() {
+      forgetWebCredentialSecret();
       activePage = null;
       stopSupportThreadPoll(); // task 6: any open support thread's poll must not keep running off-screen
       render();
@@ -4140,6 +4146,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function goHomePage() {
+      forgetWebCredentialSecret();
       activePage = null;
       currentTab = 'home';
       stopSupportThreadPoll();
@@ -11193,6 +11200,124 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         : supportTickets.some(t => t.status === 'ANSWERED');
     }
 
+    async function openShopWebCredentials() {
+      if (activePage === 'WEB_CREDENTIALS' && (webCredentialState.loading || webCredentialState.busy)) return;
+      webCredentialState = { loading: true, busy: false, valid: false, credentialExists: false, login: '', issuedPassword: null, error: '', notice: '' };
+      openPage('WEB_CREDENTIALS', 'nav-profile');
+      try {
+        const result = await callApi('shop_web_credentials_open', {});
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        webCredentialState = { ...webCredentialState, loading: false, valid: result.valid === true, credentialExists: result.credentialExists === true, login: String(result.login || ''),
+          issuedPassword: result.created ? String(result.password || '') : null,
+          notice: result.created ? tr('Siz uchun login va parol avtomatik yaratildi.', 'Для вас автоматически созданы логин и пароль.') : '' };
+      } catch (_) {
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        webCredentialState = { ...webCredentialState, loading: false, error: tr('Telegram tasdig‘ini tekshirib bo‘lmadi. Qayta urinib ko‘ring.', 'Не удалось проверить Telegram. Повторите попытку.') };
+      }
+      render();
+    }
+
+    function renderWebCredentialsPage(container) {
+      const s = webCredentialState;
+      const note = s.credentialExists && !s.issuedPassword
+        ? `<p class="fc-web-credential-note">${tr('Eski parol xavfsizlik uchun ko‘rsatilmaydi. Unutgan bo‘lsangiz, yangisini yarating.', 'Старый пароль не показывается. Если забыли его, создайте новый.')}</p>` : '';
+      const secret = s.issuedPassword ? `<div class="fc-web-credential-secret"><span>${tr('Yangi parol', 'Новый пароль')}</span><code>${escapeHtml(s.issuedPassword)}</code><button type="button" class="fc-btn fc-btn-secondary" onclick="copyShopWebPassword()">${tr('Parolni nusxalash', 'Скопировать пароль')}</button><small>${tr('Parol faqat hozir ko‘rsatiladi. Xavfsiz joyga saqlang.', 'Пароль показан только сейчас. Сохраните его в надёжном месте.')}</small></div>` : '';
+      const actions = s.valid ? (!s.credentialExists
+        ? `<button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="issueShopWebCredentials()">${tr('Login va parolni olish', 'Получить логин и пароль')}</button>`
+        : `<button type="button" class="fc-btn fc-btn-secondary" ${s.busy ? 'disabled' : ''} onclick="resetShopWebCredentials()">${tr('Tasodifiy yangi parol', 'Новый случайный пароль')}</button>
+          <label class="fc-web-credential-edit">${tr('Loginni almashtirish', 'Изменить логин')}<input id="fc-web-credential-login" type="text" autocomplete="username" minlength="4" maxlength="40" value="${escapeHtml(s.login)}"><button type="button" class="fc-btn fc-btn-secondary" ${s.busy ? 'disabled' : ''} onclick="changeShopWebLogin()">${tr('Saqlash', 'Сохранить')}</button></label>
+          <div class="fc-web-credential-edit"><label>${tr('O‘zingiz tanlagan yangi parol', 'Новый пароль по вашему выбору')}<input id="fc-web-credential-password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="${tr('Kamida 8 belgi', 'Минимум 8 символов')}"></label><label>${tr('Parolni takrorlang', 'Повторите пароль')}<input id="fc-web-credential-password-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="72"></label><small>${tr('Kamida 8 belgi, kamida bitta harf va bitta raqam.', 'Минимум 8 символов, хотя бы одна буква и одна цифра.')}</small><button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="setShopWebPassword()">${tr('Parolni almashtirish', 'Изменить пароль')}</button></div>`) : '';
+      renderPageShell(container, tr('Web login va parol', 'Логин и пароль для сайта'), `
+        <section class="fc-card fc-web-credential-card"><h2>${tr('Saytga kirish ma’lumotlari', 'Данные для входа на сайт')}</h2>
+          <p>${tr('Shu Telegram akkauntingiz bilan bog‘langan. Login va parol faqat sizga ko‘rsatiladi.', 'Привязано к вашему Telegram-аккаунту. Логин и пароль видны только вам.')}</p>
+          ${s.login ? `<div class="fc-web-credential-login"><span>Login</span><strong>${escapeHtml(s.login)}</strong></div>` : ''}
+          ${note}${secret}
+          ${s.error ? `<p class="fc-web-credential-error">${escapeHtml(s.error)}</p>` : ''}
+          ${s.notice ? `<p class="fc-web-credential-note">${escapeHtml(s.notice)}</p>` : ''}
+          ${s.loading ? `<p>${tr('Tekshirilmoqda…', 'Проверка…')}</p>` : ''}
+          ${!s.loading && !s.valid && !s.issuedPassword && !s.notice ? `<button type="button" class="fc-btn fc-btn-secondary" onclick="openShopWebCredentials()">${tr('Qayta urinish', 'Повторить')}</button>` : ''}
+          <div class="fc-web-credential-actions">${actions}</div>
+        </section>`, { onBack: 'closePage()' });
+    }
+
+    async function issueShopWebCredentials() {
+      if (!webCredentialState.valid || webCredentialState.busy) return;
+      webCredentialState.busy = true; webCredentialState.error = ''; render();
+      try {
+        const result = await callApi('shop_web_credentials_issue', {});
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        webCredentialState = { ...webCredentialState, busy: false, valid: false, credentialExists: true, login: String(result.login || ''), issuedPassword: result.created ? String(result.password || '') : null,
+          notice: result.created ? tr('Login va parol yaratildi.', 'Логин и пароль созданы.') : tr('Login oldin yaratilgan. Eski parolni ko‘rsatib bo‘lmaydi; yangi parol uchun bo‘limni qayta oching.', 'Логин уже создан. Для нового пароля откройте раздел заново.') };
+      } catch (_) { if (activePage !== 'WEB_CREDENTIALS') return; webCredentialState = { ...webCredentialState, busy: false, valid: false, error: tr('Yaratib bo‘lmadi. Bo‘limni qayta oching.', 'Не удалось создать. Откройте раздел заново.') }; }
+      if (activePage === 'WEB_CREDENTIALS') render();
+    }
+
+    async function resetShopWebCredentials() {
+      if (!webCredentialState.valid || webCredentialState.busy || !webCredentialState.credentialExists) return;
+      if (!(await fcConfirm(tr('Yangi parol yaratish', 'Создать новый пароль'), tr('Oldingi parol va web sessiyalar bekor qilinadi. Davom etasizmi?', 'Старый пароль и веб-сессии будут отменены. Продолжить?'), { confirmLabel: tr('Yaratish', 'Создать') }))) return;
+      webCredentialState.busy = true; webCredentialState.error = ''; forgetWebCredentialSecret(); render();
+      try {
+        const result = await callApi('shop_web_credentials_reset', {});
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        webCredentialState = { ...webCredentialState, busy: false, valid: false, login: String(result.login || ''), issuedPassword: String(result.password || ''), notice: tr('Yangi parol yaratildi.', 'Новый пароль создан.') };
+      } catch (_) { if (activePage !== 'WEB_CREDENTIALS') return; webCredentialState = { ...webCredentialState, busy: false, valid: false, error: tr('Parol yangilanmadi. Bo‘limni qayta oching.', 'Не удалось обновить пароль. Откройте раздел заново.') }; }
+      if (activePage === 'WEB_CREDENTIALS') render();
+    }
+
+    async function changeShopWebLogin() {
+      if (!webCredentialState.valid || webCredentialState.busy || !webCredentialState.credentialExists) return;
+      const login = String(document.getElementById('fc-web-credential-login')?.value || '').trim();
+      if (!login) return showAppNotice(tr('Yangi loginni kiriting.', 'Введите новый логин.'));
+      webCredentialState.busy = true; webCredentialState.error = ''; render();
+      try {
+        const result = await callApi('shop_web_credentials_change_login', { login });
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        webCredentialState = { ...webCredentialState, busy: false, valid: false, login: String(result.login || login), notice: tr('Login almashtirildi.', 'Логин изменён.') };
+      } catch (error) {
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        const conflict = error?.message === 'credential_value_conflict';
+        webCredentialState = { ...webCredentialState, busy: false, valid: false, error: conflict ? tr('Bu login band. Bo‘limni qayta ochib boshqasini kiriting.', 'Логин занят. Откройте раздел заново и введите другой.') : tr('Loginni almashtirib bo‘lmadi. Bo‘limni qayta oching.', 'Не удалось изменить логин. Откройте раздел заново.') };
+      }
+      if (activePage === 'WEB_CREDENTIALS') render();
+    }
+
+    function credentialPasswordByteLength(value) {
+      let bytes = 0;
+      for (const char of String(value || '')) {
+        const code = char.codePointAt(0);
+        bytes += code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4;
+      }
+      return bytes;
+    }
+    async function setShopWebPassword() {
+      if (!webCredentialState.valid || webCredentialState.busy || !webCredentialState.credentialExists) return;
+      const password = String(document.getElementById('fc-web-credential-password')?.value || '');
+      const confirmPassword = String(document.getElementById('fc-web-credential-password-confirm')?.value || '');
+      if (password !== confirmPassword) return showAppNotice(tr('Parollar bir xil emas.', 'Пароли не совпадают.'));
+      const passwordBytes = credentialPasswordByteLength(password);
+      if (Array.from(password).length < 8 || passwordBytes > 72 || !/\p{L}/u.test(password) || !/\p{N}/u.test(password)) {
+        return showAppNotice(tr('Parol kamida 8 belgi, ko‘pi bilan 72 bayt bo‘lsin; harf va raqam qatnashsin.', 'Пароль: минимум 8 символов, максимум 72 байта, с буквой и цифрой.'));
+      }
+      if (!(await fcConfirm(tr('Parolni almashtirish', 'Изменить пароль'), tr('Oldingi parol va barcha web sessiyalar bekor qilinadi. Davom etasizmi?', 'Старый пароль и все веб-сессии будут отменены. Продолжить?'), { confirmLabel: tr('Almashtirish', 'Изменить') }))) return;
+      webCredentialState.busy = true; webCredentialState.error = ''; forgetWebCredentialSecret(); render();
+      try {
+        const result = await callApi('shop_web_credentials_set_password', { password });
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        webCredentialState = { ...webCredentialState, busy: false, valid: false, login: String(result.login || webCredentialState.login || ''), issuedPassword: null,
+          notice: tr('Parol almashtirildi. Eski web sessiyalar bekor qilindi.', 'Пароль изменён. Старые веб-сессии отменены.') };
+      } catch (error) {
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        webCredentialState = { ...webCredentialState, busy: false, valid: false, error: tr('Parolni almashtirib bo‘lmadi. Bo‘limni qayta oching.', 'Не удалось изменить пароль. Откройте раздел заново.') };
+      }
+      if (activePage === 'WEB_CREDENTIALS') render();
+    }
+
+    async function copyShopWebPassword() {
+      if (!webCredentialState.issuedPassword || activePage !== 'WEB_CREDENTIALS') return;
+      const copied = await copyTextToClipboard(webCredentialState.issuedPassword);
+      showActionToast(copied ? tr('Parol nusxalandi.', 'Пароль скопирован.') : tr('Nusxalab bo‘lmadi. Qo‘lda belgilang.', 'Не удалось скопировать. Выделите вручную.'), copied ? 'success' : 'error', 1800);
+    }
+
     function profileMenuRowHtml({ icon, title, subtitle = '', onclick, badge = '', danger = false }) {
       return `<button type="button" onclick="${onclick}" class="fc-profile-menu-row">
         <span class="fc-profile-menu-icon ${danger ? 'is-danger' : ''}"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
@@ -14860,6 +14985,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           ${renderPendingInviteBannerHtml()}
           ${adminMenu}
           ${userQuick}
+
+          <section class="fc-profile-menu">
+            ${profileMenuRowHtml({ icon: 'key-round', title: tr('Web login va parol', 'Логин и пароль для сайта'), subtitle: tr('Shu yerda olish yoki yangilash', 'Получить или обновить здесь'), onclick: 'openShopWebCredentials()' })}
+          </section>
 
           ${myStatus.isBlocked ? `<div class="fc-bg-danger-soft border fc-border-danger p-4 rounded-2xl text-xs"><p class="font-bold fc-text-danger">${tr("Siz botdan foydalanish huquqidan mahrum qilingansiz", "Доступ к оформлению заказов заблокирован")}</p><p class="fc-text-danger mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.blockReason || tr("ko'rsatilmagan", "не указана"))}</p></div>` : myStatus.isWarned ? `<div class="bg-amber-50 border border-amber-300 p-4 rounded-2xl text-xs"><p class="font-bold text-amber-800">${tr("Sizga ogohlantirish berilgan", "Вам вынесено предупреждение")}</p><p class="text-amber-700 mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.warnReason || tr("ko'rsatilmagan", "не указана"))}</p></div>` : ''}
 
@@ -20396,3 +20525,5 @@ if (activePopupModal === 'LOGO_CROP') {
       if (btn) btn.classList.toggle('is-visible', window.scrollY > 300);
     });
     boot();
+
+
