@@ -230,6 +230,7 @@
   // only in this in-memory state after an explicit issue/reset response; they
   // are never persisted to localStorage/sessionStorage or appended to URLs.
   let webCredentialState = { loading: false, valid: false, credentialExists: false, login: '', issuedPassword: null, expiresAt: null, busy: false, notice: '', error: '' };
+  let webCredentialFromProfile = false;
   // ROOT-CAUSE FIX (2026-08-31, scroll-jump follow-up): `.plat-page` has a
   // slide-in CSS animation meant for GENUINE navigation (opening a page).
   // But renderNow() always fully replaces #app's innerHTML — including
@@ -873,7 +874,9 @@
       webCredentialState = {
         ...webCredentialState, loading: false, valid: data.valid === true,
         credentialExists: data.credentialExists === true, login: String(data.login || ''),
-        expiresAt: data.expiresAt || null, error: '', notice: '', issuedPassword: null,
+        expiresAt: data.expiresAt || null, error: '',
+        notice: data.created ? 'Siz uchun login va parol avtomatik yaratildi.' : '',
+        issuedPassword: data.created ? String(data.password || '') : null,
       };
     } catch (_) {
       webCredentialState = { ...webCredentialState, loading: false, valid: false, error: 'Credential holatini tekshirib bo‘lmadi. /login orqali qayta oching.' };
@@ -881,18 +884,40 @@
     render();
   }
 
+  async function openWebCredentialsFromProfile() {
+    webCredentialFromProfile = true;
+    webCredentialState = { ...webCredentialState, loading: true, valid: false, issuedPassword: null, notice: '', error: '' };
+    openPage('WEB_CREDENTIALS');
+    try {
+      const data = await callPlatformApi('platform_prepare_web_credentials', {});
+      if (activePage === 'WEB_CREDENTIALS') {
+        webCredentialState = { ...webCredentialState, loading: false, valid: data.valid === true,
+          credentialExists: data.credentialExists === true, login: String(data.login || ''),
+          expiresAt: data.expiresAt || null, error: '',
+          notice: data.created ? 'Siz uchun login va parol avtomatik yaratildi.' : '',
+          issuedPassword: data.created ? String(data.password || '') : null };
+        render();
+      }
+    } catch (_) {
+      if (activePage !== 'WEB_CREDENTIALS') return;
+      webCredentialState = { ...webCredentialState, loading: false, valid: false, error: 'Web login oynasini ochib bo‘lmadi. Qayta urinib ko‘ring.' };
+      render();
+    }
+  }
+
   function renderWebCredentialsBody() {
     const s = webCredentialState;
     if (s.loading) return `<div class="plat-credential-card"><span class="plat-boot-spinner"></span><b>Himoyalangan credential holati tekshirilmoqda...</b></div>`;
     if (!s.valid && !s.issuedPassword && !s.notice) {
-      return `<div class="plat-credential-card is-warning"><span>${pIcon('lock',24)}</span><h2>Himoyalangan havola kerak</h2><p>${escapeHtml(s.error || "UStorE markaziy botiga /login yuboring va shu oynani bot bergan tugmadan qayta oching.")}</p><button class="secondary" onclick="closeWebCredentialFlow()">Yopish</button></div>`;
+      return `<div class="plat-credential-card is-warning"><span>${pIcon('lock',24)}</span><h2>Web login oynasi</h2><p>${escapeHtml(s.error || "Profil bo‘limidan qayta oching yoki UStorE markaziy botiga /login yuboring.")}</p>${webCredentialFromProfile ? `<button class="primary" onclick="openWebCredentialsFromProfile()">Qayta urinish</button>` : ''}<button class="secondary" onclick="closeWebCredentialFlow()">Yopish</button></div>`;
     }
     const passwordBlock = s.issuedPassword ? `<div class="plat-credential-secret"><span>Yangi parol</span><code>${escapeHtml(s.issuedPassword)}</code><button class="secondary" onclick="copyWebCredentialPassword()">${pIcon('copy',15)} Nusxalash</button><small>Parol faqat shu javobda ko‘rsatiladi. Uni xavfsiz joyga saqlang.</small></div>` : '';
     const existingNote = s.credentialExists && !s.issuedPassword
       ? `<div class="plat-settings-note">${pIcon('info',17)}<span>Login mavjud. Xavfsizlik sabab eski parolni qayta ko‘rsatib bo‘lmaydi; parol kerak bo‘lsa aniq “Yangi parol yaratish” amalini tanlang.</span></div>` : '';
     const actionArea = s.valid ? `<div class="plat-credential-actions">
-      ${!s.credentialExists ? `<button class="primary" ${s.busy?'disabled':''} onclick="issueWebCredentials()">Boshlang‘ich login-parol olish</button>` : `<button class="primary" ${s.busy?'disabled':''} onclick="resetWebCredentials()">Yangi parol yaratish</button>`}
-      <div class="plat-credential-login-edit"><label><span>Login</span><input id="web-credential-login" autocomplete="username" value="${escapeHtml(s.login || '')}" placeholder="yangi.login"></label><button class="secondary" ${s.busy?'disabled':''} onclick="changeWebCredentialLogin()">Loginni almashtirish</button></div>
+      ${!s.credentialExists ? `<button class="primary" ${s.busy?'disabled':''} onclick="issueWebCredentials()">Login va parolni olish</button>` : `<button class="primary" ${s.busy?'disabled':''} onclick="resetWebCredentials()">Yangi parol yaratish</button>`}
+      ${s.credentialExists ? `<div class="plat-credential-login-edit"><label><span>Login</span><input id="web-credential-login" autocomplete="username" minlength="4" maxlength="40" value="${escapeHtml(s.login || '')}" placeholder="yangi.login"></label><button class="secondary" ${s.busy?'disabled':''} onclick="changeWebCredentialLogin()">Loginni almashtirish</button></div>
+        <div class="plat-credential-password-edit"><label><span>Yangi parol</span><input id="web-credential-password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="Kamida 8 belgi"></label><label><span>Parolni takrorlang</span><input id="web-credential-password-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="72"></label><small>Kamida 8 belgi, kamida bitta harf va bitta raqam.</small><button class="primary" ${s.busy?'disabled':''} onclick="setWebCredentialPassword()">Parolni almashtirish</button></div>` : ''}
     </div>` : '';
     return `<div class="plat-credential-card">
       <span class="plat-admin-eyebrow">Markaziy Telegram tasdig‘i</span><h2>Web kirishini boshqarish</h2>
@@ -900,7 +925,7 @@
       ${s.login ? `<div class="plat-credential-login"><span>Login</span><strong>${escapeHtml(s.login)}</strong></div>` : ''}
       ${existingNote}${passwordBlock}${s.notice ? `<div class="notice success">${escapeHtml(s.notice)}</div>` : ''}${s.error ? `<div class="notice error">${escapeHtml(s.error)}</div>` : ''}
       ${actionArea}
-      <button class="secondary plat-credential-return" onclick="closeWebCredentialFlow()">Yopish va saytga qaytish</button>
+      <button class="secondary plat-credential-return" onclick="closeWebCredentialFlow()">${webCredentialFromProfile ? 'Profilga qaytish' : 'Yopish'}</button>
     </div>`;
   }
 
@@ -909,7 +934,7 @@
     webCredentialState = { ...webCredentialState, busy: true, error: '', notice: '', issuedPassword: null }; render();
     try {
       const data = await callPlatformApi('platform_issue_web_credentials', {});
-      webCredentialState = { ...webCredentialState, busy: false, valid: false, credentialExists: true, login: String(data.login || webCredentialState.login || ''), issuedPassword: data.created ? String(data.password || '') : null, notice: data.created ? 'Login va yangi parol yaratildi.' : 'Login avval yaratilgan. Eski parol qayta ko‘rsatilmaydi; yangi parol uchun /login orqali qayta ochib reset qiling.', error: '' };
+      webCredentialState = { ...webCredentialState, busy: false, valid: false, credentialExists: true, login: String(data.login || webCredentialState.login || ''), issuedPassword: data.created ? String(data.password || '') : null, notice: data.created ? 'Login va yangi parol yaratildi.' : 'Login avval yaratilgan. Eski parol qayta ko‘rsatilmaydi; yangi parol uchun profil bo‘limidan qayta oching.', error: '' };
     } catch (e) { webCredentialState = { ...webCredentialState, busy: false, valid: false, error: e?.message || 'Credential yaratib bo‘lmadi.' }; }
     render();
   }
@@ -933,8 +958,34 @@
     webCredentialState = { ...webCredentialState, busy: true, error: '', notice: '' }; render();
     try {
       const data = await callPlatformApi('platform_change_web_login', { login });
-      webCredentialState = { ...webCredentialState, busy: false, valid: false, login: String(data.login || login), notice: 'Login almashtirildi. Yana amal qilish uchun /login oqimini qayta oching.', error: '' };
+      webCredentialState = { ...webCredentialState, busy: false, valid: false, login: String(data.login || login), notice: 'Login almashtirildi. Yana amal qilish uchun profil bo‘limidan qayta oching.', error: '' };
     } catch (e) { webCredentialState = { ...webCredentialState, busy: false, valid: false, error: e?.message || 'Loginni almashtirib bo‘lmadi.' }; }
+    render();
+  }
+
+  function credentialPasswordByteLength(value) {
+    let bytes = 0;
+    for (const char of String(value || '')) {
+      const code = char.codePointAt(0);
+      bytes += code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4;
+    }
+    return bytes;
+  }
+  async function setWebCredentialPassword() {
+    if (!webCredentialState.valid || webCredentialState.busy) return;
+    const password = String(document.getElementById('web-credential-password')?.value || '');
+    const confirmation = String(document.getElementById('web-credential-password-confirm')?.value || '');
+    if (password !== confirmation) return showToast('Parollar bir xil emas.', 'warning');
+    const bytes = credentialPasswordByteLength(password);
+    if (Array.from(password).length < 8 || bytes > 72 || !/\p{L}/u.test(password) || !/\p{N}/u.test(password)) return showToast('Parol kamida 8 belgi, ko‘pi bilan 72 bayt bo‘lsin; harf va raqam qatnashsin.', 'warning');
+    if (!(await showConfirm('Oldingi parol va barcha web sessiyalar bekor qilinadi. Davom etasizmi?', { title:'Parolni almashtirish', danger:true, confirmLabel:'Almashtirish' }))) return;
+    webCredentialState = { ...webCredentialState, busy:true, error:'', notice:'', issuedPassword:null }; render();
+    try {
+      const data = await callPlatformApi('platform_set_web_password', { password });
+      webCredentialState = { ...webCredentialState, busy:false, valid:false, credentialExists:true,
+        login:String(data.login || webCredentialState.login || ''), issuedPassword:null,
+        notice:'Parol almashtirildi. Eski web sessiyalar bekor qilindi.', error:'' };
+    } catch (e) { webCredentialState = { ...webCredentialState, busy:false, valid:false, error:e?.message || 'Parolni almashtirib bo‘lmadi.' }; }
     render();
   }
 
@@ -947,6 +998,7 @@
 
   function closeWebCredentialFlow() {
     webCredentialState = { ...webCredentialState, issuedPassword: null };
+    if (webCredentialFromProfile) { webCredentialFromProfile = false; closePage(); return; }
     try { if (tg?.close) { tg.close(); return; } } catch (_) {}
     if (window.history.length > 1) window.history.back(); else window.location.href = window.location.pathname;
   }
@@ -2741,9 +2793,9 @@
       <div class="plat-tab-head"><div><h1>Profil</h1><p>Telegram akkauntingiz va UStorE ma'lumotlari</p></div></div>
       <section class="plat-profile-hero">${user.photo_url?`<img src="${escapeHtml(user.photo_url)}" class="plat-profile-photo">`:`<div class="plat-profile-photo plat-profile-photo-fallback">${escapeHtml(fullName.charAt(0))}</div>`}<div class="plat-profile-main"><h2>${escapeHtml(fullName)}</h2><p>${user.username?'@'+escapeHtml(user.username):'Telegram foydalanuvchi'}</p><small>${pIcon('user',13)} Telegram ID: ${escapeHtml(String(user.id||''))}</small></div></section>
       <div class="plat-profile-stats"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length} ta</b><small>do'kon ulangan</small></div><div><span class="tone-blue">${pIcon('check',16)}</span><b>${activeSubs} ta</b><small>faol obuna</small></div><div><span class="tone-blue">${pIcon('calendar',16)}</span><b>${nearest===null?'—':nearest+' kun'}</b><small>eng yaqin tugash</small></div></div>
-      <h2 class="plat-profile-section-title">Hisob</h2><div class="plat-profile-list"><button onclick="switchTab('shops')"><span class="tone-blue">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-blue">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button></div>
+      <h2 class="plat-profile-section-title">Hisob</h2><div class="plat-profile-list"><button onclick="switchTab('shops')"><span class="tone-blue">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-blue">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button><button onclick="openWebCredentialsFromProfile()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Web login va parol</b><em>Olish ›</em></button></div>
       <h2 class="plat-profile-section-title">UStorE</h2><div class="plat-profile-list"><button onclick="openPage('GUIDES')"><span class="tone-blue">${pIcon('book',17)}</span><b>Qo'llanmalar</b><em>3 ta ›</em></button><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-blue">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
-      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Akkaunt Telegram profilingiz bilan bog'langan</b><small>Alohida login yoki parol talab qilinmaydi.</small></div>${pIcon('check',18)}</div>
+      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Telegram va web kirish bir akkaunt</b><small>Web uchun login-parolni shu profildan olishingiz mumkin.</small></div>${pIcon('check',18)}</div>
       ${isSuperAdmin?`<button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('lock',22)}</span><div><b>Admin rejimi</b><small>Platformani boshqarish</small></div><em>O'tish →</em></button>`:''}
       <div class="plat-version">UStorE · 2026</div>
     `;
@@ -2775,8 +2827,8 @@
         <button onclick="openAdminIntegrationsInfo()"><span class="is-blue">${pIcon('layers',19)}</span><div><b>Integratsiyalar</b><small>BILLZ va to'lov provayderlari holati</small></div><em>${pIcon('arrowRight',16)}</em></button>
       </div>
       <h2 class="plat-profile-section-title">UStorE</h2>
-      <div class="plat-profile-list"><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-blue">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
-      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Admin akkaunti Telegram bilan tasdiqlangan</b><small>Alohida login yoki parol talab qilinmaydi.</small></div>${pIcon('check',18)}</div>
+      <div class="plat-profile-list"><button onclick="openWebCredentialsFromProfile()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Web login va parol</b><em>Olish ›</em></button><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-blue">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
+      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Telegram va web kirish bir akkaunt</b><small>Web uchun login-parolni shu profildan olishingiz mumkin.</small></div>${pIcon('check',18)}</div>
       <button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('user',22)}</span><div><b>Foydalanuvchi rejimi</b><small>Platformaning foydalanuvchi qismiga qaytish</small></div><em>O'tish →</em></button>
       <div class="plat-version">UStorE Admin · 2026</div>`;
   }
@@ -4801,9 +4853,11 @@
   // ---- Global handler eksporti (inline onclick uchun) -------------------
   window.openPage = openPage;
   window.loadWebCredentialStatus = loadWebCredentialStatus;
+  window.openWebCredentialsFromProfile = openWebCredentialsFromProfile;
   window.issueWebCredentials = issueWebCredentials;
   window.resetWebCredentials = resetWebCredentials;
   window.changeWebCredentialLogin = changeWebCredentialLogin;
+  window.setWebCredentialPassword = setWebCredentialPassword;
   window.copyWebCredentialPassword = copyWebCredentialPassword;
   window.closeWebCredentialFlow = closeWebCredentialFlow;
   window.closePage = closePage;
@@ -4945,3 +4999,5 @@
   window.openNotificationGroup = openNotificationGroup;
   window.toggleNotificationTemplateActive = toggleNotificationTemplateActive;
 })();
+
+
