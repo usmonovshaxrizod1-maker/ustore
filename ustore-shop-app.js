@@ -5542,6 +5542,22 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // ostidagi shu sahifa qayta ko'rinadi. Bot /start endi shu yerda, alohida
     // qatordan boshqa joyga ko'chirilmagan.
     let domainsFeatureMountSeq = 0;
+    let domainsFeatureStylePromise = null;
+    function ensureDomainsFeatureStyles() {
+      if (document.getElementById('ustore-domains-feature-css')) return domainsFeatureStylePromise || Promise.resolve();
+      const link = document.createElement('link');
+      link.id = 'ustore-domains-feature-css'; link.rel = 'stylesheet';
+      link.href = './web/styles/features.css?v=20260928domains2';
+      domainsFeatureStylePromise = new Promise((resolve) => {
+        let settled = false;
+        const done = () => { if (settled) return; settled = true; resolve(); };
+        link.addEventListener('load', done, { once:true });
+        link.addEventListener('error', done, { once:true });
+        setTimeout(done, 1200);
+      });
+      document.head.appendChild(link);
+      return domainsFeatureStylePromise;
+    }
     function canManageDomainsPage() {
       return staffRole === 'OWNER' || (staffRole === 'STAFF' && canViewAuditLog && hasPermission('domains.manage'));
     }
@@ -5557,11 +5573,12 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const host = document.getElementById('fc-domains-feature-host');
       if (!host || activePage !== 'DOMAINS_SETTINGS') return;
       try {
-        const mod = await import('./web/features/domains/index.js');
+        await ensureDomainsFeatureStyles();
+        const mod = await import('./web/features/domains/index.js?v=20260928domains2');
         if (mountId !== domainsFeatureMountSeq || activePage !== 'DOMAINS_SETTINGS') return;
         const port = mod.createMiniAppDomainsPort(callApi);
         const context = {
-          shop: { id: 'mini-app-shop', name: 'UStorE', slug: '', lifecycle: 'ACTIVE', currency: 'UZS', logoUrl: null, canonicalWebUrl: null },
+          shop: { id: 'mini-app-shop', name: shopDisplayName(), slug: '', lifecycle: 'ACTIVE', currency: 'UZS', logoUrl: shopLogoUrl || null, canonicalWebUrl: null },
           actor: {
             accountId: String(currentUser?.id || currentUser?.tgId || tgId || 'telegram'),
             displayName: currentProfileDisplayName(), telegramLinked: true,

@@ -1,0 +1,15 @@
+/* Production document host reset. Kept separate from the scoped .uw-root design system. */
+html {
+  min-height: 100%;
+  background: var(--uw-color-canvas);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--uw-color-canvas);
+}
+
+#ustore-web-app {
+  min-height: 100dvh;
+}

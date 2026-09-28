@@ -1,0 +1,115 @@
+.uw-skip-link {
+  position: fixed;
+  z-index: 100;
+  inset-block-start: var(--uw-space-2);
+  inset-inline-start: var(--uw-space-2);
+  transform: translateY(calc(-100% - 1rem));
+  border-radius: var(--uw-radius-sm);
+  background: var(--uw-color-text);
+  color: var(--uw-color-surface);
+  padding: var(--uw-space-2) var(--uw-space-3);
+  font-family: var(--uw-font-sans);
+  font-size: var(--uw-text-sm);
+  font-weight: var(--uw-weight-semibold);
+  text-decoration: none;
+  box-shadow: var(--uw-shadow-md);
+  transition: transform var(--uw-duration-fast) var(--uw-ease-standard);
+}
+
+.uw-skip-link:focus,
+.uw-skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--uw-color-focus);
+  outline-offset: 2px;
+}
+
+.uw-root {
+  min-height: 100%;
+  background: var(--uw-color-canvas);
+  color: var(--uw-color-text);
+  font-family: var(--uw-font-sans);
+  font-size: var(--uw-text-md);
+  line-height: var(--uw-leading-normal);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.uw-root,
+.uw-root *,
+.uw-root *::before,
+.uw-root *::after {
+  box-sizing: border-box;
+}
+
+.uw-root :where(button, input, select, textarea) {
+  font: inherit;
+}
+
+.uw-root :where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--uw-color-focus);
+  outline-offset: 2px;
+  box-shadow: var(--uw-focus-ring);
+}
+
+.uw-root :where(a) {
+  color: var(--uw-color-link);
+  text-underline-offset: 0.18em;
+}
+
+.uw-root :where(img, svg) {
+  max-width: 100%;
+}
+
+.uw-root :where(h1, h2, h3, p) {
+  margin-block-start: 0;
+}
+
+.uw-root .uw-heading-1,
+.uw-root .uw-heading-2,
+.uw-root .uw-heading-3 {
+  color: var(--uw-color-text);
+  line-height: var(--uw-leading-tight);
+  letter-spacing: -0.02em;
+}
+
+.uw-root .uw-heading-1 {
+  font-size: var(--uw-text-3xl);
+  font-weight: var(--uw-weight-bold);
+}
+
+.uw-root .uw-heading-2 {
+  font-size: var(--uw-text-2xl);
+  font-weight: var(--uw-weight-semibold);
+}
+
+.uw-root .uw-heading-3 {
+  font-size: var(--uw-text-xl);
+  font-weight: var(--uw-weight-semibold);
+}
+
+.uw-root .uw-text-muted {
+  color: var(--uw-color-text-muted);
+}
+
+.uw-root .uw-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uw-root *,
+  .uw-root *::before,
+  .uw-root *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
