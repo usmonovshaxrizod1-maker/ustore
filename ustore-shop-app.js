@@ -14950,7 +14950,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             <div class="fc-profile-admin-group-title">${tr("Do'kon boshqaruvi",'Управление магазином')}</div>
             <div class="fc-profile-menu">
               ${hasPermission('reports.view') ? profileMenuRowHtml({ icon: 'bar-chart-3', title: tr('Hisobotlar', 'Отчёты'), subtitle: tr("Savdo, mijozlar va mahsulotlar bo'yicha to'liq tahlil", 'Полная аналитика по продажам, клиентам и товарам'), onclick: "openReportsPage()" }) : ''}
-              ${hasPermission('shop.settings.manage') ? profileMenuRowHtml({ icon: 'settings-2', title: tr("Do'kon parametrlari", 'Параметры магазина'), subtitle: tr("Do'kon, yetkazib berish, to'lov va dizayn sozlamalari", 'Магазин, доставка, оплата и дизайн'), onclick: 'openShopParams()' }) : ''}${canManageDomainsPage() ? profileMenuRowHtml({ icon: 'globe-2', title: tr('Domenlar','Домены'), subtitle: tr('Subdomen va shaxsiy domenni boshqarish','Управление субдоменом и собственным доменом'), onclick: 'openDomainsSettingsPage()' }) : ''}
+              ${hasPermission('shop.settings.manage') ? profileMenuRowHtml({ icon: 'settings-2', title: tr("Do'kon parametrlari", 'Параметры магазина'), subtitle: tr("Do'kon, yetkazib berish, to'lov va dizayn sozlamalari", 'Магазин, доставка, оплата и дизайн'), onclick: 'openShopParams()' }) : ''}
             </div>
           </section>
           ${hasPermission('marketing.manage') ? `<section class="fc-profile-admin-group"><div class="fc-profile-admin-group-title">${tr('Savdo va marketing','Продажи и маркетинг')}</div><div class="fc-profile-menu">${profileMenuRowHtml({ icon: 'megaphone', title: tr('Marketing', 'Маркетинг'), subtitle: tr('Bannerlar, aksiyalar, promo-kodlar, chegirmalar', 'Баннеры, акции, промокоды, скидки'), onclick: 'openMarketingHubPage()' })}${profileMenuRowHtml({ icon: 'shopping-cart', title: tr('Tashlab ketilgan savatlar', 'Брошенные корзины'), subtitle: tr("Buyurtma bermagan mijozlarning savatlari", 'Корзины клиентов, не оформивших заказ'), onclick: 'openAbandonedCartsPage()' })}</div></section>` : ''}
@@ -14987,6 +14987,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           ${userQuick}
 
           <section class="fc-profile-menu">
+            ${canManageDomainsPage() ? profileMenuRowHtml({ icon: 'globe-2', title: tr('Domen va manzil','Домен и адрес'), subtitle: tr('Subdomen va shaxsiy domenni boshqarish','Управление субдоменом и собственным доменом'), onclick: 'openDomainsSettingsPage()' }) : ''}
             ${profileMenuRowHtml({ icon: 'key-round', title: tr('Web login va parol', 'Логин и пароль для сайта'), subtitle: tr('Shu yerda olish yoki yangilash', 'Получить или обновить здесь'), onclick: 'openShopWebCredentials()' })}
           </section>
 
