@@ -1,5 +1,5 @@
 // USTORE v3 — Excel import module. Lazy-loaded only for admins.
-(() => {
+(function createUstoreExcel() {
   const EXCELJS_LOCAL = './vendor/exceljs.min.js?v=4.4.0';
   const EXCELJS_LOAD_TIMEOUT_MS = 9000;
   const bridge = {
@@ -1276,5 +1276,8 @@ Oxirida qisqa hisobot bering:
     catch(e){console.warn('Last import batch unavailable',e);}
     return true;
   }
-  window.UstoreExcel={configure,getSnapshot:()=>state,prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,addVariantRow,removeVariantRow,doImport,rollbackBatch,reset,copyExcelChatGptPrompt,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload,parseVariantTextToRows,serializeVariantRows,looksLikeXlsxZip}};
+  const engine={configure,getSnapshot:()=>state,prepare,renderModal,downloadTemplate,handleFile,acceptSuggestionAt,approveNewAt,correctCategoryAt,downloadErrorRowsCsv,openRowEditor,closeRowEditor,openFirstErrorEditor,saveRowEditor,addVariantRow,removeVariantRow,doImport,rollbackBatch,reset,copyExcelChatGptPrompt,state,__test:{parseVariantDetails,parseCategoryPath,fingerprintImportRows,rebuildSourceRow,parseV4SimpleSheet,parseV4VariantSheet,rowLabel,sheetRowId,canUseTelegramDownload,browserDownload,telegramOpenLink,fallbackTemplateDownload,startTemplateDownload,parseVariantTextToRows,serializeVariantRows,looksLikeXlsxZip}};
+  engine.createInstance = createUstoreExcel;
+  if (!window.UstoreExcel) window.UstoreExcel = engine;
+  return engine;
 })();
