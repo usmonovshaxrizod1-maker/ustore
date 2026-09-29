@@ -32,7 +32,7 @@ export function createOriginHandoffStore(storage = globalThis.sessionStorage) {
   });
 }
 
-export async function beginCustomDomainLogin({ authPort, returnTo = '/', store = createOriginHandoffStore(), cryptoRef = globalThis.crypto, onRedirect } = {}) {
+export async function beginCustomDomainLogin({ authPort, returnTo = '/', method = 'telegram', botUsername = '', locale = 'uz', store = createOriginHandoffStore(), cryptoRef = globalThis.crypto, onRedirect } = {}) {
   if (!authPort?.beginOriginHandoff) throw new TypeError('authPort.beginOriginHandoff kerak');
   if (!safeReturnTo(returnTo)) throw new Error('Qaytish yo‘li same-origin relative bo‘lishi kerak.');
   const codeVerifier = randomVerifier(cryptoRef);
@@ -42,7 +42,11 @@ export async function beginCustomDomainLogin({ authPort, returnTo = '/', store =
   const { state, authorizeUrl, expiresAt, targetOrigin } = result.data || {};
   if (!state || !authorizeUrl || !expiresAt) return { ok: false, error: { code: 'CONTRACT_MISMATCH', message: 'Handoff javobi noto‘liq.', retryable: false } };
   store.set({ state, codeVerifier, expiresAt, targetOrigin: targetOrigin || null, fallbackOrigin: result.data?.fallbackOrigin || null, returnTo });
-  onRedirect?.(authorizeUrl);
+  const destination = new URL(authorizeUrl);
+  if (destination.protocol !== 'https:' && destination.hostname !== 'localhost') throw new Error('Markaziy kirish manzili xavfsiz emas.');
+  destination.searchParams.set('method', method === 'password' ? 'password' : 'telegram');
+  destination.searchParams.set('lang', locale === 'ru' ? 'ru' : 'uz');
+  onRedirect?.(destination.href);
   return result;
 }
 
@@ -139,7 +143,7 @@ export function createCentralOriginHandoffView({ controller, state = controller?
   return { element: root };
 }
 
-export function createCustomDomainSignInController({ authPort, returnTo = '/', store = createOriginHandoffStore(), cryptoRef = globalThis.crypto, onRedirect } = {}) {
+export function createCustomDomainSignInController({ authPort, returnTo = '/', botUsername = '', locale = 'uz', store = createOriginHandoffStore(), cryptoRef = globalThis.crypto, onRedirect } = {}) {
   let snapshot = { busy: false, error: null };
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => fn({ ...snapshot }));
@@ -147,11 +151,11 @@ export function createCustomDomainSignInController({ authPort, returnTo = '/', s
   return Object.freeze({
     getState: () => ({ ...snapshot }),
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
-    async begin() {
+    async begin(method = 'telegram') {
       if (snapshot.busy) return null;
       set({ busy: true, error: null });
       let result;
-      try { result = await beginCustomDomainLogin({ authPort, returnTo, store, cryptoRef, onRedirect }); }
+      try { result = await beginCustomDomainLogin({ authPort, returnTo, method, botUsername, locale, store, cryptoRef, onRedirect }); }
       catch (error) { result = { ok: false, error: { code: 'CAPABILITY_UNAVAILABLE', message: error?.message || 'Markaziy kirish oqimi mavjud emas.', retryable: false } }; }
       set({ busy: false, error: result?.ok ? null : result?.error || null });
       return result;
@@ -159,14 +163,23 @@ export function createCustomDomainSignInController({ authPort, returnTo = '/', s
   });
 }
 
-export function createCustomDomainSignInView({ controller, state = controller?.getState?.() || {} } = {}, documentRef) {
+export function createCustomDomainSignInView({ controller, state = controller?.getState?.() || {}, botUsername = '', shopName = '', locale = 'uz' } = {}, documentRef) {
   const doc = documentRef || globalThis.document;
   if (!doc?.createElement || !controller) throw new TypeError('DOM document va controller kerak');
   const root = doc.createElement('section'); root.className = 'uw-auth uw-origin-signin'; root.dataset.feature = 'origin-signin';
-  const title = doc.createElement('h1'); title.textContent = 'Kirish'; root.append(title);
-  const copy = doc.createElement('p'); copy.textContent = 'Kirish UStorE’ning markaziy xavfsiz sahifasida tasdiqlanadi.'; root.append(copy);
+  const tr = (uz, ru) => locale === 'ru' ? ru : uz;
+  const title = doc.createElement('h1'); title.textContent = tr('Do‘konga kirish', 'Вход в магазин'); root.append(title);
+  const copy = doc.createElement('p'); copy.textContent = tr('Telegram hisobingiz yoki Mini App profilingizdagi login va parol bilan kiring.', 'Войдите через Telegram или с логином и паролем из профиля Mini App.'); root.append(copy);
   if (state.error) root.append(createStatePanel({ kind: 'error', title: 'Kirishni boshlab bo‘lmadi', message: state.error.message || 'Qayta urinib ko‘ring.' }, doc));
-  root.append(createButton({ label: state.busy ? 'Ochilmoqda…' : 'UStorE orqali kirish', busy: state.busy, onClick: () => controller.begin() }, doc));
+  const actions = doc.createElement('div'); actions.className = 'uw-origin-signin__actions';
+  actions.append(createButton({ label: state.busy ? tr('Ochilmoqda…', 'Открывается…') : tr('Telegram orqali kirish', 'Войти через Telegram'), busy: state.busy, onClick: () => controller.begin('telegram') }, doc));
+  actions.append(createButton({ label: tr('Login va parol bilan kirish', 'Войти с логином и паролем'), variant: 'secondary', busy: state.busy, onClick: () => controller.begin('password') }, doc));
+  root.append(actions);
+  const bot = String(botUsername || '').replace(/^@/, '');
+  if (/^[A-Za-z0-9_]{5,32}$/.test(bot)) {
+    const help = doc.createElement('p'); help.textContent = tr('Login va parolni do‘kon botidagi /login buyrug‘i yoki Mini App → Profil → Web login va parol bo‘limidan oling.', 'Получите логин и пароль командой /login в боте магазина или в Mini App → Профиль → Логин и пароль для сайта.');
+    const link = doc.createElement('a'); link.href = `https://t.me/${bot}?start=credentials`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = `${shopName || bot} — ${tr('botni ochish ↗', 'открыть бота ↗')}`; help.append(' ', link); root.append(help);
+  }
   return { element: root };
 }
 

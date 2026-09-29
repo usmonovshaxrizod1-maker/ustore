@@ -1,8 +1,6 @@
 import { canonicalFallbackVariant, defaultVariantSelection, productVariants, variantDisplayImage, variantOldPrice, variantPrice } from './variant-model.js';
 
 const BADGES = Object.freeze({ NEW: 'Yangi', TOP: 'Top', RECOMMENDED: 'Tavsiya', PROMO: 'Aksiya' });
-const money = (value) => `${Number(value || 0).toLocaleString('uz-UZ')} so‘m`;
-
 export function productCardModel(product = {}) {
   const variants = productVariants(product);
   const selected = variants.length ? (defaultVariantSelection(product).variant || canonicalFallbackVariant(product) || variants[0]) : null;
@@ -42,31 +40,36 @@ function button(doc, label, className, onClick) {
 export function createProductCard(product, {
   index = 0, onOpen, onAdd, onFavorite, isFavorite = false,
   canManage = false, onPin, onEdit, onVisibility, onDuplicate, onTrash,
+  locale = 'uz',
 } = {}, documentRef = globalThis.document) {
   const doc = documentRef;
   if (!doc?.createElement) throw new Error('Mahsulot kartasi uchun DOM kerak');
   const data = productCardModel(product);
+  const tr = (uz, ru) => locale === 'ru' ? ru : uz;
+  const productName = locale === 'ru' ? product.name_ru || product.name : product.name;
+  const priceLabel = (value) => `${Number(value || 0).toLocaleString(locale === 'ru' ? 'ru-RU' : 'uz-UZ')} ${tr('so‘m', 'сум')}`;
   const card = node(doc, 'article', 'uw-product-tile uw-store-product-card');
   card.dataset.productId = String(product.id || '');
 
   const media = node(doc, 'div', 'uw-store-product-card__media');
-  const openImage = button(doc, `${product.name || 'Mahsulot'} batafsil`, 'uw-store-product-card__image-action', () => onOpen?.(product));
+  const openImage = button(doc, '', 'uw-store-product-card__image-action', () => onOpen?.(product));
+  openImage.setAttribute('aria-label', `${productName || tr('Mahsulot', 'Товар')} ${tr('batafsil', 'подробнее')}`);
   if (data.image) {
     const image = node(doc, 'img', 'uw-store-product-card__image');
     image.src = data.image;
-    image.alt = product.name || 'Mahsulot rasmi';
+    image.alt = productName || tr('Mahsulot rasmi', 'Фото товара');
     image.width = 400; image.height = 400;
     image.loading = index < 6 ? 'eager' : 'lazy';
     image.fetchPriority = index < 2 ? 'high' : 'auto';
     image.decoding = 'async'; image.referrerPolicy = 'no-referrer';
-    const fallback = node(doc, 'span', 'uw-store-product-card__image-fallback', 'Rasm mavjud emas');
+    const fallback = node(doc, 'span', 'uw-store-product-card__image-fallback', tr('Rasm mavjud emas', 'Фото отсутствует'));
     fallback.hidden = true;
     image.addEventListener('error', () => {
       if (data.fullImage && image.src !== data.fullImage) { image.src = data.fullImage; return; }
       image.hidden = true; fallback.hidden = false;
     });
     openImage.append(image, fallback);
-  } else openImage.append(node(doc, 'span', 'uw-store-product-card__image-fallback', 'Rasm mavjud emas'));
+  } else openImage.append(node(doc, 'span', 'uw-store-product-card__image-fallback', tr('Rasm mavjud emas', 'Фото отсутствует')));
   media.append(openImage);
 
   if (data.badge) media.append(node(doc, 'span', 'uw-store-product-card__badge', data.badge));
@@ -119,19 +122,19 @@ export function createProductCard(product, {
 
   const body = node(doc, 'div', 'uw-store-product-card__body');
   if (canManage && product.sku) body.append(node(doc, 'span', 'uw-store-product-card__sku', product.sku));
-  body.append(button(doc, product.name || 'Mahsulot', 'uw-store-product-card__title', () => onOpen?.(product)));
+  body.append(button(doc, productName || tr('Mahsulot', 'Товар'), 'uw-store-product-card__title', () => onOpen?.(product)));
   const price = node(doc, 'div', 'uw-store-product-card__price');
-  price.append(node(doc, 'strong', data.discount ? 'uw-store-product-card__price-sale' : '', money(data.price)));
+  price.append(node(doc, 'strong', data.discount ? 'uw-store-product-card__price-sale' : '', priceLabel(data.price)));
   if (data.discount) {
     price.append(node(doc, 'span', 'uw-store-product-card__discount', `-${data.discount}%`));
-    price.append(node(doc, 's', 'uw-store-product-card__old-price', money(data.oldPrice)));
+    price.append(node(doc, 's', 'uw-store-product-card__old-price', priceLabel(data.oldPrice)));
   }
   body.append(price);
-  if (data.sizes.length) body.append(node(doc, 'small', 'uw-store-product-card__variant', `O‘lcham: ${data.sizes.join(', ')}`));
-  if (data.colors.length) body.append(node(doc, 'small', 'uw-store-product-card__variant', `Rang: ${data.colors.join(', ')}`));
-  if (!data.stock) body.append(node(doc, 'span', 'uw-store-product-card__stock', 'Tugagan'));
+  if (data.sizes.length) body.append(node(doc, 'small', 'uw-store-product-card__variant', `${tr('O‘lcham', 'Размер')}: ${data.sizes.join(', ')}`));
+  if (data.colors.length) body.append(node(doc, 'small', 'uw-store-product-card__variant', `${tr('Rang', 'Цвет')}: ${data.colors.join(', ')}`));
+  if (!data.stock) body.append(node(doc, 'span', 'uw-store-product-card__stock', tr('Tugagan', 'Нет в наличии')));
   if (!canManage || onAdd) {
-    const action = button(doc, data.hasVariants ? 'Variant tanlash' : data.stock ? 'Savatga qo‘shish' : 'Mahsulotni ko‘rish', 'uw-store-product-card__add', () => {
+    const action = button(doc, data.hasVariants ? tr('Variant tanlash', 'Выбрать вариант') : data.stock ? tr('Savatga qo‘shish', 'В корзину') : tr('Mahsulotni ko‘rish', 'Посмотреть товар'), 'uw-store-product-card__add', () => {
       if (data.hasVariants || !data.stock || !onAdd) onOpen?.(product);
       else onAdd(product);
     });

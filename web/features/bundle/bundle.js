@@ -58,11 +58,13 @@ export function createBundleCollage(bundle, documentRef = globalThis.document) {
   const doc = documentRef;
   const collage = doc.createElement('div'); collage.className = 'uw-bundle-collage';
   const items = bundleItems(bundle);
+  collage.dataset.count = String(items.length);
   for (const item of items) {
     const tile = doc.createElement('div'); tile.className = 'uw-bundle-collage__tile';
     if (item.img) {
       const image = doc.createElement('img'); image.src = item.img; image.alt = ''; image.width = 240; image.height = 240;
       image.loading = 'lazy'; image.decoding = 'async'; image.fetchPriority = 'low'; image.referrerPolicy = 'no-referrer';
+      image.addEventListener('error', () => { image.hidden = true; tile.textContent = String(item.name || '?').slice(0, 1).toLocaleUpperCase('uz-UZ'); });
       tile.append(image);
     } else {
       const fallback = doc.createElement('span'); fallback.textContent = String(item.name || '?').slice(0, 1).toLocaleUpperCase('uz-UZ');

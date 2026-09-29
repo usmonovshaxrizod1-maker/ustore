@@ -21,10 +21,10 @@ export function mapAuthError(error) {
   return { ...base, code: error.code || 'UNKNOWN', fieldErrors: error.fieldErrors || {}, requestId: error.requestId || null, retryable: error.retryable === true };
 }
 
-export function createLoginController({ authPort, returnTo = '/', onSignedIn, onRedirect } = {}) {
+export function createLoginController({ authPort, returnTo = '/', initialTab = 'telegram', onSignedIn, onRedirect } = {}) {
   if (!authPort) throw new TypeError('authPort kerak');
   let draft = { login: '', password: '' };
-  let state = { tab: 'telegram', busy: false, passwordVisible: false, error: null, telegramPhase: 'idle', telegramAccount: null };
+  let state = { tab: initialTab === 'password' ? 'password' : 'telegram', busy: false, passwordVisible: false, error: null, telegramPhase: 'idle', telegramAccount: null };
   const listeners = new Set();
   const emit = () => listeners.forEach((listener) => listener({ ...state }));
   const set = (patch) => { state = { ...state, ...patch }; emit(); return state; };
@@ -102,23 +102,24 @@ export function createLoginController({ authPort, returnTo = '/', onSignedIn, on
   };
 }
 
-export function createLoginView({ controller, state = controller?.getState?.() || {}, initialLogin = '' } = {}, documentRef) {
+export function createLoginView({ controller, state = controller?.getState?.() || {}, initialLogin = '', shopBotUsername = '', locale = 'uz' } = {}, documentRef) {
   const doc = getDocument(documentRef);
   if (!controller) throw new TypeError('controller kerak');
+  const tr = (uz, ru) => locale === 'ru' ? ru : uz;
   const root = doc.createElement('section');
   root.className = 'uw-auth';
   root.dataset.feature = 'login';
 
   const heading = doc.createElement('div');
   heading.className = 'uw-auth__heading';
-  const title = doc.createElement('h1'); title.textContent = 'UStorE’ga kirish';
-  const subtitle = doc.createElement('p'); subtitle.textContent = 'Do‘koningiz yoki xarid profilingizga xavfsiz kiring.';
+  const title = doc.createElement('h1'); title.textContent = tr('UStorE’ga kirish', 'Вход в UStorE');
+  const subtitle = doc.createElement('p'); subtitle.textContent = tr('Do‘koningiz yoki xarid profilingizga xavfsiz kiring.', 'Безопасно войдите в магазин или профиль покупателя.');
   heading.append(title, subtitle);
 
   const tabs = doc.createElement('div');
   tabs.className = 'uw-auth-tabs';
   tabs.setAttribute('role', 'tablist');
-  for (const [id, label] of [['telegram', 'Telegram orqali'], ['password', 'Login va parol']]) {
+  for (const [id, label] of [['telegram', tr('Telegram orqali', 'Через Telegram')], ['password', tr('Login va parol', 'Логин и пароль')]]) {
     const button = createButton({ label, variant: state.tab === id ? 'primary' : 'secondary', onClick: () => controller.setTab(id) }, doc);
     button.setAttribute('role', 'tab');
     button.setAttribute('aria-selected', state.tab === id ? 'true' : 'false');
@@ -138,22 +139,22 @@ export function createLoginView({ controller, state = controller?.getState?.() |
 
   if (state.tab === 'telegram') {
     const telegramBody = doc.createElement('div'); telegramBody.className='uw-auth-telegram-body';
-    telegramBody.append(createButton({ label: state.busy ? 'Telegram ochilmoqda…' : 'Telegram’da davom etish', busy: state.busy, onClick: () => controller.signInTelegram() }, doc));
+    telegramBody.append(createButton({ label: state.busy ? tr('Telegram ochilmoqda…', 'Открывается Telegram…') : tr('Telegram’da davom etish', 'Продолжить через Telegram'), busy: state.busy, onClick: () => controller.signInTelegram() }, doc));
     const telegramError = inlineError(); if (telegramError) telegramBody.append(telegramError);
-    const telegram = createCard({ title: 'Telegram orqali kirish', description: 'Telegram profilingiz bilan tasdiqlang. Tasdiqdan keyin saytga avtomatik qaytasiz.', body: telegramBody }, doc);
+    const telegram = createCard({ title: tr('Telegram orqali kirish', 'Вход через Telegram'), description: tr('Telegram profilingiz bilan tasdiqlang. Tasdiqdan keyin saytga avtomatik qaytasiz.', 'Подтвердите вход в Telegram. Затем вы автоматически вернётесь на сайт.'), body: telegramBody }, doc);
     telegram.dataset.authPanel = 'telegram';
     body.append(telegram);
   } else {
     const form = doc.createElement('form');
     form.className = 'uw-auth-form';
     form.dataset.authPanel = 'password';
-    const loginField = createTextField({ label: 'Login', name: 'login', value: controller.getDraft?.().login || initialLogin, autocomplete: 'username', required: true, error: state.error?.fieldErrors?.login || '' }, doc);
-    const passwordField = createTextField({ label: 'Parol', name: 'password', type: state.passwordVisible ? 'text' : 'password', value: controller.getDraft?.().password || '', autocomplete: 'current-password', required: true, error: state.error?.fieldErrors?.password || '' }, doc);
+    const loginField = createTextField({ label: tr('Login', 'Логин'), name: 'login', value: controller.getDraft?.().login || initialLogin, autocomplete: 'username', required: true, error: state.error?.fieldErrors?.login || '' }, doc);
+    const passwordField = createTextField({ label: tr('Parol', 'Пароль'), name: 'password', type: state.passwordVisible ? 'text' : 'password', value: controller.getDraft?.().password || '', autocomplete: 'current-password', required: true, error: state.error?.fieldErrors?.password || '' }, doc);
     loginField.input.addEventListener('input', () => controller.updateDraft?.({ login: loginField.input.value }));
     passwordField.input.addEventListener('input', () => controller.updateDraft?.({ password: passwordField.input.value }));
     const passwordRow = doc.createElement('div'); passwordRow.className = 'uw-auth-password-row';
-    passwordRow.append(passwordField.element, createButton({ label: state.passwordVisible ? 'Yashirish' : 'Ko‘rsatish', variant: 'ghost', onClick: () => controller.togglePassword() }, doc));
-    const submit = createButton({ label: state.busy ? 'Tekshirilmoqda…' : 'Kirish', type: 'submit', busy: state.busy }, doc);
+    passwordRow.append(passwordField.element, createButton({ label: state.passwordVisible ? tr('Yashirish', 'Скрыть') : tr('Ko‘rsatish', 'Показать'), variant: 'ghost', onClick: () => controller.togglePassword() }, doc));
+    const submit = createButton({ label: state.busy ? tr('Tekshirilmoqda…', 'Проверка…') : tr('Kirish', 'Войти'), type: 'submit', busy: state.busy }, doc);
     const passwordError = inlineError(); if (passwordError) form.append(passwordError);
     form.append(loginField.element, passwordRow, submit);
     form.addEventListener('submit', (event) => { event?.preventDefault?.(); controller.signInPassword({ login: loginField.input.value, password: passwordField.input.value }); });
@@ -161,26 +162,30 @@ export function createLoginView({ controller, state = controller?.getState?.() |
     helpBody.className = 'uw-auth-credential-help';
     const steps = doc.createElement('ol');
     for (const step of [
-      'Telegramdagi do‘kon botingiz yoki UStorE platforma botining Mini App’ini oching.',
+      shopBotUsername ? 'Shu do‘kon botiga /login yuboring yoki uning Mini App’ini oching.' : 'Telegramdagi do‘kon botingiz yoki UStorE platforma botining Mini App’ini oching.',
       'Mini App’da Profil → Web login va parol bo‘limini bosing.',
       'Tizim bergan login va parolni shu saytga kiriting.',
     ]) {
-      const item = doc.createElement('li'); item.textContent = step; steps.append(item);
+      const item = doc.createElement('li'); item.textContent = locale === 'ru' ? ({
+        [shopBotUsername ? 'Shu do‘kon botiga /login yuboring yoki uning Mini App’ini oching.' : 'Telegramdagi do‘kon botingiz yoki UStorE platforma botining Mini App’ini oching.']: shopBotUsername ? 'Отправьте /login боту этого магазина или откройте его Mini App.' : 'Откройте Mini App бота магазина или платформы UStorE.',
+        'Mini App’da Profil → Web login va parol bo‘limini bosing.': 'В Mini App откройте Профиль → Логин и пароль для сайта.',
+        'Tizim bergan login va parolni shu saytga kiriting.': 'Введите полученные логин и пароль на этом сайте.',
+      })[step] || step : step; steps.append(item);
     }
     const note = doc.createElement('p');
-    note.textContent = 'Parol faqat yaratilganda ko‘rsatiladi. Unutsangiz, o‘sha bo‘limda yangisini yarating. Telegram orqali kirish ham ayni akkauntingizni ochadi.';
+    note.textContent = tr('Parol faqat yaratilganda ko‘rsatiladi. Unutsangiz, botga /reset yuboring yoki Mini App’da yangisini yarating. O‘zingiz qo‘ygan parol o‘zgartirmaguningizcha saqlanadi. Telegram orqali kirish ham ayni akkauntingizni ochadi.', 'Пароль показывается только при создании. Если забыли его, отправьте боту /reset или задайте новый в Mini App. Ваш пароль хранится до следующего изменения. Вход через Telegram открывает тот же аккаунт.');
     helpBody.append(steps, note);
-    const bot = String(globalThis.APP_CONFIG?.USTORE_PLATFORM_BOT_USERNAME || '').replace(/^@/, '');
+    const bot = String(shopBotUsername || globalThis.APP_CONFIG?.USTORE_PLATFORM_BOT_USERNAME || '').replace(/^@/, '');
     if (/^[A-Za-z0-9_]{5,32}$/.test(bot)) {
       const link = doc.createElement('a');
       link.className = 'uw-button uw-button--secondary uw-button--md';
       link.href = `https://t.me/${bot}?start=credentials`;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
-      link.textContent = 'UStorE Mini App botini ochish ↗';
+      link.textContent = shopBotUsername ? tr('Do‘kon botini ochish ↗', 'Открыть бота магазина ↗') : tr('UStorE Mini App botini ochish ↗', 'Открыть бот UStorE ↗');
       helpBody.append(link);
     }
-    const help = createCard({ title: 'Login va parolni qayerdan olaman?', body: helpBody }, doc);
+    const help = createCard({ title: tr('Login va parolni qayerdan olaman?', 'Где взять логин и пароль?'), body: helpBody }, doc);
     help.dataset.authHelp = 'credentials';
     body.append(form, help);
   }
