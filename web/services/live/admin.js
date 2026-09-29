@@ -27,7 +27,7 @@ export const LIVE_ADMIN_ACTIONS = Object.freeze([
 
 
   'get_admin_products', 'get_admin_product_editor', 'add_product', 'edit_product_field',
-  'toggle_product_visibility', 'duplicate_product', 'bulk_move_products', 'bulk_trash_products',
+  'toggle_product_visibility', 'toggle_featured', 'duplicate_product', 'bulk_move_products', 'bulk_trash_products',
   'add_category', 'edit_category',
 
   'get_excel_template_url', 'start_import_batch', 'stage_import_products',

@@ -1,5 +1,7 @@
 import { createButton, createCard, createStatePanel } from '../../components/ui.js';
 import { createBundleCollage } from '../bundle/bundle.js';
+import { createProductCard } from '../product/card.js';
+import { applyCatalogQuery } from '../catalog/catalog.js';
 
 function publicProducts(items) {
   return (Array.isArray(items) ? items : []).filter((product) => product?.is_visible !== false && product?.status !== 'DELETED');
@@ -34,6 +36,8 @@ export function buildHomeModel({ categories = [], products = [], bundles = [], a
   }).filter((block) => block && block.products.length);
   return {
     banners: (Array.isArray(activeBanners) ? activeBanners : []).filter((banner) => banner?.isActive !== false).slice(0, 5),
+    categories: safeCategories,
+    allProducts: safeProducts,
     bundles: (Array.isArray(bundles) ? bundles : []).filter((bundle) => bundle?.id && bundle?.name).slice(0, 12),
     featuredBlocks,
     featuredProducts: safeProducts.filter((product) => product.is_featured).slice(0, 12),
@@ -44,7 +48,7 @@ export function buildHomeModel({ categories = [], products = [], bundles = [], a
 export async function loadHomeModel({ catalogPort, bootMarketing = {} } = {}) {
   if (!catalogPort) throw new TypeError('catalogPort kerak');
   const [categoriesResult, productsResult, bundlesResult] = await Promise.all([
-    catalogPort.listCategories({ parentId: null }),
+    catalogPort.listCategories({ all: true }),
     catalogPort.listProducts({}),
     catalogPort.listBundles({}),
   ]);
@@ -67,18 +71,13 @@ function text(doc, tag, value, className = '') {
   const node = doc.createElement(tag); node.textContent = String(value ?? ''); node.className = className; return node;
 }
 
-function appendProductGrid(doc, section, products, onOpenProduct) {
+function appendProductGrid(doc, section, products, cardOptions = {}) {
   const grid = doc.createElement('div'); grid.className = 'uw-product-grid';
-  for (const product of products) {
-    const card = createCard({ title: product.name, description: `${Number(product.price || 0).toLocaleString('uz-UZ')} so‘m` }, doc);
-    card.dataset.productId = product.id;
-    card.addEventListener('click', () => onOpenProduct?.(product));
-    grid.append(card);
-  }
+  products.forEach((product, index) => grid.append(createProductCard(product, { ...cardOptions, isFavorite: cardOptions.favoriteIds?.has(String(product.id)) || false, index }, doc)));
   section.append(grid);
 }
 
-export function createHomeView({ model, state = 'ready', addingBundleId = null, onOpenProduct, onOpenCategory, onOpenBanner, onOpenBundle, onAddBundle, onRetry } = {}, documentRef = globalThis.document) {
+export function createHomeView({ model, state = 'ready', addingBundleId = null, onOpenProduct, onOpenCategory, onOpenBanner, onOpenBundle, onAddBundle, onAddProduct, onFavorite, favoriteIds = new Set(), canManage = false, onPin, onEdit, onVisibility, onDuplicate, onTrash, onAdmin, onRetry } = {}, documentRef = globalThis.document) {
   if (!documentRef?.createElement) throw new Error('Home UI uchun DOM kerak');
   const doc = documentRef;
   const root = doc.createElement('section'); root.className = 'uw-home'; root.dataset.feature = 'home';
@@ -89,11 +88,53 @@ export function createHomeView({ model, state = 'ready', addingBundleId = null, 
     root.append(createStatePanel({ kind: 'empty', title: 'Hozircha mahsulotlar yo‘q', message: 'Do‘kon katalogi to‘ldirilganda shu yerda ko‘rinadi.' }, doc)); return { element: root };
   }
 
+  const cardOptions = { onOpen: onOpenProduct, onAdd: onAddProduct, onFavorite, favoriteIds, canManage, onPin, onEdit, onVisibility, onDuplicate, onTrash };
+  const renderProducts = (target, products) => appendProductGrid(doc, target, products, cardOptions);
+  const bar = doc.createElement('div'); bar.className = 'uw-home-tools';
+  if (onAdmin) {
+    const launcher = doc.createElement('div'); launcher.className = 'uw-home-admin-launcher';
+    launcher.append(text(doc, 'span', 'Admin rejimi · Boshqaruv markazi'));
+    const open = doc.createElement('button'); open.type = 'button'; open.textContent = 'Ochish'; open.addEventListener('click', onAdmin); launcher.append(open);
+    root.append(launcher);
+  }
+  const search = doc.createElement('input'); search.type = 'search'; search.id = 'uw-home-search'; search.placeholder = 'Mahsulot nomi yoki ID'; search.setAttribute('aria-label', 'Mahsulotlarni qidirish');
+  const filter = doc.createElement('button'); filter.type = 'button'; filter.textContent = 'Filtr'; filter.setAttribute('aria-expanded', 'false');
+  bar.append(search, filter);
+  const chips = doc.createElement('div'); chips.className = 'uw-home-category-chips';
+  for (const block of model.featuredBlocks || []) {
+    const chip = doc.createElement('button'); chip.type = 'button'; chip.textContent = block.category.name; chip.addEventListener('click', () => { blockElements.get(String(block.category.id))?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }); }); chips.append(chip);
+  }
+  bar.append(chips);
+  const filterPanel = doc.createElement('div'); filterPanel.className = 'uw-home-filter-panel'; filterPanel.hidden = true;
+  const categorySelect = doc.createElement('select'); categorySelect.setAttribute('aria-label', 'Kategoriya');
+  const allCategory = doc.createElement('option'); allCategory.value = ''; allCategory.textContent = 'Barcha kategoriyalar'; categorySelect.append(allCategory);
+  for (const category of model.categories || []) { const option = doc.createElement('option'); option.value = String(category.id); option.textContent = category.name; categorySelect.append(option); }
+  const stock = doc.createElement('label'); const stockInput = doc.createElement('input'); stockInput.type = 'checkbox'; stock.append(stockInput, text(doc, 'span', 'Faqat qoldiqda bor'));
+  const discount = doc.createElement('label'); const discountInput = doc.createElement('input'); discountInput.type = 'checkbox'; discount.append(discountInput, text(doc, 'span', 'Faqat chegirmali'));
+  filterPanel.append(categorySelect, stock, discount); bar.append(filterPanel);
+  const searchResults = doc.createElement('section'); searchResults.className = 'uw-home-search-results'; searchResults.hidden = true;
+  const blockElements = new Map();
+  const defaultContent = doc.createElement('div'); defaultContent.className = 'uw-home-default';
+  function updateSearch() {
+    const query = { q: String(search.value || '').trim(), categoryId: categorySelect.value || null, inStock: stockInput.checked, discount: discountInput.checked };
+    const active = Boolean(query.q || query.categoryId || query.inStock || query.discount);
+    searchResults.hidden = !active; defaultContent.hidden = active;
+    if (!active) return;
+    searchResults.replaceChildren();
+    const found = applyCatalogQuery(model.allProducts || [], query, model.categories || []);
+    searchResults.append(text(doc, 'h2', `Natijalar (${found.length})`, 'uw-section-title'));
+    if (found.length) renderProducts(searchResults, found);
+    else searchResults.append(createStatePanel({ kind: 'empty', title: 'Mahsulot topilmadi', message: 'Boshqa so‘z yoki filtr bilan urinib ko‘ring.' }, doc));
+  }
+  search.addEventListener('input', updateSearch); categorySelect.addEventListener('change', updateSearch); stockInput.addEventListener('change', updateSearch); discountInput.addEventListener('change', updateSearch);
+  filter.addEventListener('click', () => { filterPanel.hidden = !filterPanel.hidden; filter.setAttribute('aria-expanded', filterPanel.hidden ? 'false' : 'true'); });
+  root.append(bar, searchResults, defaultContent);
+
   if (model.banners?.length) {
     const strip = doc.createElement('section'); strip.className = 'uw-banner-strip'; strip.setAttribute('aria-label', 'Bannerlar');
     model.banners.forEach((banner, index) => {
       const hero = doc.createElement('button'); hero.type = 'button'; hero.className = 'uw-home-hero'; hero.dataset.bannerId = banner.id || '';
-      if (banner.imageUrl) { const img = doc.createElement('img'); img.className = 'uw-home-hero__image'; img.src = banner.imageUrl; img.alt = ''; img.width = 1200; img.height = 480; img.loading = index === 0 ? 'eager' : 'lazy'; img.decoding = 'async'; img.fetchPriority = index === 0 ? 'high' : 'low'; img.referrerPolicy = 'no-referrer'; hero.append(img); }
+      if (banner.imageUrl) { const img = doc.createElement('img'); img.className = 'uw-home-hero__image'; img.src = banner.imageUrl; img.alt = ''; img.width = 1200; img.height = 480; img.loading = index === 0 ? 'eager' : 'lazy'; img.decoding = 'async'; img.fetchPriority = index === 0 ? 'high' : 'low'; img.referrerPolicy = 'no-referrer'; img.addEventListener('error', () => { img.hidden = true; }); hero.append(img); }
       if (banner.mode === 'TEMPLATE' || banner.title || banner.subtitle) {
         const copy = doc.createElement('span'); copy.className = 'uw-home-hero__copy';
         copy.append(text(doc, 'span', banner.title || '', 'uw-home-hero__title'), text(doc, 'span', banner.subtitle || '', 'uw-home-hero__subtitle'));
@@ -104,7 +145,30 @@ export function createHomeView({ model, state = 'ready', addingBundleId = null, 
       if (index >= 3) hero.dataset.lazy = 'true';
       strip.append(hero);
     });
-    root.append(strip);
+    defaultContent.append(strip);
+    if (model.banners.length > 1) {
+      const dots = doc.createElement('div'); dots.className = 'uw-banner-indicators'; dots.setAttribute('aria-label', 'Banner holati');
+      const slides = Array.from(strip.children);
+      let active = -1;
+      const updateActive = () => {
+        const center = strip.scrollLeft + strip.clientWidth / 2;
+        let next = 0; let distance = Infinity;
+        slides.forEach((slide, index) => { const delta = Math.abs(slide.offsetLeft + slide.clientWidth / 2 - center); if (delta < distance) { distance = delta; next = index; } });
+        if (next === active) return; active = next;
+        Array.from(dots.children).forEach((dot, index) => { dot.dataset.active = index === active ? 'true' : 'false'; dot.setAttribute('aria-current', index === active ? 'true' : 'false'); });
+      };
+      slides.forEach((slide, index) => { const dot = doc.createElement('button'); dot.type = 'button'; dot.className = 'uw-banner-indicator'; dot.setAttribute('aria-label', `Banner ${index + 1}`); dot.addEventListener('click', () => slide.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' })); dots.append(dot); });
+      strip.addEventListener('scroll', updateActive, { passive: true });
+      dots.children[0].dataset.active = 'true'; dots.children[0].setAttribute('aria-current', 'true');
+      defaultContent.append(dots);
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => { slides[Math.min(2, slides.length - 1)]?.scrollIntoView?.({ block: 'nearest', inline: 'center' }); updateActive(); });
+    }
+    let pointerX = null; let moved = false;
+    strip.addEventListener('pointerdown', (event) => { pointerX = event.clientX; moved = false; }, { passive: true });
+    strip.addEventListener('pointermove', (event) => { if (pointerX !== null && Math.abs(event.clientX - pointerX) > 8) moved = true; }, { passive: true });
+    strip.addEventListener('click', (event) => { if (moved) { event.preventDefault(); event.stopPropagation(); moved = false; } }, true);
+    strip.addEventListener('pointerup', () => { pointerX = null; }, { passive: true });
+    strip.addEventListener('pointercancel', () => { pointerX = null; moved = false; });
   }
 
   if (model.bundles?.length) {
@@ -125,18 +189,18 @@ export function createHomeView({ model, state = 'ready', addingBundleId = null, 
       card.className += ' uw-bundle-card'; card.dataset.bundleId = String(bundle.id);
       grid.append(card);
     }
-    section.append(grid); root.append(section);
+    section.append(grid); defaultContent.append(section);
   }
 
   for (const block of model.featuredBlocks || []) {
     const section = doc.createElement('section'); section.className = 'uw-home-section'; section.dataset.categoryId = block.category.id;
     const header = doc.createElement('div'); header.className = 'uw-section-heading'; header.append(text(doc, 'h2', block.category.name, 'uw-section-title'));
     const all = doc.createElement('button'); all.type = 'button'; all.className = 'uw-section-link'; all.textContent = 'Barchasini ko‘rish →'; all.addEventListener('click', () => onOpenCategory?.(block.category)); header.append(all);
-    section.append(header); appendProductGrid(doc, section, block.products, onOpenProduct); root.append(section);
+    section.append(header); appendProductGrid(doc, section, block.products, cardOptions); blockElements.set(String(block.category.id), section); defaultContent.append(section);
   }
 
   if (!model.featuredBlocks?.length && model.featuredProducts?.length) {
-    const section = doc.createElement('section'); section.className = 'uw-home-section'; section.append(text(doc, 'h2', 'Tavsiya etilganlar', 'uw-section-title')); appendProductGrid(doc, section, model.featuredProducts, onOpenProduct); root.append(section);
+    const section = doc.createElement('section'); section.className = 'uw-home-section'; section.append(text(doc, 'h2', 'Tavsiya etilganlar', 'uw-section-title')); appendProductGrid(doc, section, model.featuredProducts, cardOptions); defaultContent.append(section);
   }
   return { element: root };
 }

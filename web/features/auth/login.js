@@ -6,7 +6,7 @@ const AUTH_ERROR_COPY = Object.freeze({
   SESSION_EXPIRED: { title: 'Sessiya tugagan', message: 'Qayta kirishingiz kerak.' },
   NETWORK_ERROR: { title: 'Tarmoq xatosi', message: 'Internet aloqasini tekshirib, qayta urinib ko‘ring.' },
   FORBIDDEN: { title: 'Kirishga ruxsat berilmadi', message: 'Bu sayt manzili Telegram orqali kirish uchun serverda ruxsat etilmagan.' },
-  CAPABILITY_UNAVAILABLE: { title: 'Hozircha mavjud emas', message: 'Bu kirish usuli vaqtincha mavjud emas.' },
+  CAPABILITY_UNAVAILABLE: { title: 'Telegram orqali kirish yakunlanmadi', message: 'Telegram tasdiqlash xizmatini hozir ochib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.' },
 });
 
 function getDocument(documentRef) {
@@ -128,13 +128,18 @@ export function createLoginView({ controller, state = controller?.getState?.() |
 
   const body = doc.createElement('div');
   body.className = 'uw-auth__body';
-  if (state.error) {
-    body.append(createStatePanel({ kind: 'error', title: state.error.title, message: state.error.message }, doc));
-  }
+  const inlineError = () => {
+    if (!state.error) return null;
+    const box = doc.createElement('div'); box.className = 'uw-auth-inline-error'; box.setAttribute('role','alert');
+    const strong = doc.createElement('strong'); strong.textContent = state.error.title || 'Kirish amalga oshmadi';
+    const msg = doc.createElement('p'); msg.textContent = state.error.message || 'Qayta urinib ko‘ring.';
+    box.append(strong,msg); return box;
+  };
 
   if (state.tab === 'telegram') {
-    const telegramBody = doc.createElement('div');
-    telegramBody.append(createButton({ label: state.busy ? 'Ochilmoqda…' : 'Telegram’da davom etish', busy: state.busy, onClick: () => controller.signInTelegram() }, doc));
+    const telegramBody = doc.createElement('div'); telegramBody.className='uw-auth-telegram-body';
+    telegramBody.append(createButton({ label: state.busy ? 'Telegram ochilmoqda…' : 'Telegram’da davom etish', busy: state.busy, onClick: () => controller.signInTelegram() }, doc));
+    const telegramError = inlineError(); if (telegramError) telegramBody.append(telegramError);
     const telegram = createCard({ title: 'Telegram orqali kirish', description: 'Telegram profilingiz bilan tasdiqlang. Tasdiqdan keyin saytga avtomatik qaytasiz.', body: telegramBody }, doc);
     telegram.dataset.authPanel = 'telegram';
     body.append(telegram);
@@ -149,6 +154,7 @@ export function createLoginView({ controller, state = controller?.getState?.() |
     const passwordRow = doc.createElement('div'); passwordRow.className = 'uw-auth-password-row';
     passwordRow.append(passwordField.element, createButton({ label: state.passwordVisible ? 'Yashirish' : 'Ko‘rsatish', variant: 'ghost', onClick: () => controller.togglePassword() }, doc));
     const submit = createButton({ label: state.busy ? 'Tekshirilmoqda…' : 'Kirish', type: 'submit', busy: state.busy }, doc);
+    const passwordError = inlineError(); if (passwordError) form.append(passwordError);
     form.append(loginField.element, passwordRow, submit);
     form.addEventListener('submit', (event) => { event?.preventDefault?.(); controller.signInPassword({ login: loginField.input.value, password: passwordField.input.value }); });
     const helpBody = doc.createElement('div');

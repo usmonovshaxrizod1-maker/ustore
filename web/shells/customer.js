@@ -1,11 +1,12 @@
-import { applyBrandAccent, createBrand, createNavLink, createShellButton } from './shared.js';
+import { applyBrandAccent, canAccess, createBrand, createNavLink, createShellButton } from './shared.js';
 import { createTranslator } from '../i18n/index.js';
 
 const DEFAULT_MOBILE_NAV = [
-  { id: 'home', labelKey: 'nav.home', fallback: 'Bosh sahifa', iconText: '⌂', href: '/' },
-  { id: 'catalog', labelKey: 'nav.catalog', fallback: 'Katalog', iconText: '▦', href: '/catalog' },
-  { id: 'cart', labelKey: 'nav.cart', fallback: 'Savat', iconText: '◫', href: '/cart' },
-  { id: 'profile', labelKey: 'nav.profile', fallback: 'Profil', iconText: '○', href: '/profile' },
+  { id: 'home', labelKey: 'nav.home', fallback: 'Bosh sahifa', iconName: 'home', href: '/' },
+  { id: 'catalog', labelKey: 'nav.catalog', fallback: 'Kataloglar', iconName: 'folder', href: '/catalog' },
+  { id: 'cart', labelKey: 'nav.cart', fallback: 'Savatcha', iconName: 'bag', href: '/cart' },
+  { id: 'orders', labelKey: 'nav.orders', fallback: 'Buyurtmalar', iconName: 'package', href: '/orders' },
+  { id: 'profile', labelKey: 'nav.profile', fallback: 'Profil', iconName: 'user', href: '/profile' },
 ];
 
 function getDocument(documentRef) {
@@ -31,12 +32,16 @@ export function createCustomerShell(options = {}, documentRef) {
     onNavigate,
     onOpenCart,
     onOpenAccount,
+    onOpenAdmin,
     mobileNavItems = null,
     locale = 'uz',
   } = options;
   const tr = createTranslator(locale);
   const navItems = mobileNavItems || DEFAULT_MOBILE_NAV.map((item) => ({ ...item, label: tr.t(item.labelKey, item.fallback) }));
   if (!context?.shop) throw new Error('Customer shell requires a resolved shop context.');
+  if (!mobileNavItems && canAccess(context.actor, 'stock.view') && context.actor?.shopRole !== 'CUSTOMER') {
+    navItems.splice(4, 0, { id: 'warehouse', label: tr.t('nav.warehouse', 'Ombor'), iconName: 'warehouse', href: '/admin/inventory' });
+  }
 
   const root = doc.createElement('div');
   root.className = 'uw-root uw-shell uw-customer-shell';
@@ -72,6 +77,13 @@ export function createCustomerShell(options = {}, documentRef) {
   }
   headerInner.append(search);
 
+  const desktopNav = doc.createElement('nav'); desktopNav.className = 'uw-customer-desktop-nav'; desktopNav.setAttribute('aria-label', 'Do‘kon bo‘limlari');
+  for (const item of [
+    { id:'home', label:tr.t('nav.home', 'Bosh sahifa'), href:'/' },
+    { id:'catalog', label:tr.t('nav.catalog', 'Katalog'), href:'/catalog' },
+    { id:'orders', label:tr.t('nav.orders', 'Buyurtmalar'), href:'/orders' },
+  ]) desktopNav.append(createNavLink(item, { activeId:activeNav, onNavigate }, doc));
+
   const actions = doc.createElement('div');
   actions.className = 'uw-customer-header__actions';
   const accountLabel = context.actor?.displayName || tr.t('shell.signIn', 'Kirish');
@@ -79,15 +91,21 @@ export function createCustomerShell(options = {}, documentRef) {
     createShellButton({ label: accountLabel, className: 'uw-shell-action', onClick: onOpenAccount }, doc),
     createShellButton({ label: tr.t('nav.cart', 'Savat'), className: 'uw-shell-action uw-shell-action--primary', onClick: onOpenCart }, doc),
   );
+  if (typeof onOpenAdmin === 'function') actions.prepend(createShellButton({ label:'Boshqaruv', className:'uw-shell-action uw-shell-action--admin', onClick:onOpenAdmin }, doc));
   headerInner.append(actions);
-  header.append(headerInner);
+  header.append(headerInner, desktopNav);
 
   const mobileHeader = doc.createElement('header');
   mobileHeader.className = 'uw-customer-mobile-header';
-  mobileHeader.append(
-    createBrand(context, { compact: true }, doc),
-    createShellButton({ label: tr.t('shell.search', 'Qidirish'), className: 'uw-shell-icon-button', onClick: () => onNavigate?.({ id: 'search', label: tr.t('shell.search', 'Qidirish') }) }, doc),
-  );
+  mobileHeader.append(createBrand(context, { compact: true }, doc));
+  const mobileActions = doc.createElement('div'); mobileActions.className = 'uw-customer-mobile-header__actions';
+  if (typeof onOpenAdmin === 'function') mobileActions.append(createShellButton({ label:'ADMIN', className:'uw-customer-admin-badge', onClick:onOpenAdmin }, doc));
+  const mobileSearch = createShellButton({ label: '⌕', className: 'uw-shell-icon-button', onClick: () => onNavigate?.({ id: 'search', label: tr.t('shell.search', 'Qidirish') }) }, doc);
+  mobileSearch.setAttribute('aria-label', tr.t('shell.search', 'Qidirish'));
+  const mobileAccount = createShellButton({ label: '○', className: 'uw-shell-icon-button', onClick:onOpenAccount }, doc);
+  mobileAccount.setAttribute('aria-label', tr.t('nav.profile', 'Profil'));
+  mobileActions.append(mobileSearch, mobileAccount);
+  mobileHeader.append(mobileActions);
 
   const main = doc.createElement('main');
   main.className = 'uw-shell-main uw-customer-main';

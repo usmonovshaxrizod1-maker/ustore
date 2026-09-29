@@ -56,7 +56,7 @@ export function createLiveTenantResolver({ endpoint, fetchImpl = globalThis.fetc
         return fail('CONTRACT_MISMATCH', 'Tenant resolver javobi noto‘liq.');
       }
       if (explicit && explicit !== resolvedBotId) return fail('FORBIDDEN', 'Bu havola boshqa do‘konga tegishli.');
-      return ok({ ...tenant, botId: resolvedBotId, source: 'HOSTNAME' });
+      return ok({ ...tenant, botId: resolvedBotId, shopName: String(tenant?.shopName || '').trim() || null, logoUrl: tenant?.logoUrl || null, source: 'HOSTNAME' });
     },
   });
 }

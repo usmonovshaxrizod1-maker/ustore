@@ -2,6 +2,6 @@
 @import url('./document.css');
 @import url('./base.css');
 @import url('./components.css');
-@import url('./shells.css');
+@import url('./shells.css?v=20260928release2');
 
-@import url('./features.css?v=20260926cred2');
+@import url('./features.css?v=20260928release2');

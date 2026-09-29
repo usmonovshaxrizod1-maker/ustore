@@ -48,7 +48,7 @@ export function createProductDetailController({ catalogPort, productId, onAddToC
   };
 }
 
-export function createProductDetailView({ product, selection, gallery = buildProductGallery(product), onSelectColor, onSelectSize, onAddToCart, onShare, adding = false } = {}, documentRef = globalThis.document) {
+export function createProductDetailView({ product, selection, gallery = buildProductGallery(product), onSelectColor, onSelectSize, onAddToCart, onShare, onEdit, adding = false } = {}, documentRef = globalThis.document) {
   if (!documentRef?.createElement) throw new Error('Product detail UI uchun DOM kerak');
   const doc = documentRef;
   const root = doc.createElement('article'); root.className = 'uw-product-detail'; root.dataset.feature = 'product-detail';
@@ -87,6 +87,7 @@ export function createProductDetailView({ product, selection, gallery = buildPro
   const actions = doc.createElement('div'); actions.className = 'uw-product-detail__actions';
   const add = createButton({ label: current.canAdd ? (adding ? 'Savatga qo‘shilmoqda' : 'Savatga qo‘shish') : 'Mavjud emas', disabled: !current.canAdd, busy: adding, onClick: onAddToCart }, doc); add.className += ' uw-product-detail__add';
   actions.append(add);
+  if (typeof onEdit === 'function') actions.append(createButton({ label: 'Mahsulotni tahrirlash', variant: 'secondary', onClick: onEdit }, doc));
   if (typeof onShare === 'function') {
     const shareStatus = doc.createElement('span'); shareStatus.className = 'uw-product-detail__share-status'; shareStatus.setAttribute('role', 'status'); shareStatus.setAttribute('aria-live', 'polite');
     const share = createButton({ label: 'Ulashish', variant: 'secondary', onClick: async () => {

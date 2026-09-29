@@ -2,6 +2,8 @@ export const ru = Object.freeze({
   'nav.home': 'Главная',
   'nav.catalog': 'Каталог',
   'nav.cart': 'Корзина',
+  'nav.orders': 'Заказы',
+  'nav.warehouse': 'Склад',
   'nav.profile': 'Профиль',
   'nav.search': 'Поиск',
   'nav.admin.overview': 'Управление',

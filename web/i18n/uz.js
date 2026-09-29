@@ -1,7 +1,9 @@
 export const uz = Object.freeze({
   'nav.home': 'Bosh sahifa',
-  'nav.catalog': 'Katalog',
-  'nav.cart': 'Savat',
+  'nav.catalog': 'Kataloglar',
+  'nav.cart': 'Savatcha',
+  'nav.orders': 'Buyurtmalar',
+  'nav.warehouse': 'Ombor',
   'nav.profile': 'Profil',
   'nav.search': 'Qidirish',
   'nav.admin.overview': 'Boshqaruv',

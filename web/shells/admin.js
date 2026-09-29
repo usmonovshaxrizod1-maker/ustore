@@ -58,6 +58,7 @@ export function createAdminShell(options = {}, documentRef) {
     branding = {},
     onNavigate,
     onOpenAccount,
+    onOpenShop,
     navItems = null,
     locale = 'uz',
   } = options;
@@ -76,6 +77,7 @@ export function createAdminShell(options = {}, documentRef) {
   sidebar.className = 'uw-admin-sidebar';
   sidebar.append(
     createBrand(context, { subtitle: tr.t('shell.adminSubtitle', 'Boshqaruv paneli') }, doc),
+    createShellButton({ label: '← Do‘konga qaytish', className: 'uw-admin-shop-return', onClick: onOpenShop }, doc),
     createAdminNav(items, { activeNav, onNavigate }, doc),
   );
 
@@ -132,7 +134,7 @@ export function createAdminShell(options = {}, documentRef) {
   drawerHeader.className = 'uw-admin-drawer__header';
   const closeButton = createShellButton({ label: tr.t('shell.close', 'Yopish'), className: 'uw-shell-action' }, doc);
   drawerHeader.append(createBrand(context, { compact: true }, doc), closeButton);
-  drawer.append(drawerHeader, createAdminNav(items, { activeNav, onNavigate, label: tr.t('shell.mobileAdminNavigation', 'Mobil admin navigatsiyasi') }, doc));
+  drawer.append(drawerHeader, createShellButton({ label: '← Do‘konga qaytish', className: 'uw-admin-shop-return', onClick: onOpenShop }, doc), createAdminNav(items, { activeNav, onNavigate, label: tr.t('shell.mobileAdminNavigation', 'Mobil admin navigatsiyasi') }, doc));
   drawer.inert = true;
   const focusTrap = createFocusTrap(drawer, { documentRef: doc, onEscape: () => setDrawerOpen(false) });
 

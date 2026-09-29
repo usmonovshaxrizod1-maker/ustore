@@ -1,4 +1,5 @@
 import { createStatePanel } from '../../components/ui.js';
+import { createProductCard } from '../product/card.js';
 
 const SORT_VALUES = new Set(['relevance', 'price-asc', 'price-desc', 'newest', 'sold']);
 
@@ -90,7 +91,7 @@ export function buildCategoryTree(categories = []) {
   return roots;
 }
 
-export function createCatalogView({ products = [], categories = [], query = {}, loading = false, onOpenProduct, onQueryChange } = {}, documentRef = globalThis.document) {
+export function createCatalogView({ products = [], categories = [], query = {}, loading = false, onOpenProduct, onAddProduct, onFavorite, favoriteIds = new Set(), canManage = false, onPin, onEdit, onVisibility, onDuplicate, onTrash, onQueryChange } = {}, documentRef = globalThis.document) {
   if (!documentRef?.createElement) throw new Error('Catalog UI uchun DOM kerak');
   const doc = documentRef;
   const root = doc.createElement('section'); root.className = 'uw-catalog'; root.dataset.feature = 'catalog';
@@ -114,6 +115,13 @@ export function createCatalogView({ products = [], categories = [], query = {}, 
   const filterButton = doc.createElement('button'); filterButton.type = 'button'; filterButton.className = 'uw-catalog-filter-button'; filterButton.textContent = 'Filtrlar';
   toolbar.append(search, sort, filterButton); root.append(toolbar);
 
+  const chips = doc.createElement('div'); chips.className = 'uw-catalog-chips'; chips.setAttribute('aria-label', 'Kategoriyalar');
+  for (const category of [{ id: null, name: 'Barchasi' }, ...categories.filter((row) => !row.parent_id)]) {
+    const chip = doc.createElement('button'); chip.type = 'button'; chip.textContent = category.name; chip.dataset.active = (query.categoryId || null) === category.id ? 'true' : 'false';
+    chip.addEventListener('click', () => notify({ categoryId: category.id })); chips.append(chip);
+  }
+  root.append(chips);
+
   const filtered = applyCatalogQuery(products, query, categories);
   const page = paginateCatalog(filtered, query.page, 24);
   const layout = doc.createElement('div'); layout.className = 'uw-catalog-layout';
@@ -128,6 +136,13 @@ export function createCatalogView({ products = [], categories = [], query = {}, 
     for (const [label, key] of [['Faqat qoldiqda bor','inStock'],['Faqat chegirmali','discount']]) {
       const row = doc.createElement('label'); row.className = 'uw-catalog-check'; const input = doc.createElement('input'); input.type = 'checkbox'; input.checked = Boolean(query[key]); input.addEventListener('change', () => notify({ [key]: input.checked })); const span = doc.createElement('span'); span.textContent = label; row.append(input, span); panel.append(row);
     }
+    const prices = doc.createElement('form'); prices.className = 'uw-catalog-price-filter';
+    const min = doc.createElement('input'); min.type = 'number'; min.min = '0'; min.inputMode = 'numeric'; min.placeholder = 'Narx: dan'; min.value = query.minPrice ?? ''; min.setAttribute('aria-label', 'Eng arzon narx');
+    const max = doc.createElement('input'); max.type = 'number'; max.min = '0'; max.inputMode = 'numeric'; max.placeholder = 'Narx: gacha'; max.value = query.maxPrice ?? ''; max.setAttribute('aria-label', 'Eng qimmat narx');
+    const apply = doc.createElement('button'); apply.type = 'submit'; apply.textContent = 'Qo‘llash';
+    prices.append(min, max, apply);
+    prices.addEventListener('submit', (event) => { event?.preventDefault?.(); notify({ minPrice: cleanNumber(min.value), maxPrice: cleanNumber(max.value) }); });
+    panel.append(prices);
     return panel;
   }
 
@@ -142,11 +157,10 @@ export function createCatalogView({ products = [], categories = [], query = {}, 
   if (!page.items.length) main.append(createStatePanel({ kind: 'empty', title: 'Mahsulot topilmadi', message: 'Qidiruv yoki filtrlarni o‘zgartirib ko‘ring.' }, doc));
   else {
     const grid = doc.createElement('div'); grid.className = 'uw-product-grid';
-    for (const product of page.items) {
-      const card = doc.createElement('article'); card.className = 'uw-product-tile'; card.dataset.productId = product.id;
-      const button = doc.createElement('button'); button.type = 'button'; button.className = 'uw-product-tile__action'; button.textContent = `${product.name} — ${currentPrice(product).toLocaleString('uz-UZ')} so‘m`; button.addEventListener('click', () => onOpenProduct?.(product));
-      card.append(button); grid.append(card);
-    }
+    page.items.forEach((product, index) => grid.append(createProductCard(product, {
+      index, onOpen: onOpenProduct, onAdd: onAddProduct, onFavorite, isFavorite: favoriteIds.has(String(product.id)),
+      canManage, onPin, onEdit, onVisibility, onDuplicate, onTrash,
+    }, doc)));
     main.append(grid);
     if (page.pages > 1) {
       const pager = doc.createElement('nav'); pager.className = 'uw-catalog-pager'; pager.setAttribute('aria-label', 'Katalog sahifalari');

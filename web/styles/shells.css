@@ -178,6 +178,13 @@
   align-items: center;
   gap: var(--uw-space-2);
 }
+.uw-customer-desktop-nav { width:min(100% - 2rem,var(--uw-content-max)); margin:auto; display:flex; gap:.4rem; padding:0 0 .45rem; }
+.uw-customer-desktop-nav .uw-nav-item { min-height:2.4rem; font-size:.88rem; font-weight:650; }
+.uw-customer-mobile-header__actions { display:flex; align-items:center; gap:.35rem; flex:0 0 auto; }
+.uw-customer-mobile-header__actions .uw-shell-icon-button { width:2.35rem; min-width:2.35rem; min-height:2.35rem; padding:0; font-size:1.25rem; }
+.uw-customer-admin-badge { min-height:2.25rem; border:1px solid #bfdbfe; border-radius:.65rem; background:#eff6ff; color:#1d4ed8; padding:0 .55rem; font-size:.68rem; font-weight:850; letter-spacing:.04em; }
+.uw-shell-action--admin { color:#1d4ed8; font-weight:750; }
+@media (min-width:48rem) and (max-width:73rem) { .uw-customer-header__inner { grid-template-columns:minmax(9rem,12rem) minmax(11rem,1fr) auto; gap:.75rem; } .uw-customer-header__actions .uw-shell-action { max-width:7rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.78rem; } }
 
 .uw-customer-main {
   padding-block: var(--uw-space-8) var(--uw-space-12);
@@ -234,6 +241,7 @@
   flex: 0 0 auto;
   text-align: center;
 }
+.uw-nav-item__icon svg { display:block; width:1.25rem; height:1.25rem; margin:auto; }
 
 .uw-admin-shell {
   display: grid;
@@ -258,6 +266,7 @@
   display: grid;
   gap: var(--uw-space-1);
 }
+.uw-admin-shop-return { min-height:2.65rem; border:1px solid #dbeafe; border-radius:.75rem; background:#eff6ff; color:#1d4ed8; padding:.5rem .75rem; text-align:left; font-weight:750; }
 
 .uw-admin-workspace {
   min-width: 0;
@@ -391,6 +400,8 @@
     display: none;
   }
 
+  .uw-customer-desktop-nav { display:none; }
+
   .uw-customer-mobile-header {
     position: sticky;
     z-index: 30;
@@ -420,7 +431,7 @@
     inset-inline: 0;
     bottom: 0;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     border-top: 1px solid var(--uw-color-border);
     background: color-mix(in srgb, var(--uw-color-surface) 97%, transparent);
     padding: var(--uw-space-1) var(--uw-space-2) calc(var(--uw-space-1) + env(safe-area-inset-bottom));
@@ -441,6 +452,10 @@
     width: auto;
     font-size: var(--uw-text-lg);
   }
+  .uw-customer-bottom-nav .uw-nav-item__label { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.66rem; }
+  .uw-customer-bottom-nav:has([data-nav-id="warehouse"]) { grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .uw-customer-bottom-nav:has([data-nav-id="warehouse"]) .uw-nav-item__label { white-space:normal; overflow-wrap:anywhere; text-align:center; line-height:1.08; font-size:.61rem; }
+  .uw-customer-mobile-header .uw-brand__name { max-width:min(45vw,15rem); }
 
   .uw-admin-topbar {
     min-height: 4rem;

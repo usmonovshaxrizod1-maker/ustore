@@ -13,6 +13,7 @@ function normalizedText(value) { return String(value || '').toLocaleLowerCase('u
 function normalizedError(body, status) {
   const raw = typeof body?.error === 'string' ? body.error : body?.error?.code;
   const mapped = raw === 'session_expired' || status === 401 ? 'SESSION_EXPIRED'
+    : raw === 'not_found' || status === 404 ? 'NOT_FOUND'
     : raw === 'shop_frozen' || raw === 'shop_disabled' || raw === 'shop_terminated' ? 'SHOP_UNAVAILABLE'
       : ERROR_SET.has(raw) ? raw : 'NETWORK_ERROR';
   return fail(mapped, body?.error?.message || (mapped === 'SHOP_UNAVAILABLE' ? 'Do‘kon hozir mavjud emas.' : 'Shop API so‘rovi bajarilmadi.'), { retryable: mapped === 'NETWORK_ERROR' });
@@ -41,10 +42,19 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
     return ok(body || {});
   }
 
-  async function catalogData() {
+  let catalogInflight = null;
+  async function fetchCatalogData() {
     const result = await request('get_catalog');
     if (!result.ok) return result;
     return ok({ products: Array.isArray(result.data.products) ? result.data.products : [], categories: Array.isArray(result.data.categories) ? result.data.categories : [] });
+  }
+  function catalogData() {
+    if (catalogInflight) return catalogInflight;
+    const pending = fetchCatalogData();
+    catalogInflight = pending;
+    const clear = () => { if (catalogInflight === pending) catalogInflight = null; };
+    void pending.then(clear, clear);
+    return pending;
   }
 
   async function bundleData() {
@@ -66,6 +76,10 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
             logoUrl: body.logoUrl || null, lifecycle: body.shop?.lifecycle || 'ACTIVE', currency: body.shop?.currency || 'UZS', canonicalWebUrl: body.shop?.canonicalWebUrl || null,
           },
           actor: body.webSession?.actor || null,
+          marketing: {
+            activeBanners: Array.isArray(body.activeBanners) ? body.activeBanners : [],
+            featuredCategories: Array.isArray(body.featuredCategories) ? body.featuredCategories : [],
+          },
           capabilities: { publicCatalog: true, authenticatedSession: body.webSession?.authenticated === true },
         };
         const invalid = validateContext(context);
@@ -100,6 +114,17 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
         const result = await bundleData(); if (!result.ok) return result;
         const bundle = result.data.bundles.find((row) => String(row.id) === String(input.bundleId));
         return bundle ? ok(bundle) : fail('NOT_FOUND', 'Aksiya topilmadi.');
+      },
+      async getPromotion(input = {}) {
+        if (!input.promotionId) return fail('VALIDATION_ERROR', 'Aksiya ID kerak.');
+        const result = await request('get_web_promotion', { promotionId: input.promotionId });
+        return result.ok ? ok(result.data.promotion) : result;
+      },
+      async listPromotions() {
+        const result = await request('get_web_promotions');
+        if (!result.ok) return result;
+        const items = Array.isArray(result.data.promotions) ? result.data.promotions : [];
+        return ok(toPage(items, null, items.length));
       },
       async search(input = {}) {
         const query = normalizedText(input.query);

@@ -126,7 +126,7 @@ export function createSessionsController({ authPort, onSignedOut } = {}) {
   return Object.freeze({ getState: snapshot, subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }, load, revoke, revokeOthers, signOut });
 }
 
-export function createProfileView({ controller, state = controller?.getState?.() || {}, onOpenProduct, onOpenSessions } = {}, documentRef) {
+export function createProfileView({ controller, state = controller?.getState?.() || {}, onOpenProduct, onOpenSessions, onOpenOrders, onOpenSupport, onOpenPromotions, onOpenAdmin, onOpenDomains } = {}, documentRef) {
   if (!controller) throw new TypeError('controller kerak');
   const doc = getDocument(documentRef);
   const root = doc.createElement('section'); root.className = 'uw-profile';
@@ -145,10 +145,16 @@ export function createProfileView({ controller, state = controller?.getState?.()
   const phone = createTextField({ label: 'Telefon', name: 'phone', value: state.profile?.shopProfile?.phone || '', autocomplete: 'tel', required: true }, doc);
   form.append(firstName.element, lastName.element, phone.element, createButton({ label: state.saving ? 'Saqlanmoqda…' : 'Saqlash', type: 'submit', busy: state.saving }, doc));
   form.addEventListener('submit', (event) => { event?.preventDefault?.(); controller.save({ firstName: firstName.input.value, lastName: lastName.input.value, phone: phone.input.value }); });
-  const addressNote = node(doc, 'p', 'uw-profile-note', 'Saqlangan manzillar joriy DB kontraktida yo‘q; bu alohida keyingi feature sifatida qoladi.');
-  form.append(addressNote);
   if (typeof onOpenSessions === 'function') form.append(createButton({ label: 'Faol sessiyalar', variant: 'secondary', onClick: () => onOpenSessions() }, doc));
   layout.append(form);
+
+  const links = doc.createElement('section'); links.className = 'uw-profile-card uw-profile-links'; links.append(node(doc, 'h2', '', 'Bo‘limlar'));
+  if (onOpenOrders) links.append(createButton({ label: 'Buyurtmalarim', variant: 'secondary', onClick: onOpenOrders }, doc));
+  if (onOpenPromotions) links.append(createButton({ label: 'Aksiyalar va chegirmalar', variant: 'secondary', onClick: onOpenPromotions }, doc));
+  if (onOpenSupport) links.append(createButton({ label: 'Qo‘llab-quvvatlash', variant: 'secondary', onClick: onOpenSupport }, doc));
+  if (onOpenAdmin) links.append(createButton({ label: 'Boshqaruv markazi', variant: 'secondary', onClick: onOpenAdmin }, doc));
+  if (onOpenDomains) links.append(createButton({ label: 'Domen va manzil', variant: 'secondary', onClick: onOpenDomains }, doc));
+  layout.append(links);
 
   const favorites = doc.createElement('section'); favorites.className = 'uw-profile-card'; favorites.append(node(doc, 'h2', '', 'Sevimlilar'));
   if (!state.favorites?.length) favorites.append(createStatePanel({ kind: 'empty', title: 'Sevimlilar bo‘sh', message: 'Yoqtirgan mahsulotlaringiz shu yerda ko‘rinadi.' }, doc));

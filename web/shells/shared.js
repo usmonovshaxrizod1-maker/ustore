@@ -86,11 +86,24 @@ export function createNavLink(item, { activeId = '', onNavigate } = {}, document
     control.setAttribute('aria-current', 'page');
   }
 
-  if (item.iconText) {
+  if (item.iconText || item.iconName) {
     const icon = doc.createElement('span');
     icon.className = 'uw-nav-item__icon';
     icon.setAttribute('aria-hidden', 'true');
-    icon.textContent = String(item.iconText);
+    const paths = {
+      home: ['M3 10.5 12 3l9 7.5', 'M5 9.5V21h14V9.5', 'M9 21v-7h6v7'],
+      folder: ['M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'],
+      bag: ['M4 8h16l-1 13H5z', 'M9 9V6a3 3 0 0 1 6 0v3'],
+      package: ['M3 7 12 3l9 4-9 4z', 'M3 7v10l9 4 9-4V7', 'M12 11v10'],
+      warehouse: ['M3 10 12 4l9 6v11H3z', 'M8 21v-8h8v8'],
+      user: ['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8', 'M4 21a8 8 0 0 1 16 0'],
+    }[item.iconName];
+    if (paths) {
+      const svg = doc.createElementNS?.('http://www.w3.org/2000/svg', 'svg') || doc.createElement('svg');
+      svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '1.8'); svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+      for (const d of paths) { const path = doc.createElementNS?.('http://www.w3.org/2000/svg', 'path') || doc.createElement('path'); path.setAttribute('d', d); svg.append(path); }
+      icon.append(svg);
+    } else icon.textContent = String(item.iconText || '');
     control.append(icon);
   }
   const label = doc.createElement('span');

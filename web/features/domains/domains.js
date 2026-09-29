@@ -73,18 +73,18 @@ function purposeCopy(lang, value) {
 function statusTone(status) { return status === 'ACTIVE' ? 'success' : status === 'ERROR' ? 'danger' : status === 'REMOVING' ? 'muted' : 'warning'; }
 function lifecycleCopy(lang, domain) {
   const status = String(domain?.status || 'DRAFT');
-  if (status === 'PENDING_DNS' || status === 'DRAFT') return t(lang,
-    'DNS hali tasdiqlanmagan. Provayder bergan yozuvlarni DNS panelingizga kiriting, so‘ng tekshiring.',
-    'DNS ещё не подтверждён. Добавьте выданные записи в DNS-панель и затем запустите проверку.');
+  if (status === 'PENDING_DNS' || status === 'DRAFT') return domain?.kind === 'SUBDOMAIN'
+    ? t(lang, 'UStorE manzili tayyorlanmoqda. Wildcard routing tekshirilgach avtomatik faollashadi.', 'Адрес UStorE готовится и активируется автоматически после проверки маршрутизации.')
+    : t(lang, 'DNS hali tasdiqlanmagan. Provayder bergan yozuvlarni DNS panelingizga kiriting, so‘ng tekshiring.', 'DNS ещё не подтверждён. Добавьте выданные записи в DNS-панель и затем запустите проверку.');
   if (status === 'VERIFYING') return t(lang,
     'Tekshiruv davom etmoqda. DNS va HTTPS natijalari serverdan yangilanadi.',
     'Идёт проверка. Статусы DNS и HTTPS обновятся с сервера.');
   if (status === 'PENDING_TLS') return t(lang,
     'DNS tasdiqlangan. HTTPS sertifikati yoki routing hali tayyor emas — domenni asosiy qilishga hali erta.',
     'DNS подтверждён. HTTPS-сертификат или маршрутизация ещё не готовы — делать домен основным пока нельзя.');
-  if (status === 'ACTIVE') return t(lang,
-    'DNS va HTTPS tayyor. Domen trafik qabul qilishga tayyor.',
-    'DNS и HTTPS готовы. Домен готов принимать трафик.');
+  if (status === 'ACTIVE') return domain?.kind === 'SUBDOMAIN'
+    ? t(lang, 'Manzil tayyor. Xaridorlar shu havola orqali do‘koningizni ochishi mumkin.', 'Адрес готов. Покупатели могут открывать магазин по этой ссылке.')
+    : t(lang, 'DNS va HTTPS tayyor. Domen trafik qabul qilishga tayyor.', 'DNS и HTTPS готовы. Домен готов принимать трафик.');
   if (status === 'ERROR') return t(lang,
     'Tekshiruv xato bilan tugadi. DNS va HTTPS holatini alohida ko‘rib, xatoni tuzatgach qayta urinib ko‘ring.',
     'Проверка завершилась ошибкой. Проверьте DNS и HTTPS отдельно, исправьте причину и повторите.');
@@ -211,7 +211,7 @@ export function createDomainsFeature(options = {}, documentRef) {
       toast(state.error.message,'danger'); render(); return;
     }
     state.editingSubdomainId=null; state.subdomainSlug='';
-    toast(t(language,'Subdomen almashtirildi. Yangi manzil DNS va HTTPS tayyor bo‘lgach faollashadi.','Субдомен изменён. Новый адрес станет активным после готовности DNS и HTTPS.'),'success');
+    toast(t(language,'UStorE manzili o‘zgartirildi. Yangi manzil avtomatik faollashtiriladi.','Адрес UStorE изменён и будет активирован автоматически.'),'success');
     await load();
   }
   function domainCard(domain) {
@@ -220,9 +220,9 @@ export function createDomainsFeature(options = {}, documentRef) {
     const copyBlock = doc.createElement('div'); copyBlock.className = 'uw-domain-card__copy';
     const title = doc.createElement('div'); title.className = 'uw-domain-card__title';
     const host = doc.createElement('strong'); host.textContent = domain.hostname;
-    title.append(host, chip(domain.kind === 'SUBDOMAIN' ? t(language,'UStorE subdomeni','Субдомен UStorE') : t(language,'Shaxsiy domen','Свой домен'), 'muted'));
+    title.append(host, chip(domain.kind === 'SUBDOMAIN' ? t(language,'UStorE manzili','Адрес UStorE') : t(language,'Shaxsiy domen','Свой домен'), domain.kind === 'SUBDOMAIN' ? 'primary' : 'muted'));
     if (domain.isPrimary) title.append(chip(t(language,'Asosiy','Основной'), 'primary'));
-    const sub = doc.createElement('small'); sub.textContent = pick(language, STATUS_COPY[domain.status]) || domain.status;
+    const sub = doc.createElement('small'); sub.textContent = domain.kind === 'SUBDOMAIN' ? t(language,'Do‘koningizning doimiy web manzili','Постоянный веб-адрес магазина') : t(language,'Siz sotib olgan domen','Купленный вами домен');
     copyBlock.append(title, sub); head.append(copyBlock, chip(pick(language, STATUS_COPY[domain.status]) || domain.status, statusTone(domain.status)));
     card.append(head);
 
@@ -233,7 +233,7 @@ export function createDomainsFeature(options = {}, documentRef) {
     );
     card.append(grid);
     const lifecycle = doc.createElement('div'); lifecycle.className = 'uw-domain-lifecycle'; lifecycle.dataset.tone = lifecycleTone(domain); lifecycle.dataset.status = String(domain.status || 'DRAFT').toLowerCase();
-    const lifecycleTitle = doc.createElement('strong'); lifecycleTitle.textContent = t(language,'Holat izohi','Пояснение статуса');
+    const lifecycleTitle = doc.createElement('strong'); lifecycleTitle.textContent = t(language,'Holat','Статус');
     const lifecycleText = doc.createElement('p'); lifecycleText.textContent = lifecycleCopy(language, domain);
     lifecycle.append(lifecycleTitle, lifecycleText); card.append(lifecycle);
     const rec = records(domain); if (rec) card.append(rec);
@@ -241,7 +241,7 @@ export function createDomainsFeature(options = {}, documentRef) {
     if (domain.errorCode) { const e = doc.createElement('p'); e.className = 'uw-domain-inline-error'; e.textContent = `${t(language,'Xato kodi','Код ошибки')}: ${domain.errorCode}`; card.append(e); }
     const actions = doc.createElement('div'); actions.className = 'uw-domain-actions';
     const busy = state.busy.has(domain.id);
-    actions.append(button(t(language,'Nusxalash','Копировать'), () => copy(domain.hostname, t(language,'Domen','Домен')), { disabled: busy }));
+    actions.append(button(t(language,'Manzilni nusxalash','Копировать адрес'), () => copy(domain.hostname, t(language,'Domen','Домен')), { disabled: busy }));
     if (domain.kind === 'SUBDOMAIN' && typeof port.changeSubdomain === 'function') {
       actions.append(button(t(language,'Subdomenni almashtirish','Изменить субдомен'), () => {
         state.editingSubdomainId = state.editingSubdomainId === domain.id ? null : domain.id;
@@ -314,8 +314,10 @@ export function createDomainsFeature(options = {}, documentRef) {
       const p = doc.createElement('p'); p.textContent = t(language,'Bu bo‘lim faqat do‘kon egasi va MANAGER uchun.','Раздел доступен только владельцу и MANAGER.'); box.append(b,p); root.append(box); return;
     }
     const header = doc.createElement('header'); header.className = 'uw-domains__header';
-    const copy = doc.createElement('div'); const h = doc.createElement('h2'); h.textContent = t(language,'Domenlar','Домены');
-    const p = doc.createElement('p'); p.textContent = t(language,'UStorE subdomenini almashtiring yoki o‘zingiz sotib olgan domenni ulang. DNS va HTTPS holatlari alohida tekshiriladi.','Измените субдомен UStorE или подключите купленный вами домен. DNS и HTTPS проверяются отдельно.'); copy.append(h,p);
+    const copy = doc.createElement('div'); copy.className='uw-domains__copy';
+    const eyebrow=doc.createElement('span'); eyebrow.className='uw-domains__eyebrow'; eyebrow.textContent=t(language,'WEB MANZIL','ВЕБ-АДРЕС');
+    const h = doc.createElement('h2'); h.textContent = t(language,'Domen va manzil','Домен и адрес');
+    const p = doc.createElement('p'); p.textContent = t(language,'Do‘koningizning UStorE manzilini boshqaring yoki o‘zingiz sotib olgan domenni ulang.','Управляйте адресом UStorE магазина или подключите собственный домен.'); copy.append(eyebrow,h,p);
     header.append(copy, button(t(language,'O‘z domenimni ulash','Подключить свой домен'), () => { state.addOpen = !state.addOpen; render(); }, { primary:true, disabled: state.loading })); root.append(header);
     if (state.addOpen) {
       const form = doc.createElement('div'); form.className = 'uw-domain-add';
@@ -326,16 +328,18 @@ export function createDomainsFeature(options = {}, documentRef) {
       const updateHint = (value) => {
         const normalized = normalizeDomainInput(value);
         hint.dataset.tone = !value ? 'muted' : normalized.valid ? 'success' : 'danger';
-        if (!value) hint.textContent = t(language,'Masalan: fitcore.uz yoki www.fitcore.uz','Например: fitcore.uz или www.fitcore.uz');
-        else if (!normalized.valid) hint.textContent = t(language,'Hostname noto‘g‘ri. Protokol/yo‘l bo‘lsa u xavfsiz tarzda ajratiladi; port va wildcard qabul qilinmaydi.','Некорректный hostname. Протокол/путь безопасно отделяются; порт и wildcard не принимаются.');
-        else if (normalized.changed) hint.textContent = `${t(language,'Normalizatsiya','Нормализация')}: ${normalized.hostname}`;
-        else hint.textContent = `${t(language,'Serverga yuboriladi','Будет отправлено на сервер')}: ${normalized.hostname}`;
+        if (!value) hint.textContent = t(language,'Masalan: fitcore.uz','Например: fitcore.uz');
+        else if (!normalized.valid) hint.textContent = t(language,'Domen nomini tekshiring. Masalan: fitcore.uz','Проверьте домен. Например: fitcore.uz');
+        else if (normalized.changed) hint.textContent = `${t(language,'Tayyor domen','Готовый домен')}: ${normalized.hostname}`;
+        else hint.textContent = t(language,'Domen nomi to‘g‘ri','Домен указан верно');
       };
       updateHint(state.hostname);
       input.addEventListener('input', () => { state.hostname = input.value; updateHint(input.value); }); input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
       label.append(input); field.append(label,hint);
-      const explainer = doc.createElement('p'); explainer.className = 'uw-domain-add__note'; explainer.textContent = t(language,'Apex (masalan fitcore.uz) va WWW (www.fitcore.uz) hostname’lari alohida ulanadi. Faqat aynan kiritilgan hostname qo‘shiladi.','Apex (например fitcore.uz) и WWW (www.fitcore.uz) подключаются отдельно. Добавляется только введённый hostname.');
-      field.append(explainer);
+      const explainer = doc.createElement('details'); explainer.className = 'uw-domain-tech';
+      const summary=doc.createElement('summary'); summary.textContent=t(language,'Texnik ma’lumot','Техническая информация');
+      const technical=doc.createElement('p'); technical.className='uw-domain-add__note'; technical.textContent=t(language,'fitcore.uz va www.fitcore.uz alohida hostname hisoblanadi. Faqat kiritilgan manzil ulanadi.','fitcore.uz и www.fitcore.uz считаются отдельными hostname. Подключается только введённый адрес.');
+      explainer.append(summary,technical); field.append(explainer);
       form.append(field, button(state.adding ? t(language,'Qo‘shilmoqda…','Добавление…') : t(language,'Qo‘shish','Добавить'), add, { primary:true, disabled:state.adding })); root.append(form);
     }
     if (state.error) { const e=doc.createElement('div'); e.className='uw-domain-state is-error'; e.setAttribute('role','alert'); e.textContent=state.error.message || state.error.code; root.append(e); }
