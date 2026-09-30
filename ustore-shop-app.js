@@ -559,7 +559,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       return tr('⚠️ Original rasm hajmi 15MB dan oshmasligi kerak!', '⚠️ Исходное изображение не должно превышать 15 МБ!');
     }
 
-    const tg = window.Telegram?.WebApp;
+    const browserBridge = window.USTORE_FRAME_BRIDGE?.kind === 'shop' ? window.USTORE_FRAME_BRIDGE : null;
+    const tg = browserBridge ? null : window.Telegram?.WebApp;
     if (tg) tg.expand();
 
     // ============ SHOP IDENTITY (multi-tenant) ============
@@ -573,7 +574,33 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // so Shop A's cart/profile/cache can never bleed into Shop B's when
     // both are opened from the same browser.
     const BOT_ID = new URLSearchParams(window.location.search).get('bot_id') || '';
-    function scopedKey(name) { return `ustore:${BOT_ID}:${name}`; }
+    const browserViewerKey = browserBridge ? (new URLSearchParams(window.location.search).get('viewer') || '') : '';
+    function scopedKey(name) { return browserBridge ? `ustore:${BOT_ID}:web:${browserViewerKey}:${name}` : `ustore:${BOT_ID}:${name}`; }
+    if (browserBridge) {
+      const guestViewerKey = new URLSearchParams(window.location.search).get('guest_viewer') || '';
+      if (/^[0-9a-f-]{36}$/i.test(guestViewerKey) && guestViewerKey !== browserViewerKey) {
+        for (const name of ['cart', 'bundleCart']) {
+          const from = `ustore:${BOT_ID}:web:${guestViewerKey}:${name}`;
+          const to = scopedKey(name);
+          try {
+            const guestValue = localStorage.getItem(from);
+            if (!guestValue) continue;
+            const guestItems = readStoredObject(from, {});
+            const accountItems = readStoredObject(to, {});
+            if (!guestItems || typeof guestItems !== 'object' || Array.isArray(guestItems)) continue;
+            if (!accountItems || typeof accountItems !== 'object' || Array.isArray(accountItems)) continue;
+            for (const [key, item] of Object.entries(guestItems)) {
+              if (!item || typeof item !== 'object') continue;
+              if (!accountItems[key]) accountItems[key] = item;
+              else accountItems[key].qty = Math.min(name === 'bundleCart' ? 10 : 99,
+                Math.max(0, Number(accountItems[key].qty) || 0) + Math.max(0, Number(item.qty) || 0));
+            }
+            localStorage.setItem(to, JSON.stringify(accountItems));
+            localStorage.removeItem(from);
+          } catch (_) {}
+        }
+      }
+    }
 
     // ============ DB <-> JS MAPPERS ============
     function mapProductFromDB(r) {
@@ -2223,6 +2250,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function beginVisibleMutation() {}
     function endVisibleMutation() {}
     async function callApi(action, payload) {
+      if (browserBridge) return browserBridge.request(action, payload || {});
       const perfStarted = performance.now();
       const showAutomaticProgress = false;
       const initData = tg?.initData || '';
@@ -2896,6 +2924,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const activeNav = document.getElementById(`nav-${tab}`);
       if (activeNav) activeNav.classList.add('text-blue-600', 'font-bold');
       render(); // tugma bosilishi darhol sezilsin
+      if (browserBridge && !applyingWebRoute) browserBridge.navigate(({ home: '/', categories: '/catalog', cart: '/cart', orders: '/orders', profile: '/profile' })[tab] || '/');
       if (tab === 'orders') loadOrdersLazy();
       if (tab === 'warehouse') loadWarehouseSummary();
       if (tab === 'profile' && isSuperAdmin) loadAdminsLazy();
@@ -5586,14 +5615,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             roleCodes: staffRole === 'STAFF' && canViewAuditLog && hasPermission('domains.manage') ? ['MANAGER'] : [],
             permissions: Array.isArray(myPermissions) ? [...myPermissions] : [],
           },
-          capabilities: { domains: canManageDomainsPage() }, mode: 'telegram',
+          capabilities: { domains: canManageDomainsPage() }, mode: browserBridge ? 'web' : 'telegram',
         };
         const feature = mod.createDomainsFeature({
           port, context, language: uiLang,
           clipboard: navigator.clipboard,
           confirm: async (message) => fcConfirm(tr('Tasdiqlash','Подтверждение'), message),
           onToast: ({ message, tone }) => showActionToast(message, tone === 'danger' ? 'error' : tone, 2800),
-          openUrl: (url) => { try { Telegram?.WebApp?.openLink ? Telegram.WebApp.openLink(url) : window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { window.open(url, '_blank', 'noopener,noreferrer'); } },
+          openUrl: (url) => { try { tg?.openLink ? tg.openLink(url) : window.open(url, '_blank', 'noopener,noreferrer'); } catch (_) { window.open(url, '_blank', 'noopener,noreferrer'); } },
         });
         host.replaceChildren(feature.element);
         await feature.load();
@@ -11218,6 +11247,15 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     async function openShopWebCredentials() {
+      if (browserBridge) {
+        const username = String(botUsername || '').replace(/^@/, '');
+        if (!/^[A-Za-z0-9_]{5,32}$/.test(username)) {
+          showAppNotice(tr('Do‘kon boti manzili topilmadi.', 'Адрес бота магазина не найден.'));
+          return;
+        }
+        window.open(`https://t.me/${username}?start=credentials`, '_blank', 'noopener,noreferrer');
+        return;
+      }
       if (activePage === 'WEB_CREDENTIALS' && (webCredentialState.loading || webCredentialState.busy)) return;
       webCredentialState = { loading: true, busy: false, valid: false, credentialExists: false, login: '', issuedPassword: null, error: '', notice: '' };
       openPage('WEB_CREDENTIALS', 'nav-profile');
@@ -15001,7 +15039,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
           <section class="fc-profile-menu">
             ${canManageDomainsPage() ? profileMenuRowHtml({ icon: 'globe-2', title: tr('Domen va manzil','Домен и адрес'), subtitle: tr('Subdomen va shaxsiy domenni boshqarish','Управление субдоменом и собственным доменом'), onclick: 'openDomainsSettingsPage()' }) : ''}
-            ${profileMenuRowHtml({ icon: 'key-round', title: tr('Web login va parol', 'Логин и пароль для сайта'), subtitle: tr('Shu yerda olish yoki yangilash', 'Получить или обновить здесь'), onclick: 'openShopWebCredentials()' })}
+            ${profileMenuRowHtml({ icon: 'key-round', title: tr('Web login va parol', 'Логин и пароль для сайта'), subtitle: browserBridge ? tr('Login va parolni do‘kon botidan oling', 'Получите логин и пароль в боте магазина') : tr('Shu yerda olish yoki yangilash', 'Получить или обновить здесь'), onclick: 'openShopWebCredentials()' })}
           </section>
 
           ${myStatus.isBlocked ? `<div class="fc-bg-danger-soft border fc-border-danger p-4 rounded-2xl text-xs"><p class="font-bold fc-text-danger">${tr("Siz botdan foydalanish huquqidan mahrum qilingansiz", "Доступ к оформлению заказов заблокирован")}</p><p class="fc-text-danger mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.blockReason || tr("ko'rsatilmagan", "не указана"))}</p></div>` : myStatus.isWarned ? `<div class="bg-amber-50 border border-amber-300 p-4 rounded-2xl text-xs"><p class="font-bold text-amber-800">${tr("Sizga ogohlantirish berilgan", "Вам вынесено предупреждение")}</p><p class="text-amber-700 mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.warnReason || tr("ko'rsatilmagan", "не указана"))}</p></div>` : ''}
@@ -18254,6 +18292,7 @@ if (activePopupModal === 'LOGO_CROP') {
         activeSizeName = initial.size;
       }
       renderModalContainer();
+      if (browserBridge && !applyingWebRoute && selectedProductModal) browserBridge.navigate(`/product/${encodeURIComponent(id)}`);
       if (activeColorName !== null) requestAnimationFrame(() => scrollProductGalleryToColor(activeColorName));
       // 18-band: faqat mijoz ko'rinishida (admin tahrirlash klikini "ko'rish"
       // sifatida hisoblamaymiz) — recentViewProductIds optimistik yangilanadi.
@@ -20347,7 +20386,8 @@ if (activePopupModal === 'LOGO_CROP') {
       // MUHIM: ilova FAQAT Telegram orqali ochilganda ishlaydi. Bu ataylab
       // shunday qilingan — aks holda oddiy brauzerda ochib, admin bo'lib
       // olish mumkin bo'lardi (avvalgi versiyadagi xavfsizlik teshigi).
-      if (!tg || !tg.initData) {
+      if (browserBridge) await browserBridge.ready;
+      if (!browserBridge && (!tg || !tg.initData)) {
         document.getElementById('app-content').innerHTML = `
           <div class="space-y-4 my-6">
             <div class="bg-slate-900 border border-slate-800 text-slate-100 p-5 rounded-2xl shadow-xl">
@@ -20407,12 +20447,17 @@ if (activePopupModal === 'LOGO_CROP') {
       // fallback konvensiyasi bilan bir xil. Haqiqiy nom bootData kelgach
       // darhol (header orqali) ko'rinadi.
       const cachedShopName = String(cachedBrand?.name || tr("Do'kon", 'Магазин')).trim();
-      document.getElementById('app-content').innerHTML = `<div class="fc-boot-welcome" role="status">
-        <div class="fc-boot-welcome-mark">U</div>
-        <h2>${escapeHtml(cachedShopName)} ${tr("do'koniga xush kelibsiz!", '— добро пожаловать!')}</h2>
-        <p>${tr("Sizni ko'rganimizdan xursandmiz.", 'Мы рады вас видеть.')}</p>
-        <span class="fc-boot-welcome-loader"><i></i></span>
-      </div>`;
+      document.getElementById('app-content').innerHTML = browserBridge
+        ? `<div class="fc-boot-welcome" role="status">
+             ${cachedBrand?.logoUrl ? `<img class="fc-boot-welcome-logo" src="${escapeHtml(cachedBrand.logoUrl)}" alt="">` : ''}
+             <h2>${escapeHtml(cachedShopName)} ${tr("do'koniga xush kelibsiz!", '— добро пожаловать!')}</h2>
+           </div>`
+        : `<div class="fc-boot-welcome" role="status">
+             <div class="fc-boot-welcome-mark">U</div>
+             <h2>${escapeHtml(cachedShopName)} ${tr("do'koniga xush kelibsiz!", '— добро пожаловать!')}</h2>
+             <p>${tr("Sizni ko'rganimizdan xursandmiz.", 'Мы рады вас видеть.')}</p>
+             <span class="fc-boot-welcome-loader"><i></i></span>
+           </div>`;
 
       const hadCache = hydrateCatalogCache();
       // Katalog cache darhol xotiraga olinadi, lekin ADMIN/USER roli aniqlanmaguncha
@@ -20516,14 +20561,18 @@ if (activePopupModal === 'LOGO_CROP') {
       }
 
       setupPolling();
+      if (browserBridge) applyingWebRoute = true;
       switchTab('home');
+      if (browserBridge) applyingWebRoute = false;
+      if (browserBridge) await catalogPromise;
+      if (browserBridge) window.USTORE_APPLY_WEB_ROUTE(browserBridge.initialRoute);
       // (catalogPromise xatosi endi yuqorida, yaratilgan joyida ushlanadi.)
       void catalogPromise;
 
       // Eski versiyalarda FRESH deb noto'g'ri belgilangan yoki bo'sh qolgan RU
       // matnlarni bir sessiyada bir marta server fonida qayta tekshirtiramiz.
       // Bu boot'ni kutdirmaydi va oddiy foydalanuvchida umuman ishlamaydi.
-      if (isUserAnAdmin && sessionStorage.getItem(scopedKey('ru-repair-v1')) !== '1') {
+      if (!browserBridge && isUserAnAdmin && sessionStorage.getItem(scopedKey('ru-repair-v1')) !== '1') {
         sessionStorage.setItem(scopedKey('ru-repair-v1'), '1');
         callApi('retry_bad_translations', {}).then((r) => {
           if (Number(r?.scheduledProducts || 0) + Number(r?.scheduledCategories || 0) > 0) {
@@ -20532,6 +20581,66 @@ if (activePopupModal === 'LOGO_CROP') {
         }).catch((e) => console.warn('[USTORE] RU translation repair could not start', e));
       }
     }
+
+    // Browser URLs reuse the same Mini App pages; the host remains the only
+    // holder of Web auth and tenant authority.
+    let applyingWebRoute = false;
+    window.USTORE_APPLY_WEB_ROUTE = (route) => {
+      if (!browserBridge || !authReady) return;
+      const path = String(route || '/').split('?')[0];
+      applyingWebRoute = true;
+      try {
+        if (path.startsWith('/product/')) {
+          switchTab('categories');
+          openProductDetailModal(decodeURIComponent(path.slice('/product/'.length)));
+        } else if (path === '/catalog' || path === '/search') switchTab('categories');
+        else if (path.startsWith('/bundle/') || path.startsWith('/promotion/')) {
+          switchTab('home');
+          const kind = path.startsWith('/bundle/') ? 'BUNDLE' : 'PROMOTION';
+          const id = decodeURIComponent(path.slice(kind === 'BUNDLE' ? '/bundle/'.length : '/promotion/'.length));
+          if (id) void openCampaignDetail(kind, id);
+          else openCampaignsPage();
+        }
+        else if (path === '/promotions') { switchTab('home'); openCampaignsPage(); }
+        else if (path === '/cart' || path === '/checkout') {
+          switchTab('cart');
+          if (path === '/checkout') openCheckoutForm();
+        }
+        else if (path === '/orders' || path.startsWith('/orders/')) {
+          switchTab('orders');
+          const orderId = Number(path.slice('/orders/'.length));
+          if (path.startsWith('/orders/') && Number.isSafeInteger(orderId) && orderId > 0) {
+            void loadOrdersLazy().then(() => { if (orders.some(o => Number(o.id) === orderId)) openOrderModal(orderId); });
+          }
+        }
+        else if (path === '/profile') switchTab('profile');
+        else if (path === '/favorites') { switchTab('profile'); openPage('FAVORITES'); }
+        else if (path === '/support') { switchTab('profile'); openPage('SUPPORT'); }
+        else if (path.startsWith('/admin')) {
+          if (!isUserAnAdmin) return;
+          isAdminMode = true;
+          const part = path.split('/')[2] || '';
+          if (part === 'products' || part === 'categories' || part === 'imports') {
+            switchTab('categories');
+            if (path === '/admin/products/new') openAddProductModal();
+            else if (path === '/admin/categories/new') openAddCatModal();
+            else if (part === 'imports') void openExcelImportModal();
+          } else if (part === 'orders') switchTab('orders');
+          else if (part === 'inventory') switchTab('warehouse');
+          else {
+            switchTab('profile');
+            if (part === 'marketing') openMarketingHubPage();
+            else if (part === 'reports') openReportsPage();
+            else if (part === 'team') openStaffPage();
+            else if (part === 'support') openAdminSupportOrUserSupport();
+            else if (part === 'settings') openPage('SETTINGS');
+            else if (part === 'domains') openDomainsSettingsPage();
+            else openAdminCommandCenter(false);
+          }
+        }
+        else switchTab('home');
+      } finally { applyingWebRoute = false; }
+    };
 
     // INITIAL LAUNCH
     window.addEventListener('scroll', () => {

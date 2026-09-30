@@ -21,7 +21,9 @@
   // qiymat.
   const SHOP_FREEZE_DAYS = 60;
 
-  let tg = window.Telegram?.WebApp || null;
+  const browserBridge = window.USTORE_FRAME_BRIDGE?.kind === 'platform' ? window.USTORE_FRAME_BRIDGE : null;
+  let tg = browserBridge ? null : window.Telegram?.WebApp || null;
+  let browserPlatformActor = null;
   if (tg) tg.expand();
 
   if (!window.APP_CONFIG) {
@@ -39,6 +41,7 @@
   }
 
   async function callPlatformApi(action, payload, options) {
+    if (browserBridge) return browserBridge.request(action, payload || {});
     const initData = tg?.initData || '';
     const res = await fetch(`${CONFIG.SUPABASE_URL}/functions/v1/platform-api`, {
       method: 'POST',
@@ -226,6 +229,7 @@
   let dashboardShopId = null;
   let currentTab = 'home'; // user: home|shops|subscription|help|profile ; admin: dashboard|shops|requests|tariffs|profile
   let activePage = null;
+  let applyingWebRoute = false;
   // ASTRA-4c: protected central-Telegram credential screen. Passwords live
   // only in this in-memory state after an explicit issue/reset response; they
   // are never persisted to localStorage/sessionStorage or appended to URLs.
@@ -444,8 +448,39 @@
     if (!isAdminMode && tab === 'subscription') resetSubscriptionFlow();
     currentTab = tab;
     render({ preserve: false, scrollTop: true });
+    if (browserBridge && !applyingWebRoute) browserBridge.navigate((isAdminMode
+      ? { dashboard: '/platform/admin', shops: '/platform/admin/shops', requests: '/platform/admin/requests', support: '/platform/admin/support', settings: '/platform/admin/settings' }
+      : { home: '/platform/app', shops: '/platform/shops', subscription: '/platform/subscriptions', help: '/platform/support', profile: '/platform/profile' })[tab] || '/platform/app');
     onTabEnter(tab);
   }
+  window.USTORE_APPLY_WEB_ROUTE = (route) => {
+    if (!browserBridge || loading) return;
+    const path = String(route || '/').split('?')[0];
+    applyingWebRoute = true;
+    try {
+      if (path.startsWith('/platform/admin')) {
+        if (!isSuperAdmin) return;
+        isAdminMode = true;
+        const segments = path.split('/');
+        const section = segments[3] || '';
+        switchTab(({ shops: 'shops', requests: 'requests', support: 'support', settings: 'settings' })[section] || 'dashboard');
+        if (section === 'tariffs') openAdminTariffsPage();
+        else if (section === 'shops' && segments[4]) openShopDetails(segments[4]);
+        else if (section === 'requests' && segments[4]) openRequestDetails(segments[4]);
+        else if (section === 'support' && segments[4]) void openAdminSupportThread(segments[4]);
+      } else {
+        isAdminMode = false;
+        const segments = path.split('/');
+        const section = segments[2] || '';
+        switchTab(({ shops: 'shops', subscriptions: 'subscription', support: 'help', profile: 'profile' })[section] || 'home');
+        if (section === 'shops' && segments[3]) openMyShopManage(segments[3]);
+        else if (section === 'requests') {
+          openMyRequests();
+          if (segments[3]) openMyRequestDetails(segments[3]);
+        } else if (section === 'support' && segments[3]) void openSupportThread(segments[3]);
+      }
+    } finally { applyingWebRoute = false; }
+  };
   function onTabEnter(tab) {
     if (tab === 'shops' && isAdminMode) reloadAdminShops();
     if (tab === 'requests') loadRequests();
@@ -539,12 +574,13 @@
     bootError = null;
     render();
     try {
-      const telegramReady = await waitForTelegramContext();
+      const telegramReady = browserBridge ? (await browserBridge.ready, true) : await waitForTelegramContext();
       if (!telegramReady) {
         bootError = 'Telegram sessiyasi tayyor bo‘lmadi. Mini App’ni bot ichidan qayta oching.';
         return;
       }
       const data = await platformBootRequestWithRetry();
+      browserPlatformActor = browserBridge ? (data.platformActor || null) : null;
       isSuperAdmin = data.isSuperAdmin === true;
       myShops = Array.isArray(data.myShops) ? data.myShops : [];
       myRequests = Array.isArray(data.myRequests) ? data.myRequests : [];
@@ -566,6 +602,7 @@
     } finally {
       loading = false;
       bootInFlight = false;
+      if (browserBridge && !accessDenied && !bootError) window.USTORE_APPLY_WEB_ROUTE(browserBridge.initialRoute);
       render();
       if (!accessDenied && !bootError && activePage === 'WEB_CREDENTIALS') loadWebCredentialStatus();
       if (!accessDenied && !bootError && !isAdminMode && myShops.length) loadMySupportTickets();
@@ -885,6 +922,11 @@
   }
 
   async function openWebCredentialsFromProfile() {
+    if (browserBridge) {
+      const username = String(CONFIG.USTORE_PLATFORM_BOT_USERNAME || '').replace(/^@/, '');
+      if (/^[A-Za-z0-9_]{5,32}$/.test(username)) window.open(`https://t.me/${username}?start=credentials`, '_blank', 'noopener,noreferrer');
+      return;
+    }
     webCredentialFromProfile = true;
     webCredentialState = { ...webCredentialState, loading: true, valid: false, issuedPassword: null, notice: '', error: '' };
     openPage('WEB_CREDENTIALS');
@@ -1398,7 +1440,7 @@
     return id === undefined || id === null ? '' : String(id);
   }
   const NEW_SHOP_FORM_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
-  function newShopFormDraftStorageKey() { return `ustore-platform:${currentTelegramUserId() || 'anon'}:new-shop-form-draft-v1`; }
+  function newShopFormDraftStorageKey() { return `ustore-platform:${browserBridge ? (new URL(location.href).searchParams.get('viewer') || 'browser') : (currentTelegramUserId() || 'anon')}:new-shop-form-draft-v1`; }
   function loadNewShopLocalDraft() {
     try {
       const raw = localStorage.getItem(newShopFormDraftStorageKey());
@@ -2784,7 +2826,10 @@
 
   function renderProfileTab() {
     if (isAdminMode) return renderAdminProfileTab();
-    const user = tg?.initDataUnsafe?.user || {};
+    const user = browserBridge ? {
+      first_name: browserPlatformActor?.displayName || '', last_name: '',
+      id: browserPlatformActor?.telegramUserId || '',
+    } : (tg?.initDataUnsafe?.user || {});
     const activeSubs = myShops.filter((s)=>s.status==='ACTIVE').length;
     const expiryDays = myShops.map((s)=>daysUntil(s.subscriptionExpiresAt)).filter((d)=>d!==null&&d>=0).sort((a,b)=>a-b);
     const nearest = expiryDays.length ? expiryDays[0] : null;
@@ -2795,14 +2840,17 @@
       <div class="plat-profile-stats"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length} ta</b><small>do'kon ulangan</small></div><div><span class="tone-blue">${pIcon('check',16)}</span><b>${activeSubs} ta</b><small>faol obuna</small></div><div><span class="tone-blue">${pIcon('calendar',16)}</span><b>${nearest===null?'—':nearest+' kun'}</b><small>eng yaqin tugash</small></div></div>
       <h2 class="plat-profile-section-title">Hisob</h2><div class="plat-profile-list"><button onclick="switchTab('shops')"><span class="tone-blue">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-blue">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button><button onclick="openWebCredentialsFromProfile()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Web login va parol</b><em>Olish ›</em></button></div>
       <h2 class="plat-profile-section-title">UStorE</h2><div class="plat-profile-list"><button onclick="openPage('GUIDES')"><span class="tone-blue">${pIcon('book',17)}</span><b>Qo'llanmalar</b><em>3 ta ›</em></button><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-blue">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
-      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Telegram va web kirish bir akkaunt</b><small>Web uchun login-parolni shu profildan olishingiz mumkin.</small></div>${pIcon('check',18)}</div>
+      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Telegram va web kirish bir akkaunt</b><small>${browserBridge ? 'Login va parolni UStorE botidan olishingiz mumkin.' : 'Web uchun login-parolni shu profildan olishingiz mumkin.'}</small></div>${pIcon('check',18)}</div>
       ${isSuperAdmin?`<button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('lock',22)}</span><div><b>Admin rejimi</b><small>Platformani boshqarish</small></div><em>O'tish →</em></button>`:''}
       <div class="plat-version">UStorE · 2026</div>
     `;
   }
 
   function renderAdminProfileTab() {
-    const user = tg?.initDataUnsafe?.user || {};
+    const user = browserBridge ? {
+      first_name: browserPlatformActor?.displayName || '', last_name: '',
+      id: browserPlatformActor?.telegramUserId || '',
+    } : (tg?.initDataUnsafe?.user || {});
     const fullName = [user.first_name,user.last_name].filter(Boolean).join(' ') || 'Administrator';
     const activeMethods = adminPaymentMethods.filter((m)=>m.isActive).length + ((paymentInfoDraft?.isActive && paymentInfoDraft?.cardNumber) ? 1 : 0);
     const activeTemplates = adminNotificationTemplates.filter((t)=>t.isActive).length;
