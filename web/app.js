@@ -80,6 +80,10 @@ function settleRouteFocus(main) {
 function mount(value) {
   cleanupActive();
   const node = elementOf(value) || createStatePanel({ kind:'error', title:'Sahifa ochilmadi', message:'UI elementi yaratilmagan.' });
+  if (sharedFrame && node !== sharedFrame.view.element) {
+    sharedFrame.view.destroy();
+    sharedFrame = null;
+  }
   root.replaceChildren(node);
   settleRouteFocus(routeMainTarget(node));
   if (typeof value?.destroy === 'function') remember(value.destroy);
@@ -127,8 +131,10 @@ function mountSharedFrame({ kind, routeState, runtime, tenant = null, viewerAcco
       else go(`/profile?${new URLSearchParams({ next: target || '/' }).toString()}`);
     },
   });
+  // Route changes reuse the live frame. Registering its destroy with mount()
+  // would tear down the message bridge at the start of every renderRoute().
+  mount(view.element);
   sharedFrame = { kind, botId: String(tenant?.botId || ''), view };
-  mount(view);
 }
 function stateView(kind, title, message, actionLabel = '', onAction) {
   return createStatePanel({ kind, title, message, actionLabel, onAction });
@@ -142,7 +148,14 @@ function shopNameHintFromHostname(hostname = globalThis.location?.hostname) {
 }
 function launchView({ mode = 'platform', name = '', logoUrl = null, message = '' } = {}) {
   const shop = mode === 'shop';
-  const title = shop ? (String(name || '').trim() || shopNameHintFromHostname()) : 'UStorE';
+  let title = shop ? (String(name || '').trim() || shopNameHintFromHostname()) : 'UStorE';
+  if (shop && !logoUrl) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(`ustore:shop:brand:${location.hostname.toLowerCase()}`) || 'null');
+      if (cached?.logoUrl) logoUrl = String(cached.logoUrl);
+      if (cached?.name) title = String(cached.name);
+    } catch (_) {}
+  }
   const subtitle = message || 'Biznesingiz uchun platforma tayyorlanmoqda…';
   const section = document.createElement('section');
   section.className = `uw-launch uw-launch--${shop ? 'shop' : 'platform'}`;

@@ -20447,12 +20447,17 @@ if (activePopupModal === 'LOGO_CROP') {
       // fallback konvensiyasi bilan bir xil. Haqiqiy nom bootData kelgach
       // darhol (header orqali) ko'rinadi.
       const cachedShopName = String(cachedBrand?.name || tr("Do'kon", 'Магазин')).trim();
-      document.getElementById('app-content').innerHTML = `<div class="fc-boot-welcome" role="status">
-        <div class="fc-boot-welcome-mark">U</div>
-        <h2>${escapeHtml(cachedShopName)} ${tr("do'koniga xush kelibsiz!", '— добро пожаловать!')}</h2>
-        <p>${tr("Sizni ko'rganimizdan xursandmiz.", 'Мы рады вас видеть.')}</p>
-        <span class="fc-boot-welcome-loader"><i></i></span>
-      </div>`;
+      document.getElementById('app-content').innerHTML = browserBridge
+        ? `<div class="fc-boot-welcome" role="status">
+             ${cachedBrand?.logoUrl ? `<img class="fc-boot-welcome-logo" src="${escapeHtml(cachedBrand.logoUrl)}" alt="">` : ''}
+             <h2>${escapeHtml(cachedShopName)} ${tr("do'koniga xush kelibsiz!", '— добро пожаловать!')}</h2>
+           </div>`
+        : `<div class="fc-boot-welcome" role="status">
+             <div class="fc-boot-welcome-mark">U</div>
+             <h2>${escapeHtml(cachedShopName)} ${tr("do'koniga xush kelibsiz!", '— добро пожаловать!')}</h2>
+             <p>${tr("Sizni ko'rganimizdan xursandmiz.", 'Мы рады вас видеть.')}</p>
+             <span class="fc-boot-welcome-loader"><i></i></span>
+           </div>`;
 
       const hadCache = hydrateCatalogCache();
       // Katalog cache darhol xotiraga olinadi, lekin ADMIN/USER roli aniqlanmaguncha
