@@ -443,6 +443,12 @@ async function renderPlatformHome(routeState, epoch) {
   applyPlatformHomeMetadata(routeState);
   const runtime = await ensurePlatformRuntime();
   if (epoch !== renderEpoch) return;
+  const session = await runtime.auth.getSession();
+  if (epoch !== renderEpoch) return;
+  if (session.ok) {
+    mountSharedFrame({ kind:'platform', routeState, runtime, viewerAccountId:session.data?.accountId });
+    return;
+  }
   const mod = await import('./features/platform-home/index.js');
   if (epoch !== renderEpoch) return;
   const controller = mod.createPlatformHomeController({ platformPort: runtime.platform });
