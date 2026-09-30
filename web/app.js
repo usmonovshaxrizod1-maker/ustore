@@ -1,10 +1,11 @@
-import { createRouter, splitTarget } from './navigation/router.js';
+import { createRouter, createRouteMatcher, splitTarget } from './navigation/router.js';
 import { createNotFoundView } from './navigation/not-found.js';
 import { createCustomerShell, createAdminShell } from './shells/index.js';
 import { createButton, createStatePanel } from './components/ui.js';
 import { createTranslator, normalizeLocale } from './i18n/index.js';
 import { localizeCustomerDom } from './i18n/customer-copy.js';
 import { buildCanonicalUrl, createDocumentMetadataManager, sharePage } from './metadata/index.js';
+import { createMiniAppFrameHost } from './shared/frame-host.js';
 
 const root = document.getElementById('ustore-web-app');
 if (!root) throw new Error('UStorE web root topilmadi.');
@@ -21,9 +22,11 @@ let context = null;
 let renderEpoch = 0;
 let activeCleanup = [];
 let activeRouteReason = 'start';
+let sharedFrame = null;
 let shopLaunchShown = globalThis.__USTORE_SHOP_LAUNCH_SKIP__ === true;
 const WEB_LOCALE_KEY = 'ustore.web.locale';
 const metadataManager = createDocumentMetadataManager({ documentRef: document });
+const matchWebRoute = createRouteMatcher();
 
 function readStoredLocale() {
   try { return globalThis.localStorage?.getItem?.(WEB_LOCALE_KEY) || ''; } catch (_) { return ''; }
@@ -80,6 +83,52 @@ function mount(value) {
   root.replaceChildren(node);
   settleRouteFocus(routeMainTarget(node));
   if (typeof value?.destroy === 'function') remember(value.destroy);
+}
+function mountSharedFrame({ kind, routeState, runtime, tenant = null, viewerAccountId = '' }) {
+  const next = routeState.target || '/';
+  if (sharedFrame && sharedFrame.kind === kind && sharedFrame.botId === String(tenant?.botId || '') && root.contains(sharedFrame.view.element)) {
+    sharedFrame.view.route(next);
+    return;
+  }
+  const accountId = kind === 'shop' ? String(context?.actor?.accountId || '') : String(viewerAccountId || '');
+  const viewerStorageKey = `ustore:web:viewer:v1:${kind}:${location.hostname}:${accountId || 'guest'}`;
+  let viewerKey = '';
+  try {
+    viewerKey = sessionStorage.getItem(viewerStorageKey) || '';
+    if (!/^[0-9a-f-]{36}$/i.test(viewerKey)) {
+      viewerKey = crypto.randomUUID();
+      sessionStorage.setItem(viewerStorageKey, viewerKey);
+    }
+  } catch (_) { viewerKey = crypto.randomUUID(); }
+  let guestViewerKey = '';
+  if (kind === 'shop' && accountId) {
+    try { guestViewerKey = sessionStorage.getItem(`ustore:web:viewer:v1:shop:${location.hostname}:guest`) || ''; } catch (_) {}
+  }
+  const view = createMiniAppFrameHost({
+    kind, route: next, tenant, viewerKey, guestViewerKey, runtime,
+    onNavigate(target) {
+      if (target === `${location.pathname}${location.search}`) return;
+      let nextRoute;
+      try { nextRoute = matchWebRoute(target); } catch (_) { return; }
+      if (!nextRoute.found) return;
+      if (kind === 'shop' && !runtime.tokenStore.get() && /^\/(cart|checkout|orders|profile|favorites|support|admin)(\/|$)/.test(target)) {
+        go(target);
+        return;
+      }
+      const pathname = target.split('?')[0];
+      if (kind === 'shop' && pathname.startsWith('/platform')) return;
+      if (kind === 'platform' && !pathname.startsWith('/platform')) return;
+      const base = previewBase();
+      history.pushState({}, '', base ? `${base}${location.search}#${target}` : target);
+      if (kind === 'shop') void applySharedShopMetadata(nextRoute, renderEpoch).catch(() => applyPrivateMetadata());
+    },
+    onAuthRequired(target) {
+      if (kind === 'platform') go(`${platformLoginTarget()}?${new URLSearchParams({ next: target }).toString()}`);
+      else go(`/profile?${new URLSearchParams({ next: target || '/' }).toString()}`);
+    },
+  });
+  sharedFrame = { kind, botId: String(tenant?.botId || ''), view };
+  mount(view);
 }
 function stateView(kind, title, message, actionLabel = '', onAction) {
   return createStatePanel({ kind, title, message, actionLabel, onAction });
@@ -251,8 +300,40 @@ function applyShopPublicMetadata({ title, description, pathname = '/', imageUrl 
   const canonicalUrl = shopCanonical(pathname);
   return metadataManager.publicPage({ title, description, canonicalUrl, imageUrl, type, locale: uiLocale, siteName: context?.shop?.name || 'UStorE' });
 }
+async function applySharedShopMetadata(routeState, epoch) {
+  const shopName = context.shop.name || 'Do‘kon';
+  const id = routeState.route.id;
+  const common = { imageUrl: context.shop.logoUrl || null };
+  if (id === 'home') applyShopPublicMetadata({ ...common, title: `${shopName} — UStorE`, description: `${shopName} onlayn do‘koni. Mahsulotlar va katalogni ko‘ring.`, pathname:'/' });
+  else if (id === 'catalog' || id === 'search') applyShopPublicMetadata({ ...common, title: `Katalog — ${shopName}`, description: `${shopName} do‘konidagi mahsulotlar va toifalar.`, pathname:'/catalog' });
+  else if (id === 'promotions') applyShopPublicMetadata({ ...common, title:`Aksiyalar — ${shopName}`, description:`${shopName} do‘konidagi faol aksiyalar.`, pathname:'/promotions' });
+  else if (id === 'product') {
+    const result = await shopRuntime.services.catalog.getProduct({ productId:routeState.params.productId });
+    if (epoch !== renderEpoch) return false;
+    if (!result.ok || result.data?.is_visible === false) {
+      applyPrivateMetadata('Mahsulot topilmadi — UStorE', 'Bu mahsulot ommaga ochiq emas.');
+      mount(stateView('error', 'Mahsulot topilmadi', 'Mahsulot mavjud emas yoki yashirilgan.', 'Katalog', () => go('/catalog')));
+      return false;
+    }
+    const product = result.data;
+    applyShopPublicMetadata({ title:`${product.name} — ${shopName}`, description:product.description || `${product.name} — ${shopName} onlayn do‘koni.`, pathname:routeState.pathname, imageUrl:product.img || product.thumb_img || null, type:'product' });
+  } else if (id === 'bundle' || id === 'promotion') {
+    const result = id === 'bundle'
+      ? await shopRuntime.services.catalog.getBundle({ bundleId:routeState.params.bundleId })
+      : await shopRuntime.services.catalog.getPromotion({ promotionId:routeState.params.promotionId });
+    if (epoch !== renderEpoch) return false;
+    if (!result.ok) {
+      applyPrivateMetadata('Aksiya topilmadi — UStorE', 'Mavjud bo‘lmagan aksiya sahifasi indekslanmaydi.');
+      mount(stateView('error', 'Aksiya topilmadi', 'Aksiya mavjud emas yoki muddati tugagan.', 'Bosh sahifa', () => go('/')));
+      return false;
+    }
+    const item = result.data;
+    applyShopPublicMetadata({ title:`${item.name} — ${shopName}`, description:item.description || `${item.name} aksiyasi.`, pathname:routeState.pathname, imageUrl:item.coverImageUrl || item.cover_image_url || context.shop.logoUrl || null, type:id === 'bundle' ? 'product' : 'website' });
+  } else applyPrivateMetadata(`${shopName} — UStorE`, 'Shaxsiy ma’lumotlar va boshqaruv sahifasi indekslanmaydi.');
+  return true;
+}
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20260929parity3');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20260929shared1');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
@@ -262,7 +343,7 @@ function loadAuthFeatureModule() {
 function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
-  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20260929parity3');
+  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20260929shared1');
   return loginFeatureModulePromise;
 }
 function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.' } = {}) {
@@ -296,7 +377,14 @@ async function ensureShopRuntime() {
 async function renderShopSignIn(routeState, epoch) {
   const { createCustomDomainSignInController, createCustomDomainSignInView } = await loadAuthFeatureModule();
   if (epoch !== renderEpoch) return;
-  const returnTo = routeState.target || currentTarget();
+  let returnTo = routeState.target || currentTarget();
+  const requestedNext = new URLSearchParams(routeState.search || '').get('next');
+  if (requestedNext) {
+    try {
+      const next = splitTarget(requestedNext);
+      if (!next.pathname.startsWith('/platform') && !next.pathname.startsWith('/auth')) returnTo = next.target;
+    } catch (_) {}
+  }
   const controller = createCustomDomainSignInController({
     authPort: shopRuntime.services.auth, returnTo, botUsername: shopRuntime.tenant?.botUsername || '', locale:uiLocale,
     onRedirect: (url) => location.assign(url),
@@ -416,30 +504,17 @@ async function renderPlatformAdmin(routeState, epoch) {
     go(`${platformLoginTarget()}?${new URLSearchParams({ next }).toString()}`, true);
     return;
   }
-  const mod = await import('./features/platform-admin/index.js');
-  if (!platformAdminController) platformAdminController = mod.createPlatformAdminController({ platformPort: runtime.platform, authPort: runtime.auth });
-  const sectionByRoute = {
-    'platform-admin':'overview', 'platform-admin-shops':'shops', 'platform-admin-shop':'shops',
-    'platform-admin-requests':'requests', 'platform-admin-request':'requests',
-    'platform-admin-support':'support', 'platform-admin-support-ticket':'support',
-    'platform-admin-tariffs':'tariffs', 'platform-admin-analytics':'analytics', 'platform-admin-settings':'settings',
-  };
-  const section = sectionByRoute[routeState.route.id] || 'overview';
-  const view = reactive(platformAdminController, (snapshot) => mod.createPlatformAdminView({
-    controller: platformAdminController,
-    state: snapshot,
-    section,
-    params: routeState.params,
-    onNavigate: (target) => go(target),
-    onSignedOut: () => { platformAdminController = null; platformPortalController = null; go(platformHomeTarget(), true); },
-  }));
-  mount(view); remember(view.destroy);
-  let snapshot = platformAdminController.getState();
-  if (snapshot.status === 'idle' || snapshot.status === 'error') await platformAdminController.load();
+  const boot = await runtime.platform.invoke('platform_boot', {});
   if (epoch !== renderEpoch) return;
-  snapshot = platformAdminController.getState();
-  if (snapshot.status !== 'ready' || snapshot.isSuperAdmin !== true) return;
-  await platformAdminController.loadSection(section, routeState.params || {});
+  if (!boot.ok) {
+    mount(stateView('error', 'Boshqaruv ochilmadi', boot.error?.message || 'Ma’lumotni yuklab bo‘lmadi.', 'Qayta urinish', () => renderRoute(routeState)));
+    return;
+  }
+  if (boot.data?.isSuperAdmin !== true) {
+    mount(stateView('permission', 'Ruxsat yo‘q', 'Bu bo‘lim uchun platforma boshqaruvchisi huquqi kerak.'));
+    return;
+  }
+  mountSharedFrame({ kind: 'platform', routeState, runtime, viewerAccountId:session.data?.accountId });
 }
 
 async function renderPlatformPortal(routeState, epoch) {
@@ -452,50 +527,8 @@ async function renderPlatformPortal(routeState, epoch) {
     go(`${platformLoginTarget()}?${new URLSearchParams({ next }).toString()}`, true);
     return;
   }
-  const mod = await import('./features/platform-portal/index.js');
-  if (!platformPortalController) platformPortalController = mod.createPlatformPortalController({ platformPort: runtime.platform, authPort: runtime.auth });
-  const sectionByRoute = {
-    'platform-app':'app', 'platform-shops':'shops', 'platform-shop':'shops',
-    'platform-subscriptions':'subscriptions', 'platform-requests':'requests', 'platform-request':'requests',
-    'platform-support':'support', 'platform-support-ticket':'support', 'platform-profile':'profile',
-  };
-  const section = sectionByRoute[routeState.route.id] || 'app';
-  const view = reactive(platformPortalController, (snapshot) => mod.createPlatformPortalView({
-    controller: platformPortalController,
-    state: snapshot,
-    section,
-    params: routeState.params,
-    search: routeState.search,
-    onNavigate: (target) => go(target),
-    onSignedOut: () => { platformPortalController = null; go(platformHomeTarget(), true); },
-  }));
-  mount(view); remember(view.destroy);
-  let snapshot = platformPortalController.getState();
-  if (snapshot.status === 'idle' || snapshot.status === 'error') await platformPortalController.load();
-  if (epoch !== renderEpoch) return;
-  snapshot = platformPortalController.getState();
-  if (section === 'subscriptions') {
-    const q = new URLSearchParams(routeState.search || '');
-    const requestedShop = q.get('shop') || snapshot.selectedShopId;
-    const requestedPlan = q.get('plan') || '';
-    if ((q.get('new') === '1' || !snapshot.shops.length) && !snapshot.checkout) {
-      platformPortalController.beginCheckout({ kind: 'NEW_SHOP', tariffId: requestedPlan || undefined });
-      snapshot = platformPortalController.getState();
-    } else if (requestedPlan && snapshot.checkout && snapshot.checkout.tariffId !== requestedPlan) {
-      platformPortalController.patchCheckout({ tariffId: requestedPlan });
-      snapshot = platformPortalController.getState();
-    }
-    if (requestedShop && (snapshot.selectedShopId !== requestedShop || snapshot.historyStatus === 'idle')) await platformPortalController.loadHistory(requestedShop);
-  } else if (section === 'requests' && routeState.params.requestId) {
-    if (snapshot.selectedRequestId !== routeState.params.requestId || snapshot.requestHistoryStatus === 'idle') await platformPortalController.loadRequestHistory(routeState.params.requestId);
-  } else if (section === 'support') {
-    if (snapshot.supportStatus === 'idle') await platformPortalController.loadSupport();
-    snapshot = platformPortalController.getState();
-    if (routeState.params.ticketId && (Number(snapshot.selectedTicketId) !== Number(routeState.params.ticketId) || !snapshot.messages.length)) await platformPortalController.openTicket(routeState.params.ticketId);
-  }
-  if (epoch !== renderEpoch) return;
+  mountSharedFrame({ kind: 'platform', routeState, runtime, viewerAccountId:session.data?.accountId });
 }
-
 async function renderHome(routeState, epoch) {
   const [mod, bundleMod, cartMod] = await Promise.all([import('./features/home/index.js'), import('./features/bundle/index.js'), import('./features/cart/index.js')]);
   const [result, favoriteIds] = await Promise.all([
@@ -870,6 +903,9 @@ async function renderRoute(routeState, reason = 'refresh') {
     const protectedRoute=routeState.route.auth||routeState.route.admin||['cart','checkout'].includes(routeState.route.id);
     if(protectedRoute&&!context.actor){await renderShopSignIn(routeState,epoch);return;}
     if(routeState.route.admin&&!actorIsAdmin(context.actor)){mountShell(routeState,stateView('permission','Ruxsat yo‘q','Bu admin sahifasi uchun do‘kon vakolati kerak.'),'Ruxsat yo‘q');return;}
+    if (!await applySharedShopMetadata(routeState, epoch) || epoch !== renderEpoch) return;
+    mountSharedFrame({ kind:'shop', routeState, runtime:shopRuntime, tenant:shopRuntime.tenant });
+    return;
     switch(routeState.route.id){
       case 'home': return renderHome(routeState,epoch);
       case 'catalog': case 'search': return renderCatalog(routeState,epoch);
@@ -899,7 +935,7 @@ async function startWebApp() {
     mount(stateView('loading', 'Telegram kirishi tekshirilmoqda', 'Bir oz kuting.'));
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20260929parity3'), import('./services/live/auth.js?v=20260929parity3'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20260929shared1'), import('./services/live/auth.js?v=20260929shared1'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,
