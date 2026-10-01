@@ -1,0 +1,101 @@
+{
+  "package_id": "CHAT-J3-023",
+  "base_id": "ASTRA-7A-010",
+  "base_zip_sha256": "24fb610474e121b2dcc548d17675d0579e0b0fee466b9bf22ddac5c99c7daef3",
+  "result_id": "LOCAL_CHAT_J3_AFTER_ASTRA_7A",
+  "task": "J3",
+  "files": [
+    {
+      "path": "excel-import.js",
+      "operation": "MODIFY",
+      "base_sha256": "278c345e162540ca4868524d0af50e6ba6ebad6d1022cc52b0f0bc837e18afde",
+      "result_sha256": "78f8ed8a34ee05734e191aac37258d369e81ea7429239539f7ebb5e8170eaf13",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "web/features/admin-imports/imports.js",
+      "operation": "ADD",
+      "base_sha256": null,
+      "result_sha256": "b34f57bdcff50e56f29d83783315391bc66d31ad4a26564e09173d89ff04d265",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "web/features/admin-imports/index.js",
+      "operation": "ADD",
+      "base_sha256": null,
+      "result_sha256": "64b191af938b0ce1dcba82e7102819baca97501f0657875cb429b23dc595f36c",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "web/index.js",
+      "operation": "MODIFY",
+      "base_sha256": "3bdc0ec78d5e5af324a361a269c65a10f9a866012cb21d557449cfe01c9d8851",
+      "result_sha256": "2083ccf99c7e2e383f6564af6261810cc51a1f41eb698ddafc5c2b54c78780d6",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "web/services/mock/admin.js",
+      "operation": "MODIFY",
+      "base_sha256": "ab83dc947c08ebd813a7490ed7ac806a5e4d825f60ae2d85fccda982d302870f",
+      "result_sha256": "18b4ad6f2abca490af34fe27d89d544da46230e65e55919e17a894e20b6531ac",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "web/styles/features.css",
+      "operation": "MODIFY",
+      "base_sha256": "bbf559add35a9a6d17f740c15c775bd10b3292707973ba493722f32d3cb24858",
+      "result_sha256": "f05e91a4918f37003a03565055bbd976cf9d89539755a35a3a46d8f80811f76a",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "tests/web-ui/j3-admin-imports.test.cjs",
+      "operation": "ADD",
+      "base_sha256": null,
+      "result_sha256": "bc65489a2c573a361156af19028a7ac1bcbc4aea81e292f469d8717dd79621a8",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "docs/web/CHAT_J3_IMPORTS.md",
+      "operation": "ADD",
+      "base_sha256": null,
+      "result_sha256": "c61eecc4468fbcf98f0dfb5030cdf1adec2a393099ce380496cdca9dac812169",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "docs/web/CHAT_TASKS.md",
+      "operation": "MODIFY",
+      "base_sha256": "7f37a5ce1f82f3ad1d3096bfe08a5271772719ce04f40809d84bfa8e053a46cb",
+      "result_sha256": "5310bcce1f2f217a9b3086a0b67f45692aa1a74114a9d07456d36f3dc98a4a99",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "docs/web/CHAT_HANDOFF.md",
+      "operation": "MODIFY",
+      "base_sha256": "7c9e6984d239fb2e19f3c41b35628c989418c81c9da2b54fb8e74d113e717730",
+      "result_sha256": "6b4c0be12ca68330fab5f0848b4dec8b95141ea23f9a1600533ba2b340e4ab80",
+      "task_id": "CHAT-J3-023"
+    },
+    {
+      "path": "docs/web/INTEGRATION_STATUS.md",
+      "operation": "MODIFY",
+      "base_sha256": "cd519a2f68b54caf71b702a53f6cd63ab99557bc17617042ed25f2598f6dee77",
+      "result_sha256": "e636bfec678043a676bef56b0656b0dacd0c8511b1dd5d5e835550d1075cc665",
+      "task_id": "CHAT-J3-023"
+    }
+  ],
+  "tests": {
+    "j3_focused": "8/8 PASS",
+    "web_contract_ui_security": "189/189 PASS",
+    "legacy": "1081/1081 PASS",
+    "edge_syntax": "25/25 OK",
+    "module_syntax": "excel-import.js + admin-imports + mock admin OK",
+    "build": "NOT COMPLETED: local node_modules/vite unavailable (vite: not found)"
+  },
+  "live_pending": [
+    "Real browser ExcelJS/.xlsx smoke",
+    "Deployed Supabase stage/commit/rollback smoke",
+    "Real BILLZ account connect/browse/import/unlink/restore smoke",
+    "REVIEW_R1 6a/6b/6c live review blockers remain open"
+  ],
+  "next_user_sequence": "ASTRA 7b, then CHAT K1"
+}

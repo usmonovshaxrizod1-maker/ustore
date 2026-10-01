@@ -1088,8 +1088,65 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       return (sizes || []).reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
     }
     function mapCategoryFromDB(r) {
-      return { id: r.id, name: r.name, nameRu: r.name_ru || null, parentId: r.parent_id, img: r.img, sortOrder: r.sort_order || 0 };
+      return { id: r.id, name: r.name, nameRu: r.name_ru || null, parentId: r.parent_id, img: r.img,
+        iconId: r.icon_id || null, iconColor: r.icon_color || 'brand', sortOrder: r.sort_order || 0 };
     }
+    const CATEGORY_ICON_SPRITE = './web/assets/category-icons/category-icons.svg';
+    const CATEGORY_ICON_COLORS = ['brand','blue','green','rose','amber','slate'];
+    let categoryIconDraft = { id:'stationery_folder', color:'brand' };
+    let categoryIconManifest = null;
+    let categoryIconPickerQuery = '';
+    let categoryIconPickerGroup = 'all';
+    let categoryIconPickerChoice = null;
+    function categoryIconMarkup(category) {
+      const id = String(category?.iconId || '');
+      if (/^[a-z][a-z0-9_]{1,63}$/.test(id)) {
+        const color = CATEGORY_ICON_COLORS.includes(category?.iconColor) ? category.iconColor : 'brand';
+        return `<svg class="fc-category-svg is-${color}" aria-hidden="true" focusable="false"><use href="${CATEGORY_ICON_SPRITE}#${escapeHtml(id)}"></use></svg>`;
+      }
+      if (category?.img && /^(https?:\/\/|data:image\/(?:png|jpeg|webp|gif);base64,)/i.test(category.img)) return `<img referrerpolicy="no-referrer" src="${escapeHtml(category.img)}" alt="" loading="lazy">`;
+      return `<i data-lucide="folder" class="w-4 h-4" aria-hidden="true"></i>`;
+    }
+    function normalizedIconSearch(value) {
+      return String(value || '').toLocaleLowerCase().normalize('NFKD')
+        .replace(/[‘’ʼ`´]/g,"'").replace(/[\u0300-\u036f]/g,'').trim();
+    }
+    async function openCategoryIconPicker() {
+      if (!categoryIconManifest) {
+        try {
+          const response = await fetch('./web/assets/category-icons/category-icons.json', { cache:'force-cache' });
+          if (!response.ok) throw new Error('icon_manifest_unavailable');
+          const manifest = await response.json();
+          if (!Array.isArray(manifest.icons) || manifest.icons.length !== 270) throw new Error('icon_manifest_invalid');
+          categoryIconManifest = manifest.icons;
+        } catch (error) { console.error('[CATEGORY_ICON_MANIFEST_FAILED]',error); showAppNotice(tr('Ikonkalarni yuklab bo‘lmadi','Не удалось загрузить иконки')); return; }
+      }
+      categoryIconPickerQuery=''; categoryIconPickerGroup='all'; categoryIconPickerChoice={...categoryIconDraft};
+      renderCategoryIconPicker();
+    }
+    function renderCategoryIconPicker() {
+      let root=document.getElementById('fc-category-icon-picker');
+      if (!root) {root=document.createElement('div');root.id='fc-category-icon-picker';document.body.appendChild(root);}
+      const groups=[...new Set(categoryIconManifest.map(item=>item.group))];
+      const query=normalizedIconSearch(categoryIconPickerQuery);
+      const icons=categoryIconManifest.filter(item => (categoryIconPickerGroup==='all'||item.group===categoryIconPickerGroup) &&
+        (!query || [item.uz,item.ru,item.en,...(item.aliases_uz||[]),...(item.aliases_ru||[]),...(item.aliases_en||[]),...(item.search_terms||[])].some(term=>normalizedIconSearch(term).includes(query))));
+      root.innerHTML=`<div class="fc-sheet-overlay" onclick="if(event.target===this)closeCategoryIconPicker()"><div class="fc-sheet fc-category-icon-picker">
+        <div class="fc-sheet-header"><div class="fc-sheet-title">${tr('Katalog ikonkasi','Иконка каталога')}</div><button type="button" onclick="closeCategoryIconPicker()" class="fc-btn fc-btn-icon" aria-label="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-4 h-4"></i></button></div>
+        <div class="fc-sheet-body"><input class="fc-shop-input" type="search" value="${escapeHtml(categoryIconPickerQuery)}" oninput="setCategoryIconSearch(this.value)" placeholder="${tr('Ikonka qidirish','Поиск иконки')}" aria-label="${tr('Ikonka qidirish','Поиск иконки')}">
+          <div class="fc-category-icon-groups"><button type="button" onclick="setCategoryIconGroup('all')" aria-pressed="${categoryIconPickerGroup==='all'}">${tr('Barchasi','Все')}</button>${groups.map(group=>`<button type="button" onclick="setCategoryIconGroup('${group}')" aria-pressed="${categoryIconPickerGroup===group}">${escapeHtml(group)}</button>`).join('')}</div>
+          <div class="fc-category-icon-grid" role="listbox" aria-label="${tr('Ikonkalar','Иконки')}">${icons.map(item=>`<button type="button" role="option" aria-selected="${categoryIconPickerChoice?.id===item.id}" title="${escapeHtml(uiLang==='ru'?item.ru:item.uz)}" onclick="chooseCategoryIcon('${item.id}')" class="${categoryIconPickerChoice?.id===item.id?'is-selected':''}"><svg class="fc-category-svg is-${categoryIconPickerChoice?.color||'brand'}" aria-hidden="true"><use href="${CATEGORY_ICON_SPRITE}#${item.id}"></use></svg><span>${escapeHtml(uiLang==='ru'?item.ru:item.uz)}</span></button>`).join('') || `<p>${tr('Ikonka topilmadi','Иконка не найдена')}</p>`}</div>
+          <div class="fc-category-icon-colors">${CATEGORY_ICON_COLORS.map(color=>`<button type="button" class="is-${color} ${categoryIconPickerChoice?.color===color?'is-selected':''}" aria-label="${color}" aria-pressed="${categoryIconPickerChoice?.color===color}" onclick="chooseCategoryIconColor('${color}')"></button>`).join('')}</div>
+        </div><div class="fc-sheet-footer"><button type="button" onclick="confirmCategoryIconPicker()" class="fc-btn fc-btn-primary w-full">${tr('Tanlash','Выбрать')}</button></div>
+      </div></div>`;
+      safeCreateIcons();
+    }
+    function setCategoryIconSearch(value) { categoryIconPickerQuery=value; const input=document.querySelector('#fc-category-icon-picker input[type=search]'); const caret=input?.selectionStart; renderCategoryIconPicker(); const next=document.querySelector('#fc-category-icon-picker input[type=search]'); next?.focus(); if(caret!==null)next?.setSelectionRange(caret,caret); }
+    function setCategoryIconGroup(group) {categoryIconPickerGroup=group;renderCategoryIconPicker();}
+    function chooseCategoryIcon(id) {if(!categoryIconManifest?.some(item=>item.id===id))return;categoryIconPickerChoice.id=id;renderCategoryIconPicker();}
+    function chooseCategoryIconColor(color) {if(!CATEGORY_ICON_COLORS.includes(color))return;categoryIconPickerChoice.color=color;renderCategoryIconPicker();}
+    function closeCategoryIconPicker() {document.getElementById('fc-category-icon-picker')?.remove();}
+    function confirmCategoryIconPicker() {categoryIconDraft={...categoryIconPickerChoice};closeCategoryIconPicker();const preview=document.querySelector('[data-category-icon-preview]');if(preview)preview.innerHTML=categoryIconMarkup({iconId:categoryIconDraft.id,iconColor:categoryIconDraft.color});}
     // Buyurtma va savat tarixi endi to'g'ridan-to'g'ri bazadan emas, balki
     // serverda tasdiqlangan Edge Function javobidan keladi (pastdagi callApi).
     function formatOrderForUi(o) {
@@ -3145,6 +3202,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function updateCartBadge() {
       const count = Object.values(cart).reduce((a, b) => a + (b.qty || 0), 0) + Object.values(bundleCart).reduce((a, b) => a + (b.qty || 0), 0);
+      const desktopCount = document.getElementById('desktop-cart-count');
+      if (desktopCount) { desktopCount.textContent = String(count); desktopCount.hidden = count === 0; }
       // null-tekshiruv SHART: bu funksiya har render'da chaqiriladi, element
       // esa endi pastki menyuda. Agar u topilmasa (eski keshlangan index.html
       // yoki kelajakdagi tartib o'zgarishi), tekshiruvsiz kod shu yerda xato
@@ -3820,6 +3879,29 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       }
     }
 
+    function desktopSearchInput(value) {
+      homeSearchQuery = String(value || '');
+      if (currentTab !== 'home' || activePage) switchTab('home');
+      const input = document.getElementById('search-input');
+      if (input) { input.value = homeSearchQuery; handleSearchDebounced(); }
+    }
+    function desktopSearchSubmit() {
+      desktopSearchInput(document.getElementById('desktop-search-input')?.value || '');
+      document.getElementById('desktop-search-input')?.blur();
+    }
+    function openDesktopCategory(id) {
+      adminCatParentId = id;
+      categoryPage = 1;
+      switchTab('categories');
+    }
+    function updateDesktopCategoryShortcuts() {
+      const host = document.getElementById('ustore-category-shortcuts');
+      if (!host) return;
+      if (isAdminMode && isUserAnAdmin) { host.innerHTML = ''; return; }
+      const counts = buildRecursiveProductCountMap();
+      const roots = categories.filter(c => !c.parentId && (counts.get(String(c.id)) || 0) > 0).sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      host.innerHTML = `<button type="button" onclick="switchTab('home')">${tr('Bosh sahifa','Главная')}</button>${roots.slice(0, 7).map(c => `<button type="button" onclick="openDesktopCategory('${escapeHtml(String(c.id))}')">${escapeHtml(categoryName(c))}</button>`).join('')}${roots.length > 7 ? `<button type="button" onclick="switchTab('categories')">${tr('Yana','Ещё')} →</button>` : ''}`;
+    }
     function updateHeaderChrome() {
       const flagBtn = document.getElementById('lang-flag-btn');
       if (flagBtn) flagBtn.innerText = uiLang === 'uz' ? '🇷🇺' : '🇺🇿';
@@ -3862,9 +3944,18 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         desktopLangBtn.textContent = uiLang === 'uz' ? '🇺🇿 UZ' : '🇷🇺 RU';
         desktopLangBtn.setAttribute('aria-label', uiLang === 'uz' ? 'Joriy til: o‘zbekcha. Rus tiliga o‘tish' : 'Текущий язык: русский. Переключить на узбекский');
       }
+      const desktopSearch = document.getElementById('desktop-search-input');
+      if (desktopSearch) {
+        if (document.activeElement !== desktopSearch) desktopSearch.value = homeSearchQuery;
+        desktopSearch.placeholder = tr('Mahsulot, kategoriya yoki brend qidiring', 'Ищите товар, категорию или бренд');
+      }
+      const desktopFilter = document.getElementById('desktop-filter-btn');
+      if (desktopFilter) desktopFilter.title = desktopFilter.ariaLabel = tr('Filtr', 'Фильтр');
+      updateDesktopCategoryShortcuts();
       for (const [id, uz, ru] of [
-        ['home', 'Bosh sahifa', 'Главная'], ['categories', 'Kataloglar', 'Категории'],
+        ['home', 'Bosh sahifa', 'Главная'], ['categories', 'Kategoriyalar', 'Категории'],
         ['cart', 'Savatcha', 'Корзина'], ['orders', 'Buyurtmalar', 'Заказы'],
+        ['favorites', 'Sevimlilar', 'Избранное'],
         ['warehouse', 'Ombor', 'Склад'], ['admin', 'Boshqaruv', 'Управление'],
         ['profile', 'Profil', 'Профиль'],
       ]) {
@@ -3991,6 +4082,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function render() {
+      clearInterval(homeBannerAutoplayTimer);
+      homeBannerAutoplayTimer = null;
       const decodedImageNodes = captureCatalogImageNodes();
       const uiKeyBeforeRender = currentShopUiKey();
       const preserveSnapshot = lastRenderedUiKey === uiKeyBeforeRender ? captureShopRenderState() : null;
@@ -5503,7 +5596,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       return uiLang === 'ru' ? (doc.contentRu || doc.contentUz || '') : (doc.contentUz || doc.contentRu || '');
     }
     function enabledLegalDocuments() {
-      return (legalDocuments || []).filter(doc => doc?.enabled === true);
+      return (legalDocuments || []).filter(doc => doc?.enabled === true && (doc.type === 'PRIVACY' || doc.type === 'TERMS'));
     }
     function openLegalSettingsPage() {
       legalDraft = JSON.parse(JSON.stringify(legalDocuments || []));
@@ -5580,7 +5673,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     async function saveLegalSettings() {
       const docs = (legalDraft || []).map(d => ({ type: d.type, enabled: !!d.enabled, contentUz: String(d.contentUz || '').trim(), contentRu: String(d.contentRu || '').trim() }));
       for (const d of docs) {
-        if (d.contentUz.length < 200) return showAppNotice(tr('Har bir hujjatning o‘zbekcha matni yetarlicha to‘liq bo‘lishi kerak.','Узбекский текст каждого документа должен быть заполнен.'));
+        if (((d.type === 'PRIVACY' || d.type === 'TERMS') && d.contentUz.length < 200) || (d.enabled && d.contentUz.length < 40)) return showAppNotice(tr('Yoqilgan hujjat matnini to‘ldiring.','Заполните текст включённого документа.'));
       }
       try {
         const result = await callApi('set_legal_documents', { documents: docs });
@@ -5628,7 +5721,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       return domainsFeatureStylePromise;
     }
     function canManageDomainsPage() {
-      return staffRole === 'OWNER' || (staffRole === 'STAFF' && canViewAuditLog && hasPermission('domains.manage'));
+      return staffRole === 'OWNER' || (staffRole === 'STAFF' && hasPermission('domains.manage'));
     }
     function openDomainsSettingsPage() {
       if (!isUserAnAdmin || !isAdminMode || !canManageDomainsPage()) {
@@ -5652,7 +5745,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             accountId: String(currentUser?.id || currentUser?.tgId || tgId || 'telegram'),
             displayName: currentProfileDisplayName(), telegramLinked: true,
             shopRole: staffRole === 'OWNER' ? 'OWNER' : 'STAFF',
-            roleCodes: staffRole === 'STAFF' && canViewAuditLog && hasPermission('domains.manage') ? ['MANAGER'] : [],
+            roleCodes: staffRole === 'STAFF' && canViewAuditLog ? ['MANAGER'] : [],
             permissions: Array.isArray(myPermissions) ? [...myPermissions] : [],
           },
           capabilities: { domains: canManageDomainsPage() }, mode: browserBridge ? 'web' : 'telegram',
@@ -5675,7 +5768,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
     function renderDomainsSettingsPage(container) {
       if (!canManageDomainsPage()) {
-        renderPageShell(container, tr('Domenlar','Домены'), `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Bu bo'lim faqat do'kon egasi va MANAGER uchun.",'Раздел доступен только владельцу и MANAGER.')}</p></div>`, { onBack:"openPage('SETTINGS','nav-profile')" });
+        renderPageShell(container, tr('Domenlar','Домены'), `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Domenlar bilan ishlash huquqi kerak.",'Требуется право управления доменами.')}</p></div>`, { onBack:"openPage('SETTINGS','nav-profile')" });
         return;
       }
       renderPageShell(container, tr('Domenlar','Домены'), `<div id="fc-domains-feature-host"><div class="fc-empty-state"><div class="fc-spinner"></div><p>${tr('Domenlar yuklanmoqda...','Загрузка доменов...')}</p></div></div>`, { onBack:"openPage('SETTINGS','nav-profile')" });
@@ -6142,10 +6235,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       }).join('');
     }
 
-    // Bosh sahifadagi banner strip — serverdan eng ko'pi bilan 5 ta aktiv
-    // banner keladi. Carousel finite: uchinchi banner mavjud bo'lsa boshlang'ich
-    // markaz aynan shu slot; pastdagi nuqta/pill indikator qaysi banner faol
-    // ekanini scroll paytida ham ko'rsatib turadi.
+    // Server faqat faol, muddati tugamagan bannerlarni yuboradi.
     function renderBannerCarouselHtml() {
       if (!activeBanners.length) return '';
       const cardHtml = (b, index) => `
@@ -6164,7 +6254,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         </div>`;
     }
     // Admin banner tartibini vitrinaning real kartalari ustida boshqaradi.
-    // Carouselning o'zi finite; clone/wrap/sakrash yo'q.
+    let homeBannerAutoplayTimer = null;
+    let resetHomeBannerAutoplay = null;
     let homeBannerDrag = null;
     function beginHomeBannerDrag(id, event) {
       if (!(isAdminMode && isUserAnAdmin && hasPermission('marketing.manage'))) return;
@@ -6227,15 +6318,25 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       event?.stopPropagation?.();
       const strip = document.getElementById('fc-banner-strip');
       if (!strip) return;
-      const cards = [...strip.querySelectorAll('.fc-banner-card')];
+      const cards = [...strip.querySelectorAll('.fc-banner-card:not([data-clone])')];
       const card = cards[Math.max(0, Math.min(Number(index) || 0, cards.length - 1))];
       if (!card) return;
       strip.scrollTo({ left: card.offsetLeft - (strip.clientWidth - card.clientWidth) / 2, behavior: 'smooth' });
+      resetHomeBannerAutoplay?.();
     }
 
     function initBannerCarousel() {
       const strip = document.getElementById('fc-banner-strip');
       if (!strip) return;
+      const originalCards = [...strip.querySelectorAll('.fc-banner-card')];
+      const looping = originalCards.length > 1 && !(isAdminMode && isUserAnAdmin);
+      if (looping) {
+        const before = originalCards[originalCards.length - 1].cloneNode(true);
+        const after = originalCards[0].cloneNode(true);
+        for (const clone of [before, after]) { clone.dataset.clone = 'true'; clone.setAttribute('aria-hidden', 'true'); clone.tabIndex = -1; }
+        strip.prepend(before);
+        strip.append(after);
+      }
       const cards = [...strip.querySelectorAll('.fc-banner-card')];
       if (!cards.length) return;
       const indicators = [...document.querySelectorAll('#fc-banner-indicators .fc-banner-indicator')];
@@ -6251,21 +6352,52 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           if (d < best) { best = d; active = card; }
         });
         const idx = cards.indexOf(active);
+        const realIndex = looping ? (idx - 1 + originalCards.length) % originalCards.length : idx;
         cards.forEach((card, i) => {
           card.classList.toggle('is-active', i === idx);
           card.classList.toggle('is-before', i === idx - 1);
           card.classList.toggle('is-after', i === idx + 1);
         });
         indicators.forEach((dot, i) => {
-          dot.classList.toggle('is-active', i === idx);
-          dot.setAttribute('aria-current', i === idx ? 'true' : 'false');
+          dot.classList.toggle('is-active', i === realIndex);
+          dot.setAttribute('aria-current', i === realIndex ? 'true' : 'false');
         });
       };
-      // Finite carousel: uchinchi banner mavjud bo'lsa aynan u boshlang'ich
-      // markazda turadi. 1-2 bannerli holatda esa mavjud oxirgi karta tanlanadi.
-      const initialIndex = Math.min(2, cards.length - 1);
-      requestAnimationFrame(() => { centerCard(cards[initialIndex], 'auto'); updateActiveCard(); });
+      // Uchinchi banner mavjud bo'lsa undan boshlanadi; chet kartalar
+      // nusxasi aylanishda oxiridan boshiga uzluksiz o'tishni ta'minlaydi.
+      const initialIndex = Math.min(2, originalCards.length - 1);
+      requestAnimationFrame(() => { centerCard(originalCards[initialIndex], 'auto'); updateActiveCard(); });
       strip.addEventListener('scroll', updateActiveCard, { passive: true });
+      let settleTimer = null;
+      if (looping) strip.addEventListener('scroll', () => {
+        clearTimeout(settleTimer);
+        settleTimer = setTimeout(() => {
+          const center = strip.scrollLeft + strip.clientWidth / 2;
+          const first = cards[0], last = cards[cards.length - 1];
+          const near = [first, last].find(card => Math.abs(card.offsetLeft + card.clientWidth / 2 - center) < card.clientWidth / 2);
+          if (near) {
+            const target = near === first ? originalCards[originalCards.length - 1] : originalCards[0];
+            strip.style.scrollSnapType = 'none';
+            centerCard(target, 'instant');
+            requestAnimationFrame(() => { strip.style.scrollSnapType = ''; updateActiveCard(); });
+          }
+        }, 120);
+      }, { passive: true });
+      if (looping) {
+        const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+        const startAutoplay = () => {
+          clearInterval(homeBannerAutoplayTimer);
+          homeBannerAutoplayTimer = setInterval(() => {
+            if (!strip.isConnected || document.hidden || motion?.matches || strip.matches(':hover') || strip.contains(document.activeElement)) return;
+            const center = strip.scrollLeft + strip.clientWidth / 2;
+            const current = cards.reduce((best, card) => Math.abs(card.offsetLeft + card.clientWidth / 2 - center) < Math.abs(best.offsetLeft + best.clientWidth / 2 - center) ? card : best, cards[0]);
+            centerCard(cards[Math.min(cards.indexOf(current) + 1, cards.length - 1)], 'smooth');
+          }, 5000);
+        };
+        resetHomeBannerAutoplay = startAutoplay;
+        startAutoplay();
+        strip.addEventListener('pointerdown', startAutoplay, { passive: true });
+      } else resetHomeBannerAutoplay = null;
       // Swipe'dan keyin kartani tasodifan ochib yubormaslik uchun drag masofasi kuzatiladi.
       let downX = null, moved = false;
       strip.addEventListener('pointerdown', (e) => { downX = e.clientX; moved = false; }, { passive: true });
@@ -6895,6 +7027,57 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       return `<div class="fc-product-delivery-signals">${signals.map(x=>`<span><i data-lucide="${x.icon}" class="w-4 h-4"></i>${escapeHtml(x.text)}</span>`).join('')}</div>`;
     }
 
+    function storefrontFooterHtml() {
+      if (isAdminMode && isUserAnAdmin) return '';
+      const contact = shopContact || {};
+      const links = [];
+      for (const phone of [contact.phone, contact.phone2, contact.phone3].filter(Boolean)) {
+        links.push(`<a href="tel:${escapeHtml(String(phone).replace(/[^\d+]/g, ''))}">${escapeHtml(phone)}</a>`);
+      }
+      if (contact.email) links.push(`<a href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a>`);
+      for (const [label, raw, base] of [['Telegram', contact.telegram, 'https://t.me/'], ['Instagram', contact.instagram, 'https://instagram.com/'], ['Facebook', contact.facebook, 'https://facebook.com/']]) {
+        const handle = cleanSocialNick(raw);
+        if (handle) links.push(`<a href="${base}${encodeURIComponent(handle)}" target="_blank" rel="noopener noreferrer">${label}</a>`);
+      }
+      for (const [label, raw, base] of [['YouTube', contact.youtube, 'https://youtube.com/@'], ['TikTok', contact.tiktok, 'https://tiktok.com/@']]) {
+        const handle = String(raw || '').replace(/^@/, '');
+        if (/^[A-Za-z0-9._-]+$/.test(handle)) links.push(`<a href="${base}${encodeURIComponent(handle)}" target="_blank" rel="noopener noreferrer">${label}</a>`);
+      }
+      const d = fulfillmentConfig?.delivery || {};
+      const delivery = [];
+      if (d.free?.enabled) delivery.push(tr('Bepul yetkazish', 'Бесплатная доставка'));
+      if (d.fixed?.enabled) delivery.push(tr('Kuryer orqali', 'Курьерская доставка'));
+      if (d.taxi?.enabled) delivery.push(tr('Taksi orqali', 'Доставка такси'));
+      if (d.post?.enabled) delivery.push(...(d.post.providers || []).filter(p => p.enabled).map(p => escapeHtml(p.name || p.id)));
+      const paymentNames = { CASH: tr('Naqd', 'Наличные'), CARD: tr('Karta', 'Карта'), QR: 'QR', CLICK: 'Click', PAYME: 'Payme', UZUM: 'Uzum' };
+      const payments = (fulfillmentConfig?.payments?.methods || []).filter(m => m.enabled).map(m => paymentNames[m.id] || escapeHtml(m.name || m.id));
+      const docs = (legalDocuments || []).filter(doc => doc?.enabled && legalDocContent(doc));
+      const col = (title, body) => body ? `<div class="fc-storefront-footer-column"><h3>${title}</h3>${body}</div>` : '';
+      const about = [contact.about, contact.workHours && `${tr('Ish vaqti','Часы работы')}: ${contact.workHours}`].filter(Boolean).map(x => `<p>${escapeHtml(x)}</p>`).join('');
+      const address = uiLang === 'ru' ? (contact.addressRu || contact.address) : contact.address;
+      const mapLink = contact.coordinates ? `https://www.google.com/maps?q=${encodeURIComponent(contact.coordinates)}` : '';
+      return `<footer class="fc-storefront-footer fc-home-default-block" aria-label="${tr('Do‘kon ma’lumotlari','Информация о магазине')}">
+        <div class="fc-storefront-footer-grid">
+          ${col(escapeHtml(shopDisplayName()), about)}
+          ${col(tr('Aloqa va manzil','Контакты и адрес'), `${links.join('')}${address ? `<p>${escapeHtml(address)}</p>` : ''}${mapLink ? `<a href="${mapLink}" target="_blank" rel="noopener noreferrer">${tr('Xaritada ko‘rish','Посмотреть на карте')}</a>` : ''}`)}
+          ${col(tr('Yetkazib berish va to‘lov','Доставка и оплата'), `${delivery.length ? `<p>${tr('Yetkazib berish','Доставка')}: ${delivery.join(', ')}</p>` : ''}${payments.length ? `<p>${tr('To‘lov','Оплата')}: ${payments.join(', ')}</p>` : ''}`)}
+          ${col(tr('Huquqiy hujjatlar','Правовые документы'), docs.map(doc => `<button type="button" onclick="openStorefrontLegalDocument('${doc.type}')">${escapeHtml(legalDocTitle(doc))}</button>`).join(''))}
+        </div><div class="fc-storefront-footer-attribution"><a href="https://ustr.uz" target="_blank" rel="noopener noreferrer">Powered by UStorE</a></div>
+      </footer>`;
+    }
+    function openStorefrontLegalDocument(type) {
+      const doc = (legalDocuments || []).find(d => d.type === type && d.enabled);
+      if (!doc) return;
+      document.getElementById('fc-storefront-legal-dialog')?.remove();
+      const dialog = document.createElement('dialog');
+      dialog.id = 'fc-storefront-legal-dialog';
+      dialog.className = 'fc-storefront-legal-dialog';
+      dialog.innerHTML = `<div class="fc-storefront-legal-head"><h2>${escapeHtml(legalDocTitle(doc))}</h2><button type="button" aria-label="${tr('Yopish','Закрыть')}" onclick="this.closest('dialog').close()"><i data-lucide="x"></i></button></div><div class="fc-storefront-legal-body">${escapeHtml(legalDocContent(doc))}</div>`;
+      dialog.addEventListener('close', () => dialog.remove(), { once: true });
+      document.body.append(dialog);
+      dialog.showModal();
+      safeCreateIcons();
+    }
     function renderHome(container) {
       const homeFilterActive = isCategoryFilterActive();
       container.innerHTML = `
@@ -6919,6 +7102,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           ${renderBannerCarouselHtml()}
           <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
           ${renderFeaturedCategoryBlocksHtml()}
+          ${storefrontFooterHtml()}
         </div>
       `;
       if (activeBanners.length) initBannerCarousel();
@@ -7312,14 +7496,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           </div>
 
           <!-- SUBCATEGORIES LIST -->
-          <div class="space-y-2" data-catalog-drag-list="category">
+          <div class="space-y-2 fc-category-responsive-grid" data-count-band="${subCats.length<=4?'few':subCats.length<=8?'medium':'many'}" data-catalog-drag-list="category">
             ${subCats.map((sub, subIdx) => `
               <div data-category-row-id="${sub.id}" onclick="handleCategoryRowClick('${sub.id}', event)" onpointerdown="startCategoryLongPress('${sub.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="ustore-cat-row fc-image-card p-3.5 rounded-2xl border ${bulkCategorySelectMode && bulkSelectedCategoryIds.has(String(sub.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex items-center justify-between shadow-sm cursor-pointer">
                 <div class="flex items-center space-x-3">
-                  ${sub.img && (sub.img.startsWith('http') || sub.img.startsWith('data:')) ?
-                    `<img referrerpolicy="no-referrer" src="${escapeHtml(sub.img)}" data-full-img="" onload="revealCoordinatedImage(this)" onerror="retryCardImage(this)" class="w-8 h-8 object-contain bg-gray-50 rounded-lg p-0.5" loading="${subIdx < 8 ? 'eager' : 'lazy'}" fetchpriority="${subIdx < 8 ? 'high' : 'auto'}" decoding="async">` :
-                    `<span class="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center"><i data-lucide="folder" class="w-4 h-4"></i></span>`
-                  }
+                  <span class="fc-category-icon-frame">${categoryIconMarkup(sub)}</span>
                   <div>
                     <h5 class="font-bold text-sm text-gray-800">${escapeHtml(categoryName(sub))}</h5>
                     <p class="text-[10px] text-gray-400">${categories.filter(c => c.parentId === sub.id).length} ${tr('katalog','кат.')} | ${recursiveProductCounts.get(String(sub.id)) || 0} ${tr('tovar','тов.')}</p>
@@ -8024,6 +8205,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function openCheckoutForm() {
       if (Object.keys(cart).length === 0 && Object.keys(bundleCart).length === 0) return;
+      if (browserBridge && !browserBridge.authenticated) {
+        browserBridge.navigate('/checkout');
+        return;
+      }
       clearCheckoutReceipt();
       selectedDeliveryMethodId = checkoutDraft.deliveryMethodId || selectedDeliveryMethodId;
       selectedPayMethod = checkoutDraft.paymentMethodId || selectedPayMethod;
@@ -11569,7 +11754,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         return `
           <div class="fc-card" style="margin-left:${c.depth * 14}px">
             <label class="flex items-center justify-between gap-2">
-              <span class="flex items-center gap-2 min-w-0"><span class="fc-featured-cat-icon" style="width:2.2rem;height:2.2rem">${c.img ? `<img src="${escapeHtml(c.img)}">` : `<i data-lucide="folder" class="w-4 h-4"></i>`}</span><b class="text-xs truncate">${escapeHtml(categoryName(c))}</b></span>
+              <span class="flex items-center gap-2 min-w-0"><span class="fc-featured-cat-icon" style="width:2.2rem;height:2.2rem">${categoryIconMarkup(c)}</span><b class="text-xs truncate">${escapeHtml(categoryName(c))}</b></span>
               <span class="fc-toggle shrink-0"><input type="checkbox" ${entry ? 'checked' : ''} onchange="toggleFeaturedCategory('${c.id}')"><span class="fc-toggle-track"></span></span>
             </label>
             ${productPicker}
@@ -14398,7 +14583,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function openStaffPage() {
-      if (!(staffRole === 'OWNER' || hasPermission('staff.manage'))) return;
+      if (!(staffRole === 'OWNER' || (canViewAuditLog && hasPermission('staff.permissions.manage')))) return;
       openPage('STAFF', 'nav-profile');
       loadStaffListLazy();
       loadRolesLazy();
@@ -14411,7 +14596,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function renderStaffPage(container) {
-      if (!(staffRole === 'OWNER' || hasPermission('staff.manage'))) {
+      if (!(staffRole === 'OWNER' || (canViewAuditLog && hasPermission('staff.permissions.manage')))) {
         renderPageShell(container, tr('Xodimlar', 'Сотрудники'), `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Bu bo'limga kirish huquqingiz yo'q.", 'У вас нет доступа к этому разделу.')}</p></div>`);
         return;
       }
@@ -14448,13 +14633,13 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const body = `<div class="space-y-3">
         <div class="fc-card fc-staff-intro">
           <div><h3>${tr('Xodimlar', 'Сотрудники')}</h3><p>${tr("Xodim qo'shing, rol tayinlang — huquqlar avtomatik qo'llanadi.", 'Добавляйте сотрудников и назначайте роли — права применяются автоматически.')}</p></div>
-          <button type="button" onclick="openStaffInviteForm()" class="fc-btn fc-btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr("Xodim qo'shish", 'Добавить')}</button>
+          ${staffRole === 'OWNER' ? `<button type="button" onclick="openStaffInviteForm()" class="fc-btn fc-btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i>${tr("Xodim qo'shish", 'Добавить')}</button>` : ''}
         </div>
-        <button type="button" onclick="openRolesPage()" class="fc-card w-full flex items-center justify-between text-left">
+        ${staffRole === 'OWNER' ? `<button type="button" onclick="openRolesPage()" class="fc-card w-full flex items-center justify-between text-left">
           <span class="font-bold flex items-center gap-2 text-xs"><i data-lucide="shield" class="w-4 h-4"></i>${tr('Rollar', 'Роли')}</span>
           <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
-        </button>
-        ${invitesHtml}
+        </button>` : ''}
+        ${staffRole === 'OWNER' ? invitesHtml : ''}
         <div class="fc-card p-0 overflow-hidden"><div class="fc-staff-list">${rows || `<div class="fc-empty-state"><p>${tr('Xodimlar topilmadi.', 'Сотрудники не найдены.')}</p></div>`}</div></div>
         ${transferHtml}
       </div>`;
@@ -14479,6 +14664,12 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       let root = document.getElementById('fc-staff-detail-root');
       if (!root) { root = document.createElement('div'); root.id = 'fc-staff-detail-root'; document.body.appendChild(root); }
       const isOwnerRow = m.role === 'OWNER';
+      const isManagerRow = m.roles.some(r => r.key === 'MANAGER');
+      const mayDelegate = staffRole === 'OWNER' || (canViewAuditLog && hasPermission('staff.permissions.manage'));
+      const mayEditTarget = !isOwnerRow && (staffRole === 'OWNER' || (!isManagerRow && mayDelegate));
+      const editablePermissions = allPermissions.filter(p => p !== 'staff.manage' && p !== 'integrations.manage' &&
+        (p !== 'staff.permissions.manage' || (staffRole === 'OWNER' && isManagerRow)) &&
+        (staffRole === 'OWNER' || hasPermission(p)));
       const currentRoleIds = new Set(m.roles.map(r => String(r.id)));
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeStaffDetail();">
         <div class="fc-sheet">
@@ -14490,7 +14681,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             ${isOwnerRow ? `
               <div class="fc-bg-danger-soft border fc-border-danger p-3 rounded-xl text-xs fc-text-danger">${tr("Bu — do'kon egasi. Rollar/bloklash/o'chirish bu yerdan ishlamaydi.", 'Это владелец магазина. Роли/блокировка/удаление отсюда недоступны.')}</div>
             ` : `
-              <div class="space-y-1.5">
+              ${staffRole === 'OWNER' ? `<div class="space-y-1.5">
                 <b class="text-xs text-gray-600">${tr('Rollar', 'Роли')}</b>
                 ${roleList.map(r => `
                   <label class="flex items-center justify-between px-3 py-2 border rounded-xl text-xs font-bold">
@@ -14498,11 +14689,17 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
                     <input type="checkbox" data-role-id="${escapeHtml(String(r.id))}" ${currentRoleIds.has(String(r.id)) ? 'checked' : ''}>
                   </label>`).join('') || `<p class="text-xs text-gray-400">${tr("Hali rol yaratilmagan.", 'Роли ещё не созданы.')}</p>`}
               </div>
-              <div class="fc-icon-action-bar"><button type="button" onclick="saveStaffRoles('${escapeHtml(m.tgId)}')" class="fc-action-icon-btn is-save" aria-label="${tr('Rollarni saqlash','Сохранить роли')}" title="${tr('Rollarni saqlash','Сохранить роли')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
-              <div class="grid grid-cols-2 gap-2 pt-2">
+              <div class="fc-icon-action-bar"><button type="button" onclick="saveStaffRoles('${escapeHtml(m.tgId)}')" class="fc-action-icon-btn is-save" aria-label="${tr('Rollarni saqlash','Сохранить роли')}" title="${tr('Rollarni saqlash','Сохранить роли')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>` : ''}
+              ${mayEditTarget ? `<div class="space-y-1.5"><b class="text-xs text-gray-600">${tr('Xodim huquqlari','Права сотрудника')}</b>
+                ${editablePermissions.map(p => `<label class="flex items-center justify-between gap-2 px-3 py-2 border rounded-xl text-xs font-bold">
+                  <span>${escapeHtml(permissionLabel(p))}</span><span class="fc-toggle"><input type="checkbox" ${m.permissions?.includes(p) ? 'checked' : ''}
+                    ${isManagerRow && p === 'domains.manage' ? 'disabled' : ''}
+                    onchange="setStaffPermission('${escapeHtml(m.tgId)}','${p}',this)"><span class="fc-toggle-track"></span></span>
+                </label>`).join('')}</div>` : ''}
+              ${staffRole === 'OWNER' ? `<div class="grid grid-cols-2 gap-2 pt-2">
                 <button type="button" onclick="toggleStaffBlocked('${escapeHtml(m.tgId)}', ${m.status !== 'DISABLED'})" class="fc-btn fc-btn-secondary">${m.status === 'DISABLED' ? tr('Blokdan chiqarish', 'Разблокировать') : tr('Bloklash', 'Заблокировать')}</button>
                 <button type="button" onclick="removeStaffMember('${escapeHtml(m.tgId)}')" class="fc-btn fc-btn-danger">${tr("O'chirish", 'Удалить')}</button>
-              </div>
+              </div>` : ''}
             `}
           </div>
         </div>
@@ -14519,6 +14716,19 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         await loadStaffListLazy(true);
       } catch (e) {
         showActionToast(tr('❌ Amalga oshmadi', '❌ Не удалось'), 'error', 1500);
+      }
+    }
+    async function setStaffPermission(tgId, permission, input) {
+      const enabled = !!input.checked;
+      input.disabled = true;
+      try {
+        await callApi('staff_set_permission', { telegramUserId:tgId, permission, enabled });
+        showActionToast(tr('Huquq yangilandi','Право обновлено'), 'success', 1400);
+        await loadStaffListLazy(true);
+        renderStaffDetailSheet(tgId);
+      } catch (error) {
+        input.checked = !enabled; input.disabled = false;
+        showActionToast(tr('Huquqni o‘zgartirib bo‘lmadi','Не удалось изменить право'), 'error', 2000);
       }
     }
     async function toggleStaffBlocked(tgId, blocked) {
@@ -14684,7 +14894,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         'shop.settings.manage': tr("Do'kon sozlamalari", 'Настройки магазина'),
         'integrations.manage': tr('Integratsiyalar (Billz, Click)', 'Интеграции (Billz, Click)'),
         'staff.manage': tr('Xodimlarni boshqarish', 'Управление сотрудниками'),
-        'domains.manage': tr('Domenlarni boshqarish', 'Управление доменами'),
+        'staff.permissions.manage': tr('Xodimlar huquqlarini boshqarish', 'Управление правами сотрудников'),
+        'domains.manage': tr('Domenlar bilan ishlash', 'Управление доменами'),
       };
       return map[perm] || perm;
     }
@@ -14742,7 +14953,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const d = roleDraft;
       if (!d) { root.innerHTML = ''; return; }
       const groups = {};
-      allPermissions.forEach(p => { const g = p.split('.')[0]; (groups[g] = groups[g] || []).push(p); });
+      allPermissions.filter(p => p !== 'staff.permissions.manage').forEach(p => { const g = p.split('.')[0]; (groups[g] = groups[g] || []).push(p); });
       root.innerHTML = `<div class="fc-sheet-overlay" onclick="if(event.target===this) closeRoleForm();">
         <div class="fc-sheet">
           <div class="fc-sheet-handle"></div>
@@ -15067,7 +15278,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             </div>
           </section>
           ${hasPermission('marketing.manage') ? `<section class="fc-profile-admin-group"><div class="fc-profile-admin-group-title">${tr('Savdo va marketing','Продажи и маркетинг')}</div><div class="fc-profile-menu">${profileMenuRowHtml({ icon: 'megaphone', title: tr('Marketing', 'Маркетинг'), subtitle: tr('Bannerlar, aksiyalar, promo-kodlar, chegirmalar', 'Баннеры, акции, промокоды, скидки'), onclick: 'openMarketingHubPage()' })}${profileMenuRowHtml({ icon: 'shopping-cart', title: tr('Tashlab ketilgan savatlar', 'Брошенные корзины'), subtitle: tr("Buyurtma bermagan mijozlarning savatlari", 'Корзины клиентов, не оформивших заказ'), onclick: 'openAbandonedCartsPage()' })}</div></section>` : ''}
-          ${(staffRole === 'OWNER' || hasPermission('staff.manage') || canViewAuditLog) ? `<section class="fc-profile-admin-group"><div class="fc-profile-admin-group-title">${tr('Jamoa','Команда')}</div><div class="fc-profile-menu">${(staffRole === 'OWNER' || hasPermission('staff.manage')) ? profileMenuRowHtml({ icon: 'users-round', title: tr('Xodimlar', 'Сотрудники'), subtitle: tr("Xodim qo'shish, rol va huquqlarni boshqarish", 'Добавление сотрудников, управление ролями и правами'), onclick: 'openStaffPage()' }) : ''}${canViewAuditLog ? profileMenuRowHtml({ icon: 'clipboard-list', title: tr('Amallar jurnali', 'Журнал действий'), subtitle: tr('Xodimlar bajargan ishlarni topish va tekshirish', 'Поиск и проверка действий сотрудников'), onclick: 'openAuditLogPage()' }) : ''}</div></section>` : ''}
+          ${(staffRole === 'OWNER' || hasPermission('staff.manage') || hasPermission('staff.permissions.manage') || canViewAuditLog) ? `<section class="fc-profile-admin-group"><div class="fc-profile-admin-group-title">${tr('Jamoa','Команда')}</div><div class="fc-profile-menu">${(staffRole === 'OWNER' || hasPermission('staff.manage') || hasPermission('staff.permissions.manage')) ? profileMenuRowHtml({ icon: 'users-round', title: tr('Xodimlar', 'Сотрудники'), subtitle: tr("Xodim qo'shish, rol va huquqlarni boshqarish", 'Добавление сотрудников, управление ролями и правами'), onclick: 'openStaffPage()' }) : ''}${canViewAuditLog ? profileMenuRowHtml({ icon: 'clipboard-list', title: tr('Amallar jurnali', 'Журнал действий'), subtitle: tr('Xodimlar bajargan ishlarni topish va tekshirish', 'Поиск и проверка действий сотрудников'), onclick: 'openAuditLogPage()' }) : ''}</div></section>` : ''}
           ${hasPermission('support.manage') ? `<section class="fc-profile-admin-group"><div class="fc-profile-admin-group-title">${tr('Yordam','Помощь')}</div><div class="fc-profile-menu">${profileMenuRowHtml({ icon: 'messages-square', title: tr("Qo'llab-quvvatlash", 'Поддержка'), subtitle: tr('Murojaatlar va yozishmalar', 'Обращения и переписка'), onclick: 'openAdminSupportOrUserSupport()', badge: supportBadge })}</div></section>` : ''}
         </div>` : '';
 
@@ -15143,6 +15354,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         instagram: cleanSocialNick(value('sc-instagram')) || null,
         telegram: cleanSocialNick(value('sc-telegram')) || null,
         facebook: cleanSocialNick(value('sc-facebook')) || null,
+        about: value('sc-about'),
+        email: value('sc-email'),
+        youtube: value('sc-youtube'),
+        tiktok: value('sc-tiktok'),
       };
     }
 
@@ -16741,6 +16956,8 @@ function renderModalContainer() {
                   <div class="fc-shop-field">
                     <label for="sc-name">${tr("Do'kon nomi", "Название магазина")}</label>
                     <input type="text" id="sc-name" value="${escapeHtml(form.name || '')}" placeholder="${tr("Do'kon nomi", "Название магазина")}" class="fc-shop-input">
+                    <label for="sc-about">${tr('Do‘kon haqida', 'О магазине')}</label>
+                    <textarea id="sc-about" rows="3" maxlength="2000" class="fc-shop-input" placeholder="${tr('Do‘kon haqida qisqacha', 'Кратко о магазине')}">${escapeHtml(form.about || '')}</textarea>
                     <p class="fc-shop-field-help">${tr("Bo'sh qoldirilsa, standart \"Do'kon\" nomi ishlatiladi.", "Если оставить пустым, используется название \"Магазин\" по умолчанию.")}</p>
                   </div>
                 </section>
@@ -16784,6 +17001,7 @@ function renderModalContainer() {
                     <div class="fc-shop-field"><label for="sc-phone1">${tr("Telefon 1", "Телефон 1")}</label><input type="text" id="sc-phone1" value="${escapeHtml(form.phone || '')}" placeholder="+998 90 123 45 67" class="fc-shop-input font-mono"></div>
                     <div class="fc-shop-field"><label for="sc-phone2">${tr("Telefon 2 (ixtiyoriy)", "Телефон 2 (необязательно)")}</label><input type="text" id="sc-phone2" value="${escapeHtml(form.phone2 || '')}" placeholder="+998 90 123 45 67" class="fc-shop-input font-mono"></div>
                     <div class="fc-shop-field"><label for="sc-phone3">${tr("Telefon 3 (ixtiyoriy)", "Телефон 3 (необязательно)")}</label><input type="text" id="sc-phone3" value="${escapeHtml(form.phone3 || '')}" placeholder="+998 90 123 45 67" class="fc-shop-input font-mono"></div>
+                    <div class="fc-shop-field"><label for="sc-email">Email</label><input type="email" id="sc-email" value="${escapeHtml(form.email || '')}" placeholder="shop@example.uz" class="fc-shop-input"></div>
                   </div>
                 </section>
 
@@ -16796,6 +17014,8 @@ function renderModalContainer() {
                     <div class="fc-shop-field"><label for="sc-instagram">Instagram</label><div class="fc-shop-social-input"><span>@</span><input type="text" id="sc-instagram" value="${escapeHtml(cleanSocialNick(form.instagram))}" placeholder="mystore.uz"></div></div>
                     <div class="fc-shop-field"><label for="sc-telegram">Telegram</label><div class="fc-shop-social-input"><span>@</span><input type="text" id="sc-telegram" value="${escapeHtml(cleanSocialNick(form.telegram))}" placeholder="mystore_uz"></div></div>
                     <div class="fc-shop-field"><label for="sc-facebook">Facebook</label><div class="fc-shop-social-input"><span>@</span><input type="text" id="sc-facebook" value="${escapeHtml(cleanSocialNick(form.facebook))}" placeholder="mystore.uz"></div></div>
+                    <div class="fc-shop-field"><label for="sc-youtube">YouTube</label><div class="fc-shop-social-input"><span>@</span><input type="text" id="sc-youtube" value="${escapeHtml(form.youtube || '')}" placeholder="mystore"></div></div>
+                    <div class="fc-shop-field"><label for="sc-tiktok">TikTok</label><div class="fc-shop-social-input"><span>@</span><input type="text" id="sc-tiktok" value="${escapeHtml(form.tiktok || '')}" placeholder="mystore"></div></div>
                   </div>
                 </section>
 
@@ -16934,6 +17154,10 @@ function renderModalContainer() {
                 <input type="text" id="m-cat-name" placeholder="${tr('Masalan: Proteinlar','Например: Протеины')}" class="w-full mt-1 p-2 border rounded-xl">
               </div>
               <div>
+                <label class="font-bold text-gray-600">${tr('Katalog ikonkasi','Иконка каталога')}</label>
+                <div class="fc-category-icon-select"><span data-category-icon-preview>${categoryIconMarkup({iconId:categoryIconDraft.id,iconColor:categoryIconDraft.color})}</span><button type="button" onclick="openCategoryIconPicker()" class="fc-btn fc-btn-secondary">${tr('Almashtirish','Изменить')}</button></div>
+              </div>
+              <div>
                 <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
                 <input id="m-cat-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
                 <input id="m-cat-image-input-files" type="file" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
@@ -16959,6 +17183,10 @@ function renderModalContainer() {
               <div>
                 <label class="font-bold text-gray-600">${tr("Katalog nomi *", "Название каталога *")}</label>
                 <input type="text" id="ec-name" value="${escapeHtml(c.name)}" class="w-full mt-1 p-2 border rounded-xl">
+              </div>
+              <div>
+                <label class="font-bold text-gray-600">${tr('Katalog ikonkasi','Иконка каталога')}</label>
+                <div class="fc-category-icon-select"><span data-category-icon-preview>${categoryIconMarkup({iconId:categoryIconDraft.id,iconColor:categoryIconDraft.color})}</span><button type="button" onclick="openCategoryIconPicker()" class="fc-btn fc-btn-secondary">${tr('Almashtirish','Изменить')}</button></div>
               </div>
               <div>
                 <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
@@ -18809,7 +19037,8 @@ if (activePopupModal === 'LOGO_CROP') {
         // (fayl VA URL) to'g'ri qayta ishlaydi — mahsulot rasmi shu orqali
         // ishlaydigan bir xil yo'l.
         const { img: imgUrl } = await productImagePayloadFromSnapshot(imageSnap, false);
-        const result = await callApi('add_category', { name, img: imgUrl, parentId });
+        const result = await callApi('add_category', { name, img: imgUrl, parentId,
+          iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color });
         upsertLocalCategory(result.category);
         saveCatalogCache();
         showActionToast(tr("✅ Katalog yaratildi", "✅ Каталог создан"), 'success', 1200);
@@ -19027,6 +19256,7 @@ if (activePopupModal === 'LOGO_CROP') {
     function openAddCatModal() {
       if (!canManageCatalog()) return;
       clearTempImageSelection();
+      categoryIconDraft = { id:'stationery_folder', color:'brand' };
       activePopupModal = 'ADD_CAT';
       render();
     }
@@ -19362,6 +19592,7 @@ if (activePopupModal === 'LOGO_CROP') {
       const c = categories.find(cat => cat.id === id);
       if (!c) return;
       selectedCategoryModal = c;
+      categoryIconDraft = { id:c.iconId || 'stationery_folder', color:c.iconColor || 'brand' };
       clearTempImageSelection();
       activePopupModal = 'EDIT_CAT';
       render();
@@ -19392,7 +19623,8 @@ if (activePopupModal === 'LOGO_CROP') {
 
       try {
         const newImg = imageChanged ? (await productImagePayloadFromSnapshot(imageSnap, false)).img : old.img;
-        const result = await callApi('edit_category', { categoryId: id, name, img: newImg });
+        const result = await callApi('edit_category', { categoryId: id, name, img: newImg,
+          iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color });
         const current = categories.find(cat => cat.id === id);
         if (current) Object.assign(current, mapCategoryFromDB(result.category));
         saveCatalogCache();
@@ -20252,7 +20484,8 @@ if (activePopupModal === 'LOGO_CROP') {
       if (['MARKETING_HUB','MARKETING_SETTINGS','BANNERS','BUNDLES','PROMO_CODES','DISCOUNT_TIERS','REWARD_RULES','FEATURED_CATEGORIES','ABANDONED_CARTS'].includes(page)) return hasPermission('marketing.manage');
       if (['SETTINGS','DESIGN','FULFILLMENT'].includes(page)) return hasPermission('shop.settings.manage');
       if (page === 'DOMAINS_SETTINGS') return staffRole === 'OWNER' || (staffRole === 'STAFF' && canViewAuditLog && hasPermission('domains.manage'));
-      if (['STAFF','ROLES'].includes(page)) return staffRole === 'OWNER' || hasPermission('staff.manage');
+      if (page === 'STAFF') return staffRole === 'OWNER' || hasPermission('staff.permissions.manage');
+      if (page === 'ROLES') return staffRole === 'OWNER';
       if (page === 'AUDIT_LOG') return canViewAuditLog;
       if (page === 'SUPPORT') return hasPermission('support.manage');
       return true;
@@ -20283,7 +20516,7 @@ if (activePopupModal === 'LOGO_CROP') {
           showActionToast(tr('Huquqlaringiz yangilandi', 'Ваши права обновлены'), 'success', 1400);
           render();
         }
-        if (activePage === 'STAFF' && (staffRole === 'OWNER' || hasPermission('staff.manage'))) await loadStaffListLazy(true);
+        if (activePage === 'STAFF' && (staffRole === 'OWNER' || hasPermission('staff.permissions.manage'))) await loadStaffListLazy(true);
       } catch (e) { console.warn('Xodim huquqlarini yangilab bo‘lmadi:', e); }
       finally { staffAccessSyncing = false; }
     }

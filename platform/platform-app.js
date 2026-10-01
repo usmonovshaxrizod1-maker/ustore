@@ -357,6 +357,8 @@
   let connectSuccess = null;
   let pendingBotToken = '';
   let selectedShopDetails = null; // adminShops ichidan tanlangan bitta qator
+  let selectedShopDomains = null;
+  let selectedShopDomainsLoading = false;
   let shopBackupBusy = false;
   let shopRestoreBusy = false;
 
@@ -866,6 +868,7 @@
     if (p === 'SHOP_SUB_LIFECYCLE') return pageShell("Do'kon holati", renderShopLifecycleBody(), { onBack: "openPage('SHOP_DETAILS')" });
     if (p === 'SHOP_SUB_ACTIVITY') return pageShell("Faoliyat tarixi", renderShopActivityBody(), { onBack: "openPage('SHOP_DETAILS')" });
     if (p === 'SHOP_SUB_SUPPORT') return pageShell("Support", renderShopSupportBody(), { onBack: "openPage('SHOP_DETAILS')" });
+    if (p === 'SHOP_SUB_DOMAINS') return pageShell('Domen va manzil', renderPlatformShopDomainsBody(), { onBack: "openPage('SHOP_DETAILS')" });
     if (p === 'REQUEST_DETAILS') return pageShell("So'rov tafsilotlari", renderRequestDetailsBody(), { onBack: "switchTab('requests')" });
     if (p === 'MY_REQUESTS') return pageShell("Arizalarim", renderMyRequestsBody(), { onBack: "goHomePage()" });
     if (p === 'MY_REQUEST_DETAILS') return pageShell("Ariza holati", renderMyRequestDetailsBody(), { onBack: "openMyRequests()" });
@@ -3237,6 +3240,7 @@
   }
   function openShopDetails(shopId) {
     selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
+    selectedShopDomains = null;
     openPage('SHOP_DETAILS');
     loadSubscriptionHistory(shopId);
   }
@@ -3372,6 +3376,7 @@
       ['SHOP_SUB_LIFECYCLE', 'lock', "Do'kon holati", statusLabel(s.status)],
       ['SHOP_SUB_ACTIVITY', 'clock', 'Faoliyat tarixi', 'Admin amallari'],
       ['SHOP_SUB_SUPPORT', 'headset', 'Support', "Murojaatlar"],
+      ['SHOP_SUB_DOMAINS', 'shop', 'Domen va manzil', 'Subdomen va shaxsiy domen'],
     ];
     return `
       <section class="plat-shop-detail-hero-pro">
@@ -3394,7 +3399,43 @@
       </div>
     `;
   }
-  function openShopSubScreen(page) { openPage(page); if (page === 'SHOP_SUB_ACTIVITY') loadShopActivity(selectedShopDetails.id); }
+  function openShopSubScreen(page) { openPage(page); if (page === 'SHOP_SUB_ACTIVITY') loadShopActivity(selectedShopDetails.id); if (page === 'SHOP_SUB_DOMAINS') loadPlatformShopDomains(); }
+  async function loadPlatformShopDomains() {
+    const shopId = selectedShopDetails?.id;
+    if (!shopId) return;
+    selectedShopDomainsLoading = true;
+    try {
+      const result = await callPlatformApi('platform_shop_domains', { shopId, domainAction: 'list' });
+      if (selectedShopDetails?.id === shopId) selectedShopDomains = result.items || [];
+    } catch (error) { if (selectedShopDetails?.id === shopId) selectedShopDomains = { error: String(error?.message || 'NETWORK_ERROR') }; }
+    finally { selectedShopDomainsLoading = false; if (selectedShopDetails?.id === shopId && activePage === 'SHOP_SUB_DOMAINS') rerenderActivePage(); }
+  }
+  async function platformShopDomainAction(domainAction, domainId) {
+    const shopId = selectedShopDetails?.id;
+    if (!shopId) return;
+    const payload = { shopId, domainAction, domainId };
+    if (domainAction === 'add') payload.hostname = document.getElementById('plat-custom-domain-input')?.value?.trim();
+    if (domainAction === 'change_slug') payload.slug = document.getElementById('plat-subdomain-input')?.value?.trim();
+    if (domainAction === 'remove' && !(await showConfirm('Bu domen uziladi. Davom etasizmi?'))) return;
+    try {
+      await callPlatformApi('platform_shop_domains', payload);
+      showToast('Domen ma’lumoti yangilandi', 'success');
+      await loadPlatformShopDomains();
+    } catch (error) { showToast(String(error?.message || 'Domen amalida xatolik'), 'error'); }
+  }
+  function renderPlatformShopDomainsBody() {
+    if (selectedShopDomainsLoading && !selectedShopDomains) return '<div class="card">Yuklanmoqda...</div>';
+    if (selectedShopDomains?.error) return `<div class="card">${escapeHtml(selectedShopDomains.error)} <button class="secondary" onclick="loadPlatformShopDomains()">Qayta urinish</button></div>`;
+    const items = Array.isArray(selectedShopDomains) ? selectedShopDomains : [];
+    const sub = items.find(d => d.kind === 'SUBDOMAIN');
+    return `<div class="plat-domain-support">
+      <div class="card"><h2>Subdomen</h2><p>${escapeHtml(sub?.hostname || 'Mavjud emas')}</p><div class="plat-domain-edit"><input id="plat-subdomain-input" value="${escapeHtml(sub?.hostname?.split('.')[0] || '')}" placeholder="yangi-nom"><button class="secondary" onclick="platformShopDomainAction('change_slug')">Almashtirish</button></div></div>
+      <div class="card"><h2>Shaxsiy domen</h2><div class="plat-domain-edit"><input id="plat-custom-domain-input" placeholder="shop.example.uz"><button class="secondary" onclick="platformShopDomainAction('add')">Qo‘shish</button></div></div>
+      ${items.map(d => `<div class="card plat-domain-row"><h3>${escapeHtml(d.hostname)} ${d.isPrimary ? '· asosiy' : ''}</h3><p>Holat: ${escapeHtml(d.status)} · DNS: ${escapeHtml(d.dnsStatus || 'UNKNOWN')} · HTTPS: ${escapeHtml(d.tlsStatus || 'UNKNOWN')}</p>${d.errorCode ? `<p>${escapeHtml(d.errorCode)}</p>` : ''}
+        ${(d.records || []).map(r => `<div class="preview-row"><span>${escapeHtml(r.type)} · ${escapeHtml(r.name)}</span><code>${escapeHtml(r.value)}</code></div>`).join('')}
+        <div class="plat-domain-actions"><button class="secondary" onclick="platformShopDomainAction('verify','${d.id}')">Tekshirish</button>${d.status === 'ACTIVE' && !d.isPrimary ? `<button class="secondary" onclick="platformShopDomainAction('set_primary','${d.id}')">Asosiy qilish</button>` : ''}${d.kind === 'CUSTOM' ? `<button class="secondary" onclick="platformShopDomainAction('remove','${d.id}')">Uzish</button>` : ''}</div></div>`).join('')}
+    </div>`;
+  }
   function renderShopSubscriptionBody() {
     const s = selectedShopDetails;
     if (!s) return '<p class="empty">Do\'kon topilmadi.</p>';
@@ -5012,6 +5053,8 @@
   window.openMyShopManage = openMyShopManage;
   window.openShopDetails = openShopDetails;
   window.openShopSubScreen = openShopSubScreen;
+  window.loadPlatformShopDomains = loadPlatformShopDomains;
+  window.platformShopDomainAction = platformShopDomainAction;
   window.openShopDetailsFromDashboard = openShopDetailsFromDashboard;
   window.openRequestsFilteredFromDashboard = openRequestsFilteredFromDashboard;
   window.applyTariffFromShopDetails = applyTariffFromShopDetails;

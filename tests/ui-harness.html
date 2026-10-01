@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>USTORE UI smoke harness</title>
+  <link rel="stylesheet" href="../ustore.css">
+</head>
+<body class="bg-gray-100 text-gray-800 pb-20 font-sans">
+  <header class="ustore-topbar bg-white sticky top-0 z-40 px-4 py-3 flex items-center justify-between"><div><img id="shop-logo-img" class="hidden"><span id="role-tag"></span><button id="header-logo-edit-btn" class="hidden"></button></div><div><button id="header-cart-btn"><span id="cart-badge"></span></button><button id="lang-flag-btn" onclick="toggleUiLang()">🇺🇿</button><button id="header-zoom-btn" class="ustore-header-action" onclick="toggleTextZoomPopover(event)" aria-label="Matn hajmi"><i data-lucide="zoom-in"></i></button><button id="header-person-btn"></button><button id="header-settings-btn" onclick="openShopParams()"></button></div><div id="text-zoom-popover" class="hidden"><i data-lucide="zoom-out"></i><input id="header-text-zoom-range" type="range" min="-2" max="2" value="0" oninput="setTextZoom(this.value)"><i data-lucide="zoom-in"></i></div></header>
+  <main id="app-content" class="p-4 max-w-md mx-auto min-h-screen"></main>
+  <div id="global-loader" class="hidden"><p id="global-loader-text"></p></div>
+  <div id="action-toast" class="hidden" data-state="saving"></div>
+  <div id="role-mode-popover" class="hidden fixed z-50 bg-white rounded-xl shadow-lg border overflow-hidden"></div>
+  <nav class="ustore-bottom-nav fixed bottom-0 left-0 right-0 bg-white py-2 px-3 flex justify-around items-center z-40">
+    <button id="nav-home" onclick="switchTab('home')"><span id="nav-label-home"></span></button>
+    <button id="nav-categories" onclick="switchTab('categories')"><span id="nav-label-categories"></span></button>
+    <button id="nav-cart" onclick="switchTab('cart')"><span id="nav-label-cart"></span></button>
+    <button id="nav-orders" onclick="switchTab('orders')"><span id="nav-label-orders"></span></button>
+    <button id="nav-warehouse-btn" onclick="switchTab('warehouse')"><span id="nav-label-warehouse"></span></button>
+    <button id="nav-support-btn" onclick="openAdminSupportOrUserSupport()"><span id="nav-label-support"></span></button>
+    <button id="nav-profile" onclick="switchTab('profile')"><span id="nav-label-profile"></span></button>
+  </nav>
+  <div id="page-container" class="hidden fixed inset-0 z-40 bg-white overflow-y-auto"></div>
+  <div id="modal-container"></div>
+  <script>
+    window.alert = message => { window.__lastAlert = String(message); console.log('[ALERT]', message); };
+    window.confirm = () => true;
+    window.lucide = { createIcons() {} };
+    window.Telegram = { WebApp: { initData: 'mock-init-data', initDataUnsafe: { user: { first_name: 'Test', last_name: 'Admin' } }, expand() {}, openLink(u) { console.log('[openLink]', u); } } };
+    window.APP_CONFIG = { SUPABASE_URL: 'https://mock.test', SUPABASE_KEY: 'mock-key', IMAGES_BUCKET: 'images' };
+
+    // ---- Mock katalog: 3 ta kategoriya (tartib testlash uchun) + 1 mahsulot ----
+    const categoryRows = [
+      { id: 'c1', name: 'Oziq-ovqat', name_ru: 'Продукты', parent_id: null, img: '🍎', sort_order: 1, deleted_at: null },
+      { id: 'c2', name: 'Sport kiyim', name_ru: 'Спортивная одежда', parent_id: null, img: '👕', sort_order: 2, deleted_at: null },
+      { id: 'c3', name: 'Aksessuarlar', name_ru: 'Аксессуары', parent_id: null, img: '🎒', sort_order: 3, deleted_at: null },
+    ];
+    const productRows = [
+      { id: 'p1', sku: '111001', name: 'Test Protein', name_ru: 'Тест Протеин', price: 260000, old_price: null, stock: 10, category_id: null, status: 'ACTIVE', img: null, description: 'Test', description_ru: null, is_featured: true, sort_order: 1, sizes: null, variants: null, sold_count: 0, created_at: new Date().toISOString(), import_batch_id: null },
+      { id: 'p2', sku: '111002', name: 'Test Kreatin', name_ru: 'Тест Креатин', price: 140000, old_price: null, stock: 20, category_id: null, status: 'ACTIVE', img: null, description: 'Test 2', description_ru: null, is_featured: false, sort_order: 2, sizes: null, variants: null, sold_count: 0, created_at: new Date().toISOString(), import_batch_id: null },
+      { id: 'p3', sku: '111003', name: 'Test Shaker', name_ru: 'Тест Шейкер', price: 45000, old_price: null, stock: 30, category_id: null, status: 'ACTIVE', img: null, description: 'Test 3', description_ru: null, is_featured: false, sort_order: 3, sizes: null, variants: null, sold_count: 0, created_at: new Date().toISOString(), import_batch_id: null },
+    ];
+    const mockPromos = [
+      { id: 'promo1', code: 'YOZGI20', name: 'Yozgi aksiya', discountType: 'PERCENT', discountValue: 20, minOrderAmount: 200000, maxOrderAmount: 2000000, startsAt: null, endsAt: new Date(Date.now() + 5*86400000).toISOString(), usageLimit: 50, perCustomerLimit: 1, usedCount: 12, categoryIds: [], productIds: [], newCustomerOnly: false, allowStacking: false, isPublic: true, isActive: true, transferable: true },
+      { id: 'promo2', code: 'LIMIT5', name: 'Limitli kod', discountType: 'FIXED', discountValue: 50000, minOrderAmount: null, maxOrderAmount: null, startsAt: null, endsAt: null, usageLimit: 5, perCustomerLimit: null, usedCount: 5, categoryIds: [], productIds: [], newCustomerOnly: false, allowStacking: false, isPublic: true, isActive: true, transferable: true },
+      { id: 'promo3', code: 'ESKI10', name: 'Muddati o‘tgan', discountType: 'PERCENT', discountValue: 10, minOrderAmount: null, maxOrderAmount: null, startsAt: null, endsAt: new Date(Date.now() - 5*86400000).toISOString(), usageLimit: null, perCustomerLimit: null, usedCount: 3, categoryIds: [], productIds: [], newCustomerOnly: false, allowStacking: false, isPublic: true, isActive: true, transferable: true },
+      { id: 'promo4', code: 'OCHIRILGAN', name: 'Nofaol kod', discountType: 'PERCENT', discountValue: 15, minOrderAmount: null, maxOrderAmount: null, startsAt: null, endsAt: null, usageLimit: null, perCustomerLimit: null, usedCount: 0, categoryIds: [], productIds: [], newCustomerOnly: false, allowStacking: false, isPublic: true, isActive: false, transferable: true },
+    ];
+    const mockTierGroup = {
+      id: 'tg1', name: 'Yozgi aksiya 2025', startsAt: null, endsAt: new Date(Date.now() + 30*86400000).toISOString(),
+      categoryIds: [], productIds: [], allowStacking: false, isActive: true,
+      steps: [
+        { id: 's1', thresholdAmount: 2000000, discountType: 'PERCENT', discountValue: 1 },
+        { id: 's2', thresholdAmount: 5000000, discountType: 'PERCENT', discountValue: 3 },
+        { id: 's3', thresholdAmount: 10000000, discountType: 'PERCENT', discountValue: 5 },
+        { id: 's4', thresholdAmount: 20000000, discountType: 'PERCENT', discountValue: 7 },
+      ],
+    };
+    const mockBundle = {
+      id: 'b1', name: 'Massa yig\'ish to\'plami', description: 'Protein + kreatin + shaker birga.',
+      items: [{ productId: 'p1', qty: 1 }, { productId: 'p2', qty: 1 }, { productId: 'p3', qty: 1 }],
+      bundlePrice: 400000, coverImageUrl: null, startsAt: null, endsAt: null, isActive: true, pauseReason: null,
+    };
+
+    function queryFor(table) {
+      const data = table === 'products' ? productRows : (table === 'categories' ? categoryRows : []);
+      const result = { data, error: null };
+      const query = {
+        select(){return query}, neq(){return query}, eq(){return query}, order(){return query},
+        limit(){return query}, is(){return query}, not(){return query}, or(){return query}, in(){return query},
+        update(){return query}, upsert(){return query},
+        maybeSingle(){return Promise.resolve({data: data[0]||null, error:null})},
+        single(){return Promise.resolve({data: data[0]||null, error:null})},
+        then(resolve,reject){return Promise.resolve(result).then(resolve,reject)},
+      };
+      return query;
+    }
+    window.supabase = { createClient() { return {
+      from: queryFor,
+      channel(){return {on(){return this},subscribe(){return this},send(){return Promise.resolve()}}},
+      storage:{from(){return {uploadToSignedUrl(){return Promise.resolve({error:null})},getPublicUrl(){return {data:{publicUrl:'https://example.test/image.jpg'}}}}}},
+    }; } };
+  </script>
+  <script src="../ustore-image-io.js"></script>
+  <script src="../ustore-commerce.js"></script>
+  <script>
+    // Kanonik snake_case kodlar (013_region_canonical_codes.sql bilan bir xil).
+    const regionIds = ['tashkent_city','tashkent_region','andijan','bukhara','fergana','jizzakh','khorezm','namangan','navoi','qashqadaryo','karakalpakstan','samarkand','sirdaryo','surxondaryo'];
+    const mockConfig = UstoreCommerce.defaultConfig(regionIds);
+    mockConfig.delivery.fixed.enabled = true; mockConfig.delivery.fixed.regions.tashkent_city = {enabled:true,fee:40000};
+    mockConfig.delivery.taxi.enabled = true; mockConfig.delivery.taxi.regions.jizzakh = {enabled:true,minFee:50000,maxFee:80000};
+    mockConfig.delivery.post.enabled = true;
+    for (const provider of mockConfig.delivery.post.providers.filter(p => ['BTS','EMU'].includes(p.id))) { provider.enabled = true; provider.regions.tashkent_city = {enabled:true,payer:provider.id === 'BTS' ? 'CUSTOMER' : 'SELLER'}; }
+    const card = mockConfig.payments.methods.find(m => m.id === 'CARD'); card.enabled = true; card.cardNumber = '8600 0000 0000 0000'; card.cardHolder = 'USTORE OWNER'; card.regions.tashkent_city = {enabled:true}; card.regions.jizzakh = {enabled:true};
+    const cash = mockConfig.payments.methods.find(m => m.id === 'CASH'); cash.regions.jizzakh = {enabled:true}; cash.regions.tashkent_city = {enabled:true};
+
+    // Mock buyurtmalar — mapOrderForClient() (backend) ALLAQACHON kamelCase
+    // qilib qaytaradigan aynan shu shaklda (frontend formatOrderForUi buni
+    // kutadi). Biri CARD + chek kutilmoqda (3-band), biri TAXI (4-band).
+    const mockOrders = [
+      {
+        id: 1001, tgId: '1', user: 'Ali Valiyev', phone: '+998901234567', region: 'TASHKENT', district: 'Chilonzor', address: 'Uy 12',
+        payMethod: 'CARD', items: [{ sku: '111001', name: 'Test Protein', nameRu: 'Тест Протеин', price: 260000, qty: 1 }],
+        subtotal: 260000, deliveryFee: 40000, payableTotal: 300000, totalPrice: 300000, status: 'NEW',
+        delivery: { kind: 'FIXED', fee: 40000, payer: 'CUSTOMER' }, payment: { methodId: 'CARD', receiptStatus: 'RECEIVED' },
+        shipment: { status: 'READY' }, hasReceipt: true, receiptSentToTelegram: false,
+        createdAt: new Date().toISOString(), cancelReason: null, cancelledBy: null,
+        receiptReviewStatus: 'PENDING', receiptRejectReason: null,
+      },
+      {
+        id: 1002, tgId: '1', user: 'Vali Aliyev', phone: '+998901234568', region: 'PROVINCE', district: 'Jizzax tumani', address: 'Taksi orqali',
+        payMethod: 'CASH', items: [{ sku: '111001', name: 'Test Protein', nameRu: 'Тест Протеин', price: 260000, qty: 2 }],
+        subtotal: 520000, deliveryFee: 0, payableTotal: 520000, totalPrice: 520000, status: 'PROCESSING',
+        delivery: { kind: 'TAXI', fee: 0, payer: 'CUSTOMER_DIRECT' }, payment: { methodId: 'CASH' },
+        shipment: { status: 'READY' }, hasReceipt: false, receiptSentToTelegram: false,
+        createdAt: new Date().toISOString(), cancelReason: null, cancelledBy: null,
+        receiptReviewStatus: 'PENDING', receiptRejectReason: null,
+      },
+    ];
+
+    const mockBranches = [
+      { id: 1, branch_code: 'BTS-01', branch_name: 'BTS Chilonzor', branch_name_ru: 'БТС Чиланзар', district_or_city: 'Chilonzor', district_or_city_ru: 'Чиланзарский район', full_address: 'Chilonzor, 5-uy', full_address_ru: null, landmark: null, work_hours: '9-18', phone: '+998901112233' },
+    ];
+
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = async (url, options) => {
+      if (String(url).includes('/functions/v1/shop-api')) {
+        const body = JSON.parse(options.body || '{}');
+        const payload = body.payload || {};
+        const respond = (obj) => new Response(JSON.stringify(obj), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        console.log('[mock shop-api]', body.action, payload);
+        switch (body.action) {
+          case 'boot':
+            return respond({ tgId:'1', isAdmin:true, isSuperAdmin:true, isBlocked:false, isWarned:false, logoUrl:null,
+              shopContact:{ name:null, address:'Sergeli tumani, 12-uy', addressRu:'Сергелийский район, дом 12', coordinates:null, phone:null, phone2:null, phone3:null, instagram:null, telegram:null, facebook:null, startMessage:null },
+              fulfillmentConfig: mockConfig, botUsername: 'ustore_test_bot',
+              designSettings: { themeId: 'minimal', colors: {} },
+              profile:{firstName:'Test',lastName:'Admin',phone:'+998901234567'} });
+          case 'get_campaign_detail': {
+            const promo = mockPromos.find(p => p.id === payload.id);
+            if (payload.kind === 'PROMOTION' && promo) return respond({ kind: 'PROMOTION', promotion: { ...promo, previewProducts: [] } });
+            return respond({ error: 'not_found' });
+          }
+          case 'get_delivery_districts':
+            return respond({ districts: payload.regionKey === 'tashkent_city' ? ['Chilonzor', 'Sergeli'] : ['Jizzax tumani'] });
+          case 'get_delivery_branches':
+            return respond({ branches: mockBranches });
+          case 'get_orders':
+          case 'get_orders_summary':
+            return respond({ orders: mockOrders });
+          case 'get_upload_url':
+            return respond({ path: 'products/mock-123.jpg', token: 'mock-token' });
+          case 'finalize_image_upload':
+            return respond({ url: 'https://example.test/mock-uploaded.jpg' });
+          case 'reorder_categories':
+            return respond({ ok: true });
+          case 'get_trash':
+            return respond({ batches: window.__mockTrashBatches || [] });
+          case 'restore_trash_items': {
+            const batch = (window.__mockTrashBatches || []).find(b => b.id === payload.batchId);
+            if (batch) batch.productItems = (batch.productItems || []).filter(p => !payload.productIds.includes(p.id));
+            return respond({ ok: true, restoredCount: payload.productIds.length });
+          }
+          case 'purge_trash_items': {
+            const batch = (window.__mockTrashBatches || []).find(b => b.id === payload.batchId);
+            if (batch) batch.productItems = (batch.productItems || []).filter(p => !payload.productIds.includes(p.id));
+            return respond({ ok: true, purgedCount: payload.productIds.length });
+          }
+          case 'create_support_ticket':
+            return respond({ ticket: { id: 9001, tgId: '1', status: 'OPEN', createdAt: new Date().toISOString() }, message: { id: 1, sender: 'USER', body: payload.message, createdAt: new Date().toISOString() } });
+          case 'send_support_message':
+            return respond({ ticket: { id: payload.ticketId, status: 'ANSWERED' }, message: { id: Date.now(), sender: 'USER', body: payload.body, createdAt: new Date().toISOString() } });
+          case 'get_favorites':
+            return respond({ productIds: window.__mockFavorites || [] });
+          case 'toggle_favorite': {
+            window.__mockFavorites = window.__mockFavorites || [];
+            const i = window.__mockFavorites.indexOf(payload.productId);
+            if (i >= 0) { window.__mockFavorites.splice(i, 1); return respond({ favorited: false }); }
+            window.__mockFavorites.push(payload.productId);
+            return respond({ favorited: true });
+          }
+          case 'get_recent_views':
+            return respond({ productIds: window.__mockRecent || [] });
+          case 'record_product_view':
+            window.__mockRecent = [payload.productId, ...(window.__mockRecent || []).filter(id => id !== payload.productId)];
+            return respond({ ok: true });
+          case 'record_stock_in': {
+            const p = productRows.find(r => r.id === payload.productId);
+            const newStock = (p ? p.stock : 0) + Number(payload.qty || 0);
+            if (p) p.stock = newStock;
+            return respond({ product: { id: payload.productId, sku: p?.sku || '111001', name: p?.name || 'Test', name_ru: p?.name_ru || null, price: p?.price || 0, old_price: null, stock: newStock, category_id: null, status: 'ACTIVE', img: null, description: '', description_ru: null, is_featured: true, sort_order: 1, sizes: null, variants: null, sold_count: 0, created_at: new Date().toISOString(), import_batch_id: null } });
+          }
+          case 'bulk_stock_update': {
+            const updated = [], errors = [];
+            (payload.updates || []).forEach(u => {
+              const p = productRows.find(r => r.sku === u.sku);
+              if (!p) { errors.push({ sku: u.sku, error: 'Topilmadi' }); return; }
+              p.stock = Number(u.stock) || 0;
+              updated.push({ id: p.id, sku: p.sku, name: p.name, name_ru: p.name_ru, price: p.price, old_price: null, stock: p.stock, category_id: p.category_id, status: p.status, img: p.img, description: p.description, description_ru: p.description_ru, is_featured: p.is_featured, sort_order: p.sort_order, sizes: p.sizes, variants: p.variants, sold_count: p.sold_count, created_at: p.created_at, import_batch_id: p.import_batch_id });
+            });
+            return respond({ products: updated, errors });
+          }
+          case 'get_stock_movements':
+            return respond({ movements: [{ id: 1, productId: 'p1', variantSku: null, productName: 'Test Protein', productSku: '111001', priorStock: 10, delta: 5, newStock: 15, operationType: 'KIRIM', adminTgId: '1', orderId: null, createdAt: new Date().toISOString() }], total: 1, page: 1, pageSize: 20 });
+          case 'get_warehouse_summary':
+            return respond({ totalProducts: 1, totalStock: 10, lowStock: 1, lowStockIds: ['p1'], outOfStock: 0, outOfStockIds: [], lowStockThreshold: 5, generatedAt: new Date().toISOString() });
+          case 'bundle_list':
+            return respond({ bundles: [mockBundle] });
+          case 'promo_list':
+            return respond({ promotions: mockPromos });
+          case 'promo_usage_list':
+            return respond({ promo: { id: payload.promoId, code: 'YOZGI20', name: 'Yozgi aksiya' }, usages: [
+              { id: 'u1', tgId: '1', customerName: 'Ali Valiyev', phone: '+998901234567', orderId: 1001, orderTotal: 300000, discountAmount: 60000, createdAt: new Date().toISOString() },
+              { id: 'u2', tgId: '2', customerName: 'Vali Aliyev', phone: '+998901234568', orderId: 1002, orderTotal: 520000, discountAmount: 104000, createdAt: new Date(Date.now() - 86400000).toISOString() },
+            ] });
+          case 'automatic_gift_list':
+            return respond({ rules: [
+              { id: 'g1', name: 'Yozgi sovg\'a', conditionType: 'ORDER_AMOUNT', thresholdAmount: 500000, thresholdQuantity: null, targetProductId: null, targetCategoryId: null, giftProductId: 'p1', giftQuantity: 1, stockZeroPolicy: 'AUTO_PAUSE', startsAt: null, endsAt: null, isActive: true, usageCount: 3 },
+              { id: 'g2', name: 'Combo sovg\'a', conditionType: 'SPECIFIC_PRODUCTS', targetProductIds: ['p1','p2'], matchMode: 'ALL', targetProducts: [{id:'p1',name:'Test Protein'},{id:'p2',name:'Test Kreatin'}], giftProductId: 'p3', giftQuantity: 1, stockZeroPolicy: 'AUTO_PAUSE', startsAt: null, endsAt: null, isActive: true, usageCount: 0 },
+              { id: 'g3', name: 'Miqdor sovg\'a', conditionType: 'SPECIFIC_PRODUCT', thresholdQuantity: 2, targetProductId: 'p1', giftProductId: 'p1', giftQuantity: 1, stockZeroPolicy: 'CONTINUE_WITHOUT_GIFT', startsAt: null, endsAt: null, isActive: false, usageCount: 1 },
+            ] });
+          case 'reward_rule_list':
+            return respond({ rules: [
+              { id: 'r1', triggerType: 'ORDER_TOTAL', thresholdAmount: 5000000, rewardType: 'PERCENT', rewardValue: 7, codeExpiryDays: 30, periodDays: null, isActive: true, createdAt: new Date().toISOString(), transferable: false },
+            ] });
+          case 'customer_discount_batch_list':
+            return respond({ batches: [
+              { id: 'batch1', name: 'Yozgi VIP', discountType: 'PERCENT', discountValue: 10, minOrderAmount: 1000000, maxOrderAmount: 10000000, usageLimit: 2, startsAt: null, endsAt: new Date(Date.now()+30*86400000).toISOString(), isActive: true, memberCount: 15, usedCount: 4, createdAt: new Date().toISOString() },
+              { id: 'batch2', name: 'Eski aksiya', discountType: 'FIXED', discountValue: 50000, minOrderAmount: null, maxOrderAmount: null, usageLimit: null, startsAt: null, endsAt: new Date(Date.now()-5*86400000).toISOString(), isActive: true, memberCount: 3, usedCount: 1, createdAt: new Date().toISOString() },
+            ] });
+          case 'customer_discount_batch_detail':
+            return respond({
+              batch: { id: payload.batchId, name: 'Yozgi VIP', discountType: 'PERCENT', discountValue: 10, minOrderAmount: 1000000, maxOrderAmount: 10000000, usageLimit: 2, startsAt: null, endsAt: new Date(Date.now()+30*86400000).toISOString(), isActive: true },
+              members: [
+                { customerDiscountId: 'cd1', tgId: '1', name: 'Ali Valiyev', username: 'alivaliyev', phone: '+998901234567', usedCount: 2, remaining: 0, isActive: true },
+                { customerDiscountId: 'cd2', tgId: '2', name: null, username: 'vali2', phone: null, usedCount: 0, remaining: 2, isActive: true },
+              ],
+            });
+          case 'customer_discount_usage_list':
+            return respond({ usages: [
+              { id: 'u1', tgId: '1', customerName: 'Ali Valiyev', orderId: 1001, orderTotal: 3250000, discountAmount: 325000, createdAt: new Date().toISOString() },
+            ] });
+          case 'get_customer_report':
+            return respond({ customers: [
+              { tgId: '1', name: 'Ali Valiyev', username: 'alivaliyev', phone: '+998901234567', totalOrders: 5, totalSpent: 3250000 },
+              { tgId: '2', name: 'Vali Aliyev', username: 'vali2', phone: '+998901234568', totalOrders: 3, totalSpent: 1200000 },
+            ] });
+          case 'discount_tier_group_list':
+            return respond({ groups: [mockTierGroup] });
+          case 'discount_tier_group_create':
+          case 'discount_tier_group_update':
+            return respond({ ok: true, id: mockTierGroup.id });
+          case 'get_marketing_campaigns':
+            return respond({
+              bundles: [mockBundle], promotions: mockPromos, tiers: [], tierGroups: [mockTierGroup],
+              rewardRules: [{ id: 'r1', triggerType: 'ORDER_TOTAL', thresholdAmount: 5000000, rewardType: 'PERCENT', rewardValue: 7, codeExpiryDays: 30, periodDays: null }],
+              giftRules: [{ id: 'g1', name: 'Yozgi sovg\'a', conditionType: 'ORDER_AMOUNT', thresholdAmount: 500000, giftProductId: 'p1', giftQuantity: 1, giftProduct: { id: 'p1', name: 'Test Protein', imageUrl: null } }],
+              personalDiscounts: [{ id: 'pd1', name: 'Yozgi VIP', discountType: 'PERCENT', discountValue: 10, minOrderAmount: 1000000, maxOrderAmount: 10000000, usageLimit: 2, usedCount: 0, startsAt: null, endsAt: new Date(Date.now()+30*86400000).toISOString() }],
+              myPromoCodes: [],
+            });
+          case 'get_dashboard_lite':
+            return respond({
+              sales: { today: 300000, todayCount: 1, week: 820000, weekCount: 3, days30: 820000, days30Count: 3, month: 820000, monthCount: 3, allTime: 820000, allTimeCount: 3 },
+              orders: { NEW: 1, PROCESSING: 1, DELIVERED: 0, CANCELLED: 0, REJECTED: 0 },
+              activeOrders: 2,
+              products: { total: 1, lowStock: 0, lowStockIds: [], outOfStock: 0, outOfStockIds: [], bestSellers: [{ id: 'p1', name: 'Test Protein', soldCount: 5 }] },
+              customers: { total: 1, new30d: 1, repeat: 0, top: [{ tgId: '1', userName: 'Ali Valiyev', totalOrders: 2, totalSpent: 820000 }], all: [{ tgId: '1', userName: 'Ali Valiyev', phone: '+998901234567', totalOrders: 2, active: 1, delivered: 1, cancelled: 0, totalSpent: 820000, isBlocked: false, warned: false }] },
+              regions: [{ region: 'tashkent_city', label: 'Toshkent shahri', count: 2 }],
+              selectedRange: {
+                period: payload.period || 'all', dateFrom: new Date(0).toISOString(), dateTo: new Date().toISOString(),
+                sales: { amount: 820000, count: 3 },
+                orders: { NEW: 1, PROCESSING: 1, DELIVERED: 1, CANCELLED: 0, REJECTED: 0 },
+                products: { revenueByProduct: [{ sku: '111001', name: 'Test Protein', qty: 3, revenue: 780000 }] },
+              },
+              todayOrders: 1, todayOrderTotal: 300000, monthOrders: 3, monthOrderTotal: 820000,
+              outOfStock: 0, lowStock: 0, lowStockThreshold: 5, generatedAt: new Date().toISOString(),
+            });
+          default:
+            return respond({ ok:true, fulfillmentConfig: mockConfig, orders: mockOrders, admins: [] });
+        }
+      }
+      return nativeFetch(url, options);
+    };
+    window.__mockOrders = mockOrders;
+  </script>
+  <script src="../ustore-shop-app.js?v=1"></script>
+  <script>
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        try {
+          if (typeof orders !== 'undefined') { orders.length = 0; orders.push(...mockOrders.map(formatOrderForUi)); ordersLoaded = true; }
+        } catch (e) { console.error('harness order seed failed', e); }
+      }, 300);
+    });
+  </script>
+</body>
+</html>

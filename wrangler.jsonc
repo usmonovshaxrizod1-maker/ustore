@@ -5,11 +5,7 @@
   "workers_dev": true,
   "routes": [
     {
-      "pattern": "ustr.uz/*",
-      "zone_name": "ustr.uz"
-    },
-    {
-      "pattern": "*.ustr.uz/*",
+      "pattern": "*/*",
       "zone_name": "ustr.uz"
     }
   ],

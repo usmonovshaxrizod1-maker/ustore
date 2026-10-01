@@ -561,6 +561,12 @@
 /* Astra 8c — explicit Telegram Mini App target controls live inside Domains. */
 .uw-domain-miniapp{margin-top:1rem;padding:1rem;border:1px solid var(--uw-border,#dbe3ef);border-radius:var(--uw-radius-lg,14px);display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;background:var(--uw-surface,#fff)}
 .uw-domain-miniapp p{margin:0;flex:1 1 16rem;overflow-wrap:anywhere}
+.uw-domain-copy-icon{min-width:2.5rem;min-height:2.5rem;padding:.3rem;font-size:1.15rem;line-height:1;display:inline-grid;place-items:center;color:var(--uw-color-primary,#2563eb);background:var(--uw-color-surface-subtle,#f8fafc)}
+.uw-domain-modal-backdrop{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:1rem;background:rgb(15 23 42/.55)}
+.uw-domain-modal{display:grid;gap:1rem;width:min(100%,28rem);max-height:min(90vh,46rem);overflow:auto;padding:1.25rem;border:1px solid var(--uw-color-border,#e2e8f0);border-radius:1.25rem;background:var(--uw-color-surface,#fff);box-shadow:0 24px 64px rgb(15 23 42/.22)}
+.uw-domain-modal h3{margin:0;font-size:1.1rem}.uw-domain-modal label{display:grid;gap:.55rem;font-size:.83rem;font-weight:700}.uw-domain-modal-field{display:flex;align-items:center;border:1px solid var(--uw-color-border,#cbd5e1);border-radius:.8rem;overflow:hidden}.uw-domain-modal-field:focus-within{outline:3px solid rgb(37 99 235/.2)}
+.uw-domain-modal-field input{min-width:0;flex:1;border:0;outline:0;padding:.75rem;font:inherit}.uw-domain-modal-field span{padding:.75rem .8rem;color:var(--uw-color-text-muted,#64748b);white-space:nowrap;background:var(--uw-color-surface-subtle,#f8fafc)}
+.uw-domain-modal-actions{display:flex;justify-content:flex-end;gap:.65rem}.uw-domain-modal-actions .uw-domain-btn{min-width:6.5rem;min-height:2.7rem}
 
 /* K1 restored — premium admin orders; customer orders styles stay separate. */
 .uw-admin-orders{display:grid;gap:var(--uw-space-4);min-width:0}.uw-admin-orders__header{display:flex;align-items:baseline;justify-content:space-between;gap:1rem}.uw-admin-orders__header>div{font-size:var(--uw-text-2xl);font-weight:var(--uw-weight-bold)}.uw-admin-orders__header small{color:var(--uw-color-text-muted)}

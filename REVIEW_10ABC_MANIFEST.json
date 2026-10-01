@@ -1,0 +1,303 @@
+{
+  "package": "USTORE-REVIEW-10ABC-AFTER-O2-2026-09-23",
+  "baseline_sha256": "903ebf4e478bc8f19318453b65aca049c82bd74be41fd633d44daebac12b4f2f",
+  "changes": [
+    {
+      "path": "AVVAL_SHUNI_OQI.md",
+      "sha256": "c6c5f93fa6b65c4c7c943fa2127cf24adda097872e89aa274ae5122f323e793f",
+      "change": "modified"
+    },
+    {
+      "path": "config.public.example.js",
+      "sha256": "4896abf1cd12ffa5d916cf537d5be95c8d2e8fafaf4b206a6eefffd47a6e0d1f",
+      "change": "modified"
+    },
+    {
+      "path": "config.public.js",
+      "sha256": "8e0fede645776aa8deb0d5528db43c911a528c379c379041d6581fa4869ccc89",
+      "change": "modified"
+    },
+    {
+      "path": "dist/BUILD_MANIFEST.json",
+      "sha256": "d3caec03145009f9f0c698f8e1c6ac04664d25416c72c06f31873261129f1865",
+      "change": "modified"
+    },
+    {
+      "path": "dist/PERFORMANCE_AUDIT.json",
+      "sha256": "9c13bc89b8096b887fc67bb3c33b638c5e9ca80c0318b3bf272793b4bc8d7026",
+      "change": "modified"
+    },
+    {
+      "path": "dist/config.public.example.js",
+      "sha256": "4896abf1cd12ffa5d916cf537d5be95c8d2e8fafaf4b206a6eefffd47a6e0d1f",
+      "change": "modified"
+    },
+    {
+      "path": "dist/config.public.js",
+      "sha256": "8e0fede645776aa8deb0d5528db43c911a528c379c379041d6581fa4869ccc89",
+      "change": "modified"
+    },
+    {
+      "path": "dist/web/app.js",
+      "sha256": "ff759faa35353da417dece7af34805c71e50739469b53cb2b10b54f2da45b3e4",
+      "change": "modified"
+    },
+    {
+      "path": "dist/web/config.public.js",
+      "sha256": "8e0fede645776aa8deb0d5528db43c911a528c379c379041d6581fa4869ccc89",
+      "change": "modified"
+    },
+    {
+      "path": "dist/web/features/cart/cart.js",
+      "sha256": "3be8434235b2697d1b00452e862a594b603c04ef0e1395a3d6fcd4a00d6fa20c",
+      "change": "modified"
+    },
+    {
+      "path": "dist/web/features/checkout/submit.js",
+      "sha256": "23ed989b600781dbda98b957d6103196fb0ccb22708f1d875e2a8353e21d4fac",
+      "change": "modified"
+    },
+    {
+      "path": "dist/web/runtime/production.js",
+      "sha256": "1c113766688287b766f4766651b2948060cabaad9fb493813e6cdbac750603a8",
+      "change": "modified"
+    },
+    {
+      "path": "dist/web/services/live/tenant.js",
+      "sha256": "7eb6e9cdfaa17e8effc3c0a7510dfa0a0f8f80939ea5327bee2905ab317a4e98",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/ASTRA_10B_DEPLOY_RUNBOOK.md",
+      "sha256": "d58a42fd75c2157a9dc67790ea2c703879d2bf39890d39a480cb1f3cca8048c9",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/ASTRA_10C_FINAL_RELEASE.md",
+      "sha256": "36ec966b1b415d0055b1a144d3184fdf68f6c562556977fce38989162806e3fc",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/ASTRA_HANDOFF.md",
+      "sha256": "aa2081071bbce617cb5aa7d0e46c8737691885a0f6107cb1299357847388c16f",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/ASTRA_TASKS.md",
+      "sha256": "04bf04a65c8a68462554b6c25e5e386c1a80162016aa46fb829d00caa38bebd6",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/CHAT_HANDOFF.md",
+      "sha256": "0000e33e5c661989f2b8785600df468102162abf76275cb74ff69bf9bb8dced1",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/CONTINUATION_STATUS.md",
+      "sha256": "bd91c0d55c8c01b3a93130095fb956117b18938db9de0aba8ed06e16d9074663",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/INTEGRATION_STATUS.md",
+      "sha256": "3657ed017499c22ab7c36dcd0eb78938fbee88236562e31560777506b82a7c93",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/MIGRATION_ALLOCATOR.md",
+      "sha256": "2e75373ae5bda75041da988dbfc6eed73e163732dc608d4e032453b8ddb9c877",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/REVIEW_10ABC_AFTER_O2.md",
+      "sha256": "acc636901b512de2bcab9902ca2995d4ba394bed360a8e480769f01fb45659b5",
+      "change": "added"
+    },
+    {
+      "path": "docs/web/REVIEW_9ABC_AFTER_N1.md",
+      "sha256": "5836928554d812345b2a5653fca0ddf61fbe0f3e35264f8f0d64a856677f4268",
+      "change": "added"
+    },
+    {
+      "path": "docs/web/history/AVVAL_BEFORE_REVIEW_10ABC.md",
+      "sha256": "8534dad3bfd55787b460050d7f5219dc116463d62b5564349619c67793824157",
+      "change": "added"
+    },
+    {
+      "path": "docs/web/history/CONTINUATION_O2_BEFORE_REVIEW.md",
+      "sha256": "a99bef5c3323392633cf6aadb208e636babc2d1804119ab590cf80ac76a1b5ff",
+      "change": "added"
+    },
+    {
+      "path": "docs/web/release-evidence/ASTRA_10A_AUDIT.json",
+      "sha256": "07d043bab6983f3da8c578be5a00159c57d18bcf883e82b6ab2ba41b921f6035",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/release-evidence/ASTRA_10A_MIGRATION_LEDGER.json",
+      "sha256": "2a0b46f38aba15bd8805012b6014779c566a22d663bc3a377aa726af26b2ef6b",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/release-evidence/ASTRA_10B_DEPLOY_PLAN.json",
+      "sha256": "cfcf4ec1989d723f546b25b32d17bd50c071e32df37721265b0e66bb150a5d8f",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/release-evidence/ASTRA_10B_EXTERNAL_EVIDENCE.example.json",
+      "sha256": "632b965f2dd9830ba3cbd31e2a2df06491cb268df186acbff945ed877b3701d9",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/release-evidence/ASTRA_10C_EXTERNAL_EVIDENCE.example.json",
+      "sha256": "945cf5a6989bc8c9d2ee83b97f70e073a1cacfa7fe9d50810b751d526abc9ae0",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/release-evidence/ASTRA_10C_RELEASE_CANDIDATE.json",
+      "sha256": "5d0a127326d670836f124916ccdc501d80785a62c2f5a65c90f0fd9c9d67729a",
+      "change": "modified"
+    },
+    {
+      "path": "docs/web/review-evidence/10abc/legacy.log",
+      "sha256": "ca9808ecca5a05b8a5a55b9cf857bf2400a99e854e7556219e950c4f1d66ff3e",
+      "change": "added"
+    },
+    {
+      "path": "docs/web/review-evidence/10abc/web.log",
+      "sha256": "73c9913976a7aa019fd9ab87fbd63b4facfc13f0982d8ff5401c52b9258afa49",
+      "change": "added"
+    },
+    {
+      "path": "scripts/deploy-10b-guard.mjs",
+      "sha256": "8c727a4a209bc9c18030794609e80921581e50e9ef3d5b783f33636b911a4633",
+      "change": "modified"
+    },
+    {
+      "path": "scripts/measure-production.mjs",
+      "sha256": "1d33f6e2dbe8f27a1d61cd3d7d8ca3bc9ed85653bb4cfd94afcdb174cb0841e3",
+      "change": "modified"
+    },
+    {
+      "path": "scripts/production-smoke-10b.mjs",
+      "sha256": "1ee99b121cd4d8c434637a1ac671dfd07ebdbdc0e38bc2c05aa02416359ae6bf",
+      "change": "modified"
+    },
+    {
+      "path": "scripts/production-smoke-10c.mjs",
+      "sha256": "f527baf7b2bde572cce53d5747d264d1f9a3b0974fb1a69b2a19dced7a286a1d",
+      "change": "modified"
+    },
+    {
+      "path": "scripts/release-10a-audit.mjs",
+      "sha256": "d3774308dd0b8af237cc75d260ce63e1458531c0b10d489daab3aee7cf7723b0",
+      "change": "modified"
+    },
+    {
+      "path": "scripts/release-10b-audit.mjs",
+      "sha256": "03b168558d5a8a5a08f6510afd8a069d1eb4deface4a85bf54fddb894c2ce9be",
+      "change": "modified"
+    },
+    {
+      "path": "scripts/release-10c-audit.mjs",
+      "sha256": "d5ac114f66af9a66c99b5c76b3488c2bd09106a405d35b4279e2352e42b40166",
+      "change": "modified"
+    },
+    {
+      "path": "scripts/release-integrity.mjs",
+      "sha256": "085e76338df0d607103aa6fa4b99ee67fe49a861e4532da8af003e4115cb0712",
+      "change": "added"
+    },
+    {
+      "path": "scripts/staging-smoke-10a.mjs",
+      "sha256": "e489430de3416244f865e0665f1287a5bcab7c9602f1d88ed77a4f9472b43a62",
+      "change": "modified"
+    },
+    {
+      "path": "supabase/functions/_shared/web-auth.ts",
+      "sha256": "7cbef68a6bc25279bbf023cedb81a7cc11c083772baf4c50ec1e1d4526d29094",
+      "change": "modified"
+    },
+    {
+      "path": "supabase/functions/_shared/web-origin-handoff.ts",
+      "sha256": "becaa488e9440f703f033b50299fa0c98c0dccbd952e7321455e1768bcece334",
+      "change": "modified"
+    },
+    {
+      "path": "supabase/functions/platform-api/index.ts",
+      "sha256": "9e513742c1f554dfa23a89f8eb534a12b86df301b1adf6cb4c69582a11f63d3e",
+      "change": "modified"
+    },
+    {
+      "path": "supabase/functions/shop-api/index.ts",
+      "sha256": "2a18103288a6166622e80194960f747f939cee032c45d1a7843f9451a0baf863",
+      "change": "modified"
+    },
+    {
+      "path": "supabase/functions/web-auth/index.ts",
+      "sha256": "02f893203544385d805e0d1839037543b479393af0586447e772a0779d0232cb",
+      "change": "modified"
+    },
+    {
+      "path": "supabase/migrations/104_review_auth_concurrency.sql",
+      "sha256": "afaa3c7af3119413b9785b6b6c1895236b35aaefb3bdf01f9826ccc10bd54044",
+      "change": "added"
+    },
+    {
+      "path": "supabase/migrations/105_review_cart_merge_replay.sql",
+      "sha256": "270aa2b291c928453bc8cc65469691cadea36e90aea88b78cc2b3079a5dde670",
+      "change": "added"
+    },
+    {
+      "path": "tests/web-integration/astra-10a-release-prep.test.cjs",
+      "sha256": "4e990a7ab9dc01c2acce4a919402c2823383f3ba256edd2f4e49b9779d88426c",
+      "change": "modified"
+    },
+    {
+      "path": "tests/web-integration/astra-9a-production-composition.test.cjs",
+      "sha256": "f453d4c360579e8eefe0a98a059b9bb264365fd241eef82ff5f3141459a9ba53",
+      "change": "modified"
+    },
+    {
+      "path": "tests/web-security/review-10abc.test.cjs",
+      "sha256": "9eee4b181881c78146ada39d20b8cf3d5752a9a13ec4284d04dc779a693aef78",
+      "change": "added"
+    },
+    {
+      "path": "tests/web-security/review-9abc.test.cjs",
+      "sha256": "276515bb2741db757c8b6e884252213df4efaba237c8a7df6c4d9008d83d08c3",
+      "change": "added"
+    },
+    {
+      "path": "web/app.js",
+      "sha256": "ff759faa35353da417dece7af34805c71e50739469b53cb2b10b54f2da45b3e4",
+      "change": "modified"
+    },
+    {
+      "path": "web/features/cart/cart.js",
+      "sha256": "3be8434235b2697d1b00452e862a594b603c04ef0e1395a3d6fcd4a00d6fa20c",
+      "change": "modified"
+    },
+    {
+      "path": "web/features/checkout/submit.js",
+      "sha256": "23ed989b600781dbda98b957d6103196fb0ccb22708f1d875e2a8353e21d4fac",
+      "change": "modified"
+    },
+    {
+      "path": "web/runtime/production.js",
+      "sha256": "1c113766688287b766f4766651b2948060cabaad9fb493813e6cdbac750603a8",
+      "change": "modified"
+    },
+    {
+      "path": "web/services/live/tenant.js",
+      "sha256": "7eb6e9cdfaa17e8effc3c0a7510dfa0a0f8f80939ea5327bee2905ab317a4e98",
+      "change": "modified"
+    }
+  ],
+  "tests": {
+    "web": 400,
+    "legacy": 1081,
+    "web_syntax": 107,
+    "edge_syntax": 26
+  },
+  "productionReleased": false
+}

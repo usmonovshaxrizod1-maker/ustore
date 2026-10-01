@@ -1,0 +1,2057 @@
+{
+  "library": "ustore-category-icon-library",
+  "version": "phase-04",
+  "total_icons_in_phase": 62,
+  "groups": [
+    "pets",
+    "books_stationery",
+    "hobby",
+    "gifts_party",
+    "universal"
+  ],
+  "notes": {
+    "type": "scalable SVG category icon library",
+    "scalable": true,
+    "color_mode": "currentColor",
+    "responsive_requirement": "UI may render the same icon at different CSS sizes based on category count/card density without quality loss.",
+    "phase": "pets / books & stationery / hobby / gifts & party / universal"
+  },
+  "icons": [
+    {
+      "id": "pet_dog",
+      "group": "pets",
+      "uz": "It",
+      "ru": "Собака",
+      "en": "Dog",
+      "aliases_uz": [
+        "it",
+        "kuchuk",
+        "uy iti"
+      ],
+      "aliases_ru": [
+        "собака",
+        "пёс"
+      ],
+      "aliases_en": [
+        "dog",
+        "puppy"
+      ],
+      "search_terms": [
+        "it",
+        "kuchuk",
+        "uy iti",
+        "собака",
+        "пёс",
+        "dog",
+        "puppy"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_dog",
+      "source_icon": "faDog"
+    },
+    {
+      "id": "pet_cat",
+      "group": "pets",
+      "uz": "Mushuk",
+      "ru": "Кошка",
+      "en": "Cat",
+      "aliases_uz": [
+        "mushuk",
+        "mushuklar"
+      ],
+      "aliases_ru": [
+        "кошка",
+        "кот"
+      ],
+      "aliases_en": [
+        "cat",
+        "kitten"
+      ],
+      "search_terms": [
+        "mushuk",
+        "mushuklar",
+        "кошка",
+        "кот",
+        "cat",
+        "kitten"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_cat",
+      "source_icon": "faCat"
+    },
+    {
+      "id": "pet_paw",
+      "group": "pets",
+      "uz": "Uy hayvonlari",
+      "ru": "Домашние животные",
+      "en": "Pets",
+      "aliases_uz": [
+        "uy hayvonlari",
+        "pet",
+        "jonivor"
+      ],
+      "aliases_ru": [
+        "домашние животные",
+        "питомцы"
+      ],
+      "aliases_en": [
+        "pets",
+        "pet supplies"
+      ],
+      "search_terms": [
+        "uy hayvonlari",
+        "pet",
+        "jonivor",
+        "домашние животные",
+        "питомцы",
+        "pets",
+        "pet supplies"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_paw",
+      "source_icon": "faPaw"
+    },
+    {
+      "id": "pet_fish",
+      "group": "pets",
+      "uz": "Akvarium baliqlari",
+      "ru": "Аквариумные рыбы",
+      "en": "Aquarium fish",
+      "aliases_uz": [
+        "baliq",
+        "akvarium"
+      ],
+      "aliases_ru": [
+        "рыбы",
+        "аквариум"
+      ],
+      "aliases_en": [
+        "fish",
+        "aquarium"
+      ],
+      "search_terms": [
+        "baliq",
+        "akvarium",
+        "рыбы",
+        "аквариум",
+        "fish",
+        "aquarium",
+        "akvarium baliqlari",
+        "аквариумные рыбы",
+        "aquarium fish"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_fish",
+      "source_icon": "faFish"
+    },
+    {
+      "id": "pet_bird",
+      "group": "pets",
+      "uz": "Qushlar",
+      "ru": "Птицы",
+      "en": "Birds",
+      "aliases_uz": [
+        "qush",
+        "to‘tiqush",
+        "kanareyka"
+      ],
+      "aliases_ru": [
+        "птицы",
+        "попугай"
+      ],
+      "aliases_en": [
+        "birds",
+        "parrot"
+      ],
+      "search_terms": [
+        "qush",
+        "to‘tiqush",
+        "kanareyka",
+        "птицы",
+        "попугай",
+        "birds",
+        "parrot",
+        "qushlar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_bird",
+      "source_icon": "faDove"
+    },
+    {
+      "id": "pet_horse",
+      "group": "pets",
+      "uz": "Otlar",
+      "ru": "Лошади",
+      "en": "Horses",
+      "aliases_uz": [
+        "ot",
+        "otlar"
+      ],
+      "aliases_ru": [
+        "лошадь",
+        "лошади"
+      ],
+      "aliases_en": [
+        "horse",
+        "horses"
+      ],
+      "search_terms": [
+        "ot",
+        "otlar",
+        "лошадь",
+        "лошади",
+        "horse",
+        "horses"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_horse",
+      "source_icon": "faHorse"
+    },
+    {
+      "id": "pet_farm",
+      "group": "pets",
+      "uz": "Ferma hayvonlari",
+      "ru": "Фермерские животные",
+      "en": "Farm animals",
+      "aliases_uz": [
+        "ferma",
+        "sigir",
+        "chorva"
+      ],
+      "aliases_ru": [
+        "ферма",
+        "корова",
+        "скот"
+      ],
+      "aliases_en": [
+        "farm animals",
+        "cow",
+        "livestock"
+      ],
+      "search_terms": [
+        "ferma",
+        "sigir",
+        "chorva",
+        "ферма",
+        "корова",
+        "скот",
+        "farm animals",
+        "cow",
+        "livestock",
+        "ferma hayvonlari",
+        "фермерские животные"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_farm",
+      "source_icon": "faCow"
+    },
+    {
+      "id": "pet_spider",
+      "group": "pets",
+      "uz": "Terrarium jonivorlari",
+      "ru": "Террариумные животные",
+      "en": "Terrarium pets",
+      "aliases_uz": [
+        "o‘rgimchak",
+        "terrarium",
+        "ekzotik jonivor"
+      ],
+      "aliases_ru": [
+        "паук",
+        "террариум",
+        "экзотические животные"
+      ],
+      "aliases_en": [
+        "spider",
+        "terrarium",
+        "exotic pets"
+      ],
+      "search_terms": [
+        "o‘rgimchak",
+        "terrarium",
+        "ekzotik jonivor",
+        "паук",
+        "террариум",
+        "экзотические животные",
+        "spider",
+        "exotic pets",
+        "terrarium jonivorlari",
+        "террариумные животные",
+        "terrarium pets"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_spider",
+      "source_icon": "faSpider"
+    },
+    {
+      "id": "pet_frog",
+      "group": "pets",
+      "uz": "Amfibiyalar",
+      "ru": "Амфибии",
+      "en": "Amphibians",
+      "aliases_uz": [
+        "qurbaqa",
+        "amfibiya"
+      ],
+      "aliases_ru": [
+        "лягушка",
+        "амфибии"
+      ],
+      "aliases_en": [
+        "frog",
+        "amphibians"
+      ],
+      "search_terms": [
+        "qurbaqa",
+        "amfibiya",
+        "лягушка",
+        "амфибии",
+        "frog",
+        "amphibians",
+        "amfibiyalar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_frog",
+      "source_icon": "faFrog"
+    },
+    {
+      "id": "pet_otter",
+      "group": "pets",
+      "uz": "Ekzotik uy hayvonlari",
+      "ru": "Экзотические питомцы",
+      "en": "Exotic pets",
+      "aliases_uz": [
+        "ekzotik hayvon",
+        "jonivor"
+      ],
+      "aliases_ru": [
+        "экзотические питомцы"
+      ],
+      "aliases_en": [
+        "exotic pets",
+        "otter"
+      ],
+      "search_terms": [
+        "ekzotik hayvon",
+        "jonivor",
+        "экзотические питомцы",
+        "exotic pets",
+        "otter",
+        "ekzotik uy hayvonlari"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_otter",
+      "source_icon": "faOtter"
+    },
+    {
+      "id": "pet_largeanimal",
+      "group": "pets",
+      "uz": "Yirik hayvonlar",
+      "ru": "Крупные животные",
+      "en": "Large animals",
+      "aliases_uz": [
+        "yirik hayvon",
+        "hayvonlar"
+      ],
+      "aliases_ru": [
+        "крупные животные"
+      ],
+      "aliases_en": [
+        "large animals"
+      ],
+      "search_terms": [
+        "yirik hayvon",
+        "hayvonlar",
+        "крупные животные",
+        "large animals",
+        "yirik hayvonlar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_largeanimal",
+      "source_icon": "faHippo"
+    },
+    {
+      "id": "pet_reptile",
+      "group": "pets",
+      "uz": "Reptiliya va fantastik jonivorlar",
+      "ru": "Рептилии и экзотика",
+      "en": "Reptiles & exotic",
+      "aliases_uz": [
+        "reptiliya",
+        "ilon",
+        "kaltakesak"
+      ],
+      "aliases_ru": [
+        "рептилии",
+        "змея",
+        "ящерица"
+      ],
+      "aliases_en": [
+        "reptile",
+        "snake",
+        "lizard"
+      ],
+      "search_terms": [
+        "reptiliya",
+        "ilon",
+        "kaltakesak",
+        "рептилии",
+        "змея",
+        "ящерица",
+        "reptile",
+        "snake",
+        "lizard",
+        "reptiliya va fantastik jonivorlar",
+        "рептилии и экзотика",
+        "reptiles & exotic"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "pet_reptile",
+      "source_icon": "faDragon"
+    },
+    {
+      "id": "book_general",
+      "group": "books_stationery",
+      "uz": "Kitoblar",
+      "ru": "Книги",
+      "en": "Books",
+      "aliases_uz": [
+        "kitob",
+        "kitoblar"
+      ],
+      "aliases_ru": [
+        "книга",
+        "книги"
+      ],
+      "aliases_en": [
+        "book",
+        "books"
+      ],
+      "search_terms": [
+        "kitob",
+        "kitoblar",
+        "книга",
+        "книги",
+        "book",
+        "books"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "book_general",
+      "source_icon": "faBook"
+    },
+    {
+      "id": "book_open",
+      "group": "books_stationery",
+      "uz": "O‘quv adabiyoti",
+      "ru": "Учебная литература",
+      "en": "Educational books",
+      "aliases_uz": [
+        "darslik",
+        "o‘quv kitobi"
+      ],
+      "aliases_ru": [
+        "учебник",
+        "учебная литература"
+      ],
+      "aliases_en": [
+        "textbook",
+        "educational books"
+      ],
+      "search_terms": [
+        "darslik",
+        "o‘quv kitobi",
+        "учебник",
+        "учебная литература",
+        "textbook",
+        "educational books",
+        "o‘quv adabiyoti"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "book_open",
+      "source_icon": "faBookOpen"
+    },
+    {
+      "id": "book_education",
+      "group": "books_stationery",
+      "uz": "Ta’lim va kurslar",
+      "ru": "Образование и курсы",
+      "en": "Education & courses",
+      "aliases_uz": [
+        "ta’lim",
+        "kurs",
+        "o‘qish"
+      ],
+      "aliases_ru": [
+        "образование",
+        "курсы",
+        "учёба"
+      ],
+      "aliases_en": [
+        "education",
+        "courses",
+        "study"
+      ],
+      "search_terms": [
+        "ta’lim",
+        "kurs",
+        "o‘qish",
+        "образование",
+        "курсы",
+        "учёба",
+        "education",
+        "courses",
+        "study",
+        "ta’lim va kurslar",
+        "образование и курсы",
+        "education & courses"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "book_education",
+      "source_icon": "faGraduationCap"
+    },
+    {
+      "id": "stationery_pen",
+      "group": "books_stationery",
+      "uz": "Ruchkalar",
+      "ru": "Ручки",
+      "en": "Pens",
+      "aliases_uz": [
+        "ruchka",
+        "yozuv quroli"
+      ],
+      "aliases_ru": [
+        "ручка",
+        "ручки"
+      ],
+      "aliases_en": [
+        "pen",
+        "pens"
+      ],
+      "search_terms": [
+        "ruchka",
+        "yozuv quroli",
+        "ручка",
+        "ручки",
+        "pen",
+        "pens",
+        "ruchkalar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_pen",
+      "source_icon": "faPen"
+    },
+    {
+      "id": "stationery_pencil",
+      "group": "books_stationery",
+      "uz": "Qalamlar",
+      "ru": "Карандаши",
+      "en": "Pencils",
+      "aliases_uz": [
+        "qalam",
+        "karandash"
+      ],
+      "aliases_ru": [
+        "карандаш",
+        "карандаши"
+      ],
+      "aliases_en": [
+        "pencil",
+        "pencils"
+      ],
+      "search_terms": [
+        "qalam",
+        "karandash",
+        "карандаш",
+        "карандаши",
+        "pencil",
+        "pencils",
+        "qalamlar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_pencil",
+      "source_icon": "faPencil"
+    },
+    {
+      "id": "stationery_documents",
+      "group": "books_stationery",
+      "uz": "Hujjatlar va blankalar",
+      "ru": "Документы и бланки",
+      "en": "Documents & forms",
+      "aliases_uz": [
+        "hujjat",
+        "blanka",
+        "qog‘oz"
+      ],
+      "aliases_ru": [
+        "документы",
+        "бланки"
+      ],
+      "aliases_en": [
+        "documents",
+        "forms"
+      ],
+      "search_terms": [
+        "hujjat",
+        "blanka",
+        "qog‘oz",
+        "документы",
+        "бланки",
+        "documents",
+        "forms",
+        "hujjatlar va blankalar",
+        "документы и бланки",
+        "documents & forms"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_documents",
+      "source_icon": "faFileLines"
+    },
+    {
+      "id": "stationery_paperclip",
+      "group": "books_stationery",
+      "uz": "Ofis mayda buyumlari",
+      "ru": "Офисные мелочи",
+      "en": "Office accessories",
+      "aliases_uz": [
+        "skrepka",
+        "ofis buyumi"
+      ],
+      "aliases_ru": [
+        "скрепка",
+        "офисные мелочи"
+      ],
+      "aliases_en": [
+        "paperclip",
+        "office accessories"
+      ],
+      "search_terms": [
+        "skrepka",
+        "ofis buyumi",
+        "скрепка",
+        "офисные мелочи",
+        "paperclip",
+        "office accessories",
+        "ofis mayda buyumlari"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_paperclip",
+      "source_icon": "faPaperclip"
+    },
+    {
+      "id": "stationery_scissors",
+      "group": "books_stationery",
+      "uz": "Qaychi va kesish",
+      "ru": "Ножницы и резка",
+      "en": "Scissors & cutting",
+      "aliases_uz": [
+        "qaychi",
+        "kesish"
+      ],
+      "aliases_ru": [
+        "ножницы",
+        "резка"
+      ],
+      "aliases_en": [
+        "scissors",
+        "cutting"
+      ],
+      "search_terms": [
+        "qaychi",
+        "kesish",
+        "ножницы",
+        "резка",
+        "scissors",
+        "cutting",
+        "qaychi va kesish",
+        "ножницы и резка",
+        "scissors & cutting"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_scissors",
+      "source_icon": "faScissors"
+    },
+    {
+      "id": "stationery_art",
+      "group": "books_stationery",
+      "uz": "Rassomchilik",
+      "ru": "Товары для рисования",
+      "en": "Art supplies",
+      "aliases_uz": [
+        "rassomchilik",
+        "bo‘yoq",
+        "palitra"
+      ],
+      "aliases_ru": [
+        "рисование",
+        "краски",
+        "палитра"
+      ],
+      "aliases_en": [
+        "art supplies",
+        "painting",
+        "palette"
+      ],
+      "search_terms": [
+        "rassomchilik",
+        "bo‘yoq",
+        "palitra",
+        "рисование",
+        "краски",
+        "палитра",
+        "art supplies",
+        "painting",
+        "palette",
+        "товары для рисования"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_art",
+      "source_icon": "faPalette"
+    },
+    {
+      "id": "stationery_brush",
+      "group": "books_stationery",
+      "uz": "Mo‘yqalamlar",
+      "ru": "Кисти",
+      "en": "Brushes",
+      "aliases_uz": [
+        "mo‘yqalam",
+        "cho‘tka"
+      ],
+      "aliases_ru": [
+        "кисти",
+        "кисточка"
+      ],
+      "aliases_en": [
+        "brushes",
+        "paint brush"
+      ],
+      "search_terms": [
+        "mo‘yqalam",
+        "cho‘tka",
+        "кисти",
+        "кисточка",
+        "brushes",
+        "paint brush",
+        "mo‘yqalamlar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_brush",
+      "source_icon": "faPaintbrush"
+    },
+    {
+      "id": "stationery_ruler",
+      "group": "books_stationery",
+      "uz": "Chizmachilik",
+      "ru": "Черчение",
+      "en": "Drafting supplies",
+      "aliases_uz": [
+        "lineyka",
+        "chizmachilik"
+      ],
+      "aliases_ru": [
+        "линейка",
+        "черчение"
+      ],
+      "aliases_en": [
+        "ruler",
+        "drafting"
+      ],
+      "search_terms": [
+        "lineyka",
+        "chizmachilik",
+        "линейка",
+        "черчение",
+        "ruler",
+        "drafting",
+        "drafting supplies"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_ruler",
+      "source_icon": "faRuler"
+    },
+    {
+      "id": "stationery_calculator",
+      "group": "books_stationery",
+      "uz": "Kalkulyatorlar",
+      "ru": "Калькуляторы",
+      "en": "Calculators",
+      "aliases_uz": [
+        "kalkulyator",
+        "hisoblash"
+      ],
+      "aliases_ru": [
+        "калькулятор"
+      ],
+      "aliases_en": [
+        "calculator"
+      ],
+      "search_terms": [
+        "kalkulyator",
+        "hisoblash",
+        "калькулятор",
+        "calculator",
+        "kalkulyatorlar",
+        "калькуляторы",
+        "calculators"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_calculator",
+      "source_icon": "faCalculator"
+    },
+    {
+      "id": "stationery_folder",
+      "group": "books_stationery",
+      "uz": "Papka va fayllar",
+      "ru": "Папки и файлы",
+      "en": "Folders & files",
+      "aliases_uz": [
+        "papka",
+        "fayl",
+        "hujjat papkasi"
+      ],
+      "aliases_ru": [
+        "папка",
+        "файл"
+      ],
+      "aliases_en": [
+        "folder",
+        "file organizer"
+      ],
+      "search_terms": [
+        "papka",
+        "fayl",
+        "hujjat papkasi",
+        "папка",
+        "файл",
+        "folder",
+        "file organizer",
+        "papka va fayllar",
+        "папки и файлы",
+        "folders & files"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_folder",
+      "source_icon": "faFolderOpen"
+    },
+    {
+      "id": "stationery_news",
+      "group": "books_stationery",
+      "uz": "Jurnal va gazeta",
+      "ru": "Журналы и газеты",
+      "en": "Magazines & newspapers",
+      "aliases_uz": [
+        "jurnal",
+        "gazeta"
+      ],
+      "aliases_ru": [
+        "журнал",
+        "газета"
+      ],
+      "aliases_en": [
+        "magazine",
+        "newspaper"
+      ],
+      "search_terms": [
+        "jurnal",
+        "gazeta",
+        "журнал",
+        "газета",
+        "magazine",
+        "newspaper",
+        "jurnal va gazeta",
+        "журналы и газеты",
+        "magazines & newspapers"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "stationery_news",
+      "source_icon": "faNewspaper"
+    },
+    {
+      "id": "hobby_guitar",
+      "group": "hobby",
+      "uz": "Gitara",
+      "ru": "Гитары",
+      "en": "Guitars",
+      "aliases_uz": [
+        "gitara",
+        "musiqa asbobi"
+      ],
+      "aliases_ru": [
+        "гитара",
+        "музыкальный инструмент"
+      ],
+      "aliases_en": [
+        "guitar",
+        "musical instrument"
+      ],
+      "search_terms": [
+        "gitara",
+        "musiqa asbobi",
+        "гитара",
+        "музыкальный инструмент",
+        "guitar",
+        "musical instrument",
+        "гитары",
+        "guitars"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_guitar",
+      "source_icon": "faGuitar"
+    },
+    {
+      "id": "hobby_music",
+      "group": "hobby",
+      "uz": "Musiqa",
+      "ru": "Музыка",
+      "en": "Music",
+      "aliases_uz": [
+        "musiqa",
+        "audio",
+        "nota"
+      ],
+      "aliases_ru": [
+        "музыка",
+        "ноты"
+      ],
+      "aliases_en": [
+        "music",
+        "notes"
+      ],
+      "search_terms": [
+        "musiqa",
+        "audio",
+        "nota",
+        "музыка",
+        "ноты",
+        "music",
+        "notes"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_music",
+      "source_icon": "faMusic"
+    },
+    {
+      "id": "hobby_camera",
+      "group": "hobby",
+      "uz": "Foto hobbi",
+      "ru": "Фотохобби",
+      "en": "Photography hobby",
+      "aliases_uz": [
+        "foto",
+        "kamera",
+        "fotografiya"
+      ],
+      "aliases_ru": [
+        "фото",
+        "камера",
+        "фотография"
+      ],
+      "aliases_en": [
+        "photo",
+        "camera",
+        "photography"
+      ],
+      "search_terms": [
+        "foto",
+        "kamera",
+        "fotografiya",
+        "фото",
+        "камера",
+        "фотография",
+        "photo",
+        "camera",
+        "photography",
+        "foto hobbi",
+        "фотохобби",
+        "photography hobby"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_camera",
+      "source_icon": "faCameraRetro"
+    },
+    {
+      "id": "hobby_puzzle",
+      "group": "hobby",
+      "uz": "Pazl",
+      "ru": "Пазлы",
+      "en": "Puzzles",
+      "aliases_uz": [
+        "pazl",
+        "puzzle"
+      ],
+      "aliases_ru": [
+        "пазл",
+        "пазлы"
+      ],
+      "aliases_en": [
+        "puzzle",
+        "puzzles"
+      ],
+      "search_terms": [
+        "pazl",
+        "puzzle",
+        "пазл",
+        "пазлы",
+        "puzzles"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_puzzle",
+      "source_icon": "faPuzzlePiece"
+    },
+    {
+      "id": "hobby_chess",
+      "group": "hobby",
+      "uz": "Shaxmat",
+      "ru": "Шахматы",
+      "en": "Chess",
+      "aliases_uz": [
+        "shaxmat"
+      ],
+      "aliases_ru": [
+        "шахматы"
+      ],
+      "aliases_en": [
+        "chess"
+      ],
+      "search_terms": [
+        "shaxmat",
+        "шахматы",
+        "chess"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_chess",
+      "source_icon": "faChess"
+    },
+    {
+      "id": "hobby_gamepad",
+      "group": "hobby",
+      "uz": "Video o‘yinlar",
+      "ru": "Видеоигры",
+      "en": "Video games",
+      "aliases_uz": [
+        "video o‘yin",
+        "gaming"
+      ],
+      "aliases_ru": [
+        "видеоигры",
+        "гейминг"
+      ],
+      "aliases_en": [
+        "video games",
+        "gaming"
+      ],
+      "search_terms": [
+        "video o‘yin",
+        "gaming",
+        "видеоигры",
+        "гейминг",
+        "video games",
+        "video o‘yinlar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_gamepad",
+      "source_icon": "faGamepad"
+    },
+    {
+      "id": "hobby_dice",
+      "group": "hobby",
+      "uz": "Stol o‘yinlari",
+      "ru": "Настольные игры",
+      "en": "Board games",
+      "aliases_uz": [
+        "stol o‘yini",
+        "kubik"
+      ],
+      "aliases_ru": [
+        "настольные игры",
+        "кости"
+      ],
+      "aliases_en": [
+        "board games",
+        "dice"
+      ],
+      "search_terms": [
+        "stol o‘yini",
+        "kubik",
+        "настольные игры",
+        "кости",
+        "board games",
+        "dice",
+        "stol o‘yinlari"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_dice",
+      "source_icon": "faDice"
+    },
+    {
+      "id": "hobby_bowling",
+      "group": "hobby",
+      "uz": "Bouling",
+      "ru": "Боулинг",
+      "en": "Bowling",
+      "aliases_uz": [
+        "bouling"
+      ],
+      "aliases_ru": [
+        "боулинг"
+      ],
+      "aliases_en": [
+        "bowling"
+      ],
+      "search_terms": [
+        "bouling",
+        "боулинг",
+        "bowling"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_bowling",
+      "source_icon": "faBowlingBall"
+    },
+    {
+      "id": "hobby_tabletennis",
+      "group": "hobby",
+      "uz": "Stol tennisi",
+      "ru": "Настольный теннис",
+      "en": "Table tennis",
+      "aliases_uz": [
+        "stol tennisi",
+        "ping pong"
+      ],
+      "aliases_ru": [
+        "настольный теннис",
+        "пинг-понг"
+      ],
+      "aliases_en": [
+        "table tennis",
+        "ping pong"
+      ],
+      "search_terms": [
+        "stol tennisi",
+        "ping pong",
+        "настольный теннис",
+        "пинг-понг",
+        "table tennis"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_tabletennis",
+      "source_icon": "faTableTennisPaddleBall"
+    },
+    {
+      "id": "hobby_hiking",
+      "group": "hobby",
+      "uz": "Sayr va hiking",
+      "ru": "Походы и треккинг",
+      "en": "Hiking & trekking",
+      "aliases_uz": [
+        "hiking",
+        "trekking",
+        "sayr"
+      ],
+      "aliases_ru": [
+        "поход",
+        "треккинг"
+      ],
+      "aliases_en": [
+        "hiking",
+        "trekking"
+      ],
+      "search_terms": [
+        "hiking",
+        "trekking",
+        "sayr",
+        "поход",
+        "треккинг",
+        "sayr va hiking",
+        "походы и треккинг",
+        "hiking & trekking"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_hiking",
+      "source_icon": "faPersonHiking"
+    },
+    {
+      "id": "hobby_camping",
+      "group": "hobby",
+      "uz": "Kemping",
+      "ru": "Кемпинг",
+      "en": "Camping",
+      "aliases_uz": [
+        "kemping",
+        "palatka",
+        "lager"
+      ],
+      "aliases_ru": [
+        "кемпинг",
+        "палатка"
+      ],
+      "aliases_en": [
+        "camping",
+        "tent"
+      ],
+      "search_terms": [
+        "kemping",
+        "palatka",
+        "lager",
+        "кемпинг",
+        "палатка",
+        "camping",
+        "tent"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_camping",
+      "source_icon": "faCampground"
+    },
+    {
+      "id": "hobby_binoculars",
+      "group": "hobby",
+      "uz": "Kuzatuv va tabiat",
+      "ru": "Наблюдение и природа",
+      "en": "Nature observation",
+      "aliases_uz": [
+        "binokl",
+        "tabiat kuzatuvi"
+      ],
+      "aliases_ru": [
+        "бинокль",
+        "наблюдение природы"
+      ],
+      "aliases_en": [
+        "binoculars",
+        "nature observation"
+      ],
+      "search_terms": [
+        "binokl",
+        "tabiat kuzatuvi",
+        "бинокль",
+        "наблюдение природы",
+        "binoculars",
+        "nature observation",
+        "kuzatuv va tabiat",
+        "наблюдение и природа"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "hobby_binoculars",
+      "source_icon": "faBinoculars"
+    },
+    {
+      "id": "gift_general",
+      "group": "gifts_party",
+      "uz": "Sovg‘alar",
+      "ru": "Подарки",
+      "en": "Gifts",
+      "aliases_uz": [
+        "sovg‘a",
+        "podarok"
+      ],
+      "aliases_ru": [
+        "подарок",
+        "подарки"
+      ],
+      "aliases_en": [
+        "gift",
+        "gifts"
+      ],
+      "search_terms": [
+        "sovg‘a",
+        "podarok",
+        "подарок",
+        "подарки",
+        "gift",
+        "gifts",
+        "sovg‘alar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_general",
+      "source_icon": "faGift"
+    },
+    {
+      "id": "gift_birthday",
+      "group": "gifts_party",
+      "uz": "Tug‘ilgan kun",
+      "ru": "День рождения",
+      "en": "Birthday",
+      "aliases_uz": [
+        "tug‘ilgan kun",
+        "tort",
+        "bayram"
+      ],
+      "aliases_ru": [
+        "день рождения",
+        "торт"
+      ],
+      "aliases_en": [
+        "birthday",
+        "cake"
+      ],
+      "search_terms": [
+        "tug‘ilgan kun",
+        "tort",
+        "bayram",
+        "день рождения",
+        "торт",
+        "birthday",
+        "cake"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_birthday",
+      "source_icon": "faCakeCandles"
+    },
+    {
+      "id": "gift_celebration",
+      "group": "gifts_party",
+      "uz": "Bayram va tantana",
+      "ru": "Праздник и торжество",
+      "en": "Celebration",
+      "aliases_uz": [
+        "bayram",
+        "tantana",
+        "to‘y"
+      ],
+      "aliases_ru": [
+        "праздник",
+        "торжество"
+      ],
+      "aliases_en": [
+        "celebration",
+        "party"
+      ],
+      "search_terms": [
+        "bayram",
+        "tantana",
+        "to‘y",
+        "праздник",
+        "торжество",
+        "celebration",
+        "party",
+        "bayram va tantana",
+        "праздник и торжество"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_celebration",
+      "source_icon": "faChampagneGlasses"
+    },
+    {
+      "id": "gift_love",
+      "group": "gifts_party",
+      "uz": "Sevgi sovg‘alari",
+      "ru": "Подарки для любимых",
+      "en": "Romantic gifts",
+      "aliases_uz": [
+        "sevgi",
+        "romantik sovg‘a",
+        "valentin"
+      ],
+      "aliases_ru": [
+        "любовь",
+        "романтический подарок",
+        "валентинка"
+      ],
+      "aliases_en": [
+        "love",
+        "romantic gift",
+        "valentine"
+      ],
+      "search_terms": [
+        "sevgi",
+        "romantik sovg‘a",
+        "valentin",
+        "любовь",
+        "романтический подарок",
+        "валентинка",
+        "love",
+        "romantic gift",
+        "valentine",
+        "sevgi sovg‘alari",
+        "подарки для любимых",
+        "romantic gifts"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_love",
+      "source_icon": "faHeart"
+    },
+    {
+      "id": "gift_premium",
+      "group": "gifts_party",
+      "uz": "Premium sovg‘alar",
+      "ru": "Премиум подарки",
+      "en": "Premium gifts",
+      "aliases_uz": [
+        "premium sovg‘a",
+        "vip"
+      ],
+      "aliases_ru": [
+        "премиум подарок",
+        "vip"
+      ],
+      "aliases_en": [
+        "premium gift",
+        "vip"
+      ],
+      "search_terms": [
+        "premium sovg‘a",
+        "vip",
+        "премиум подарок",
+        "premium gift",
+        "premium sovg‘alar",
+        "премиум подарки",
+        "premium gifts"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_premium",
+      "source_icon": "faCrown"
+    },
+    {
+      "id": "gift_jewelry",
+      "group": "gifts_party",
+      "uz": "Qimmatbaho sovg‘alar",
+      "ru": "Драгоценные подарки",
+      "en": "Precious gifts",
+      "aliases_uz": [
+        "qimmatbaho",
+        "brilliant",
+        "sovg‘a"
+      ],
+      "aliases_ru": [
+        "драгоценности",
+        "бриллиант",
+        "подарок"
+      ],
+      "aliases_en": [
+        "precious gift",
+        "gem"
+      ],
+      "search_terms": [
+        "qimmatbaho",
+        "brilliant",
+        "sovg‘a",
+        "драгоценности",
+        "бриллиант",
+        "подарок",
+        "precious gift",
+        "gem",
+        "qimmatbaho sovg‘alar",
+        "драгоценные подарки",
+        "precious gifts"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_jewelry",
+      "source_icon": "faGem"
+    },
+    {
+      "id": "gift_wedding",
+      "group": "gifts_party",
+      "uz": "Nikoh va unashtiruv",
+      "ru": "Свадьба и помолвка",
+      "en": "Wedding & engagement",
+      "aliases_uz": [
+        "nikoh",
+        "unashtiruv",
+        "uzuk"
+      ],
+      "aliases_ru": [
+        "свадьба",
+        "помолвка",
+        "кольцо"
+      ],
+      "aliases_en": [
+        "wedding",
+        "engagement",
+        "ring"
+      ],
+      "search_terms": [
+        "nikoh",
+        "unashtiruv",
+        "uzuk",
+        "свадьба",
+        "помолвка",
+        "кольцо",
+        "wedding",
+        "engagement",
+        "ring",
+        "nikoh va unashtiruv",
+        "свадьба и помолвка",
+        "wedding & engagement"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_wedding",
+      "source_icon": "faRing"
+    },
+    {
+      "id": "gift_theater",
+      "group": "gifts_party",
+      "uz": "Teatr va tadbir",
+      "ru": "Театр и мероприятия",
+      "en": "Theater & events",
+      "aliases_uz": [
+        "teatr",
+        "tadbir",
+        "spektakl"
+      ],
+      "aliases_ru": [
+        "театр",
+        "мероприятие",
+        "спектакль"
+      ],
+      "aliases_en": [
+        "theater",
+        "events",
+        "show"
+      ],
+      "search_terms": [
+        "teatr",
+        "tadbir",
+        "spektakl",
+        "театр",
+        "мероприятие",
+        "спектакль",
+        "theater",
+        "events",
+        "show",
+        "teatr va tadbir",
+        "театр и мероприятия",
+        "theater & events"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_theater",
+      "source_icon": "faMasksTheater"
+    },
+    {
+      "id": "gift_ticket",
+      "group": "gifts_party",
+      "uz": "Chipta va sertifikat",
+      "ru": "Билеты и сертификаты",
+      "en": "Tickets & vouchers",
+      "aliases_uz": [
+        "chipta",
+        "sertifikat",
+        "voucher"
+      ],
+      "aliases_ru": [
+        "билет",
+        "сертификат"
+      ],
+      "aliases_en": [
+        "ticket",
+        "voucher",
+        "gift card"
+      ],
+      "search_terms": [
+        "chipta",
+        "sertifikat",
+        "voucher",
+        "билет",
+        "сертификат",
+        "ticket",
+        "gift card",
+        "chipta va sertifikat",
+        "билеты и сертификаты",
+        "tickets & vouchers"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_ticket",
+      "source_icon": "faTicket"
+    },
+    {
+      "id": "gift_magic",
+      "group": "gifts_party",
+      "uz": "Syurpriz va kreativ sovg‘a",
+      "ru": "Сюрпризы и креативные подарки",
+      "en": "Surprise & creative gifts",
+      "aliases_uz": [
+        "syurpriz",
+        "kreativ sovg‘a"
+      ],
+      "aliases_ru": [
+        "сюрприз",
+        "креативный подарок"
+      ],
+      "aliases_en": [
+        "surprise",
+        "creative gift"
+      ],
+      "search_terms": [
+        "syurpriz",
+        "kreativ sovg‘a",
+        "сюрприз",
+        "креативный подарок",
+        "surprise",
+        "creative gift",
+        "syurpriz va kreativ sovg‘a",
+        "сюрпризы и креативные подарки",
+        "surprise & creative gifts"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_magic",
+      "source_icon": "faWandMagicSparkles"
+    },
+    {
+      "id": "gift_star",
+      "group": "gifts_party",
+      "uz": "Maxsus sovg‘alar",
+      "ru": "Особые подарки",
+      "en": "Special gifts",
+      "aliases_uz": [
+        "maxsus sovg‘a",
+        "yulduz"
+      ],
+      "aliases_ru": [
+        "особый подарок",
+        "звезда"
+      ],
+      "aliases_en": [
+        "special gift",
+        "star"
+      ],
+      "search_terms": [
+        "maxsus sovg‘a",
+        "yulduz",
+        "особый подарок",
+        "звезда",
+        "special gift",
+        "star",
+        "maxsus sovg‘alar",
+        "особые подарки",
+        "special gifts"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_star",
+      "source_icon": "faStar"
+    },
+    {
+      "id": "gift_ribbon",
+      "group": "gifts_party",
+      "uz": "Sovg‘a qadoqlash",
+      "ru": "Подарочная упаковка",
+      "en": "Gift wrapping",
+      "aliases_uz": [
+        "qadoqlash",
+        "lenta",
+        "sovg‘a qutisi"
+      ],
+      "aliases_ru": [
+        "упаковка",
+        "лента"
+      ],
+      "aliases_en": [
+        "gift wrapping",
+        "ribbon"
+      ],
+      "search_terms": [
+        "qadoqlash",
+        "lenta",
+        "sovg‘a qutisi",
+        "упаковка",
+        "лента",
+        "gift wrapping",
+        "ribbon",
+        "sovg‘a qadoqlash",
+        "подарочная упаковка"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "gift_ribbon",
+      "source_icon": "faRibbon"
+    },
+    {
+      "id": "universal_store",
+      "group": "universal",
+      "uz": "Barcha mahsulotlar",
+      "ru": "Все товары",
+      "en": "All products",
+      "aliases_uz": [
+        "barcha mahsulotlar",
+        "do‘kon"
+      ],
+      "aliases_ru": [
+        "все товары",
+        "магазин"
+      ],
+      "aliases_en": [
+        "all products",
+        "store"
+      ],
+      "search_terms": [
+        "barcha mahsulotlar",
+        "do‘kon",
+        "все товары",
+        "магазин",
+        "all products",
+        "store"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_store",
+      "source_icon": "faStore"
+    },
+    {
+      "id": "universal_new",
+      "group": "universal",
+      "uz": "Yangi mahsulotlar",
+      "ru": "Новинки",
+      "en": "New arrivals",
+      "aliases_uz": [
+        "yangi mahsulot",
+        "novinka"
+      ],
+      "aliases_ru": [
+        "новинки",
+        "новые товары"
+      ],
+      "aliases_en": [
+        "new arrivals",
+        "new products"
+      ],
+      "search_terms": [
+        "yangi mahsulot",
+        "novinka",
+        "новинки",
+        "новые товары",
+        "new arrivals",
+        "new products",
+        "yangi mahsulotlar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_new",
+      "source_icon": "faBoxOpen"
+    },
+    {
+      "id": "universal_tags",
+      "group": "universal",
+      "uz": "Tanlangan toifalar",
+      "ru": "Подборки",
+      "en": "Collections",
+      "aliases_uz": [
+        "toifalar",
+        "teglar",
+        "tanlov"
+      ],
+      "aliases_ru": [
+        "подборки",
+        "теги"
+      ],
+      "aliases_en": [
+        "collections",
+        "tags"
+      ],
+      "search_terms": [
+        "toifalar",
+        "teglar",
+        "tanlov",
+        "подборки",
+        "теги",
+        "collections",
+        "tags",
+        "tanlangan toifalar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_tags",
+      "source_icon": "faTags"
+    },
+    {
+      "id": "universal_sale",
+      "group": "universal",
+      "uz": "Chegirmalar",
+      "ru": "Скидки",
+      "en": "Discounts",
+      "aliases_uz": [
+        "chegirma",
+        "aksiya",
+        "foiz"
+      ],
+      "aliases_ru": [
+        "скидки",
+        "акции",
+        "процент"
+      ],
+      "aliases_en": [
+        "discounts",
+        "sale",
+        "percent"
+      ],
+      "search_terms": [
+        "chegirma",
+        "aksiya",
+        "foiz",
+        "скидки",
+        "акции",
+        "процент",
+        "discounts",
+        "sale",
+        "percent",
+        "chegirmalar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_sale",
+      "source_icon": "faPercent"
+    },
+    {
+      "id": "universal_hot",
+      "group": "universal",
+      "uz": "Mashhur mahsulotlar",
+      "ru": "Популярное",
+      "en": "Popular",
+      "aliases_uz": [
+        "mashhur",
+        "top",
+        "trend"
+      ],
+      "aliases_ru": [
+        "популярное",
+        "топ",
+        "тренд"
+      ],
+      "aliases_en": [
+        "popular",
+        "top",
+        "trending"
+      ],
+      "search_terms": [
+        "mashhur",
+        "top",
+        "trend",
+        "популярное",
+        "топ",
+        "тренд",
+        "popular",
+        "trending",
+        "mashhur mahsulotlar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_hot",
+      "source_icon": "faFire"
+    },
+    {
+      "id": "universal_clock",
+      "group": "universal",
+      "uz": "Tezkor / vaqtga bog‘liq",
+      "ru": "Срочно / по времени",
+      "en": "Time-sensitive",
+      "aliases_uz": [
+        "tezkor",
+        "vaqt",
+        "deadline"
+      ],
+      "aliases_ru": [
+        "срочно",
+        "время"
+      ],
+      "aliases_en": [
+        "urgent",
+        "time"
+      ],
+      "search_terms": [
+        "tezkor",
+        "vaqt",
+        "deadline",
+        "срочно",
+        "время",
+        "urgent",
+        "time",
+        "tezkor / vaqtga bog‘liq",
+        "срочно / по времени",
+        "time-sensitive"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_clock",
+      "source_icon": "faClock"
+    },
+    {
+      "id": "universal_location",
+      "group": "universal",
+      "uz": "Mahalliy mahsulotlar",
+      "ru": "Локальные товары",
+      "en": "Local products",
+      "aliases_uz": [
+        "mahalliy",
+        "joylashuv",
+        "lokal"
+      ],
+      "aliases_ru": [
+        "локальные",
+        "местные"
+      ],
+      "aliases_en": [
+        "local products",
+        "location"
+      ],
+      "search_terms": [
+        "mahalliy",
+        "joylashuv",
+        "lokal",
+        "локальные",
+        "местные",
+        "local products",
+        "location",
+        "mahalliy mahsulotlar",
+        "локальные товары"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_location",
+      "source_icon": "faLocationDot"
+    },
+    {
+      "id": "universal_delivery",
+      "group": "universal",
+      "uz": "Yetkazib berish",
+      "ru": "Доставка",
+      "en": "Delivery",
+      "aliases_uz": [
+        "yetkazib berish",
+        "dostavka"
+      ],
+      "aliases_ru": [
+        "доставка"
+      ],
+      "aliases_en": [
+        "delivery",
+        "shipping"
+      ],
+      "search_terms": [
+        "yetkazib berish",
+        "dostavka",
+        "доставка",
+        "delivery",
+        "shipping"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_delivery",
+      "source_icon": "faTruckFast"
+    },
+    {
+      "id": "universal_support",
+      "group": "universal",
+      "uz": "Xizmat va yordam",
+      "ru": "Сервис и поддержка",
+      "en": "Service & support",
+      "aliases_uz": [
+        "xizmat",
+        "yordam",
+        "support"
+      ],
+      "aliases_ru": [
+        "сервис",
+        "поддержка"
+      ],
+      "aliases_en": [
+        "service",
+        "support"
+      ],
+      "search_terms": [
+        "xizmat",
+        "yordam",
+        "support",
+        "сервис",
+        "поддержка",
+        "service",
+        "xizmat va yordam",
+        "сервис и поддержка",
+        "service & support"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_support",
+      "source_icon": "faHeadset"
+    },
+    {
+      "id": "universal_warranty",
+      "group": "universal",
+      "uz": "Kafolatlangan mahsulotlar",
+      "ru": "Гарантия",
+      "en": "Warranty",
+      "aliases_uz": [
+        "kafolat",
+        "himoya"
+      ],
+      "aliases_ru": [
+        "гарантия",
+        "защита"
+      ],
+      "aliases_en": [
+        "warranty",
+        "protected"
+      ],
+      "search_terms": [
+        "kafolat",
+        "himoya",
+        "гарантия",
+        "защита",
+        "warranty",
+        "protected",
+        "kafolatlangan mahsulotlar"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_warranty",
+      "source_icon": "faShieldHalved"
+    },
+    {
+      "id": "universal_eco",
+      "group": "universal",
+      "uz": "Eko mahsulotlar",
+      "ru": "Эко товары",
+      "en": "Eco products",
+      "aliases_uz": [
+        "eko",
+        "ekologik",
+        "qayta ishlash"
+      ],
+      "aliases_ru": [
+        "эко",
+        "экологичный",
+        "переработка"
+      ],
+      "aliases_en": [
+        "eco",
+        "sustainable",
+        "recycled"
+      ],
+      "search_terms": [
+        "eko",
+        "ekologik",
+        "qayta ishlash",
+        "эко",
+        "экологичный",
+        "переработка",
+        "eco",
+        "sustainable",
+        "recycled",
+        "eko mahsulotlar",
+        "эко товары",
+        "eco products"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_eco",
+      "source_icon": "faRecycle"
+    },
+    {
+      "id": "universal_info",
+      "group": "universal",
+      "uz": "Boshqa / universal",
+      "ru": "Другое / универсальное",
+      "en": "Other / universal",
+      "aliases_uz": [
+        "boshqa",
+        "universal",
+        "turli"
+      ],
+      "aliases_ru": [
+        "другое",
+        "универсальное"
+      ],
+      "aliases_en": [
+        "other",
+        "universal"
+      ],
+      "search_terms": [
+        "boshqa",
+        "universal",
+        "turli",
+        "другое",
+        "универсальное",
+        "other",
+        "boshqa / universal",
+        "другое / универсальное",
+        "other / universal"
+      ],
+      "colorable": true,
+      "svg_symbol_id": "universal_info",
+      "source_icon": "faCircleInfo"
+    }
+  ]
+}

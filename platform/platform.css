@@ -1771,6 +1771,7 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
 /* Platform 2.0, Completion pass (2.4-band): Do'kon-tafsiloti summary +
    navigatsiya-qatorlari (endi bitta uzun sahifa emas). */
 .plat-shop-detail-hero-pro { display:flex; align-items:center; gap:12px; padding:var(--sp-4); margin-bottom:var(--sp-3); background:var(--c-surface); border:1px solid var(--c-border); border-radius:var(--r-card); box-shadow:var(--sh-card); }
+.plat-domain-support{display:grid;gap:12px;max-width:900px;margin-inline:auto}.plat-domain-support .card{min-width:0}.plat-domain-support h2,.plat-domain-support h3{margin:0 0 8px}.plat-domain-support p{overflow-wrap:anywhere}.plat-domain-edit,.plat-domain-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.plat-domain-edit input{flex:1;min-width:180px}.plat-domain-row code{overflow-wrap:anywhere;white-space:normal;text-align:right}.plat-domain-row .preview-row{gap:12px}
 .plat-shop-detail-hero-pro h2 { margin:0 0 3px; font-size:16px; font-weight:700; color:var(--c-heading); }
 .plat-shop-detail-hero-pro p { margin:0 0 6px; font-size:12px; color:var(--c-text-secondary); }
 .plat-shop-detail-days-strip { display:flex; align-items:baseline; gap:4px; padding:8px 12px; margin-bottom:var(--sp-3); background:var(--c-primary-softer); border-radius:var(--r-input); }

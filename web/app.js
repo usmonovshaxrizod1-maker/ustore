@@ -115,7 +115,7 @@ function mountSharedFrame({ kind, routeState, runtime, tenant = null, viewerAcco
       let nextRoute;
       try { nextRoute = matchWebRoute(target); } catch (_) { return; }
       if (!nextRoute.found) return;
-      if (kind === 'shop' && !runtime.tokenStore.get() && /^\/(cart|checkout|orders|profile|favorites|support|admin)(\/|$)/.test(target)) {
+      if (kind === 'shop' && !runtime.tokenStore.get() && /^\/(checkout|orders|profile|favorites|support|admin)(\/|$)/.test(target)) {
         go(target);
         return;
       }
@@ -932,7 +932,7 @@ async function renderRoute(routeState, reason = 'refresh') {
     const contextResult=await refreshContext(epoch); if(epoch!==renderEpoch)return;
     if(!contextResult.ok){mount(stateView('error','Do‘kon ochilmadi',contextResult.error?.message||'Kontekst yuklanmadi.','Qayta urinish',()=>renderRoute(routeState)));return;}
     try { globalThis.sessionStorage?.setItem?.(`ustore:shop:entered:${location.hostname.toLowerCase()}`, '1'); } catch (_) {}
-    const protectedRoute=routeState.route.auth||routeState.route.admin||['cart','checkout'].includes(routeState.route.id);
+    const protectedRoute=routeState.route.auth||routeState.route.admin||routeState.route.id==='checkout';
     if(protectedRoute&&!context.actor){await renderShopSignIn(routeState,epoch);return;}
     if(routeState.route.admin&&!actorIsAdmin(context.actor)){mountShell(routeState,stateView('permission','Ruxsat yo‘q','Bu admin sahifasi uchun do‘kon vakolati kerak.'),'Ruxsat yo‘q');return;}
     if (!await applySharedShopMetadata(routeState, epoch) || epoch !== renderEpoch) return;

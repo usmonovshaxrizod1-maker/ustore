@@ -1,0 +1,7 @@
+USTORE Category Icons validation
+Total manifest icons: 270
+Total sprite symbols: 270
+Standalone SVG files: 270
+Duplicate IDs: 0
+Manifest/Sprite ID mismatch: 0
+Invalid standalone SVG: 0

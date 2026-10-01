@@ -16,6 +16,7 @@ const TLS_COPY = {
   UNKNOWN: ["Noma’lum", 'Неизвестно'], PENDING: ['Kutilmoqda', 'Ожидание'],
   ACTIVE: ['Tayyor', 'Готов'], ERROR: ['Xato', 'Ошибка'],
 };
+const RESERVED_SLUGS = new Set(['www','admin','api','app','auth','login','account','accounts','platform','support','help','mail','email','smtp','ftp','cdn','assets','static','status','billing','docs','dev','test','staging','localhost','ustore']);
 function pick(lang, pair) { return pair?.[lang === 'ru' ? 1 : 0] || ''; }
 function t(lang, uz, ru) { return lang === 'ru' ? ru : uz; }
 function docOf(ref) { const d = ref || globalThis.document; if (!d?.createElement) throw new Error('DOM document required'); return d; }
@@ -24,12 +25,12 @@ function canManage(context) {
   if (!actor) return false;
   const permissions = Array.isArray(actor.permissions) ? actor.permissions : [];
   const roles = Array.isArray(actor.roleCodes) ? actor.roleCodes : [];
-  return actor.shopRole === 'OWNER' || (roles.includes('MANAGER') && (permissions.includes('*') || permissions.includes('domains.manage')));
+  return actor.shopRole === 'OWNER' || roles.includes('MANAGER') || permissions.includes('*') || permissions.includes('domains.manage');
 }
 function safeHost(value) { return String(value || '').trim().toLowerCase().replace(/\.$/, ''); }
 function normalizeSlug(value) {
   const slug = String(value || '').trim().toLowerCase();
-  return { slug, valid: /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(slug) };
+  return { slug, valid: /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(slug) && !RESERVED_SLUGS.has(slug) };
 }
 export function normalizeDomainInput(value) {
   const raw = String(value ?? '').trim();
@@ -79,6 +80,9 @@ function lifecycleCopy(lang, domain) {
   if (status === 'VERIFYING') return t(lang,
     'Tekshiruv davom etmoqda. DNS va HTTPS natijalari serverdan yangilanadi.',
     'Идёт проверка. Статусы DNS и HTTPS обновятся с сервера.');
+  if (status === 'PENDING_TLS' && domain?.errorCode === 'ROUTING_DNS_PENDING') return t(lang,
+    'HTTPS tayyor. Domenning CNAME yozuvi UStorE manziliga yo‘naltirilishini kutyapmiz.',
+    'HTTPS готов. Ожидаем, пока CNAME домена будет указывать на UStorE.');
   if (status === 'PENDING_TLS') return t(lang,
     'DNS tasdiqlangan. HTTPS sertifikati yoki routing hali tayyor emas — domenni asosiy qilishga hali erta.',
     'DNS подтверждён. HTTPS-сертификат или маршрутизация ещё не готовы — делать домен основным пока нельзя.');
@@ -113,7 +117,7 @@ export function createDomainsFeature(options = {}, documentRef) {
   let destroyed = false;
   if (!port || ['list','add','verify','setPrimary','remove'].some((name) => typeof port[name] !== 'function')) throw new TypeError('domains port incomplete');
 
-  const state = { items: [], loading: false, error: null, busy: new Set(), adding: false, addOpen: false, hostname: '', editingSubdomainId: null, subdomainSlug: '', miniApp: null, miniAppBusy: false };
+  const state = { items: [], loading: false, error: null, busy: new Set(), adding: false, addOpen: false, hostname: '', editingSubdomainId: null, subdomainSlug: '', subdomainError: '', miniApp: null, miniAppBusy: false };
   const root = doc.createElement('section');
   root.className = `uw-domains${context?.mode === 'telegram' ? ' is-telegram' : ''}`;
   root.dataset.feature = 'domains';
@@ -122,10 +126,26 @@ export function createDomainsFeature(options = {}, documentRef) {
   function toast(message, tone = 'info') { try { onToast({ message, tone }); } catch (_) {} }
   async function copy(value, label) {
     try {
-      if (!clipboard?.writeText) throw new Error('clipboard_unavailable');
-      await clipboard.writeText(String(value));
+      if (clipboard?.writeText) await clipboard.writeText(String(value));
+      else {
+        const field = doc.createElement('textarea');
+        field.value = String(value); field.readOnly = true;
+        field.style.cssText = 'position:fixed;opacity:0;pointer-events:none;left:-9999px';
+        doc.body.append(field);
+        try { field.focus(); field.select(); if (!doc.execCommand?.('copy')) throw new Error('clipboard_unavailable'); }
+        finally { field.remove(); }
+      }
       toast(t(language, `${label} nusxalandi`, `${label} скопирован`), 'success');
-    } catch (_) { toast(t(language, 'Nusxalab bo‘lmadi', 'Не удалось скопировать'), 'danger'); }
+    } catch (error) {
+      try {
+        const field = doc.createElement('textarea'); field.value = String(value); field.readOnly = true;
+        field.style.cssText = 'position:fixed;opacity:0;pointer-events:none;left:-9999px'; doc.body.append(field);
+        try { field.focus(); field.select(); if (!doc.execCommand?.('copy')) throw new Error('clipboard_unavailable'); }
+        finally { field.remove(); }
+        toast(t(language, `${label} nusxalandi`, `${label} скопирован`), 'success'); return;
+      } catch (fallbackError) { console.warn('[DOMAIN_COPY_FAILED]', { primary: String(error?.name || 'unknown'), fallback: String(fallbackError?.name || 'unknown') }); }
+      toast(t(language, 'Nusxalab bo‘lmadi. Manzilni qo‘lda belgilang.', 'Не удалось скопировать. Выделите адрес вручную.'), 'danger');
+    }
   }
   function button(label, action, { disabled = false, danger = false, primary = false, ariaLabel = '' } = {}) {
     const b = doc.createElement('button'); b.type = 'button';
@@ -193,24 +213,22 @@ export function createDomainsFeature(options = {}, documentRef) {
     if (state.busy.has(domain.id) || typeof port.changeSubdomain !== 'function') return;
     const normalized = normalizeSlug(state.subdomainSlug);
     if (!normalized.valid) {
-      state.error = { code:'VALIDATION_ERROR', message:t(language,'Subdomen 3–40 belgidan iborat bo‘lsin: kichik lotin harflari, raqam va tire.','Субдомен должен содержать 3–40 символов: строчные латинские буквы, цифры и дефис.') };
+      state.subdomainError = t(language,'Subdomen 3–40 belgidan iborat bo‘lsin: kichik lotin harflari, raqam va tire. Band nomlardan foydalanib bo‘lmaydi.','Субдомен должен содержать 3–40 символов: строчные латинские буквы, цифры и дефис. Зарезервированные имена недоступны.');
       render(); return;
     }
     const currentSlug = String(domain.hostname || '').split('.')[0];
-    if (normalized.slug === currentSlug) { state.editingSubdomainId=null; state.error=null; render(); return; }
-    const base = String(domain.hostname || '').split('.').slice(1).join('.');
-    if (!await confirm(t(language,`${domain.hostname} manzili ${normalized.slug}.${base} ga almashtirilsinmi? Eski havola ishlamay qoladi.`,`Изменить ${domain.hostname} на ${normalized.slug}.${base}? Старая ссылка перестанет работать.`))) return;
+    if (normalized.slug === currentSlug) { state.editingSubdomainId=null; state.subdomainError=''; render(); return; }
     state.busy.add(domain.id); state.error=null; render();
     const result = await port.changeSubdomain({ slug: normalized.slug });
     state.busy.delete(domain.id);
     if (!result?.ok) {
       const taken = result?.error?.code === 'SUBDOMAIN_TAKEN' || result?.error?.code === 'CONFLICT';
-      state.error = taken
-        ? { code:'SUBDOMAIN_TAKEN', message:t(language,'Bu subdomen band. Boshqa nom tanlang.','Этот субдомен занят. Выберите другое имя.') }
-        : (result?.error || {code:'NETWORK_ERROR',message:t(language,'Subdomen almashtirilmadi','Не удалось изменить субдомен')});
-      toast(state.error.message,'danger'); render(); return;
+      state.subdomainError = taken ? t(language,'Bu subdomen band. Boshqa nom tanlang.','Этот субдомен занят. Выберите другое имя.')
+        : (result?.error?.message || t(language,'Subdomen almashtirilmadi','Не удалось изменить субдомен'));
+      render(); return;
     }
-    state.editingSubdomainId=null; state.subdomainSlug='';
+    state.items = state.items.map((item) => item.id === domain.id ? result.data : item);
+    state.editingSubdomainId=null; state.subdomainSlug=''; state.subdomainError='';
     toast(t(language,'UStorE manzili o‘zgartirildi. Yangi manzil avtomatik faollashtiriladi.','Адрес UStorE изменён и будет активирован автоматически.'),'success');
     await load();
   }
@@ -220,7 +238,10 @@ export function createDomainsFeature(options = {}, documentRef) {
     const copyBlock = doc.createElement('div'); copyBlock.className = 'uw-domain-card__copy';
     const title = doc.createElement('div'); title.className = 'uw-domain-card__title';
     const host = doc.createElement('strong'); host.textContent = domain.hostname;
-    title.append(host, chip(domain.kind === 'SUBDOMAIN' ? t(language,'UStorE manzili','Адрес UStorE') : t(language,'Shaxsiy domen','Свой домен'), domain.kind === 'SUBDOMAIN' ? 'primary' : 'muted'));
+    const copyButton = button('⧉', () => copy(domain.hostname, t(language,'Manzil','Адрес')), { ariaLabel: t(language,'Manzilni nusxalash','Копировать адрес') });
+    copyButton.className = `${copyButton.className || ''} uw-domain-copy-icon`.trim();
+    title.append(host, copyButton);
+    title.append(chip(domain.kind === 'SUBDOMAIN' ? t(language,'UStorE manzili','Адрес UStorE') : t(language,'Shaxsiy domen','Свой домен'), domain.kind === 'SUBDOMAIN' ? 'primary' : 'muted'));
     if (domain.isPrimary) title.append(chip(t(language,'Asosiy','Основной'), 'primary'));
     const sub = doc.createElement('small'); sub.textContent = domain.kind === 'SUBDOMAIN' ? t(language,'Do‘koningizning doimiy web manzili','Постоянный веб-адрес магазина') : t(language,'Siz sotib olgan domen','Купленный вами домен');
     copyBlock.append(title, sub); head.append(copyBlock, chip(pick(language, STATUS_COPY[domain.status]) || domain.status, statusTone(domain.status)));
@@ -241,11 +262,10 @@ export function createDomainsFeature(options = {}, documentRef) {
     if (domain.errorCode) { const e = doc.createElement('p'); e.className = 'uw-domain-inline-error'; e.textContent = `${t(language,'Xato kodi','Код ошибки')}: ${domain.errorCode}`; card.append(e); }
     const actions = doc.createElement('div'); actions.className = 'uw-domain-actions';
     const busy = state.busy.has(domain.id);
-    actions.append(button(t(language,'Manzilni nusxalash','Копировать адрес'), () => copy(domain.hostname, t(language,'Domen','Домен')), { disabled: busy }));
     if (domain.kind === 'SUBDOMAIN' && typeof port.changeSubdomain === 'function') {
       actions.append(button(t(language,'Subdomenni almashtirish','Изменить субдомен'), () => {
         state.editingSubdomainId = state.editingSubdomainId === domain.id ? null : domain.id;
-        state.subdomainSlug = String(domain.hostname || '').split('.')[0]; state.error=null; render();
+        state.subdomainSlug = String(domain.hostname || '').split('.')[0]; state.subdomainError=''; render();
       }, { disabled: busy }));
     }
     if (domain.status === 'ACTIVE') actions.append(button(t(language,'Ochish','Открыть'), () => openUrl(`https://${domain.hostname}`), { disabled: busy }));
@@ -276,19 +296,6 @@ export function createDomainsFeature(options = {}, documentRef) {
       await run(domain.id, 'remove', () => port.remove({ domainId: domain.id }), t(language,'Domenni uzish boshlandi','Отключение домена начато'));
     }, { disabled: busy, danger: true }));
     card.append(actions);
-    if (domain.kind === 'SUBDOMAIN' && state.editingSubdomainId === domain.id) {
-      const editor=doc.createElement('div'); editor.className='uw-domain-add uw-subdomain-edit';
-      const field=doc.createElement('div'); field.className='uw-domain-add__field';
-      const label=doc.createElement('label'); label.textContent=t(language,'Yangi subdomen','Новый субдомен');
-      const input=doc.createElement('input'); input.type='text'; input.autocomplete='off'; input.maxLength=40; input.value=state.subdomainSlug;
-      input.placeholder='fitcore'; input.disabled=busy;
-      input.addEventListener('input',()=>{ state.subdomainSlug=input.value.toLowerCase().replace(/[^a-z0-9-]/g,''); });
-      input.addEventListener('keydown',(event)=>{ if(event.key==='Enter'){event.preventDefault();changeSubdomain(domain);} });
-      const suffix=doc.createElement('small'); suffix.className='uw-domain-normalization'; suffix.textContent=`.${String(domain.hostname||'').split('.').slice(1).join('.')}`;
-      label.append(input); field.append(label,suffix);
-      editor.append(field,button(busy?t(language,'Saqlanmoqda…','Сохранение…'):t(language,'Almashtirish','Изменить'),()=>changeSubdomain(domain),{primary:true,disabled:busy}));
-      card.append(editor);
-    }
     if (domain.lastCheckedAt) { const checked = doc.createElement('small'); checked.className = 'uw-domain-checked'; checked.textContent = `${t(language,'Oxirgi tekshiruv','Последняя проверка')}: ${new Date(domain.lastCheckedAt).toLocaleString(language === 'ru' ? 'ru-RU' : 'uz-UZ')}`; card.append(checked); }
     return card;
   }
@@ -311,7 +318,7 @@ export function createDomainsFeature(options = {}, documentRef) {
     if (!canManage(context)) {
       const box = doc.createElement('div'); box.className = 'uw-domain-state is-permission';
       const b = doc.createElement('strong'); b.textContent = t(language,'Domenlarni boshqarish huquqi yo‘q','Нет доступа к управлению доменами');
-      const p = doc.createElement('p'); p.textContent = t(language,'Bu bo‘lim faqat do‘kon egasi va MANAGER uchun.','Раздел доступен только владельцу и MANAGER.'); box.append(b,p); root.append(box); return;
+      const p = doc.createElement('p'); p.textContent = t(language,'Domenlar bilan ishlash huquqi kerak.','Требуется право управления доменами.'); box.append(b,p); root.append(box); return;
     }
     const header = doc.createElement('header'); header.className = 'uw-domains__header';
     const copy = doc.createElement('div'); copy.className='uw-domains__copy';
@@ -349,6 +356,25 @@ export function createDomainsFeature(options = {}, documentRef) {
     if (!ordered.length) { const empty=doc.createElement('div'); empty.className='uw-domain-state'; empty.textContent=t(language,'Hozircha domen yo‘q.','Доменов пока нет.'); list.append(empty); }
     else ordered.forEach((d)=>list.append(domainCard(d)));
     root.append(list);
+    const editing = state.items.find((item) => item.id === state.editingSubdomainId && item.kind === 'SUBDOMAIN');
+    if (editing) {
+      const overlay=doc.createElement('div'); overlay.className='uw-domain-modal-backdrop';
+      const modal=doc.createElement('section'); modal.className='uw-domain-modal'; modal.setAttribute('role','dialog'); modal.setAttribute('aria-modal','true');
+      const heading=doc.createElement('h3'); heading.textContent=t(language,'Subdomenni almashtirish','Изменить субдомен');
+      const label=doc.createElement('label'); label.textContent=t(language,'Yangi subdomen','Новый субдомен');
+      const field=doc.createElement('div'); field.className='uw-domain-modal-field';
+      const input=doc.createElement('input'); input.type='text'; input.autocomplete='off'; input.maxLength=40; input.value=state.subdomainSlug; input.disabled=state.busy.has(editing.id);
+      input.setAttribute('aria-label',t(language,'Yangi subdomen','Новый субдомен'));
+      input.addEventListener('input',()=>{state.subdomainSlug=input.value.toLowerCase(); state.subdomainError='';});
+      input.addEventListener('keydown',(event)=>{if(event.key==='Enter'){event.preventDefault();changeSubdomain(editing);} if(event.key==='Escape'){state.editingSubdomainId=null;render();}});
+      const suffix=doc.createElement('span'); suffix.textContent=`.${String(editing.hostname||'').split('.').slice(1).join('.')}`;
+      field.append(input,suffix); label.append(field); modal.append(heading,label);
+      if (state.subdomainError) {const error=doc.createElement('p');error.className='uw-domain-inline-error';error.setAttribute('role','alert');error.textContent=state.subdomainError;modal.append(error);}
+      const actions=doc.createElement('div'); actions.className='uw-domain-modal-actions';
+      actions.append(button(t(language,'Bekor qilish','Отмена'),()=>{state.editingSubdomainId=null;state.subdomainError='';render();},{disabled:state.busy.has(editing.id)}),button(state.busy.has(editing.id)?t(language,'Saqlanmoqda…','Сохранение…'):t(language,'Saqlash','Сохранить'),()=>changeSubdomain(editing),{primary:true,disabled:state.busy.has(editing.id)}));
+      modal.append(actions); overlay.append(modal); overlay.addEventListener('click',(event)=>{if(event.target===overlay&&!state.busy.has(editing.id)){state.editingSubdomainId=null;render();}});root.append(overlay);
+      queueMicrotask(()=>input.focus());
+    }
     if (state.miniApp) {
       const mini = doc.createElement('section'); mini.className = 'uw-domain-miniapp';
       const mh = doc.createElement('strong'); mh.textContent = t(language,'Telegram Mini App manzili','Адрес Telegram Mini App');
@@ -389,7 +415,10 @@ export function createMiniAppDomainsPort(callApi) {
     catch (error) {
       const raw = String(error?.message || '');
       const code = raw === 'SUBDOMAIN_TAKEN' ? 'SUBDOMAIN_TAKEN' : String(error?.code || 'NETWORK_ERROR');
-      const message = code === 'SUBDOMAIN_TAKEN' ? 'Bu subdomen band. Boshqa nom tanlang.' : String(raw || 'Amal bajarilmadi');
+      const message = code === 'SUBDOMAIN_TAKEN' ? 'Bu subdomen band. Boshqa nom tanlang.'
+        : raw === 'CAPABILITY_UNAVAILABLE' ? 'Domen provayderi hali sozlanmagan. UStorE yordamiga murojaat qiling.'
+        : raw === 'DOMAIN_PROVIDER_CAPABILITY' ? 'Domen provayderida Custom Hostnames ruxsati yo‘q. UStorE yordamiga murojaat qiling.'
+        : String(raw || 'Amal bajarilmadi');
       return { ok:false, error:{ code, message, retryable:code === 'NETWORK_ERROR' } };
     }
   };
