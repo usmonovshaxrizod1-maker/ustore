@@ -5,6 +5,14 @@
     const normalize = (value) => String(value || '').trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0].replace(/:\d+$/, '').replace(/\.$/, '');
     const host = normalize(globalThis.location?.hostname);
     const base = normalize(globalThis.APP_CONFIG?.USTORE_BASE_HOSTNAME);
+    if (globalThis.location?.pathname === '/auth/handoff') {
+      const title = document.querySelector('.uw-launch__brand-copy h1');
+      const message = document.querySelector('.uw-launch__message');
+      if (title) title.textContent = 'Kirish tasdiqlanmoqda';
+      if (message) message.textContent = 'Do‘konga xavfsiz qaytish tayyorlanmoqda';
+      document.querySelector('.uw-launch__foot')?.remove();
+      return;
+    }
     if (!host || !base || host === base || host === `www.${base}` || host === 'localhost' || host === '127.0.0.1' || /(?:^|\.)(?:github\.io|pages\.dev)$/.test(host)) return;
     let alreadyEntered = false;
     try { alreadyEntered = globalThis.sessionStorage?.getItem(`ustore:shop:entered:${host}`) === '1'; } catch (_) {}
@@ -20,14 +28,14 @@
     const root = document.querySelector('#ustore-web-app .uw-launch');
     if (!root) return;
     root.classList.remove('uw-launch--platform'); root.classList.add('uw-launch--shop');
-    if (!cached?.logoUrl) root.dataset.awaitBrand = 'true';
-    const mark = root.querySelector('.uw-launch__monogram'); if (mark) mark.remove();
+    const mark = root.querySelector('.uw-launch__monogram');
     const eyebrow = root.querySelector('.uw-launch__eyebrow'); if (eyebrow) eyebrow.remove();
     if (cached?.logoUrl && /^https:\/\//i.test(cached.logoUrl)) {
       const logo = document.createElement('img'); logo.className = 'uw-launch__logo'; logo.src = cached.logoUrl; logo.alt = '';
       logo.addEventListener('error', () => logo.remove(), { once: true });
+      mark?.remove();
       root.querySelector('.uw-launch__brand')?.prepend(logo);
-    }
+    } else if (mark) mark.textContent = name.slice(0, 1).toUpperCase();
     const title = root.querySelector('.uw-launch__brand-copy h1'); if (title) title.textContent = `${name}’ga xush kelibsiz`;
     root.querySelector('.uw-launch__loader')?.remove();
     root.querySelector('.uw-launch__message')?.remove();

@@ -145,7 +145,11 @@ export function createLiveAuthAdapter({ endpoint, fetchImpl = globalThis.fetch, 
         return fail('CONTRACT_MISMATCH', 'Telegram Login javobi noto‘liq.');
       let url;
       try { url = new URL(challenge.redirectUrl); } catch (_) { return fail('CONTRACT_MISMATCH', 'Telegram Login manzili noto‘g‘ri.'); }
-      if (url.origin !== 'https://oauth.telegram.org' || url.pathname !== '/auth' || url.searchParams.get('state') !== challenge.state)
+      const expectedRedirect = globalThis.location?.origin
+        ? `${globalThis.location.origin}${globalThis.location.hostname === 'usmonovshaxrizod1-maker.github.io' ? '/ustore/web/' : '/'}` : null;
+      if (url.origin !== 'https://oauth.telegram.org' || url.pathname !== '/auth' ||
+          url.searchParams.get('state') !== challenge.state || !url.searchParams.get('redirect_uri') ||
+          (expectedRedirect && url.searchParams.get('redirect_uri') !== expectedRedirect))
         return fail('CONTRACT_MISMATCH', 'Telegram Login manzili noto‘g‘ri.');
       official.set({ state: challenge.state, browserVerifier: challenge.browserVerifier,
         codeVerifier: verifier, expiresAt: challenge.expiresAt });

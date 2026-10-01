@@ -2179,11 +2179,32 @@ html { overflow-anchor: none; }
 @media(max-width:420px){.plat-admin-list-title-row{align-items:flex-start}.plat-restore-shop-btn{font-size:11px!important}.plat-backup-before-delete{align-items:stretch;flex-direction:column}.plat-backup-before-delete button{width:100%!important}}
 
 /* ASTRA-4c — protected central Telegram credential screen */
-.plat-credential-card{display:grid;gap:14px;max-width:620px;margin:0 auto;padding:20px;border:1px solid var(--border,#263348);border-radius:18px;background:var(--card,#111a28)}
-.plat-credential-card h2,.plat-credential-card p{margin:0}.plat-credential-card>p{color:var(--muted,#9aa8ba);line-height:1.55}
-.plat-credential-card.is-warning{margin-top:20px;text-align:center;justify-items:center}.plat-credential-login,.plat-credential-secret{display:grid;gap:7px;padding:14px;border-radius:14px;background:rgba(255,255,255,.045)}
-.plat-credential-login span,.plat-credential-secret span{font-size:12px;color:var(--muted,#9aa8ba)}.plat-credential-login strong{font-size:18px;word-break:break-all}
-.plat-credential-secret code{display:block;padding:12px;border-radius:10px;background:rgba(0,0,0,.24);font-size:17px;word-break:break-all;user-select:all}.plat-credential-secret small{color:var(--muted,#9aa8ba)}
+.plat-credential-card{display:grid;gap:14px;max-width:620px;margin:0 auto;padding:20px;border:1px solid var(--c-border);border-radius:18px;background:var(--c-surface);color:var(--c-text);box-shadow:var(--sh-card)}
+.plat-credential-card h2,.plat-credential-card p{margin:0;color:var(--c-heading)}.plat-credential-card>p{color:var(--c-text-secondary);line-height:1.55}
+.plat-credential-card.is-warning{margin-top:20px;text-align:center;justify-items:center}.plat-credential-login,.plat-credential-secret{display:grid;gap:7px;padding:14px;border:1px solid var(--c-border);border-radius:14px;background:var(--c-border-soft)}
+.plat-credential-login span,.plat-credential-secret span{font-size:12px;color:var(--c-text-secondary)}.plat-credential-login strong{font-size:18px;word-break:break-all;color:var(--c-heading)}
+.plat-credential-secret code{display:block;padding:12px;border-radius:10px;background:var(--c-surface);color:var(--c-heading);font-size:17px;word-break:break-all;user-select:all}.plat-credential-secret small{color:var(--c-text-secondary)}
 .plat-credential-actions{display:grid;gap:12px}.plat-credential-login-edit{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}.plat-credential-login-edit label{display:grid;gap:6px}.plat-credential-login-edit label span{font-size:12px;color:var(--muted,#9aa8ba)}.plat-credential-login-edit input{width:100%;min-height:44px}
 .plat-credential-password-edit{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:12px;border-top:1px solid var(--c-border)}.plat-credential-password-edit label{display:grid;gap:6px}.plat-credential-password-edit label span,.plat-credential-password-edit small{font-size:12px;color:var(--muted,#9aa8ba)}.plat-credential-password-edit input{width:100%;min-height:44px}.plat-credential-password-edit small,.plat-credential-password-edit button{grid-column:1/-1}@media(max-width:520px){.plat-credential-password-edit{grid-template-columns:1fr}}
 .plat-credential-return{margin-top:4px}@media(max-width:620px){.plat-credential-login-edit{grid-template-columns:1fr}.plat-credential-card{border-radius:14px;padding:16px}}
+.plat-credential-value{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.plat-credential-value strong,.plat-credential-value input{flex:1;min-width:120px;color:var(--c-heading);font-weight:800}
+.plat-credential-value input{height:42px;padding:0 8px;border:1px solid var(--c-border);border-radius:10px;background:var(--c-surface)}
+.plat-credential-value button{min-height:42px}
+
+.plat-desktop-nav{display:none}
+@media(min-width:1024px){
+  body.ustore-browser-mode #app{min-height:100dvh;background:var(--c-bg)}
+  body.ustore-browser-mode .plat-header{padding-inline:max(32px,calc((100vw - 1680px)/2));gap:20px}
+  body.ustore-browser-mode .plat-desktop-nav{display:flex;flex:1;min-width:0;align-items:center;justify-content:center;gap:6px}
+  body.ustore-browser-mode .plat-desktop-nav button{min-height:40px;display:inline-flex;align-items:center;gap:8px;padding:0 14px;border:1px solid transparent;border-radius:var(--r-input);background:transparent;color:var(--c-text-secondary);font-size:13px;font-weight:750;white-space:nowrap;cursor:pointer}
+  body.ustore-browser-mode .plat-desktop-nav button.active{background:var(--c-primary-softer);color:var(--c-primary)}
+  body.ustore-browser-mode .plat-bottom-nav{display:none!important}
+  body.ustore-browser-mode .plat-content,
+  body.ustore-browser-mode.plat-admin-mode .plat-content{width:calc(100% - 64px);max-width:1680px!important;min-height:calc(100dvh - var(--plat-header-h));margin-inline:auto;padding:28px 0 48px!important;overflow-x:visible}
+  body.ustore-browser-mode .plat-page-body,
+  body.ustore-browser-mode.plat-admin-mode .plat-page-body{width:calc(100% - 64px);max-width:1680px!important;margin-inline:auto;padding-inline:0!important}
+  body.ustore-browser-mode .plat-credential-card{max-width:620px}
+  body.ustore-browser-mode.plat-support-desktop-split .plat-content{max-width:380px!important;margin:0;min-height:calc(100dvh - var(--plat-header-h))}
+}
+@media(min-width:1800px){body.ustore-browser-mode .plat-content,body.ustore-browser-mode.plat-admin-mode .plat-content{width:calc(100% - 80px)}}

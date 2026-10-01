@@ -144,7 +144,7 @@ export function createCentralOriginHandoffView({ controller, state = controller?
 }
 
 export function createCustomDomainSignInController({ authPort, returnTo = '/', botUsername = '', locale = 'uz', store = createOriginHandoffStore(), cryptoRef = globalThis.crypto, onRedirect } = {}) {
-  let snapshot = { busy: false, error: null };
+  let snapshot = { busy: false, busyAction: null, error: null };
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => fn({ ...snapshot }));
   const set = (patch) => { snapshot = { ...snapshot, ...patch }; emit(); return snapshot; };
@@ -153,27 +153,32 @@ export function createCustomDomainSignInController({ authPort, returnTo = '/', b
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     async begin(method = 'telegram') {
       if (snapshot.busy) return null;
-      set({ busy: true, error: null });
+      set({ busy: true, busyAction: method, error: null });
       let result;
       try { result = await beginCustomDomainLogin({ authPort, returnTo, method, botUsername, locale, store, cryptoRef, onRedirect }); }
       catch (error) { result = { ok: false, error: { code: 'CAPABILITY_UNAVAILABLE', message: error?.message || 'Markaziy kirish oqimi mavjud emas.', retryable: false } }; }
-      set({ busy: false, error: result?.ok ? null : result?.error || null });
+      set({ busy: false, busyAction: null, error: result?.ok ? null : result?.error || null });
       return result;
     },
   });
 }
 
-export function createCustomDomainSignInView({ controller, state = controller?.getState?.() || {}, botUsername = '', shopName = '', locale = 'uz' } = {}, documentRef) {
+export function createCustomDomainSignInView({ controller, state = controller?.getState?.() || {}, botUsername = '', shopName = '', logoUrl = '', locale = 'uz' } = {}, documentRef) {
   const doc = documentRef || globalThis.document;
   if (!doc?.createElement || !controller) throw new TypeError('DOM document va controller kerak');
   const root = doc.createElement('section'); root.className = 'uw-auth uw-origin-signin'; root.dataset.feature = 'origin-signin';
   const tr = (uz, ru) => locale === 'ru' ? ru : uz;
+  const brand = doc.createElement('div'); brand.className = 'uw-origin-signin__brand';
+  const logo = /^https:\/\//i.test(String(logoUrl || '')) ? doc.createElement('img') : doc.createElement('span');
+  if (logo.tagName.toLowerCase() === 'img') { logo.src = logoUrl; logo.alt = ''; } else logo.textContent = String(shopName || 'S').slice(0, 1).toUpperCase();
+  const brandName = doc.createElement('strong'); brandName.textContent = String(shopName || 'UStorE do‘koni');
+  brand.append(logo, brandName); root.append(brand);
   const title = doc.createElement('h1'); title.textContent = tr('Do‘konga kirish', 'Вход в магазин'); root.append(title);
   const copy = doc.createElement('p'); copy.textContent = tr('Telegram hisobingiz yoki Mini App profilingizdagi login va parol bilan kiring.', 'Войдите через Telegram или с логином и паролем из профиля Mini App.'); root.append(copy);
   if (state.error) root.append(createStatePanel({ kind: 'error', title: 'Kirishni boshlab bo‘lmadi', message: state.error.message || 'Qayta urinib ko‘ring.' }, doc));
   const actions = doc.createElement('div'); actions.className = 'uw-origin-signin__actions';
-  actions.append(createButton({ label: state.busy ? tr('Ochilmoqda…', 'Открывается…') : tr('Telegram orqali kirish', 'Войти через Telegram'), busy: state.busy, onClick: () => controller.begin('telegram') }, doc));
-  actions.append(createButton({ label: tr('Login va parol bilan kirish', 'Войти с логином и паролем'), variant: 'secondary', busy: state.busy, onClick: () => controller.begin('password') }, doc));
+  actions.append(createButton({ label: state.busyAction === 'telegram' ? tr('Telegram ochilmoqda…', 'Открывается Telegram…') : tr('Telegram orqali kirish', 'Войти через Telegram'), busy: state.busyAction === 'telegram', onClick: () => controller.begin('telegram') }, doc));
+  actions.append(createButton({ label: state.busyAction === 'password' ? tr('Kirish ochilmoqda…', 'Открывается вход…') : tr('Login va parol bilan kirish', 'Войти с логином и паролем'), variant: 'secondary', busy: state.busyAction === 'password', onClick: () => controller.begin('password') }, doc));
   root.append(actions);
   const bot = String(botUsername || '').replace(/^@/, '');
   if (/^[A-Za-z0-9_]{5,32}$/.test(bot)) {

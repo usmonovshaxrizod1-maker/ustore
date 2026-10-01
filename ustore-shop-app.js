@@ -1291,6 +1291,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // ko'rinadi (bundle_list admin-only), shuning uchun snapshot yetarli.
     let bundleCart = readStoredObject(scopedKey('bundleCart'), {});
     let registeredUser = readStoredObject(scopedKey('registeredUser'), null);
+    let registrationSaving = false;
     let checkoutDraft = readStoredObject(scopedKey('checkoutDraft'), null) || { fullname: '', phone: '', regionKey: 'tashkent_city', district: '', address: '' };
     // Eski (pre-013) localStorage'da qolgan bo'lishi mumkin bo'lgan hudud
     // ID'larini (o'zbekcha nom yoki eski 'TASHKENT_CITY') kanonik kodga o'giradi.
@@ -3813,6 +3814,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         const el = document.getElementById(elId);
         if (el) el.innerText = t(key);
       }
+      for (const tab of ['home', 'categories', 'cart', 'orders', 'warehouse', 'profile']) {
+        const el = document.getElementById(`desktop-nav-${tab}`);
+        if (el) el.textContent = t(`nav_${tab}`);
+      }
     }
 
     function updateHeaderChrome() {
@@ -3852,6 +3857,31 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           else { logoEl.classList.add('hidden'); logoEl.removeAttribute('src'); }
         }
       }
+      const desktopLangBtn = document.getElementById('desktop-lang-btn');
+      if (desktopLangBtn) {
+        desktopLangBtn.textContent = uiLang === 'uz' ? '🇺🇿 UZ' : '🇷🇺 RU';
+        desktopLangBtn.setAttribute('aria-label', uiLang === 'uz' ? 'Joriy til: o‘zbekcha. Rus tiliga o‘tish' : 'Текущий язык: русский. Переключить на узбекский');
+      }
+      for (const [id, uz, ru] of [
+        ['home', 'Bosh sahifa', 'Главная'], ['categories', 'Kataloglar', 'Категории'],
+        ['cart', 'Savatcha', 'Корзина'], ['orders', 'Buyurtmalar', 'Заказы'],
+        ['warehouse', 'Ombor', 'Склад'], ['profile', 'Profil', 'Профиль'],
+      ]) {
+        const label = document.getElementById(`desktop-nav-${id}`);
+        if (label) label.textContent = uiLang === 'uz' ? uz : ru;
+      }
+      for (const button of document.querySelectorAll('[data-desktop-tab]')) {
+        const active = button.dataset.desktopTab === currentTab;
+        if (active) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
+      }
+      const adminMode = isAdminMode && isUserAnAdmin;
+      const desktopCart = document.querySelector('[data-desktop-tab="cart"]');
+      if (desktopCart) desktopCart.hidden = adminMode;
+      const desktopWarehouse = document.getElementById('desktop-nav-warehouse-btn');
+      if (desktopWarehouse) desktopWarehouse.hidden = !adminMode || !hasPermission('stock.view');
+      const desktopProfile = document.getElementById('desktop-profile-btn');
+      if (desktopProfile) desktopProfile.onclick = adminMode ? togglePersonMenu : () => switchTab('profile');
     }
 
     // 20-band: Profildagi katta "rejim almashtirish" tugmasi o'rniga headerdagi
@@ -3875,7 +3905,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       try {
         if (event) event.stopPropagation();
         const popover = document.getElementById('role-mode-popover');
-        const personBtn = document.getElementById('header-person-btn');
+        const personBtn = event?.currentTarget || document.getElementById('header-person-btn');
         if (!popover || !personBtn) {
           console.error('[ROLE_MENU_MISSING]', { popover: !!popover, personBtn: !!personBtn });
           showActionToast(tr("Menyu ochilmadi. Sahifani yangilab, qayta urinib ko'ring.", 'Меню не открылось. Обновите страницу и повторите.'), 'error', 3000);
@@ -3967,7 +3997,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       updateNavLabels();
       updateHeaderChrome();
 
-      if (authReady && (!registeredUser || legalConsentRequired) && !isAdminMode && activePopupModal !== 'REGISTRATION') {
+      if (authReady && (!browserBridge || browserBridge.authenticated) && (!registeredUser || legalConsentRequired) && !isAdminMode && activePopupModal !== 'REGISTRATION') {
         activePopupModal = 'REGISTRATION';
       }
 
@@ -4016,6 +4046,13 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         case 'orders': renderOrders(container); break;
         case 'warehouse': renderWarehouse(container); break;
         case 'profile': renderProfile(container); break;
+      }
+      if (catalogLoadError && (currentTab === 'home' || currentTab === 'categories')) {
+        const warning = document.createElement('div');
+        warning.className = 'fc-boot-error';
+        warning.setAttribute('role', 'alert');
+        warning.innerHTML = `<strong>${tr('Mahsulotlarni yangilab bo‘lmadi', 'Не удалось обновить товары')}</strong><p>${tr('Internet aloqasini tekshirib, qayta urinib ko‘ring.', 'Проверьте интернет и повторите попытку.')}</p><button type="button" onclick="retryCatalogLoad()">${tr('Qayta urinish', 'Повторить')}</button>`;
+        container.prepend(warning);
       }
 
       // POLISH ROUND 1-bosqich: page-shell — activePage bo'lsa to'liq sahifa
@@ -11274,25 +11311,45 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function renderWebCredentialsPage(container) {
       const s = webCredentialState;
+      const editing = s.editing === true;
       const note = s.credentialExists && !s.issuedPassword
-        ? `<p class="fc-web-credential-note">${tr('Eski parol xavfsizlik uchun ko‘rsatilmaydi. Unutgan bo‘lsangiz, yangisini yarating.', 'Старый пароль не показывается. Если забыли его, создайте новый.')}</p>` : '';
-      const secret = s.issuedPassword ? `<div class="fc-web-credential-secret"><span>${tr('Yangi parol', 'Новый пароль')}</span><code>${escapeHtml(s.issuedPassword)}</code><button type="button" class="fc-btn fc-btn-secondary" onclick="copyShopWebPassword()">${tr('Parolni nusxalash', 'Скопировать пароль')}</button><small>${tr('Parol faqat hozir ko‘rsatiladi. Xavfsiz joyga saqlang.', 'Пароль показан только сейчас. Сохраните его в надёжном месте.')}</small></div>` : '';
-      const actions = s.valid ? (!s.credentialExists
-        ? `<button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="issueShopWebCredentials()">${tr('Login va parolni olish', 'Получить логин и пароль')}</button>`
-        : `<button type="button" class="fc-btn fc-btn-secondary" ${s.busy ? 'disabled' : ''} onclick="resetShopWebCredentials()">${tr('Tasodifiy yangi parol', 'Новый случайный пароль')}</button>
-          <label class="fc-web-credential-edit">${tr('Loginni almashtirish', 'Изменить логин')}<input id="fc-web-credential-login" type="text" autocomplete="username" minlength="4" maxlength="40" value="${escapeHtml(s.login)}"><button type="button" class="fc-btn fc-btn-secondary" ${s.busy ? 'disabled' : ''} onclick="changeShopWebLogin()">${tr('Saqlash', 'Сохранить')}</button></label>
-          <div class="fc-web-credential-edit"><label>${tr('O‘zingiz tanlagan yangi parol', 'Новый пароль по вашему выбору')}<input id="fc-web-credential-password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="${tr('Kamida 8 belgi', 'Минимум 8 символов')}"></label><small>${tr('Kamida 8 belgi, kamida bitta harf va bitta raqam.', 'Минимум 8 символов, хотя бы одна буква и одна цифра.')}</small><button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="setShopWebPassword()">${tr('Parolni almashtirish', 'Изменить пароль')}</button></div>`) : '';
+        ? `<p class="fc-web-credential-note">${tr('Parol xavfsizlik sabab qayta ko‘rsatilmaydi. Yangisini shu yerda o‘rnata olasiz.', 'Пароль нельзя показать повторно. Здесь можно задать новый.')}</p>` : '';
+      const secret = s.issuedPassword ? `<div class="fc-web-credential-secret"><span>${tr('Yangi parol', 'Новый пароль')}</span><div class="fc-web-credential-value"><input id="fc-web-issued-password" type="password" readonly value="${escapeHtml(s.issuedPassword)}" aria-label="${tr('Yangi parol', 'Новый пароль')}"><button type="button" class="fc-btn fc-btn-secondary" onclick="toggleShopWebIssuedPassword()">${tr('Ko‘rsatish', 'Показать')}</button><button type="button" class="fc-btn fc-btn-secondary" onclick="copyShopWebPassword()">${tr('Nusxa olish', 'Скопировать')}</button></div><small>${tr('Parol faqat hozir ko‘rsatiladi. Xavfsiz joyga saqlang.', 'Пароль показан только сейчас. Сохраните его в надёжном месте.')}</small></div>` : '';
+      const overview = `<p>${tr('Shu Telegram akkauntingizga bog‘langan. Login va parol faqat sizga tegishli.', 'Привязано к вашему Telegram-аккаунту. Эти данные доступны только вам.')}</p>
+        ${s.login ? `<div class="fc-web-credential-login"><span>Login</span><div class="fc-web-credential-value"><strong>${escapeHtml(s.login)}</strong><button type="button" class="fc-btn fc-btn-secondary" onclick="copyShopWebLogin()">${tr('Nusxa olish', 'Скопировать')}</button></div></div>` : ''}
+        ${secret || note}
+        ${s.valid ? (!s.credentialExists ? `<button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="issueShopWebCredentials()">${tr('Login va parolni olish', 'Получить логин и пароль')}</button>` : `<button type="button" class="fc-btn fc-btn-primary" onclick="openShopWebCredentialEdit()">${tr('Login va parolni almashtirish', 'Изменить логин и пароль')}</button>`) : ''}`;
+      const edit = `<p>${tr('Login va parolni alohida o‘zgartirishingiz mumkin. Parol yangilansa, eski web sessiyalar yopiladi.', 'Логин и пароль можно менять отдельно. После смены пароля старые веб-сессии завершатся.')}</p>
+        <label class="fc-web-credential-edit">${tr('Yangi login', 'Новый логин')}<input id="fc-web-credential-login" type="text" autocomplete="username" minlength="4" maxlength="40" value="${escapeHtml(s.login)}"></label>
+        <button type="button" class="fc-btn fc-btn-secondary" ${s.busy ? 'disabled' : ''} onclick="changeShopWebLogin()">${tr('Loginni saqlash', 'Сохранить логин')}</button>
+        <label class="fc-web-credential-edit">${tr('Yangi parol', 'Новый пароль')}<input id="fc-web-credential-password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="${tr('Kamida 8 belgi', 'Минимум 8 символов')}"></label>
+        <label class="fc-web-credential-edit">${tr('Parolni tasdiqlang', 'Повторите пароль')}<input id="fc-web-credential-password-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="72"></label>
+        <p class="fc-web-credential-note">${tr('Kamida 8 belgi, harf va raqam.', 'Минимум 8 символов, буква и цифра.')}</p>
+        <button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="setShopWebPassword()">${tr('Parolni saqlash', 'Сохранить пароль')}</button>
+        <button type="button" class="fc-btn fc-btn-secondary" ${s.busy ? 'disabled' : ''} onclick="resetShopWebCredentials()">${tr('Tasodifiy yangi parol yaratish', 'Создать случайный пароль')}</button>`;
       renderPageShell(container, tr('Web login va parol', 'Логин и пароль для сайта'), `
-        <section class="fc-card fc-web-credential-card"><h2>${tr('Saytga kirish ma’lumotlari', 'Данные для входа на сайт')}</h2>
-          <p>${tr('Shu Telegram akkauntingiz bilan bog‘langan. Login va parol faqat sizga ko‘rsatiladi.', 'Привязано к вашему Telegram-аккаунту. Логин и пароль видны только вам.')}</p>
-          ${s.login ? `<div class="fc-web-credential-login"><span>Login</span><strong>${escapeHtml(s.login)}</strong></div>` : ''}
-          ${note}${secret}
+        <section class="fc-card fc-web-credential-card"><h2>${editing ? tr('Ma’lumotlarni almashtirish', 'Изменение данных') : tr('Saytga kirish ma’lumotlari', 'Данные для входа на сайт')}</h2>
+          ${editing ? edit : overview}
           ${s.error ? `<p class="fc-web-credential-error">${escapeHtml(s.error)}</p>` : ''}
           ${s.notice ? `<p class="fc-web-credential-note">${escapeHtml(s.notice)}</p>` : ''}
           ${s.loading ? `<p>${tr('Tekshirilmoqda…', 'Проверка…')}</p>` : ''}
           ${!s.loading && !s.valid && !s.issuedPassword && !s.notice ? `<button type="button" class="fc-btn fc-btn-secondary" onclick="openShopWebCredentials()">${tr('Qayta urinish', 'Повторить')}</button>` : ''}
-          <div class="fc-web-credential-actions">${actions}</div>
-        </section>`, { onBack: 'closePage()' });
+        </section>`, { onBack: editing ? 'closeShopWebCredentialEdit()' : 'closePage()' });
+    }
+
+    function openShopWebCredentialEdit() { webCredentialState.editing = true; webCredentialState.error = ''; render(); }
+    function closeShopWebCredentialEdit() { webCredentialState.editing = false; webCredentialState.error = ''; render(); }
+    async function copyShopWebLogin() {
+      if (!webCredentialState.login || activePage !== 'WEB_CREDENTIALS') return;
+      const copied = await copyTextToClipboard(webCredentialState.login);
+      showActionToast(copied ? tr('Login nusxalandi.', 'Логин скопирован.') : tr('Nusxalab bo‘lmadi.', 'Не удалось скопировать.'), copied ? 'success' : 'error', 1800);
+    }
+    function toggleShopWebIssuedPassword() {
+      const input = document.getElementById('fc-web-issued-password');
+      if (!input) return;
+      input.type = input.type === 'password' ? 'text' : 'password';
+      const button = input.nextElementSibling;
+      if (button) button.textContent = input.type === 'password' ? tr('Ko‘rsatish', 'Показать') : tr('Yashirish', 'Скрыть');
     }
 
     async function issueShopWebCredentials() {
@@ -11313,7 +11370,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       try {
         const result = await callApi('shop_web_credentials_reset', {});
         if (activePage !== 'WEB_CREDENTIALS') return;
-        webCredentialState = { ...webCredentialState, busy: false, valid: true, login: String(result.login || ''), issuedPassword: String(result.password || ''), notice: tr('Yangi parol yaratildi.', 'Новый пароль создан.') };
+        webCredentialState = { ...webCredentialState, busy: false, valid: true, editing: false, login: String(result.login || webCredentialState.login || ''), issuedPassword: String(result.password || ''), notice: tr('Yangi parol yaratildi. Eski web sessiyalar yopildi.', 'Новый пароль создан. Старые веб-сессии завершены.') };
       } catch (_) { if (activePage !== 'WEB_CREDENTIALS') return; webCredentialState = { ...webCredentialState, busy: false, valid: true, error: tr('Parol yangilanmadi. Qayta urinib ko‘ring.', 'Не удалось обновить пароль. Повторите попытку.') }; }
       if (activePage === 'WEB_CREDENTIALS') render();
     }
@@ -11346,6 +11403,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     async function setShopWebPassword() {
       if (!webCredentialState.valid || webCredentialState.busy || !webCredentialState.credentialExists) return;
       const password = String(document.getElementById('fc-web-credential-password')?.value || '');
+      const confirmation = String(document.getElementById('fc-web-credential-password-confirm')?.value || '');
+      if (password !== confirmation) return showAppNotice(tr('Parollar bir xil emas.', 'Пароли не совпадают.'));
       const passwordBytes = credentialPasswordByteLength(password);
       if (Array.from(password).length < 8 || passwordBytes > 72 || !/\p{L}/u.test(password) || !/\p{N}/u.test(password)) {
         return showAppNotice(tr('Parol kamida 8 belgi, ko‘pi bilan 72 bayt bo‘lsin; harf va raqam qatnashsin.', 'Пароль: минимум 8 символов, максимум 72 байта, с буквой и цифрой.'));
@@ -11354,7 +11413,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       try {
         const result = await callApi('shop_web_credentials_set_password', { password });
         if (activePage !== 'WEB_CREDENTIALS') return;
-        webCredentialState = { ...webCredentialState, busy: false, valid: true, login: String(result.login || webCredentialState.login || ''), issuedPassword: null,
+        webCredentialState = { ...webCredentialState, busy: false, valid: true, editing: false, login: String(result.login || webCredentialState.login || ''), issuedPassword: null,
           notice: tr('Parol almashtirildi. Eski web sessiyalar bekor qilindi.', 'Пароль изменён. Старые веб-сессии отменены.') };
       } catch (error) {
         if (activePage !== 'WEB_CREDENTIALS') return;
@@ -16610,25 +16669,25 @@ function renderModalContainer() {
       // REGISTRATION MODAL
       if (activePopupModal === 'REGISTRATION') {
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; render();">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs fc-registration-card" onclick="event.stopPropagation()">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2 text-center">${tr(`📝 ${escapeHtml(shopDisplayName())} ro'yxatdan o'tish`, `📝 Регистрация ${escapeHtml(shopDisplayName())}`)}</h3>
+          <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" role="presentation" onclick="activePopupModal=null; render();">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs fc-registration-card" role="dialog" aria-modal="true" aria-labelledby="fc-registration-title" onclick="event.stopPropagation()">
+              <h3 id="fc-registration-title" class="font-bold text-sm text-gray-900 border-b pb-2 text-center">${tr(`📝 ${escapeHtml(shopDisplayName())} ro'yxatdan o'tish`, `📝 Регистрация ${escapeHtml(shopDisplayName())}`)}</h3>
               <p class="text-[11px] text-gray-500 text-center">${tr("Buyurtmani tez rasmiylashtirish uchun ma'lumotlaringizni kiriting:", "Введите данные для быстрого оформления заказов:")}</p>
               <div>
-                <label class="font-bold text-gray-600">${tr("Ismingiz *", "Имя *")}</label>
+                <label for="reg-fname" class="font-bold text-gray-600">${tr("Ismingiz *", "Имя *")}</label>
                 <input type="text" id="reg-fname" value="${escapeHtml(currentUser.firstName)}" placeholder="Ali" class="w-full mt-1 p-2 border rounded-xl">
               </div>
               <div>
-                <label class="font-bold text-gray-600">${tr("Familiyangiz *", "Фамилия *")}</label>
+                <label for="reg-lname" class="font-bold text-gray-600">${tr("Familiyangiz *", "Фамилия *")}</label>
                 <input type="text" id="reg-lname" value="${escapeHtml(currentUser.lastName)}" placeholder="Valiyev" class="w-full mt-1 p-2 border rounded-xl">
               </div>
               <div>
-                <label class="font-bold text-gray-600">${tr("Telefon raqamingiz *", "Номер телефона *")}</label>
+                <label for="reg-phone" class="font-bold text-gray-600">${tr("Telefon raqamingiz *", "Номер телефона *")}</label>
                 <input type="text" id="reg-phone" value="${escapeHtml(currentUser.phone)}" placeholder="+998 90 123 45 67" class="w-full mt-1 p-2 border rounded-xl font-mono">
               </div>
               ${renderRegistrationLegalConsentsHtml()}
               <div class="pt-2">
-                <div class="fc-icon-action-bar"><button id="reg-save-btn" onclick="saveRegistrationFromModal()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
+                <div class="fc-icon-action-bar"><button id="reg-save-btn" onclick="saveRegistrationFromModal()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}" ${registrationSaving ? 'disabled' : ''}><i data-lucide="${registrationSaving ? 'loader-circle' : 'check'}" class="w-5 h-5 ${registrationSaving ? 'animate-spin' : ''}"></i><span class="fc-registration-desktop-label">${tr('Saqlash','Сохранить')}</span></button></div>
               </div>
             </div>
           </div>
@@ -18609,6 +18668,7 @@ if (activePopupModal === 'LOGO_CROP') {
 
     // MODAL SAVERS
     async function saveRegistrationFromModal() {
+      if (registrationSaving) return;
       const fn = document.getElementById('reg-fname').value.trim();
       const ln = document.getElementById('reg-lname').value.trim();
       const ph = document.getElementById('reg-phone').value.trim().replace(/\s+/g, '');
@@ -18622,32 +18682,34 @@ if (activePopupModal === 'LOGO_CROP') {
       }
       const legalAcceptances = requiredLegalDocs.map(doc => ({ type: doc.type, version: Number(doc.version) || 1 }));
 
-      // UI darhol yangilanadi; profil serverda ham saqlanadi va boshqa qurilmada tiklanadi.
-      const old = registeredUser ? { ...registeredUser } : null;
-      registeredUser = { firstName: fn, lastName: ln, phone: ph };
-      localStorage.setItem(scopedKey('registeredUser'), JSON.stringify(registeredUser));
-      currentUser.firstName = fn; currentUser.lastName = ln; currentUser.phone = ph;
-      activePopupModal = null; render();
+      registrationSaving = true;
+      document.getElementById('reg-save-btn')?.setAttribute('disabled', '');
       try {
         await callApi('update_profile', { firstName: fn, lastName: ln, phone: ph, legalAcceptances });
+        registeredUser = { firstName: fn, lastName: ln, phone: ph };
+        localStorage.setItem(scopedKey('registeredUser'), JSON.stringify(registeredUser));
+        currentUser.firstName = fn; currentUser.lastName = ln; currentUser.phone = ph;
         legalConsentRequired = false;
+        activePopupModal = null;
+        render();
         showAppNotice(uiLang === 'ru' ? '✅ Данные сохранены.' : "✅ Ma'lumotlar saqlandi!");
       } catch (e) {
-        console.error(e);
-        if (old) {
-          registeredUser = old;
-          localStorage.setItem(scopedKey('registeredUser'), JSON.stringify(old));
-        } else {
-          registeredUser = null;
-          localStorage.removeItem(scopedKey('registeredUser'));
-        }
-        if (e?.details?.error === 'legal_consent_required') {
+        const code = String(e?.message || 'profile_save_failed');
+        console.error('[PROFILE_SAVE_FAILED]', { code, error: e });
+        if (code === 'legal_consent_required') {
           legalConsentRequired = true;
           render();
           return showAppNotice(tr('Huquqiy hujjat yangilangan. Joriy versiyani qayta o‘qib tasdiqlang.', 'Юридический документ обновлён. Прочитайте и подтвердите текущую версию.'));
         }
-        render();
-        showAppNotice(uiLang === 'ru' ? '⚠️ На сервере сохранить не удалось. Проверьте интернет.' : "⚠️ Serverda saqlab bo'lmadi. Internetni tekshiring.");
+        const message = code === 'auth_required' || code === 'session_expired'
+          ? tr('Profilni saqlash uchun avval saytga kiring.', 'Войдите на сайт, чтобы сохранить профиль.')
+          : code === 'account_mapping_conflict' ? tr('Akkaunt mosligi tekshiruvi muvaffaqiyatsiz. Yordamga murojaat qiling.', 'Не удалось подтвердить аккаунт. Обратитесь в поддержку.')
+          : code === 'invalid_profile' ? tr('Ism yoki telefon raqamini tekshiring.', 'Проверьте имя и номер телефона.')
+          : tr('Serverda saqlab bo‘lmadi. Qayta urinib ko‘ring.', 'Не удалось сохранить на сервере. Попробуйте ещё раз.');
+        showAppNotice(message);
+      } finally {
+        registrationSaving = false;
+        document.getElementById('reg-save-btn')?.removeAttribute('disabled');
       }
     }
 
@@ -20335,6 +20397,7 @@ if (activePopupModal === 'LOGO_CROP') {
     const CATALOG_CACHE_KEY = scopedKey('catalog_cache_v1');
     const BOOT_BRAND_CACHE_KEY = scopedKey('boot_brand_v1');
     let catalogLoading = false;
+    let catalogLoadError = null;
     function hydrateCatalogCache() {
       try {
         const cached = readStoredObject(CATALOG_CACHE_KEY, null);
@@ -20366,20 +20429,30 @@ if (activePopupModal === 'LOGO_CROP') {
     async function loadCatalog() {
       const perfStarted = performance.now();
       catalogLoading = true;
+      catalogLoadError = null;
       // 15-band: no more direct Supabase-client reads of products/categories —
       // the frontend's publishable key has no business-table read access at
       // all now (RLS is on with no permissive policies — see 001-005's RLS
       // notes); every shop's catalog comes back through this one
       // shop-scoped server action instead.
-      const catalogRes = await callApi('get_catalog', {});
-      products = (catalogRes.products || []).map(mapProductFromDB);
-      categories = (catalogRes.categories || []).map(mapCategoryFromDB);
-      warmCatalogBranch();
-      saveCatalogCache();
-      catalogLoading = false;
-      const ms = Math.round(performance.now() - perfStarted);
-      if (ms >= 500) console.info(`[USTORE perf] Catalog: ${ms}ms (${products.length} products, ${categories.length} categories)`);
-      return true;
+      try {
+        const catalogRes = await callApi('get_catalog', {});
+        products = (catalogRes.products || []).map(mapProductFromDB);
+        categories = (catalogRes.categories || []).map(mapCategoryFromDB);
+        warmCatalogBranch();
+        saveCatalogCache();
+        const ms = Math.round(performance.now() - perfStarted);
+        if (ms >= 500) console.info(`[USTORE perf] Catalog: ${ms}ms (${products.length} products, ${categories.length} categories)`);
+        return true;
+      } catch (error) {
+        catalogLoadError = error;
+        throw error;
+      } finally { catalogLoading = false; }
+    }
+    async function retryCatalogLoad() {
+      if (catalogLoading) return;
+      try { await loadCatalog(); } catch (error) { console.error('Katalogni qayta yuklash xatosi:', error); }
+      if (authReady) render();
     }
 
     async function boot() {
@@ -20473,7 +20546,7 @@ if (activePopupModal === 'LOGO_CROP') {
         // holat — admin modal ochishga ulgurgan bo'lsa) — shu poll bilan bir
         // xil himoya qo'yildi.
         if (authReady && (currentTab === 'home' || currentTab === 'categories' || currentTab === 'warehouse') && !isCatalogEditorModalOpen()) render();
-      }).catch(e => console.error('Katalogni yangilash xatosi:', e));
+      }).catch(e => { console.error('Katalogni yangilash xatosi:', e); if (authReady) render(); });
 
       try {
         // boot endi faqat auth + foydalanuvchi holati + shop settings. Orders/users/admins bu yerda yuklanmaydi.
@@ -20564,7 +20637,7 @@ if (activePopupModal === 'LOGO_CROP') {
       if (browserBridge) applyingWebRoute = true;
       switchTab('home');
       if (browserBridge) applyingWebRoute = false;
-      if (browserBridge) await catalogPromise;
+      if (browserBridge && /^\/(product|bundle|promotion)\//.test(String(browserBridge.initialRoute || ''))) await catalogPromise;
       if (browserBridge) window.USTORE_APPLY_WEB_ROUTE(browserBridge.initialRoute);
       // (catalogPromise xatosi endi yuqorida, yaratilgan joyida ushlanadi.)
       void catalogPromise;

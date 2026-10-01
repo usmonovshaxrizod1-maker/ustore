@@ -8,6 +8,8 @@
 .uw-auth__heading { display: grid; gap: var(--uw-space-2); }
 .uw-auth__heading h1 { margin: 0; font-size: var(--uw-text-3xl); }
 .uw-auth__heading p { margin: 0; color: var(--uw-color-text-muted); }
+.uw-auth__brand,.uw-origin-signin__brand{display:flex;align-items:center;gap:var(--uw-space-3);color:var(--uw-color-text);font-size:var(--uw-text-sm);letter-spacing:.04em}
+.uw-auth__brand span,.uw-origin-signin__brand span,.uw-origin-signin__brand img{width:40px;height:40px;display:grid;place-items:center;flex:none;border:1px solid var(--uw-color-border);border-radius:var(--uw-radius-md);background:var(--uw-color-surface);color:var(--uw-color-primary);font-size:20px;font-weight:900;object-fit:contain}
 .uw-auth-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--uw-space-2); }
 .uw-auth__body, .uw-auth-form { display: grid; gap: var(--uw-space-4); }
 .uw-auth-password-row { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: var(--uw-space-2); }

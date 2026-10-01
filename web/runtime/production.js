@@ -11,7 +11,7 @@ import {
   createLivePlatformAdapter,
   createLiveDomainsAdapter,
   createLiveTenantResolver,
-} from '../services/live/index.js?v=20260929shared1';
+} from '../services/live/index.js?v=20260930hotfix1';
 
 function safeBaseUrl(value) {
   const url = new URL(String(value || ''));
@@ -87,5 +87,5 @@ export async function createProductionShopRuntime({
     platform: createLivePlatformAdapter({ endpoint: authRuntime.endpoints.platform, fetchImpl, tokenStore: authRuntime.tokenStore }),
   };
   const services = createLiveServiceProvider({ runtime: 'production', liveAdapters });
-  return { ok: true, data: Object.freeze({ ...authRuntime, tenantResolver, tenant, services }) };
+  return { ok: true, data: Object.freeze({ ...authRuntime, tenantResolver, tenant, services, takeGuestBoot: publicAdapters.takeGuestBoot }) };
 }

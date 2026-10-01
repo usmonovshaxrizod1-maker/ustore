@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=315">
+  <link rel="stylesheet" href="./ustore.css?v=316">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -36,8 +36,8 @@
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=8"></script>
   <script defer src="./config.public.js?v=4"></script>
-  <script defer src="./web/shared/miniapp-frame-bridge.js?v=1"></script>
-  <script defer src="./ustore-shop-app.js?v=315"></script>
+  <script defer src="./web/shared/miniapp-frame-bridge.js?v=2"></script>
+  <script defer src="./ustore-shop-app.js?v=316"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
 
@@ -55,6 +55,13 @@
       <span id="header-shop-logo-wordmark" class="hidden ustore-header-wordmark"></span>
       <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400 shrink-0"></span>
     </div>
+    <nav class="ustore-desktop-nav" aria-label="Do‘kon bo‘limlari">
+      <button type="button" data-desktop-tab="home" onclick="switchTab('home')"><i data-lucide="home"></i><span id="desktop-nav-home">Bosh sahifa</span></button>
+      <button type="button" data-desktop-tab="categories" onclick="switchTab('categories')"><i data-lucide="folder"></i><span id="desktop-nav-categories">Kataloglar</span></button>
+      <button type="button" data-desktop-tab="cart" onclick="switchTab('cart')"><i data-lucide="shopping-bag"></i><span id="desktop-nav-cart">Savatcha</span></button>
+      <button type="button" data-desktop-tab="orders" onclick="switchTab('orders')"><i data-lucide="package"></i><span id="desktop-nav-orders">Buyurtmalar</span></button>
+      <button type="button" data-desktop-tab="warehouse" id="desktop-nav-warehouse-btn" onclick="switchTab('warehouse')" hidden><i data-lucide="warehouse"></i><span id="desktop-nav-warehouse">Ombor</span></button>
+    </nav>
     <div class="flex items-center space-x-2">
       <!-- Foydalanuvchi qaytardi: savatcha tugmasi FAQAT admin rejimida
            yashiriladi (updateHeaderChrome()da), oddiy mijoz uchun header'da
@@ -65,6 +72,8 @@
       </button>
       <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi (savatchadan keyin). -->
       <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
+      <button type="button" onclick="toggleUiLang()" class="ustore-desktop-lang" id="desktop-lang-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿 UZ</button>
+      <button type="button" onclick="switchTab('profile')" class="ustore-desktop-profile" id="desktop-profile-btn" aria-label="Profil"><i data-lucide="user"></i><span id="desktop-nav-profile">Profil</span></button>
       <button onclick="switchTab('profile')" class="p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
         <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
       </button>
@@ -77,7 +86,7 @@
 
   <!-- MAIN CONTAINER -->
   <main id="app-content" class="p-4 max-w-md mx-auto min-h-screen">
-    <div class="flex flex-col items-center justify-center py-20 text-gray-400">
+    <div class="fc-initial-loader flex flex-col items-center justify-center py-20 text-gray-400">
       <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3"></div>
       <p class="text-xs font-bold">Yuklanmoqda...</p>
     </div>

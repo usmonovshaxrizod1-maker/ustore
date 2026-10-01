@@ -346,7 +346,7 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20260929shared1');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20260930hotfix1');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
@@ -356,7 +356,7 @@ function loadAuthFeatureModule() {
 function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
-  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20260929shared1');
+  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20260930hotfix1');
   return loginFeatureModulePromise;
 }
 function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.' } = {}) {
@@ -402,7 +402,7 @@ async function renderShopSignIn(routeState, epoch) {
     authPort: shopRuntime.services.auth, returnTo, botUsername: shopRuntime.tenant?.botUsername || '', locale:uiLocale,
     onRedirect: (url) => location.assign(url),
   });
-  const view = reactive(controller, (state) => createCustomDomainSignInView({ controller, state, botUsername: shopRuntime.tenant?.botUsername, shopName: shopRuntime.tenant?.shopName, locale: uiLocale }));
+  const view = reactive(controller, (state) => createCustomDomainSignInView({ controller, state, botUsername: shopRuntime.tenant?.botUsername, shopName: shopRuntime.tenant?.shopName, logoUrl: shopRuntime.tenant?.logoUrl, locale: uiLocale }));
   mountShell(routeState, view.element, 'Kirish');
   remember(view.destroy);
 }
@@ -427,8 +427,14 @@ async function renderCentralHandoff(routeState, epoch) {
     mount(view); remember(view.destroy); return;
   }
   const controller = authFeature.createCentralOriginHandoffController({ authPort: authRuntime.auth, state, onRedirect:(url)=>location.assign(url) });
+  if (handoffInfo.ok && String(handoffInfo.data?.status || '').toUpperCase() === 'PENDING') {
+    mount(stateView('loading', 'Kirish tasdiqlanmoqda', 'Do‘konga xavfsiz qaytish tayyorlanmoqda.'));
+    const authorized = await controller.authorize();
+    if (epoch !== renderEpoch || authorized?.ok) return;
+  }
   const view = reactive(controller, (snapshot) => authFeature.createCentralOriginHandoffView({ controller, state:snapshot }));
-  mount(view); remember(view.destroy); await controller.load();
+  mount(view); remember(view.destroy);
+  if (!handoffInfo.ok || String(handoffInfo.data?.status || '').toUpperCase() !== 'PENDING') await controller.load();
 }
 async function renderOriginCallback(routeState, epoch) {
   const [runtimeModule, authFeature] = await Promise.all([loadProductionRuntimeModule(), loadAuthFeatureModule()]);
@@ -902,16 +908,23 @@ async function renderRoute(routeState, reason = 'refresh') {
     const runtimeResult=await ensureShopRuntime(); if(epoch!==renderEpoch)return;
     if(!runtimeResult.ok){mount(stateView('error','Do‘kon ochilmadi',runtimeResult.error?.message||'Do‘kon manzili aniqlanmadi.','Qayta urinish',()=>{shopRuntime=null;renderRoute(routeState);}));return;}
     const tenantBrand = runtimeResult.data?.tenant || {};
-    const waitingLaunch = root.querySelector('.uw-launch--shop[data-await-brand="true"]');
+    const waitingLaunch = root.querySelector('.uw-launch--shop');
     if (waitingLaunch) {
       const welcomeTitle = waitingLaunch.querySelector('.uw-launch__brand-copy h1');
       if (welcomeTitle && tenantBrand.shopName) welcomeTitle.textContent = `${tenantBrand.shopName}’ga xush kelibsiz`;
       if (tenantBrand.logoUrl && typeof Image === 'function') {
-        const logo = new Image(); logo.className = 'uw-launch__logo'; logo.alt = '';
-        logo.onload = () => { if (waitingLaunch.isConnected) { waitingLaunch.querySelector('.uw-launch__brand')?.prepend(logo); delete waitingLaunch.dataset.awaitBrand; } };
-        logo.onerror = () => { delete waitingLaunch.dataset.awaitBrand; };
-        logo.src = String(tenantBrand.logoUrl);
-      } else delete waitingLaunch.dataset.awaitBrand;
+        const currentLogo = waitingLaunch.querySelector('.uw-launch__logo');
+        if (currentLogo?.src !== String(tenantBrand.logoUrl)) {
+          const logo = new Image(); logo.className = 'uw-launch__logo'; logo.alt = '';
+          logo.onload = () => {
+            if (!waitingLaunch.isConnected) return;
+            waitingLaunch.querySelector('.uw-launch__monogram')?.remove();
+            waitingLaunch.querySelector('.uw-launch__logo')?.remove();
+            waitingLaunch.querySelector('.uw-launch__brand')?.prepend(logo);
+          };
+          logo.src = String(tenantBrand.logoUrl);
+        }
+      }
     }
     try {
       if (tenantBrand.shopName || tenantBrand.logoUrl) globalThis.localStorage?.setItem?.(`ustore:shop:brand:${location.hostname.toLowerCase()}`, JSON.stringify({ name:tenantBrand.shopName || shopHint, logoUrl:tenantBrand.logoUrl || null }));
@@ -954,7 +967,7 @@ async function startWebApp() {
     mount(stateView('loading', 'Telegram kirishi tekshirilmoqda', 'Bir oz kuting.'));
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20260929shared1'), import('./services/live/auth.js?v=20260929shared1'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20260930hotfix1'), import('./services/live/auth.js?v=20260930hotfix1'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,
