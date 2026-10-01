@@ -3865,7 +3865,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       for (const [id, uz, ru] of [
         ['home', 'Bosh sahifa', 'Главная'], ['categories', 'Kataloglar', 'Категории'],
         ['cart', 'Savatcha', 'Корзина'], ['orders', 'Buyurtmalar', 'Заказы'],
-        ['warehouse', 'Ombor', 'Склад'], ['profile', 'Profil', 'Профиль'],
+        ['warehouse', 'Ombor', 'Склад'], ['admin', 'Boshqaruv', 'Управление'],
+        ['profile', 'Profil', 'Профиль'],
       ]) {
         const label = document.getElementById(`desktop-nav-${id}`);
         if (label) label.textContent = uiLang === 'uz' ? uz : ru;
@@ -3880,8 +3881,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (desktopCart) desktopCart.hidden = adminMode;
       const desktopWarehouse = document.getElementById('desktop-nav-warehouse-btn');
       if (desktopWarehouse) desktopWarehouse.hidden = !adminMode || !hasPermission('stock.view');
+      const desktopAdmin = document.getElementById('desktop-nav-admin-btn');
+      if (desktopAdmin) desktopAdmin.hidden = !adminMode;
       const desktopProfile = document.getElementById('desktop-profile-btn');
-      if (desktopProfile) desktopProfile.onclick = adminMode ? togglePersonMenu : () => switchTab('profile');
+      if (desktopProfile) desktopProfile.onclick = isUserAnAdmin ? togglePersonMenu : () => switchTab('profile');
     }
 
     // 20-band: Profildagi katta "rejim almashtirish" tugmasi o'rniga headerdagi
