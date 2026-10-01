@@ -8,3 +8,7 @@
 # OS/editor junk
 .DS_Store
 Thumbs.db
+
+# Generated build output and local dependencies
+dist/
+node_modules/

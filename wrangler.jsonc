@@ -1,0 +1,20 @@
+﻿{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "ustore-web",
+  "compatibility_date": "2026-09-28",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "ustr.uz/*",
+      "zone_name": "ustr.uz"
+    },
+    {
+      "pattern": "*.ustr.uz/*",
+      "zone_name": "ustr.uz"
+    }
+  ],
+  "assets": {
+    "directory": "./dist/web",
+    "not_found_handling": "single-page-application"
+  }
+}
