@@ -47,7 +47,7 @@ returns boolean language sql stable security definer set search_path=public as $
             on rp.shop_id=mr.shop_id and rp.role_id=mr.role_id
             where mr.shop_id=m.shop_id and mr.telegram_user_id=m.telegram_user_id
               and rp.permission='domains.manage'))
-      ))))
+      )))
   );
 $$;
 revoke all on function public.ustore_can_manage_domains(uuid,text) from public,anon,authenticated;
