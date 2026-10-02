@@ -8,3 +8,18 @@
 # OS/editor junk
 .DS_Store
 Thumbs.db
+node_modules/
+.npm-cache/
+*.log
+dist/
+.env
+.env.local
+
+# Local database backups
+*_backup.sql
+*.backup
+
+# Supabase CLI local state
+supabase/.temp/
+# Destructive local maintenance script
+supabase/RESET_TEST_SHOPS_EXCEPT_FITCORE.sql

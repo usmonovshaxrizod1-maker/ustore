@@ -357,6 +357,8 @@
   let connectSuccess = null;
   let pendingBotToken = '';
   let selectedShopDetails = null; // adminShops ichidan tanlangan bitta qator
+  let selectedShopDomains = null;
+  let selectedShopDomainsLoading = false;
   let shopBackupBusy = false;
   let shopRestoreBusy = false;
 
@@ -778,6 +780,7 @@
     return `
       <div class="plat-header">
         <div class="plat-header-title">${isAdminMode ? 'UStorE Admin' : 'UStorE'}</div>
+        ${browserBridge ? renderDesktopNav() : ''}
         <div class="plat-header-actions">
           ${!isAdminMode ? `<button class="plat-header-btn plat-header-request-btn" onclick="openMyRequests()" aria-label="Arizalarim">${pIcon('inbox',17)}${myRequests.filter((r)=>r.status==='NEW').length ? `<em>${Math.min(9,myRequests.filter((r)=>r.status==='NEW').length)}${myRequests.filter((r)=>r.status==='NEW').length>9?'+':''}</em>` : ''}</button>` : ''}
           <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">${!isAdminMode && tg?.initDataUnsafe?.user?.photo_url ? `<img src="${escapeHtml(tg.initDataUnsafe.user.photo_url)}" class="plat-header-avatar-img" alt="">` : pIcon('user', 17)}</button>
@@ -820,6 +823,14 @@
       </nav>`;
   }
 
+  function renderDesktopNav() {
+    const tabs = isAdminMode
+      ? [['dashboard','dashboard','Dashboard'],['requests','inbox','Arizalar'],['shops','shop','Do‘konlar'],['support','headset','Support'],['settings','gear','Sozlamalar']]
+      : [['home','home','Bosh sahifa'],['shops','shop','Do‘konlarim'],['subscription','diamond','To‘lovlar'],['help','chat','Yordam']];
+    return `<nav class="plat-desktop-nav" aria-label="Platforma bo‘limlari">${tabs.map(([id,icon,label]) =>
+      `<button type="button" class="${currentTab===id?'active':''}" ${currentTab===id?'aria-current="page"':''} onclick="switchTab('${id}')">${pIcon(icon,17)}<span>${label}</span></button>`).join('')}</nav>`;
+  }
+
   function renderTabBody() {
     if (isAdminMode) {
       if (currentTab === 'dashboard') return renderAdminDashboardTab();
@@ -857,6 +868,7 @@
     if (p === 'SHOP_SUB_LIFECYCLE') return pageShell("Do'kon holati", renderShopLifecycleBody(), { onBack: "openPage('SHOP_DETAILS')" });
     if (p === 'SHOP_SUB_ACTIVITY') return pageShell("Faoliyat tarixi", renderShopActivityBody(), { onBack: "openPage('SHOP_DETAILS')" });
     if (p === 'SHOP_SUB_SUPPORT') return pageShell("Support", renderShopSupportBody(), { onBack: "openPage('SHOP_DETAILS')" });
+    if (p === 'SHOP_SUB_DOMAINS') return pageShell('Domen va manzil', renderPlatformShopDomainsBody(), { onBack: "openPage('SHOP_DETAILS')" });
     if (p === 'REQUEST_DETAILS') return pageShell("So'rov tafsilotlari", renderRequestDetailsBody(), { onBack: "switchTab('requests')" });
     if (p === 'MY_REQUESTS') return pageShell("Arizalarim", renderMyRequestsBody(), { onBack: "goHomePage()" });
     if (p === 'MY_REQUEST_DETAILS') return pageShell("Ariza holati", renderMyRequestDetailsBody(), { onBack: "openMyRequests()" });
@@ -953,22 +965,52 @@
     if (!s.valid && !s.issuedPassword && !s.notice) {
       return `<div class="plat-credential-card is-warning"><span>${pIcon('lock',24)}</span><h2>Web login oynasi</h2><p>${escapeHtml(s.error || "Profil bo‘limidan qayta oching yoki UStorE markaziy botiga /login yuboring.")}</p>${webCredentialFromProfile ? `<button class="primary" onclick="openWebCredentialsFromProfile()">Qayta urinish</button>` : ''}<button class="secondary" onclick="closeWebCredentialFlow()">Yopish</button></div>`;
     }
-    const passwordBlock = s.issuedPassword ? `<div class="plat-credential-secret"><span>Yangi parol</span><code>${escapeHtml(s.issuedPassword)}</code><button class="secondary" onclick="copyWebCredentialPassword()">${pIcon('copy',15)} Nusxalash</button><small>Parol faqat shu javobda ko‘rsatiladi. Uni xavfsiz joyga saqlang.</small></div>` : '';
+    const passwordBlock = s.issuedPassword ? `<div class="plat-credential-secret"><span>Yangi parol</span><div class="plat-credential-value"><input id="plat-issued-password" type="password" readonly value="${escapeHtml(s.issuedPassword)}" aria-label="Yangi parol"><button class="secondary" onclick="toggleWebCredentialPassword()">Ko‘rsatish</button><button class="secondary" onclick="copyWebCredentialPassword()">${pIcon('copy',15)} Nusxalash</button></div><small>Parol faqat shu javobda ko‘rsatiladi. Uni xavfsiz joyga saqlang.</small></div>` : '';
     const existingNote = s.credentialExists && !s.issuedPassword
       ? `<div class="plat-settings-note">${pIcon('info',17)}<span>Login mavjud. Xavfsizlik sabab eski parolni qayta ko‘rsatib bo‘lmaydi; parol kerak bo‘lsa aniq “Yangi parol yaratish” amalini tanlang.</span></div>` : '';
     const actionArea = s.valid ? `<div class="plat-credential-actions">
-      ${!s.credentialExists ? `<button class="primary" ${s.busy?'disabled':''} onclick="issueWebCredentials()">Login va parolni olish</button>` : `<button class="primary" ${s.busy?'disabled':''} onclick="resetWebCredentials()">Yangi parol yaratish</button>`}
-      ${s.credentialExists ? `<div class="plat-credential-login-edit"><label><span>Login</span><input id="web-credential-login" autocomplete="username" minlength="4" maxlength="40" value="${escapeHtml(s.login || '')}" placeholder="yangi.login"></label><button class="secondary" ${s.busy?'disabled':''} onclick="changeWebCredentialLogin()">Loginni almashtirish</button></div>
+      ${!s.credentialExists ? `<button class="primary" ${s.busy?'disabled':''} onclick="issueWebCredentials()">Login va parolni olish</button>` : s.editing ? `<button class="secondary" ${s.busy?'disabled':''} onclick="resetWebCredentials()">Tasodifiy yangi parol yaratish</button>` : `<button class="primary" onclick="openWebCredentialEdit()">Login va parolni almashtirish</button>`}
+      ${s.credentialExists && s.editing ? `<div class="plat-credential-login-edit"><label><span>Yangi login</span><input id="web-credential-login" autocomplete="username" minlength="4" maxlength="40" value="${escapeHtml(s.login || '')}" placeholder="yangi.login"></label><button class="secondary" ${s.busy?'disabled':''} onclick="changeWebCredentialLogin()">Loginni saqlash</button></div>
         <div class="plat-credential-password-edit"><label><span>Yangi parol</span><input id="web-credential-password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="Kamida 8 belgi"></label><label><span>Parolni takrorlang</span><input id="web-credential-password-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="72"></label><small>Kamida 8 belgi, kamida bitta harf va bitta raqam.</small><button class="primary" ${s.busy?'disabled':''} onclick="setWebCredentialPassword()">Parolni almashtirish</button></div>` : ''}
     </div>` : '';
     return `<div class="plat-credential-card">
       <span class="plat-admin-eyebrow">Markaziy Telegram tasdig‘i</span><h2>Web kirishini boshqarish</h2>
       <p>Bu oyna faqat UStorE markaziy botining tekshirilgan Telegram sessiyasida ishlaydi. Parol bot chatiga yuborilmaydi.</p>
-      ${s.login ? `<div class="plat-credential-login"><span>Login</span><strong>${escapeHtml(s.login)}</strong></div>` : ''}
-      ${existingNote}${passwordBlock}${s.notice ? `<div class="notice success">${escapeHtml(s.notice)}</div>` : ''}${s.error ? `<div class="notice error">${escapeHtml(s.error)}</div>` : ''}
+      ${s.login && !s.editing ? `<div class="plat-credential-login"><span>Login</span><div class="plat-credential-value"><strong>${escapeHtml(s.login)}</strong><button class="secondary" onclick="copyWebCredentialLogin()">${pIcon('copy',15)} Nusxalash</button></div></div>` : ''}
+      ${!s.editing ? `${existingNote}${passwordBlock}` : ''}${s.notice ? `<div class="notice success">${escapeHtml(s.notice)}</div>` : ''}${s.error ? `<div class="notice error">${escapeHtml(s.error)}</div>` : ''}
       ${actionArea}
+      ${s.editing ? `<button class="secondary" onclick="closeWebCredentialEdit()">Orqaga</button>` : ''}
       <button class="secondary plat-credential-return" onclick="closeWebCredentialFlow()">${webCredentialFromProfile ? 'Profilga qaytish' : 'Yopish'}</button>
     </div>`;
+  }
+
+  function openWebCredentialEdit() { webCredentialState.editing = true; webCredentialState.error = ''; render(); }
+  function closeWebCredentialEdit() { webCredentialState.editing = false; webCredentialState.error = ''; render(); }
+  function toggleWebCredentialPassword() {
+    const input = document.getElementById('plat-issued-password');
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+    if (input.nextElementSibling) input.nextElementSibling.textContent = input.type === 'password' ? 'Ko‘rsatish' : 'Yashirish';
+  }
+  async function copyCredentialText(value) {
+    if (navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(value); return true; } catch (_) {}
+    }
+    const input = document.createElement('textarea');
+    input.value = value;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+    try { return document.execCommand('copy') === true; }
+    finally { input.remove(); }
+  }
+  async function copyWebCredentialLogin() {
+    const value = String(webCredentialState.login || '');
+    if (!value) return;
+    try { if (!await copyCredentialText(value)) throw new Error('clipboard_unavailable'); showToast('Login nusxalandi.', 'success'); }
+    catch (_) { showToast('Nusxalab bo‘lmadi. Loginni qo‘lda belgilang.', 'warning'); }
   }
 
   async function issueWebCredentials() {
@@ -983,11 +1025,10 @@
 
   async function resetWebCredentials() {
     if (!webCredentialState.valid || webCredentialState.busy) return;
-    if (!(await showConfirm('Yangi parol yaratiladi va oldingi web sessiyalar bekor qilinadi. Davom etasizmi?', { title: 'Yangi parol yaratish', danger: true, confirmLabel: 'Yaratish' }))) return;
     webCredentialState = { ...webCredentialState, busy: true, error: '', notice: '', issuedPassword: null }; render();
     try {
       const data = await callPlatformApi('platform_reset_web_credentials', {});
-      webCredentialState = { ...webCredentialState, busy: false, valid: false, credentialExists: true, login: String(data.login || webCredentialState.login || ''), issuedPassword: String(data.password || ''), notice: 'Yangi parol yaratildi. Eski web sessiyalar bekor qilindi.', error: '' };
+      webCredentialState = { ...webCredentialState, busy: false, valid: false, editing: false, credentialExists: true, login: String(data.login || webCredentialState.login || ''), issuedPassword: String(data.password || ''), notice: 'Yangi parol yaratildi. Eski web sessiyalar bekor qilindi.', error: '' };
     } catch (e) { webCredentialState = { ...webCredentialState, busy: false, valid: false, error: e?.message || 'Parolni yangilab bo‘lmadi.' }; }
     render();
   }
@@ -1000,7 +1041,7 @@
     webCredentialState = { ...webCredentialState, busy: true, error: '', notice: '' }; render();
     try {
       const data = await callPlatformApi('platform_change_web_login', { login });
-      webCredentialState = { ...webCredentialState, busy: false, valid: false, login: String(data.login || login), notice: 'Login almashtirildi. Yana amal qilish uchun profil bo‘limidan qayta oching.', error: '' };
+      webCredentialState = { ...webCredentialState, busy: false, valid: false, editing: false, login: String(data.login || login), notice: 'Login almashtirildi. Yana amal qilish uchun profil bo‘limidan qayta oching.', error: '' };
     } catch (e) { webCredentialState = { ...webCredentialState, busy: false, valid: false, error: e?.message || 'Loginni almashtirib bo‘lmadi.' }; }
     render();
   }
@@ -1020,11 +1061,10 @@
     if (password !== confirmation) return showToast('Parollar bir xil emas.', 'warning');
     const bytes = credentialPasswordByteLength(password);
     if (Array.from(password).length < 8 || bytes > 72 || !/\p{L}/u.test(password) || !/\p{N}/u.test(password)) return showToast('Parol kamida 8 belgi, ko‘pi bilan 72 bayt bo‘lsin; harf va raqam qatnashsin.', 'warning');
-    if (!(await showConfirm('Oldingi parol va barcha web sessiyalar bekor qilinadi. Davom etasizmi?', { title:'Parolni almashtirish', danger:true, confirmLabel:'Almashtirish' }))) return;
     webCredentialState = { ...webCredentialState, busy:true, error:'', notice:'', issuedPassword:null }; render();
     try {
       const data = await callPlatformApi('platform_set_web_password', { password });
-      webCredentialState = { ...webCredentialState, busy:false, valid:false, credentialExists:true,
+      webCredentialState = { ...webCredentialState, busy:false, valid:false, editing:false, credentialExists:true,
         login:String(data.login || webCredentialState.login || ''), issuedPassword:null,
         notice:'Parol almashtirildi. Eski web sessiyalar bekor qilindi.', error:'' };
     } catch (e) { webCredentialState = { ...webCredentialState, busy:false, valid:false, error:e?.message || 'Parolni almashtirib bo‘lmadi.' }; }
@@ -1034,7 +1074,7 @@
   async function copyWebCredentialPassword() {
     const value = String(webCredentialState.issuedPassword || '');
     if (!value) return;
-    try { await navigator.clipboard.writeText(value); showToast('Parol nusxalandi.', 'success'); }
+    try { if (!await copyCredentialText(value)) throw new Error('clipboard_unavailable'); showToast('Parol nusxalandi.', 'success'); }
     catch (_) { showToast('Nusxalab bo‘lmadi. Parolni qo‘lda belgilang.', 'warning'); }
   }
 
@@ -3200,6 +3240,7 @@
   }
   function openShopDetails(shopId) {
     selectedShopDetails = adminShops.find((s) => s.id === shopId) || null;
+    selectedShopDomains = null;
     openPage('SHOP_DETAILS');
     loadSubscriptionHistory(shopId);
   }
@@ -3335,6 +3376,7 @@
       ['SHOP_SUB_LIFECYCLE', 'lock', "Do'kon holati", statusLabel(s.status)],
       ['SHOP_SUB_ACTIVITY', 'clock', 'Faoliyat tarixi', 'Admin amallari'],
       ['SHOP_SUB_SUPPORT', 'headset', 'Support', "Murojaatlar"],
+      ['SHOP_SUB_DOMAINS', 'shop', 'Domen va manzil', 'Subdomen va shaxsiy domen'],
     ];
     return `
       <section class="plat-shop-detail-hero-pro">
@@ -3357,7 +3399,43 @@
       </div>
     `;
   }
-  function openShopSubScreen(page) { openPage(page); if (page === 'SHOP_SUB_ACTIVITY') loadShopActivity(selectedShopDetails.id); }
+  function openShopSubScreen(page) { openPage(page); if (page === 'SHOP_SUB_ACTIVITY') loadShopActivity(selectedShopDetails.id); if (page === 'SHOP_SUB_DOMAINS') loadPlatformShopDomains(); }
+  async function loadPlatformShopDomains() {
+    const shopId = selectedShopDetails?.id;
+    if (!shopId) return;
+    selectedShopDomainsLoading = true;
+    try {
+      const result = await callPlatformApi('platform_shop_domains', { shopId, domainAction: 'list' });
+      if (selectedShopDetails?.id === shopId) selectedShopDomains = result.items || [];
+    } catch (error) { if (selectedShopDetails?.id === shopId) selectedShopDomains = { error: String(error?.message || 'NETWORK_ERROR') }; }
+    finally { selectedShopDomainsLoading = false; if (selectedShopDetails?.id === shopId && activePage === 'SHOP_SUB_DOMAINS') rerenderActivePage(); }
+  }
+  async function platformShopDomainAction(domainAction, domainId) {
+    const shopId = selectedShopDetails?.id;
+    if (!shopId) return;
+    const payload = { shopId, domainAction, domainId };
+    if (domainAction === 'add') payload.hostname = document.getElementById('plat-custom-domain-input')?.value?.trim();
+    if (domainAction === 'change_slug') payload.slug = document.getElementById('plat-subdomain-input')?.value?.trim();
+    if (domainAction === 'remove' && !(await showConfirm('Bu domen uziladi. Davom etasizmi?'))) return;
+    try {
+      await callPlatformApi('platform_shop_domains', payload);
+      showToast('Domen ma’lumoti yangilandi', 'success');
+      await loadPlatformShopDomains();
+    } catch (error) { showToast(String(error?.message || 'Domen amalida xatolik'), 'error'); }
+  }
+  function renderPlatformShopDomainsBody() {
+    if (selectedShopDomainsLoading && !selectedShopDomains) return '<div class="card">Yuklanmoqda...</div>';
+    if (selectedShopDomains?.error) return `<div class="card">${escapeHtml(selectedShopDomains.error)} <button class="secondary" onclick="loadPlatformShopDomains()">Qayta urinish</button></div>`;
+    const items = Array.isArray(selectedShopDomains) ? selectedShopDomains : [];
+    const sub = items.find(d => d.kind === 'SUBDOMAIN');
+    return `<div class="plat-domain-support">
+      <div class="card"><h2>Subdomen</h2><p>${escapeHtml(sub?.hostname || 'Mavjud emas')}</p><div class="plat-domain-edit"><input id="plat-subdomain-input" value="${escapeHtml(sub?.hostname?.split('.')[0] || '')}" placeholder="yangi-nom"><button class="secondary" onclick="platformShopDomainAction('change_slug')">Almashtirish</button></div></div>
+      <div class="card"><h2>Shaxsiy domen</h2><div class="plat-domain-edit"><input id="plat-custom-domain-input" placeholder="shop.example.uz"><button class="secondary" onclick="platformShopDomainAction('add')">Qo‘shish</button></div></div>
+      ${items.map(d => `<div class="card plat-domain-row"><h3>${escapeHtml(d.hostname)} ${d.isPrimary ? '· asosiy' : ''}</h3><p>Holat: ${escapeHtml(d.status)} · DNS: ${escapeHtml(d.dnsStatus || 'UNKNOWN')} · HTTPS: ${escapeHtml(d.tlsStatus || 'UNKNOWN')}</p>${d.errorCode ? `<p>${escapeHtml(d.errorCode)}</p>` : ''}
+        ${(d.records || []).map(r => `<div class="preview-row"><span>${escapeHtml(r.type)} · ${escapeHtml(r.name)}</span><code>${escapeHtml(r.value)}</code></div>`).join('')}
+        <div class="plat-domain-actions"><button class="secondary" onclick="platformShopDomainAction('verify','${d.id}')">Tekshirish</button>${d.status === 'ACTIVE' && !d.isPrimary ? `<button class="secondary" onclick="platformShopDomainAction('set_primary','${d.id}')">Asosiy qilish</button>` : ''}${d.kind === 'CUSTOM' ? `<button class="secondary" onclick="platformShopDomainAction('remove','${d.id}')">Uzish</button>` : ''}</div></div>`).join('')}
+    </div>`;
+  }
   function renderShopSubscriptionBody() {
     const s = selectedShopDetails;
     if (!s) return '<p class="empty">Do\'kon topilmadi.</p>';
@@ -4907,6 +4985,10 @@
   window.changeWebCredentialLogin = changeWebCredentialLogin;
   window.setWebCredentialPassword = setWebCredentialPassword;
   window.copyWebCredentialPassword = copyWebCredentialPassword;
+  window.copyWebCredentialLogin = copyWebCredentialLogin;
+  window.toggleWebCredentialPassword = toggleWebCredentialPassword;
+  window.openWebCredentialEdit = openWebCredentialEdit;
+  window.closeWebCredentialEdit = closeWebCredentialEdit;
   window.closeWebCredentialFlow = closeWebCredentialFlow;
   window.closePage = closePage;
   window.retryBoot = retryBoot;
@@ -4971,6 +5053,8 @@
   window.openMyShopManage = openMyShopManage;
   window.openShopDetails = openShopDetails;
   window.openShopSubScreen = openShopSubScreen;
+  window.loadPlatformShopDomains = loadPlatformShopDomains;
+  window.platformShopDomainAction = platformShopDomainAction;
   window.openShopDetailsFromDashboard = openShopDetailsFromDashboard;
   window.openRequestsFilteredFromDashboard = openRequestsFilteredFromDashboard;
   window.applyTariffFromShopDetails = applyTariffFromShopDetails;

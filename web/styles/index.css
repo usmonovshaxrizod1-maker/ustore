@@ -2,9 +2,9 @@
 @import url('./document.css');
 @import url('./base.css');
 @import url('./components.css');
-@import url('./shells.css?v=20260929shared1');
+@import url('./shells.css?v=20260930hotfix1');
 
-@import url('./features.css?v=20260929shared1');
+@import url('./features.css?v=20260930hotfix1');
 
 /* The Mini App itself renders every Shop/Platform screen in the browser. */
 .uw-miniapp-host { width: 100%; min-height: 100dvh; margin: 0; padding: 0; }

@@ -1,0 +1,70 @@
+# USTORE — Supabase project config.
+#
+# 3.1-band: shop-api and platform-api both need to accept requests that
+# carry NO Supabase-issued JWT at all — a Telegram webhook call has no
+# concept of Supabase auth, and the frontend's own callApi() calls only
+# ever send the publishable API key (not a JWT either, under Supabase's
+# newer non-JWT publishable-key format). With the default verify_jwt=true,
+# Supabase's gateway would reject both of those BEFORE the request ever
+# reaches our code.
+#
+# This does NOT weaken security: verify_jwt only ever checked "is there a
+# valid Supabase session token", which none of shop-api's real callers ever
+# had to begin with — the actual authorization for every business action
+# was always Telegram initData's HMAC-SHA256 signature (verified inside
+# resolveShopContext(), against a specific shop's decrypted bot token), and
+# for the webhook path it's Telegram's own x-telegram-bot-api-secret-token
+# header (verified against telegramWebhookSecret(botToken)). Both of those
+# checks are unconditional and unaffected by this setting.
+[functions.shop-api]
+verify_jwt = false
+
+[functions.platform-api]
+verify_jwt = false
+
+# billz-sync is invoked by pg_cron (see supabase/BILLZ_CRON_SETUP.sql), which
+# has no Supabase session either — its authorization is the x-cron-secret
+# header, checked against USTORE_BILLZ_CRON_SECRET inside the function itself.
+[functions.billz-sync]
+verify_jwt = false
+
+# platform-subscription-cron — bir xil pg_cron naqshi (qarang
+# supabase/PLATFORM_CRON_SETUP.sql), x-cron-secret USTORE_PLATFORM_CRON_SECRET
+# ga tekshiriladi.
+[functions.platform-subscription-cron]
+verify_jwt = false
+
+# click-webhook — Click.uz'ning Shop API Prepare/Complete so'rovlarini qabul
+# qiladi (docs.click.uz/en/shop-api/requests). Supabase sessiyasi yo'q, x-cron-secret
+# header ham yo'q — Click har bir so'rovni o'zi imzolaydi (sign_string, MD5,
+# shop'ning o'z SECRET_KEY'i bilan), shu imzoning o'zi autentifikatsiya
+# vazifasini bajaradi (tekshiruv click-webhook/index.ts ichida).
+[functions.click-webhook]
+verify_jwt = false
+
+# ROUND14: Trashdagi batchlar 24 soatdan keyin hourly cron orqali purge qilinadi.
+# Auth — mavjud USTORE_PLATFORM_CRON_SECRET x-cron-secret bilan tekshiriladi.
+[functions.trash-purge-cron]
+verify_jwt = false
+
+# payme-webhook — Payme Merchant API JSON-RPC callback'larini qabul qiladi
+# (developer.help.paycom.uz). Auth — Payme har bir so'rovga o'zi Basic Auth
+# header qo'shadi (login:password, payme-webhook/index.ts ichida tekshiriladi).
+[functions.payme-webhook]
+verify_jwt = false
+
+# uzum-webhook — Uzum Checkout "Acquiring Merchant Callback"'ni qabul qiladi
+# (developer.uzumbank.uz/en/checkout/). Tekshiruv uzum-webhook/index.ts
+# ichida (faqat o'zimiz yaratgan, noyob orderId'ga mos tranzaksiya).
+[functions.uzum-webhook]
+verify_jwt = false
+
+# Report PDF cleanup cron — pg_cron has no Supabase user JWT; authorization
+# is the dedicated x-cron-secret checked inside report-export-cleanup-cron.
+[functions.report-export-cleanup-cron]
+verify_jwt = false
+
+# UStorE premium web opaque session auth. Supabase JWT is not used; web-auth
+# validates its own revocable UStoreSession token / password flow server-side.
+[functions.web-auth]
+verify_jwt = false

@@ -306,6 +306,5 @@ textarea.uw-field__control {
 @keyframes uw-launch-dot{0%,60%,100%{opacity:.28;transform:translateY(0) scale(.88)}30%{opacity:1;transform:translateY(-.27rem) scale(1)}}
 .uw-launch__message{margin:.05rem 0 0;font-size:1rem;font-weight:750;color:#334155}.uw-launch__foot{color:#94a3b8;font-size:.78rem;line-height:1.45}
 .uw-launch--shop{background:radial-gradient(circle at 50% 10%,rgb(16 185 129/.11),transparent 22rem),linear-gradient(180deg,#fbfefd 0%,#f5f7fb 100%)}
-.uw-launch--shop[data-await-brand="true"] .uw-launch__inner{visibility:hidden}
 .uw-launch--shop .uw-launch__monogram{background:linear-gradient(145deg,#111827,#059669);box-shadow:0 9px 25px rgb(5 150 105/.18)}.uw-launch--shop .uw-launch__loader span{background:#059669}
 @media(max-width:40rem){.uw-launch{min-height:calc(100dvh - .25rem);padding:.9rem}.uw-launch__inner{border-radius:1.35rem;padding:1.25rem 1rem}.uw-launch__brand{align-items:center}.uw-launch__brand-copy h1{font-size:1.38rem}}

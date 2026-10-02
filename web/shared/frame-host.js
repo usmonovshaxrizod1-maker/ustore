@@ -42,6 +42,10 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   const invoke = async (action, payload) => {
     if (!/^[a-z][a-z0-9_]{0,79}$/.test(String(action || ''))) throw new Error('invalid_action');
     const token = String(runtime.tokenStore.get() || '');
+    if (kind === 'shop' && action === 'boot' && !token) {
+      const cached = runtime.takeGuestBoot?.();
+      if (cached) return { ...cached, botUsername: cached.botUsername || String(tenant?.botUsername || '').replace(/^@/, '') || null };
+    }
     // A visitor can browse public campaigns before signing in. These public
     // projections never contain another customer's private promo codes.
     if (kind === 'shop' && !token && action === 'get_marketing_campaigns') {
@@ -101,7 +105,7 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     if (!message || message.bridge !== BRIDGE || message.kind !== kind) return;
     if (message.type === 'HELLO') {
       ready = true;
-      send({ type: 'INIT', route: lastRoute, botId });
+      send({ type: 'INIT', route: lastRoute, botId, authenticated: !!runtime.tokenStore.get() });
       return;
     }
     if (!ready || message.nonce !== nonce) return;

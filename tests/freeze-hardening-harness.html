@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>USTORE — qotish himoyasi harness</title>
+  <link rel="stylesheet" href="../ustore.css">
+</head>
+<body class="bg-gray-100 text-gray-800 pb-20 font-sans">
+  <!--
+    Bu harness ATAYLAB eng yomon sharoitni yaratadi va ilova SHUNDA HAM ishga
+    tushishini tekshiradi:
+      1. `window.supabase` YO'Q        -> cdn.jsdelivr.net yiqilgan holat
+      2. `window.lucide` YO'Q          -> unpkg.com yiqilgan holat
+      3. localStorage'da BUZUQ JSON    -> telefonda saqlangan savat/qoralama buzilgan holat
+    Bu uch holatning har biri tuzatishdan OLDIN ilovani butunlay o'ldirardi.
+    Natija sahifaning tepasida (#verdict) chiqadi.
+  -->
+  <div id="verdict" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#111;color:#eee;font:12px/1.5 monospace;padding:10px;white-space:pre-wrap"></div>
+
+  <header class="ustore-topbar bg-white sticky top-0 z-40 px-4 py-3 flex items-center justify-between" style="margin-top:120px">
+    <div><img id="header-shop-logo" class="hidden"><span id="header-shop-name" class="hidden"></span><span id="role-tag" class="hidden"></span></div>
+    <div><button id="header-cart-btn"><span id="cart-badge" class="hidden"></span></button><button id="lang-flag-btn">🇺🇿</button><button id="header-person-btn"></button></div>
+    <div id="role-mode-popover" class="hidden fixed z-50"></div>
+  </header>
+  <main id="app-content" class="p-4 max-w-md mx-auto min-h-screen"></main>
+  <div id="global-loader" class="hidden fixed inset-0"><p id="global-loader-text"></p></div>
+  <div id="action-toast" class="hidden" data-state="saving"></div>
+  <nav class="ustore-bottom-nav fixed bottom-0 left-0 right-0 flex">
+    <button id="nav-home"><span id="nav-label-home"></span></button>
+    <button id="nav-categories"><span id="nav-label-categories"></span></button>
+    <button id="nav-cart"><span id="nav-label-cart"></span></button>
+    <button id="nav-orders"><span id="nav-label-orders"></span></button>
+    <button id="nav-warehouse-btn"><span id="nav-label-warehouse"></span></button>
+    <button id="nav-support-btn"><span id="nav-label-support"></span></button>
+    <button id="nav-profile"><span id="nav-label-profile"></span></button>
+  </nav>
+  <div id="page-container" class="hidden fixed inset-0"></div>
+  <div id="modal-container"></div>
+
+  <script>
+    // ---- 1/2: tashqi CDN'lar YIQILGAN holatni simulyatsiya qilamiz ----
+    // (window.supabase va window.lucide ATAYLAB e'lon qilinmaydi)
+    window.__results = { consoleErrors: [], consoleWarns: [] };
+    const origError = console.error.bind(console);
+    const origWarn = console.warn.bind(console);
+    console.error = (...a) => { window.__results.consoleErrors.push(a.map(String).join(' ')); origError(...a); };
+    console.warn = (...a) => { window.__results.consoleWarns.push(a.map(String).join(' ')); origWarn(...a); };
+
+    window.alert = m => { window.__lastAlert = String(m); };
+    window.confirm = () => true;
+    window.Telegram = { WebApp: { initData: 'mock-init-data', initDataUnsafe: { user: { first_name: 'Test' } }, expand() {}, openLink() {} } };
+    window.APP_CONFIG = { SUPABASE_URL: 'https://mock.invalid', SUPABASE_KEY: 'mock-key', IMAGES_BUCKET: 'images' };
+
+    // bot_id bo'lmasa boot() erta to'xtaydi — haqiqiy yo'lni sinash uchun qo'shamiz
+    if (!location.search.includes('bot_id')) {
+      history.replaceState(null, '', location.pathname + '?bot_id=999');
+    }
+
+    // ---- 3: localStorage'ga BUZUQ ma'lumot joylaymiz ----
+    const scope = 'ustore:999:';
+    localStorage.setItem(scope + 'cart', '{buzuq json emas');
+    localStorage.setItem(scope + 'bundleCart', '[1,2,3]');          // to'g'ri JSON, noto'g'ri tur
+    localStorage.setItem(scope + 'registeredUser', '"men matnman"'); // to'g'ri JSON, noto'g'ri tur
+    localStorage.setItem(scope + 'checkoutDraft', '}}}bu ham buzuq');
+    localStorage.setItem(scope + 'catalog_cache_v1', 'yana buzuq{');
+  </script>
+  <script src="../ustore-image-io.js"></script>
+  <script src="../ustore-commerce.js"></script>
+  <script src="../ustore-shop-app.js"></script>
+  <script>
+    // Skript to'liq bajarilganidan keyin natijani hisoblaymiz.
+    setTimeout(() => {
+      const r = window.__results;
+      const checks = [];
+      const ok = (name, pass, detail) => checks.push({ name, pass, detail: detail || '' });
+
+      // ENG MUHIMI: skript oxirigacha bajarildimi? Tuzatishdan oldin
+      // `const sb = supabase.createClient(...)` shu yerga yetmasdan o'ldirardi.
+      ok('ustore-shop-app.js oxirigacha bajarildi (boot mavjud)', typeof boot === 'function');
+      ok('sbClient() lazy funksiya sifatida mavjud', typeof sbClient === 'function');
+      ok('safeCreateIcons() mavjud', typeof safeCreateIcons === 'function');
+      ok('readStoredObject() mavjud', typeof readStoredObject === 'function');
+
+      // Buzuq localStorage standart qiymatga tushdimi (xato bermay)?
+      ok('buzuq cart -> bo\'sh obyekt', typeof cart === 'object' && cart !== null && Object.keys(cart).length === 0, JSON.stringify(cart));
+      ok('noto\'g\'ri turdagi bundleCart -> bo\'sh obyekt', !Array.isArray(bundleCart) && Object.keys(bundleCart).length === 0, JSON.stringify(bundleCart));
+      ok('noto\'g\'ri turdagi registeredUser -> null', registeredUser === null, String(registeredUser));
+      ok('buzuq checkoutDraft -> standart obyekt', !!checkoutDraft && checkoutDraft.regionKey === 'tashkent_city', JSON.stringify(checkoutDraft));
+
+      // lucide yo'q bo'lsa ham ikonalar chizish xato bermaydi.
+      let iconsThrew = false;
+      try { safeCreateIcons(); } catch (e) { iconsThrew = true; }
+      ok('lucide YO\'Q bo\'lsa ham safeCreateIcons() xato bermaydi', !iconsThrew);
+      ok('window.lucide haqiqatan yo\'q (simulyatsiya to\'g\'ri)', typeof window.lucide === 'undefined');
+      ok('window.supabase haqiqatan yo\'q (simulyatsiya to\'g\'ri)', typeof window.supabase === 'undefined');
+
+      // sbClient() SDK yo'qligida tushunarli xato beradi (jimgina o'lmaydi).
+      let sbErr = null;
+      try { sbClient(); } catch (e) { sbErr = e.message; }
+      ok('sbClient() SDK yo\'qligida aniq xato beradi', sbErr === 'supabase_sdk_unavailable', String(sbErr));
+
+      // Buzuq yozuvlar tozalandimi (keyingi safar xalaqit bermasligi uchun)?
+      ok('buzuq cart yozuvi localStorage\'dan tozalandi', localStorage.getItem('ustore:999:cart') === null);
+
+      // Umumiy xato tarmog'i ulandimi va foydalanuvchi biror xabar ko'rdimi?
+      const appContent = document.getElementById('app-content').innerHTML;
+      const showedSomething = appContent.trim().length > 0;
+      ok('foydalanuvchi bo\'sh ekran emas, biror narsa ko\'rdi', showedSomething, appContent.slice(0, 120));
+
+      const failed = checks.filter(c => !c.pass);
+      const el = document.getElementById('verdict');
+      el.style.background = failed.length ? '#7f1d1d' : '#14532d';
+      el.textContent = (failed.length ? `✖ ${failed.length} TEKSHIRUV MUVAFFAQIYATSIZ` : '✔ HAMMA TEKSHIRUV O\'TDI')
+        + ` (${checks.length - failed.length}/${checks.length})\n\n`
+        + checks.map(c => `${c.pass ? '✔' : '✖'} ${c.name}${c.detail ? '  ->  ' + c.detail : ''}`).join('\n')
+        + `\n\nconsole.error: ${r.consoleErrors.length}, console.warn: ${r.consoleWarns.length}`;
+      window.__verdict = { total: checks.length, failed: failed.length, checks };
+    }, 1500);
+  </script>
+</body>
+</html>

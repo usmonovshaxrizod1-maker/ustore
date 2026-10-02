@@ -1,0 +1,2440 @@
+{
+  "library": "ustore-category-icon-library",
+  "version": "phase-01",
+  "total_icons_in_phase": 88,
+  "groups": [
+    "accessories",
+    "apparel",
+    "bags",
+    "beauty",
+    "care",
+    "fitness",
+    "health",
+    "jewelry",
+    "shoes",
+    "supplements",
+    "underwear"
+  ],
+  "notes": {
+    "type": "custom scalable SVG category icon base",
+    "render": "SVG symbol sprite",
+    "color": "currentColor",
+    "fixed_size": false
+  },
+  "icons": [
+    {
+      "id": "apparel_tshirt",
+      "group": "apparel",
+      "uz": "Futbolka",
+      "ru": "Футболка",
+      "en": "T-shirt",
+      "aliases_uz": [
+        "futbolka",
+        "t-shirt"
+      ],
+      "aliases_ru": [
+        "футболка"
+      ],
+      "aliases_en": [
+        "t-shirt"
+      ],
+      "search_terms": [
+        "futbolka",
+        "t-shirt",
+        "футболка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_tshirt",
+      "source_icon": "shirt"
+    },
+    {
+      "id": "apparel_polo",
+      "group": "apparel",
+      "uz": "Polo",
+      "ru": "Поло",
+      "en": "Polo shirt",
+      "aliases_uz": [
+        "polo",
+        "polo shirt"
+      ],
+      "aliases_ru": [
+        "поло"
+      ],
+      "aliases_en": [
+        "polo shirt"
+      ],
+      "search_terms": [
+        "polo",
+        "polo shirt",
+        "поло"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_polo",
+      "source_icon": "shirt"
+    },
+    {
+      "id": "apparel_shirt_men",
+      "group": "apparel",
+      "uz": "Erkaklar ko‘ylagi",
+      "ru": "Мужская рубашка",
+      "en": "Men's shirt",
+      "aliases_uz": [
+        "erkaklar ko‘ylagi",
+        "men's shirt"
+      ],
+      "aliases_ru": [
+        "мужская рубашка"
+      ],
+      "aliases_en": [
+        "men's shirt"
+      ],
+      "search_terms": [
+        "erkaklar ko‘ylagi",
+        "men's shirt",
+        "мужская рубашка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_shirt_men",
+      "source_icon": "shirt"
+    },
+    {
+      "id": "apparel_blouse_women",
+      "group": "apparel",
+      "uz": "Ayollar bluzkasi",
+      "ru": "Женская блузка",
+      "en": "Women's blouse",
+      "aliases_uz": [
+        "ayollar bluzkasi",
+        "women's blouse"
+      ],
+      "aliases_ru": [
+        "женская блузка"
+      ],
+      "aliases_en": [
+        "women's blouse"
+      ],
+      "search_terms": [
+        "ayollar bluzkasi",
+        "women's blouse",
+        "женская блузка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_blouse_women",
+      "source_icon": "shirt"
+    },
+    {
+      "id": "apparel_dress_women",
+      "group": "apparel",
+      "uz": "Ayollar ko‘ylagi",
+      "ru": "Женское платье",
+      "en": "Women's dress",
+      "aliases_uz": [
+        "ayollar ko‘ylagi",
+        "women's dress"
+      ],
+      "aliases_ru": [
+        "женское платье"
+      ],
+      "aliases_en": [
+        "women's dress"
+      ],
+      "search_terms": [
+        "ayollar ko‘ylagi",
+        "women's dress",
+        "женское платье"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_dress_women",
+      "source_icon": "person-dress"
+    },
+    {
+      "id": "apparel_skirt",
+      "group": "apparel",
+      "uz": "Yubka",
+      "ru": "Юбка",
+      "en": "Skirt",
+      "aliases_uz": [
+        "yubka",
+        "skirt"
+      ],
+      "aliases_ru": [
+        "юбка"
+      ],
+      "aliases_en": [
+        "skirt"
+      ],
+      "search_terms": [
+        "yubka",
+        "skirt",
+        "юбка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_skirt",
+      "source_icon": "person-dress"
+    },
+    {
+      "id": "apparel_pants",
+      "group": "apparel",
+      "uz": "Shim",
+      "ru": "Брюки",
+      "en": "Pants",
+      "aliases_uz": [
+        "shim",
+        "pants"
+      ],
+      "aliases_ru": [
+        "брюки"
+      ],
+      "aliases_en": [
+        "pants"
+      ],
+      "search_terms": [
+        "shim",
+        "pants",
+        "брюки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_pants",
+      "source_icon": "person"
+    },
+    {
+      "id": "apparel_jeans",
+      "group": "apparel",
+      "uz": "Jinsi",
+      "ru": "Джинсы",
+      "en": "Jeans",
+      "aliases_uz": [
+        "jinsi",
+        "jeans"
+      ],
+      "aliases_ru": [
+        "джинсы"
+      ],
+      "aliases_en": [
+        "jeans"
+      ],
+      "search_terms": [
+        "jinsi",
+        "jeans",
+        "джинсы"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_jeans",
+      "source_icon": "person"
+    },
+    {
+      "id": "apparel_shorts",
+      "group": "apparel",
+      "uz": "Shortik",
+      "ru": "Шорты",
+      "en": "Shorts",
+      "aliases_uz": [
+        "shortik",
+        "shorts"
+      ],
+      "aliases_ru": [
+        "шорты"
+      ],
+      "aliases_en": [
+        "shorts"
+      ],
+      "search_terms": [
+        "shortik",
+        "shorts",
+        "шорты"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_shorts",
+      "source_icon": "person-running"
+    },
+    {
+      "id": "apparel_hoodie",
+      "group": "apparel",
+      "uz": "Hudi",
+      "ru": "Худи",
+      "en": "Hoodie",
+      "aliases_uz": [
+        "hudi",
+        "hoodie"
+      ],
+      "aliases_ru": [
+        "худи"
+      ],
+      "aliases_en": [
+        "hoodie"
+      ],
+      "search_terms": [
+        "hudi",
+        "hoodie",
+        "худи"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_hoodie",
+      "source_icon": "shirt"
+    },
+    {
+      "id": "apparel_sweater",
+      "group": "apparel",
+      "uz": "Sviter",
+      "ru": "Свитер",
+      "en": "Sweater",
+      "aliases_uz": [
+        "sviter",
+        "sweater"
+      ],
+      "aliases_ru": [
+        "свитер"
+      ],
+      "aliases_en": [
+        "sweater"
+      ],
+      "search_terms": [
+        "sviter",
+        "sweater",
+        "свитер"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_sweater",
+      "source_icon": "shirt"
+    },
+    {
+      "id": "apparel_jacket",
+      "group": "apparel",
+      "uz": "Kurtka",
+      "ru": "Куртка",
+      "en": "Jacket",
+      "aliases_uz": [
+        "kurtka",
+        "jacket"
+      ],
+      "aliases_ru": [
+        "куртка"
+      ],
+      "aliases_en": [
+        "jacket"
+      ],
+      "search_terms": [
+        "kurtka",
+        "jacket",
+        "куртка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_jacket",
+      "source_icon": "vest"
+    },
+    {
+      "id": "apparel_coat",
+      "group": "apparel",
+      "uz": "Palto",
+      "ru": "Пальто",
+      "en": "Coat",
+      "aliases_uz": [
+        "palto",
+        "coat"
+      ],
+      "aliases_ru": [
+        "пальто"
+      ],
+      "aliases_en": [
+        "coat"
+      ],
+      "search_terms": [
+        "palto",
+        "coat",
+        "пальто"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_coat",
+      "source_icon": "vest"
+    },
+    {
+      "id": "apparel_suit",
+      "group": "apparel",
+      "uz": "Kostyum",
+      "ru": "Костюм",
+      "en": "Suit",
+      "aliases_uz": [
+        "kostyum",
+        "suit"
+      ],
+      "aliases_ru": [
+        "костюм"
+      ],
+      "aliases_en": [
+        "suit"
+      ],
+      "search_terms": [
+        "kostyum",
+        "suit",
+        "костюм"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_suit",
+      "source_icon": "user-tie"
+    },
+    {
+      "id": "apparel_sportswear",
+      "group": "apparel",
+      "uz": "Sport kiyimi",
+      "ru": "Спортивная одежда",
+      "en": "Sportswear",
+      "aliases_uz": [
+        "sport kiyimi",
+        "sportswear"
+      ],
+      "aliases_ru": [
+        "спортивная одежда"
+      ],
+      "aliases_en": [
+        "sportswear"
+      ],
+      "search_terms": [
+        "sport kiyimi",
+        "sportswear",
+        "спортивная одежда"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_sportswear",
+      "source_icon": "person-running"
+    },
+    {
+      "id": "apparel_swimwear",
+      "group": "apparel",
+      "uz": "Suzish kiyimi",
+      "ru": "Купальник / плавки",
+      "en": "Swimwear",
+      "aliases_uz": [
+        "suzish kiyimi",
+        "swimwear"
+      ],
+      "aliases_ru": [
+        "купальник",
+        "плавки"
+      ],
+      "aliases_en": [
+        "swimwear"
+      ],
+      "search_terms": [
+        "suzish kiyimi",
+        "swimwear",
+        "купальник",
+        "плавки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_swimwear",
+      "source_icon": "person-swimming"
+    },
+    {
+      "id": "apparel_sleepwear",
+      "group": "apparel",
+      "uz": "Pijama / uy kiyimi",
+      "ru": "Пижама / домашняя одежда",
+      "en": "Sleepwear / homewear",
+      "aliases_uz": [
+        "pijama",
+        "uy kiyimi",
+        "sleepwear",
+        "homewear"
+      ],
+      "aliases_ru": [
+        "пижама",
+        "домашняя одежда"
+      ],
+      "aliases_en": [
+        "sleepwear",
+        "homewear"
+      ],
+      "search_terms": [
+        "pijama",
+        "uy kiyimi",
+        "sleepwear",
+        "homewear",
+        "пижама",
+        "домашняя одежда"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_sleepwear",
+      "source_icon": "bed"
+    },
+    {
+      "id": "apparel_workwear",
+      "group": "apparel",
+      "uz": "Ish kiyimi",
+      "ru": "Рабочая одежда",
+      "en": "Workwear",
+      "aliases_uz": [
+        "ish kiyimi",
+        "workwear"
+      ],
+      "aliases_ru": [
+        "рабочая одежда"
+      ],
+      "aliases_en": [
+        "workwear"
+      ],
+      "search_terms": [
+        "ish kiyimi",
+        "workwear",
+        "рабочая одежда"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "apparel_workwear",
+      "source_icon": "person-digging"
+    },
+    {
+      "id": "underwear_women",
+      "group": "underwear",
+      "uz": "Ayollar ichki kiyimi",
+      "ru": "Женское нижнее бельё",
+      "en": "Women's underwear",
+      "aliases_uz": [
+        "ayollar ichki kiyimi",
+        "women's underwear"
+      ],
+      "aliases_ru": [
+        "женское нижнее бельё"
+      ],
+      "aliases_en": [
+        "women's underwear"
+      ],
+      "search_terms": [
+        "ayollar ichki kiyimi",
+        "women's underwear",
+        "женское нижнее бельё"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "underwear_women",
+      "source_icon": "person-dress"
+    },
+    {
+      "id": "underwear_bra",
+      "group": "underwear",
+      "uz": "Lifchik",
+      "ru": "Бюстгальтер",
+      "en": "Bra",
+      "aliases_uz": [
+        "lifchik",
+        "bra"
+      ],
+      "aliases_ru": [
+        "бюстгальтер"
+      ],
+      "aliases_en": [
+        "bra"
+      ],
+      "search_terms": [
+        "lifchik",
+        "bra",
+        "бюстгальтер"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "underwear_bra",
+      "source_icon": "heart"
+    },
+    {
+      "id": "underwear_panties",
+      "group": "underwear",
+      "uz": "Ayollar trusigi",
+      "ru": "Женские трусы",
+      "en": "Women's panties",
+      "aliases_uz": [
+        "ayollar trusigi",
+        "women's panties"
+      ],
+      "aliases_ru": [
+        "женские трусы"
+      ],
+      "aliases_en": [
+        "women's panties"
+      ],
+      "search_terms": [
+        "ayollar trusigi",
+        "women's panties",
+        "женские трусы"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "underwear_panties",
+      "source_icon": "person-dress"
+    },
+    {
+      "id": "underwear_men",
+      "group": "underwear",
+      "uz": "Erkaklar ichki kiyimi",
+      "ru": "Мужское нижнее бельё",
+      "en": "Men's underwear",
+      "aliases_uz": [
+        "erkaklar ichki kiyimi",
+        "men's underwear"
+      ],
+      "aliases_ru": [
+        "мужское нижнее бельё"
+      ],
+      "aliases_en": [
+        "men's underwear"
+      ],
+      "search_terms": [
+        "erkaklar ichki kiyimi",
+        "men's underwear",
+        "мужское нижнее бельё"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "underwear_men",
+      "source_icon": "vest"
+    },
+    {
+      "id": "underwear_undershirt",
+      "group": "underwear",
+      "uz": "Mayka / ichki mayka",
+      "ru": "Майка / нательное бельё",
+      "en": "Undershirt",
+      "aliases_uz": [
+        "mayka",
+        "ichki mayka",
+        "undershirt"
+      ],
+      "aliases_ru": [
+        "майка",
+        "нательное бельё"
+      ],
+      "aliases_en": [
+        "undershirt"
+      ],
+      "search_terms": [
+        "mayka",
+        "ichki mayka",
+        "undershirt",
+        "майка",
+        "нательное бельё"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "underwear_undershirt",
+      "source_icon": "shirt"
+    },
+    {
+      "id": "underwear_socks",
+      "group": "underwear",
+      "uz": "Paypoq",
+      "ru": "Носки",
+      "en": "Socks",
+      "aliases_uz": [
+        "paypoq",
+        "socks"
+      ],
+      "aliases_ru": [
+        "носки"
+      ],
+      "aliases_en": [
+        "socks"
+      ],
+      "search_terms": [
+        "paypoq",
+        "socks",
+        "носки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "underwear_socks",
+      "source_icon": "socks"
+    },
+    {
+      "id": "underwear_tights",
+      "group": "underwear",
+      "uz": "Kolgotka",
+      "ru": "Колготки",
+      "en": "Tights",
+      "aliases_uz": [
+        "kolgotka",
+        "tights"
+      ],
+      "aliases_ru": [
+        "колготки"
+      ],
+      "aliases_en": [
+        "tights"
+      ],
+      "search_terms": [
+        "kolgotka",
+        "tights",
+        "колготки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "underwear_tights",
+      "source_icon": "person-dress"
+    },
+    {
+      "id": "shoes_sneakers",
+      "group": "shoes",
+      "uz": "Krossovka",
+      "ru": "Кроссовки",
+      "en": "Sneakers",
+      "aliases_uz": [
+        "krossovka",
+        "sneakers"
+      ],
+      "aliases_ru": [
+        "кроссовки"
+      ],
+      "aliases_en": [
+        "sneakers"
+      ],
+      "search_terms": [
+        "krossovka",
+        "sneakers",
+        "кроссовки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "shoes_sneakers",
+      "source_icon": "shoe-prints"
+    },
+    {
+      "id": "shoes_formal",
+      "group": "shoes",
+      "uz": "Klassik tufli",
+      "ru": "Классические туфли",
+      "en": "Formal shoes",
+      "aliases_uz": [
+        "klassik tufli",
+        "formal shoes"
+      ],
+      "aliases_ru": [
+        "классические туфли"
+      ],
+      "aliases_en": [
+        "formal shoes"
+      ],
+      "search_terms": [
+        "klassik tufli",
+        "formal shoes",
+        "классические туфли"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "shoes_formal",
+      "source_icon": "shoe-prints"
+    },
+    {
+      "id": "shoes_heels",
+      "group": "shoes",
+      "uz": "Ayollar tuflisi",
+      "ru": "Женские туфли / каблуки",
+      "en": "Heels",
+      "aliases_uz": [
+        "ayollar tuflisi",
+        "heels"
+      ],
+      "aliases_ru": [
+        "женские туфли",
+        "каблуки"
+      ],
+      "aliases_en": [
+        "heels"
+      ],
+      "search_terms": [
+        "ayollar tuflisi",
+        "heels",
+        "женские туфли",
+        "каблуки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "shoes_heels",
+      "source_icon": "person-dress"
+    },
+    {
+      "id": "shoes_boots",
+      "group": "shoes",
+      "uz": "Etik / botinka",
+      "ru": "Сапоги / ботинки",
+      "en": "Boots",
+      "aliases_uz": [
+        "etik",
+        "botinka",
+        "boots"
+      ],
+      "aliases_ru": [
+        "сапоги",
+        "ботинки"
+      ],
+      "aliases_en": [
+        "boots"
+      ],
+      "search_terms": [
+        "etik",
+        "botinka",
+        "boots",
+        "сапоги",
+        "ботинки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "shoes_boots",
+      "source_icon": "shoe-prints"
+    },
+    {
+      "id": "shoes_sandals",
+      "group": "shoes",
+      "uz": "Sandal / bosonojka",
+      "ru": "Сандалии / босоножки",
+      "en": "Sandals",
+      "aliases_uz": [
+        "sandal",
+        "bosonojka",
+        "sandals"
+      ],
+      "aliases_ru": [
+        "сандалии",
+        "босоножки"
+      ],
+      "aliases_en": [
+        "sandals"
+      ],
+      "search_terms": [
+        "sandal",
+        "bosonojka",
+        "sandals",
+        "сандалии",
+        "босоножки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "shoes_sandals",
+      "source_icon": "shoe-prints"
+    },
+    {
+      "id": "shoes_slippers",
+      "group": "shoes",
+      "uz": "Shippak",
+      "ru": "Тапочки / шлёпанцы",
+      "en": "Slippers / flip-flops",
+      "aliases_uz": [
+        "shippak",
+        "slippers",
+        "flip-flops"
+      ],
+      "aliases_ru": [
+        "тапочки",
+        "шлёпанцы"
+      ],
+      "aliases_en": [
+        "slippers",
+        "flip-flops"
+      ],
+      "search_terms": [
+        "shippak",
+        "slippers",
+        "flip-flops",
+        "тапочки",
+        "шлёпанцы"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "shoes_slippers",
+      "source_icon": "shoe-prints"
+    },
+    {
+      "id": "shoes_kids",
+      "group": "shoes",
+      "uz": "Bolalar poyabzali",
+      "ru": "Детская обувь",
+      "en": "Kids shoes",
+      "aliases_uz": [
+        "bolalar poyabzali",
+        "kids shoes"
+      ],
+      "aliases_ru": [
+        "детская обувь"
+      ],
+      "aliases_en": [
+        "kids shoes"
+      ],
+      "search_terms": [
+        "bolalar poyabzali",
+        "kids shoes",
+        "детская обувь"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "shoes_kids",
+      "source_icon": "child"
+    },
+    {
+      "id": "shoes_sportspecific",
+      "group": "shoes",
+      "uz": "Sport poyabzali",
+      "ru": "Спортивная обувь",
+      "en": "Sports shoes",
+      "aliases_uz": [
+        "sport poyabzali",
+        "sports shoes"
+      ],
+      "aliases_ru": [
+        "спортивная обувь"
+      ],
+      "aliases_en": [
+        "sports shoes"
+      ],
+      "search_terms": [
+        "sport poyabzali",
+        "sports shoes",
+        "спортивная обувь"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "shoes_sportspecific",
+      "source_icon": "person-running"
+    },
+    {
+      "id": "bags_handbag",
+      "group": "bags",
+      "uz": "Sumka",
+      "ru": "Сумка",
+      "en": "Handbag",
+      "aliases_uz": [
+        "sumka",
+        "handbag"
+      ],
+      "aliases_ru": [
+        "сумка"
+      ],
+      "aliases_en": [
+        "handbag"
+      ],
+      "search_terms": [
+        "sumka",
+        "handbag",
+        "сумка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "bags_handbag",
+      "source_icon": "bag-shopping"
+    },
+    {
+      "id": "bags_backpack",
+      "group": "bags",
+      "uz": "Ryukzak",
+      "ru": "Рюкзак",
+      "en": "Backpack",
+      "aliases_uz": [
+        "ryukzak",
+        "backpack"
+      ],
+      "aliases_ru": [
+        "рюкзак"
+      ],
+      "aliases_en": [
+        "backpack"
+      ],
+      "search_terms": [
+        "ryukzak",
+        "backpack",
+        "рюкзак"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "bags_backpack",
+      "source_icon": "bag-shopping"
+    },
+    {
+      "id": "bags_wallet",
+      "group": "bags",
+      "uz": "Hamyon",
+      "ru": "Кошелёк",
+      "en": "Wallet",
+      "aliases_uz": [
+        "hamyon",
+        "wallet"
+      ],
+      "aliases_ru": [
+        "кошелёк"
+      ],
+      "aliases_en": [
+        "wallet"
+      ],
+      "search_terms": [
+        "hamyon",
+        "wallet",
+        "кошелёк"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "bags_wallet",
+      "source_icon": "wallet"
+    },
+    {
+      "id": "acc_belt",
+      "group": "accessories",
+      "uz": "Kamar",
+      "ru": "Ремень",
+      "en": "Belt",
+      "aliases_uz": [
+        "kamar",
+        "belt"
+      ],
+      "aliases_ru": [
+        "ремень"
+      ],
+      "aliases_en": [
+        "belt"
+      ],
+      "search_terms": [
+        "kamar",
+        "belt",
+        "ремень"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "acc_belt",
+      "source_icon": "link"
+    },
+    {
+      "id": "acc_glasses",
+      "group": "accessories",
+      "uz": "Ko‘zoynak",
+      "ru": "Очки",
+      "en": "Glasses",
+      "aliases_uz": [
+        "ko‘zoynak",
+        "glasses"
+      ],
+      "aliases_ru": [
+        "очки"
+      ],
+      "aliases_en": [
+        "glasses"
+      ],
+      "search_terms": [
+        "ko‘zoynak",
+        "glasses",
+        "очки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "acc_glasses",
+      "source_icon": "glasses"
+    },
+    {
+      "id": "acc_hat",
+      "group": "accessories",
+      "uz": "Bosh kiyim",
+      "ru": "Головной убор",
+      "en": "Hat / cap",
+      "aliases_uz": [
+        "bosh kiyim",
+        "hat",
+        "cap"
+      ],
+      "aliases_ru": [
+        "головной убор"
+      ],
+      "aliases_en": [
+        "hat",
+        "cap"
+      ],
+      "search_terms": [
+        "bosh kiyim",
+        "hat",
+        "cap",
+        "головной убор"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "acc_hat",
+      "source_icon": "hat-cowboy"
+    },
+    {
+      "id": "acc_scarf",
+      "group": "accessories",
+      "uz": "Sharf",
+      "ru": "Шарф",
+      "en": "Scarf",
+      "aliases_uz": [
+        "sharf",
+        "scarf"
+      ],
+      "aliases_ru": [
+        "шарф"
+      ],
+      "aliases_en": [
+        "scarf"
+      ],
+      "search_terms": [
+        "sharf",
+        "scarf",
+        "шарф"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "acc_scarf",
+      "source_icon": "link"
+    },
+    {
+      "id": "acc_gloves",
+      "group": "accessories",
+      "uz": "Qo‘lqop",
+      "ru": "Перчатки",
+      "en": "Gloves",
+      "aliases_uz": [
+        "qo‘lqop",
+        "gloves"
+      ],
+      "aliases_ru": [
+        "перчатки"
+      ],
+      "aliases_en": [
+        "gloves"
+      ],
+      "search_terms": [
+        "qo‘lqop",
+        "gloves",
+        "перчатки"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "acc_gloves",
+      "source_icon": "mitten"
+    },
+    {
+      "id": "acc_umbrella",
+      "group": "accessories",
+      "uz": "Soyabon",
+      "ru": "Зонт",
+      "en": "Umbrella",
+      "aliases_uz": [
+        "soyabon",
+        "umbrella"
+      ],
+      "aliases_ru": [
+        "зонт"
+      ],
+      "aliases_en": [
+        "umbrella"
+      ],
+      "search_terms": [
+        "soyabon",
+        "umbrella",
+        "зонт"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "acc_umbrella",
+      "source_icon": "umbrella"
+    },
+    {
+      "id": "jewel_watch",
+      "group": "jewelry",
+      "uz": "Qo‘l soati",
+      "ru": "Наручные часы",
+      "en": "Wristwatch",
+      "aliases_uz": [
+        "qo‘l soati",
+        "wristwatch"
+      ],
+      "aliases_ru": [
+        "наручные часы"
+      ],
+      "aliases_en": [
+        "wristwatch"
+      ],
+      "search_terms": [
+        "qo‘l soati",
+        "wristwatch",
+        "наручные часы"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "jewel_watch",
+      "source_icon": "clock"
+    },
+    {
+      "id": "jewel_smartwatch",
+      "group": "jewelry",
+      "uz": "Smart soat",
+      "ru": "Смарт-часы",
+      "en": "Smartwatch",
+      "aliases_uz": [
+        "smart soat",
+        "smartwatch"
+      ],
+      "aliases_ru": [
+        "смарт-часы"
+      ],
+      "aliases_en": [
+        "smartwatch"
+      ],
+      "search_terms": [
+        "smart soat",
+        "smartwatch",
+        "смарт-часы"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "jewel_smartwatch",
+      "source_icon": "stopwatch"
+    },
+    {
+      "id": "jewel_ring",
+      "group": "jewelry",
+      "uz": "Uzuk",
+      "ru": "Кольцо",
+      "en": "Ring",
+      "aliases_uz": [
+        "uzuk",
+        "ring"
+      ],
+      "aliases_ru": [
+        "кольцо"
+      ],
+      "aliases_en": [
+        "ring"
+      ],
+      "search_terms": [
+        "uzuk",
+        "ring",
+        "кольцо"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "jewel_ring",
+      "source_icon": "ring"
+    },
+    {
+      "id": "jewel_earrings",
+      "group": "jewelry",
+      "uz": "Sirg‘a",
+      "ru": "Серьги",
+      "en": "Earrings",
+      "aliases_uz": [
+        "sirg‘a",
+        "earrings"
+      ],
+      "aliases_ru": [
+        "серьги"
+      ],
+      "aliases_en": [
+        "earrings"
+      ],
+      "search_terms": [
+        "sirg‘a",
+        "earrings",
+        "серьги"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "jewel_earrings",
+      "source_icon": "gem"
+    },
+    {
+      "id": "jewel_necklace",
+      "group": "jewelry",
+      "uz": "Marjon / zanjir",
+      "ru": "Ожерелье / цепочка",
+      "en": "Necklace / chain",
+      "aliases_uz": [
+        "marjon",
+        "zanjir",
+        "necklace",
+        "chain"
+      ],
+      "aliases_ru": [
+        "ожерелье",
+        "цепочка"
+      ],
+      "aliases_en": [
+        "necklace",
+        "chain"
+      ],
+      "search_terms": [
+        "marjon",
+        "zanjir",
+        "necklace",
+        "chain",
+        "ожерелье",
+        "цепочка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "jewel_necklace",
+      "source_icon": "link"
+    },
+    {
+      "id": "jewel_bracelet",
+      "group": "jewelry",
+      "uz": "Bilaguzuk",
+      "ru": "Браслет",
+      "en": "Bracelet",
+      "aliases_uz": [
+        "bilaguzuk",
+        "bracelet"
+      ],
+      "aliases_ru": [
+        "браслет"
+      ],
+      "aliases_en": [
+        "bracelet"
+      ],
+      "search_terms": [
+        "bilaguzuk",
+        "bracelet",
+        "браслет"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "jewel_bracelet",
+      "source_icon": "link"
+    },
+    {
+      "id": "beauty_lipstick",
+      "group": "beauty",
+      "uz": "Lab bo‘yog‘i",
+      "ru": "Помада",
+      "en": "Lipstick",
+      "aliases_uz": [
+        "lab bo‘yog‘i",
+        "lipstick"
+      ],
+      "aliases_ru": [
+        "помада"
+      ],
+      "aliases_en": [
+        "lipstick"
+      ],
+      "search_terms": [
+        "lab bo‘yog‘i",
+        "lipstick",
+        "помада"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "beauty_lipstick",
+      "source_icon": "spray-can-sparkles"
+    },
+    {
+      "id": "beauty_foundation",
+      "group": "beauty",
+      "uz": "Tonal krem",
+      "ru": "Тональный крем",
+      "en": "Foundation",
+      "aliases_uz": [
+        "tonal krem",
+        "foundation"
+      ],
+      "aliases_ru": [
+        "тональный крем"
+      ],
+      "aliases_en": [
+        "foundation"
+      ],
+      "search_terms": [
+        "tonal krem",
+        "foundation",
+        "тональный крем"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "beauty_foundation",
+      "source_icon": "pump-soap"
+    },
+    {
+      "id": "beauty_powder",
+      "group": "beauty",
+      "uz": "Pudra",
+      "ru": "Пудра",
+      "en": "Powder",
+      "aliases_uz": [
+        "pudra",
+        "powder"
+      ],
+      "aliases_ru": [
+        "пудра"
+      ],
+      "aliases_en": [
+        "powder"
+      ],
+      "search_terms": [
+        "pudra",
+        "powder",
+        "пудра"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "beauty_powder",
+      "source_icon": "circle"
+    },
+    {
+      "id": "beauty_mascara",
+      "group": "beauty",
+      "uz": "Maskara",
+      "ru": "Тушь",
+      "en": "Mascara",
+      "aliases_uz": [
+        "maskara",
+        "mascara"
+      ],
+      "aliases_ru": [
+        "тушь"
+      ],
+      "aliases_en": [
+        "mascara"
+      ],
+      "search_terms": [
+        "maskara",
+        "mascara",
+        "тушь"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "beauty_mascara",
+      "source_icon": "wand-magic-sparkles"
+    },
+    {
+      "id": "beauty_eyeshadow",
+      "group": "beauty",
+      "uz": "Ko‘z bo‘yog‘i",
+      "ru": "Тени для век",
+      "en": "Eyeshadow",
+      "aliases_uz": [
+        "ko‘z bo‘yog‘i",
+        "eyeshadow"
+      ],
+      "aliases_ru": [
+        "тени для век"
+      ],
+      "aliases_en": [
+        "eyeshadow"
+      ],
+      "search_terms": [
+        "ko‘z bo‘yog‘i",
+        "eyeshadow",
+        "тени для век"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "beauty_eyeshadow",
+      "source_icon": "eye"
+    },
+    {
+      "id": "beauty_nails",
+      "group": "beauty",
+      "uz": "Lak / tirnoq parvarishi",
+      "ru": "Лак / уход за ногтями",
+      "en": "Nail care",
+      "aliases_uz": [
+        "lak",
+        "tirnoq parvarishi",
+        "nail care"
+      ],
+      "aliases_ru": [
+        "лак",
+        "уход за ногтями"
+      ],
+      "aliases_en": [
+        "nail care"
+      ],
+      "search_terms": [
+        "lak",
+        "tirnoq parvarishi",
+        "nail care",
+        "лак",
+        "уход за ногтями"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "beauty_nails",
+      "source_icon": "hand-sparkles"
+    },
+    {
+      "id": "beauty_perfume",
+      "group": "beauty",
+      "uz": "Atir",
+      "ru": "Парфюм",
+      "en": "Perfume",
+      "aliases_uz": [
+        "atir",
+        "perfume"
+      ],
+      "aliases_ru": [
+        "парфюм"
+      ],
+      "aliases_en": [
+        "perfume"
+      ],
+      "search_terms": [
+        "atir",
+        "perfume",
+        "парфюм"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "beauty_perfume",
+      "source_icon": "spray-can-sparkles"
+    },
+    {
+      "id": "beauty_brushes",
+      "group": "beauty",
+      "uz": "Kosmetika cho‘tkasi",
+      "ru": "Кисти для макияжа",
+      "en": "Makeup brushes",
+      "aliases_uz": [
+        "kosmetika cho‘tkasi",
+        "makeup brushes"
+      ],
+      "aliases_ru": [
+        "кисти для макияжа"
+      ],
+      "aliases_en": [
+        "makeup brushes"
+      ],
+      "search_terms": [
+        "kosmetika cho‘tkasi",
+        "makeup brushes",
+        "кисти для макияжа"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "beauty_brushes",
+      "source_icon": "paintbrush"
+    },
+    {
+      "id": "care_shampoo",
+      "group": "care",
+      "uz": "Shampun",
+      "ru": "Шампунь",
+      "en": "Shampoo",
+      "aliases_uz": [
+        "shampun",
+        "shampoo"
+      ],
+      "aliases_ru": [
+        "шампунь"
+      ],
+      "aliases_en": [
+        "shampoo"
+      ],
+      "search_terms": [
+        "shampun",
+        "shampoo",
+        "шампунь"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "care_shampoo",
+      "source_icon": "bottle-droplet"
+    },
+    {
+      "id": "care_hair",
+      "group": "care",
+      "uz": "Soch parvarishi",
+      "ru": "Уход за волосами",
+      "en": "Hair care",
+      "aliases_uz": [
+        "soch parvarishi",
+        "hair care"
+      ],
+      "aliases_ru": [
+        "уход за волосами"
+      ],
+      "aliases_en": [
+        "hair care"
+      ],
+      "search_terms": [
+        "soch parvarishi",
+        "hair care",
+        "уход за волосами"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "care_hair",
+      "source_icon": "scissors"
+    },
+    {
+      "id": "care_face",
+      "group": "care",
+      "uz": "Yuz parvarishi",
+      "ru": "Уход за лицом",
+      "en": "Face care",
+      "aliases_uz": [
+        "yuz parvarishi",
+        "face care"
+      ],
+      "aliases_ru": [
+        "уход за лицом"
+      ],
+      "aliases_en": [
+        "face care"
+      ],
+      "search_terms": [
+        "yuz parvarishi",
+        "face care",
+        "уход за лицом"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "care_face",
+      "source_icon": "face-smile"
+    },
+    {
+      "id": "care_body",
+      "group": "care",
+      "uz": "Tana parvarishi",
+      "ru": "Уход за телом",
+      "en": "Body care",
+      "aliases_uz": [
+        "tana parvarishi",
+        "body care"
+      ],
+      "aliases_ru": [
+        "уход за телом"
+      ],
+      "aliases_en": [
+        "body care"
+      ],
+      "search_terms": [
+        "tana parvarishi",
+        "body care",
+        "уход за телом"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "care_body",
+      "source_icon": "person"
+    },
+    {
+      "id": "care_soap",
+      "group": "care",
+      "uz": "Sovun",
+      "ru": "Мыло",
+      "en": "Soap",
+      "aliases_uz": [
+        "sovun",
+        "soap"
+      ],
+      "aliases_ru": [
+        "мыло"
+      ],
+      "aliases_en": [
+        "soap"
+      ],
+      "search_terms": [
+        "sovun",
+        "soap",
+        "мыло"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "care_soap",
+      "source_icon": "soap"
+    },
+    {
+      "id": "care_oral",
+      "group": "care",
+      "uz": "Tish parvarishi",
+      "ru": "Уход за зубами",
+      "en": "Oral care",
+      "aliases_uz": [
+        "tish parvarishi",
+        "oral care"
+      ],
+      "aliases_ru": [
+        "уход за зубами"
+      ],
+      "aliases_en": [
+        "oral care"
+      ],
+      "search_terms": [
+        "tish parvarishi",
+        "oral care",
+        "уход за зубами"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "care_oral",
+      "source_icon": "tooth"
+    },
+    {
+      "id": "care_shaving",
+      "group": "care",
+      "uz": "Soqol olish",
+      "ru": "Бритьё",
+      "en": "Shaving",
+      "aliases_uz": [
+        "soqol olish",
+        "shaving"
+      ],
+      "aliases_ru": [
+        "бритьё"
+      ],
+      "aliases_en": [
+        "shaving"
+      ],
+      "search_terms": [
+        "soqol olish",
+        "shaving",
+        "бритьё"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "care_shaving",
+      "source_icon": "scissors"
+    },
+    {
+      "id": "care_deodorant",
+      "group": "care",
+      "uz": "Dezodorant",
+      "ru": "Дезодорант",
+      "en": "Deodorant",
+      "aliases_uz": [
+        "dezodorant",
+        "deodorant"
+      ],
+      "aliases_ru": [
+        "дезодорант"
+      ],
+      "aliases_en": [
+        "deodorant"
+      ],
+      "search_terms": [
+        "dezodorant",
+        "deodorant",
+        "дезодорант"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "care_deodorant",
+      "source_icon": "spray-can"
+    },
+    {
+      "id": "health_vitamins",
+      "group": "health",
+      "uz": "Vitaminlar",
+      "ru": "Витамины",
+      "en": "Vitamins",
+      "aliases_uz": [
+        "vitaminlar",
+        "vitamins"
+      ],
+      "aliases_ru": [
+        "витамины"
+      ],
+      "aliases_en": [
+        "vitamins"
+      ],
+      "search_terms": [
+        "vitaminlar",
+        "vitamins",
+        "витамины"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "health_vitamins",
+      "source_icon": "capsules"
+    },
+    {
+      "id": "health_firstaid",
+      "group": "health",
+      "uz": "Birinchi yordam",
+      "ru": "Первая помощь",
+      "en": "First aid",
+      "aliases_uz": [
+        "birinchi yordam",
+        "first aid"
+      ],
+      "aliases_ru": [
+        "первая помощь"
+      ],
+      "aliases_en": [
+        "first aid"
+      ],
+      "search_terms": [
+        "birinchi yordam",
+        "first aid",
+        "первая помощь"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "health_firstaid",
+      "source_icon": "briefcase-medical"
+    },
+    {
+      "id": "health_thermometer",
+      "group": "health",
+      "uz": "Termometr",
+      "ru": "Термометр",
+      "en": "Thermometer",
+      "aliases_uz": [
+        "termometr",
+        "thermometer"
+      ],
+      "aliases_ru": [
+        "термометр"
+      ],
+      "aliases_en": [
+        "thermometer"
+      ],
+      "search_terms": [
+        "termometr",
+        "thermometer",
+        "термометр"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "health_thermometer",
+      "source_icon": "thermometer"
+    },
+    {
+      "id": "health_tonometer",
+      "group": "health",
+      "uz": "Tonometr",
+      "ru": "Тонометр",
+      "en": "Blood pressure monitor",
+      "aliases_uz": [
+        "tonometr",
+        "blood pressure monitor"
+      ],
+      "aliases_ru": [
+        "тонометр"
+      ],
+      "aliases_en": [
+        "blood pressure monitor"
+      ],
+      "search_terms": [
+        "tonometr",
+        "blood pressure monitor",
+        "тонометр"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "health_tonometer",
+      "source_icon": "heart-pulse"
+    },
+    {
+      "id": "health_orthopedic",
+      "group": "health",
+      "uz": "Ortopediya",
+      "ru": "Ортопедия",
+      "en": "Orthopedic products",
+      "aliases_uz": [
+        "ortopediya",
+        "orthopedic products"
+      ],
+      "aliases_ru": [
+        "ортопедия"
+      ],
+      "aliases_en": [
+        "orthopedic products"
+      ],
+      "search_terms": [
+        "ortopediya",
+        "orthopedic products",
+        "ортопедия"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "health_orthopedic",
+      "source_icon": "crutch"
+    },
+    {
+      "id": "health_rehab",
+      "group": "health",
+      "uz": "Reabilitatsiya",
+      "ru": "Реабилитация",
+      "en": "Rehabilitation",
+      "aliases_uz": [
+        "reabilitatsiya",
+        "rehabilitation"
+      ],
+      "aliases_ru": [
+        "реабилитация"
+      ],
+      "aliases_en": [
+        "rehabilitation"
+      ],
+      "search_terms": [
+        "reabilitatsiya",
+        "rehabilitation",
+        "реабилитация"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "health_rehab",
+      "source_icon": "wheelchair"
+    },
+    {
+      "id": "health_eyecare",
+      "group": "health",
+      "uz": "Ko‘z parvarishi",
+      "ru": "Уход за глазами",
+      "en": "Eye care",
+      "aliases_uz": [
+        "ko‘z parvarishi",
+        "eye care"
+      ],
+      "aliases_ru": [
+        "уход за глазами"
+      ],
+      "aliases_en": [
+        "eye care"
+      ],
+      "search_terms": [
+        "ko‘z parvarishi",
+        "eye care",
+        "уход за глазами"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "health_eyecare",
+      "source_icon": "eye"
+    },
+    {
+      "id": "supp_protein",
+      "group": "supplements",
+      "uz": "Protein",
+      "ru": "Протеин",
+      "en": "Protein",
+      "aliases_uz": [
+        "protein"
+      ],
+      "aliases_ru": [
+        "протеин"
+      ],
+      "aliases_en": [
+        "protein"
+      ],
+      "search_terms": [
+        "protein",
+        "протеин"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "supp_protein",
+      "source_icon": "jar"
+    },
+    {
+      "id": "supp_creatine",
+      "group": "supplements",
+      "uz": "Kreatin",
+      "ru": "Креатин",
+      "en": "Creatine",
+      "aliases_uz": [
+        "kreatin",
+        "creatine"
+      ],
+      "aliases_ru": [
+        "креатин"
+      ],
+      "aliases_en": [
+        "creatine"
+      ],
+      "search_terms": [
+        "kreatin",
+        "creatine",
+        "креатин"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "supp_creatine",
+      "source_icon": "jar"
+    },
+    {
+      "id": "supp_bcaa",
+      "group": "supplements",
+      "uz": "BCAA",
+      "ru": "BCAA",
+      "en": "BCAA",
+      "aliases_uz": [
+        "bcaa"
+      ],
+      "aliases_ru": [
+        "bcaa"
+      ],
+      "aliases_en": [
+        "bcaa"
+      ],
+      "search_terms": [
+        "bcaa"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "supp_bcaa",
+      "source_icon": "capsules"
+    },
+    {
+      "id": "supp_gainer",
+      "group": "supplements",
+      "uz": "Gainer",
+      "ru": "Гейнер",
+      "en": "Gainer",
+      "aliases_uz": [
+        "gainer"
+      ],
+      "aliases_ru": [
+        "гейнер"
+      ],
+      "aliases_en": [
+        "gainer"
+      ],
+      "search_terms": [
+        "gainer",
+        "гейнер"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "supp_gainer",
+      "source_icon": "jar"
+    },
+    {
+      "id": "supp_lcarnitine",
+      "group": "supplements",
+      "uz": "L-Carnitine",
+      "ru": "L-карнитин",
+      "en": "L-Carnitine",
+      "aliases_uz": [
+        "l-carnitine"
+      ],
+      "aliases_ru": [
+        "l-карнитин"
+      ],
+      "aliases_en": [
+        "l-carnitine"
+      ],
+      "search_terms": [
+        "l-carnitine",
+        "l-карнитин"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "supp_lcarnitine",
+      "source_icon": "bottle-water"
+    },
+    {
+      "id": "supp_preworkout",
+      "group": "supplements",
+      "uz": "Pre-workout",
+      "ru": "Предтрен",
+      "en": "Pre-workout",
+      "aliases_uz": [
+        "pre-workout"
+      ],
+      "aliases_ru": [
+        "предтрен"
+      ],
+      "aliases_en": [
+        "pre-workout"
+      ],
+      "search_terms": [
+        "pre-workout",
+        "предтрен"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "supp_preworkout",
+      "source_icon": "bolt"
+    },
+    {
+      "id": "supp_amino",
+      "group": "supplements",
+      "uz": "Aminokislotalar",
+      "ru": "Аминокислоты",
+      "en": "Amino acids",
+      "aliases_uz": [
+        "aminokislotalar",
+        "amino acids"
+      ],
+      "aliases_ru": [
+        "аминокислоты"
+      ],
+      "aliases_en": [
+        "amino acids"
+      ],
+      "search_terms": [
+        "aminokislotalar",
+        "amino acids",
+        "аминокислоты"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "supp_amino",
+      "source_icon": "capsules"
+    },
+    {
+      "id": "supp_sportvitamins",
+      "group": "supplements",
+      "uz": "Sport vitaminlari",
+      "ru": "Спортивные витамины",
+      "en": "Sports vitamins",
+      "aliases_uz": [
+        "sport vitaminlari",
+        "sports vitamins"
+      ],
+      "aliases_ru": [
+        "спортивные витамины"
+      ],
+      "aliases_en": [
+        "sports vitamins"
+      ],
+      "search_terms": [
+        "sport vitaminlari",
+        "sports vitamins",
+        "спортивные витамины"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "supp_sportvitamins",
+      "source_icon": "pills"
+    },
+    {
+      "id": "supp_shaker",
+      "group": "supplements",
+      "uz": "Shaker",
+      "ru": "Шейкер",
+      "en": "Shaker bottle",
+      "aliases_uz": [
+        "shaker",
+        "shaker bottle"
+      ],
+      "aliases_ru": [
+        "шейкер"
+      ],
+      "aliases_en": [
+        "shaker bottle"
+      ],
+      "search_terms": [
+        "shaker",
+        "shaker bottle",
+        "шейкер"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "supp_shaker",
+      "source_icon": "bottle-water"
+    },
+    {
+      "id": "fitness_dumbbell",
+      "group": "fitness",
+      "uz": "Gantel",
+      "ru": "Гантели",
+      "en": "Dumbbell",
+      "aliases_uz": [
+        "gantel",
+        "dumbbell"
+      ],
+      "aliases_ru": [
+        "гантели"
+      ],
+      "aliases_en": [
+        "dumbbell"
+      ],
+      "search_terms": [
+        "gantel",
+        "dumbbell",
+        "гантели"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "fitness_dumbbell",
+      "source_icon": "dumbbell"
+    },
+    {
+      "id": "fitness_barbell",
+      "group": "fitness",
+      "uz": "Shtanga",
+      "ru": "Штанга",
+      "en": "Barbell",
+      "aliases_uz": [
+        "shtanga",
+        "barbell"
+      ],
+      "aliases_ru": [
+        "штанга"
+      ],
+      "aliases_en": [
+        "barbell"
+      ],
+      "search_terms": [
+        "shtanga",
+        "barbell",
+        "штанга"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "fitness_barbell",
+      "source_icon": "weight-hanging"
+    },
+    {
+      "id": "fitness_bench",
+      "group": "fitness",
+      "uz": "Trenajyor / bench",
+      "ru": "Тренажёр / скамья",
+      "en": "Bench / machine",
+      "aliases_uz": [
+        "trenajyor",
+        "bench",
+        "machine"
+      ],
+      "aliases_ru": [
+        "тренажёр",
+        "скамья"
+      ],
+      "aliases_en": [
+        "bench",
+        "machine"
+      ],
+      "search_terms": [
+        "trenajyor",
+        "bench",
+        "machine",
+        "тренажёр",
+        "скамья"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "fitness_bench",
+      "source_icon": "dumbbell"
+    },
+    {
+      "id": "fitness_treadmill",
+      "group": "fitness",
+      "uz": "Yugurish yo‘lakchasi",
+      "ru": "Беговая дорожка",
+      "en": "Treadmill",
+      "aliases_uz": [
+        "yugurish yo‘lakchasi",
+        "treadmill"
+      ],
+      "aliases_ru": [
+        "беговая дорожка"
+      ],
+      "aliases_en": [
+        "treadmill"
+      ],
+      "search_terms": [
+        "yugurish yo‘lakchasi",
+        "treadmill",
+        "беговая дорожка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "fitness_treadmill",
+      "source_icon": "person-running"
+    },
+    {
+      "id": "fitness_resistanceband",
+      "group": "fitness",
+      "uz": "Rezina band",
+      "ru": "Эспандер / резинка",
+      "en": "Resistance band",
+      "aliases_uz": [
+        "rezina band",
+        "resistance band"
+      ],
+      "aliases_ru": [
+        "эспандер",
+        "резинка"
+      ],
+      "aliases_en": [
+        "resistance band"
+      ],
+      "search_terms": [
+        "rezina band",
+        "resistance band",
+        "эспандер",
+        "резинка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "fitness_resistanceband",
+      "source_icon": "link"
+    },
+    {
+      "id": "fitness_yogamat",
+      "group": "fitness",
+      "uz": "Yoga gilamchasi",
+      "ru": "Коврик для йоги",
+      "en": "Yoga mat",
+      "aliases_uz": [
+        "yoga gilamchasi",
+        "yoga mat"
+      ],
+      "aliases_ru": [
+        "коврик для йоги"
+      ],
+      "aliases_en": [
+        "yoga mat"
+      ],
+      "search_terms": [
+        "yoga gilamchasi",
+        "yoga mat",
+        "коврик для йоги"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "fitness_yogamat",
+      "source_icon": "person-praying"
+    },
+    {
+      "id": "fitness_jump_rope",
+      "group": "fitness",
+      "uz": "Arqon",
+      "ru": "Скакалка",
+      "en": "Jump rope",
+      "aliases_uz": [
+        "arqon",
+        "jump rope"
+      ],
+      "aliases_ru": [
+        "скакалка"
+      ],
+      "aliases_en": [
+        "jump rope"
+      ],
+      "search_terms": [
+        "arqon",
+        "jump rope",
+        "скакалка"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "fitness_jump_rope",
+      "source_icon": "person-running"
+    },
+    {
+      "id": "fitness_belt",
+      "group": "fitness",
+      "uz": "Sport kamari",
+      "ru": "Спортивный пояс",
+      "en": "Weightlifting belt",
+      "aliases_uz": [
+        "sport kamari",
+        "weightlifting belt"
+      ],
+      "aliases_ru": [
+        "спортивный пояс"
+      ],
+      "aliases_en": [
+        "weightlifting belt"
+      ],
+      "search_terms": [
+        "sport kamari",
+        "weightlifting belt",
+        "спортивный пояс"
+      ],
+      "colorable": true,
+      "color_mode": "currentColor",
+      "scalable": true,
+      "svg_symbol_id": "fitness_belt",
+      "source_icon": "weight-scale"
+    }
+  ]
+}

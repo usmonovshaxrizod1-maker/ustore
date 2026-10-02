@@ -24,7 +24,7 @@ export function mapAuthError(error) {
 export function createLoginController({ authPort, returnTo = '/', initialTab = 'telegram', onSignedIn, onRedirect } = {}) {
   if (!authPort) throw new TypeError('authPort kerak');
   let draft = { login: '', password: '' };
-  let state = { tab: initialTab === 'password' ? 'password' : 'telegram', busy: false, passwordVisible: false, error: null, telegramPhase: 'idle', telegramAccount: null };
+  let state = { tab: initialTab === 'password' ? 'password' : 'telegram', busy: false, busyAction: null, passwordVisible: false, error: null, telegramPhase: 'idle', telegramAccount: null };
   const listeners = new Set();
   const emit = () => listeners.forEach((listener) => listener({ ...state }));
   const set = (patch) => { state = { ...state, ...patch }; emit(); return state; };
@@ -38,28 +38,28 @@ export function createLoginController({ authPort, returnTo = '/', initialTab = '
     togglePassword() { return set({ passwordVisible: !state.passwordVisible }); },
     async loadSession() {
       if (state.busy) return null;
-      set({ busy: true, error: null });
+      set({ busy: true, busyAction: 'session', error: null });
       const result = await authPort.getSession();
-      if (!result.ok) { set({ busy: false, error: mapAuthError(result.error) }); return result; }
-      set({ busy: false, error: null });
+      if (!result.ok) { set({ busy: false, busyAction: null, error: mapAuthError(result.error) }); return result; }
+      set({ busy: false, busyAction: null, error: null });
       return result;
     },
     async signInPassword({ login, password }) {
       if (state.busy) return null;
-      set({ busy: true, error: null });
+      set({ busy: true, busyAction: 'password', error: null });
       const result = await authPort.signInPassword({ login: String(login || '').trim(), password: String(password || '') });
-      if (!result.ok) { set({ busy: false, error: mapAuthError(result.error) }); return result; }
-      set({ busy: false, error: null });
+      if (!result.ok) { set({ busy: false, busyAction: null, error: mapAuthError(result.error) }); return result; }
+      set({ busy: false, busyAction: null, error: null });
       draft = { login: '', password: '' };
       onSignedIn?.(result.data);
       return result;
     },
     async signInTelegram() {
       if (state.busy) return null;
-      set({ busy: true, error: null, telegramPhase: 'starting', telegramAccount: null });
+      set({ busy: true, busyAction: 'telegram', error: null, telegramPhase: 'starting', telegramAccount: null });
       const result = await authPort.beginOfficialTelegramSignIn({ returnTo });
-      if (!result.ok) { set({ busy: false, telegramPhase: 'idle', error: mapAuthError(result.error) }); return result; }
-      set({ busy: false, error: null, telegramPhase: 'redirecting' });
+      if (!result.ok) { set({ busy: false, busyAction: null, telegramPhase: 'idle', error: mapAuthError(result.error) }); return result; }
+      set({ busy: false, busyAction: null, error: null, telegramPhase: 'redirecting' });
       onRedirect?.(result.data.redirectUrl);
       return result;
     },
@@ -72,18 +72,18 @@ export function createLoginController({ authPort, returnTo = '/', initialTab = '
     async checkTelegramSignIn() {
       if (state.busy || state.telegramPhase === 'approved' || !authPort.hasPendingTelegramSignIn?.()) return null;
       if (typeof authPort.getTelegramSignInStatus !== 'function') return null;
-      set({ busy: true, error: null, telegramPhase: 'checking' });
+      set({ busy: true, busyAction: 'telegram-check', error: null, telegramPhase: 'checking' });
       const result = await authPort.getTelegramSignInStatus();
-      if (!result.ok) { set({ busy: false, telegramPhase: 'waiting', error: mapAuthError(result.error) }); return result; }
+      if (!result.ok) { set({ busy: false, busyAction: null, telegramPhase: 'waiting', error: mapAuthError(result.error) }); return result; }
       const challenge = result.data || {};
       if (challenge.status === 'APPROVED' && challenge.approvedAccountId && challenge.requiresExplicitConfirmation === true) {
-        set({ busy: false, telegramPhase: 'approved', telegramAccount: {
+        set({ busy: false, busyAction: null, telegramPhase: 'approved', telegramAccount: {
           id: challenge.approvedAccountId, name: challenge.displayName || 'Telegram foydalanuvchisi', hint: challenge.telegramHint || '',
         } });
       } else if (challenge.status === 'PENDING') {
-        set({ busy: false, telegramPhase: 'waiting', telegramAccount: null });
+        set({ busy: false, busyAction: null, telegramPhase: 'waiting', telegramAccount: null });
       } else {
-        set({ busy: false, telegramPhase: 'idle', telegramAccount: null, error: {
+        set({ busy: false, busyAction: null, telegramPhase: 'idle', telegramAccount: null, error: {
           title: 'Telegram tasdig‘i tugadi', message: 'Kirish so‘rovi muddati tugagan yoki yaroqsiz. Qayta boshlang.', code: 'SESSION_EXPIRED',
         } });
       }
@@ -92,10 +92,10 @@ export function createLoginController({ authPort, returnTo = '/', initialTab = '
     async confirmTelegramSignIn() {
       const accountId = state.telegramAccount?.id;
       if (state.busy || state.telegramPhase !== 'approved' || !accountId) return null;
-      set({ busy: true, error: null });
+      set({ busy: true, busyAction: 'telegram-confirm', error: null });
       const result = await authPort.completeTelegramSignIn({ approvedAccountId: accountId, confirmed: true });
-      if (!result.ok) { set({ busy: false, error: mapAuthError(result.error) }); return result; }
-      set({ busy: false, telegramPhase: 'idle', telegramAccount: null });
+      if (!result.ok) { set({ busy: false, busyAction: null, error: mapAuthError(result.error) }); return result; }
+      set({ busy: false, busyAction: null, telegramPhase: 'idle', telegramAccount: null });
       onSignedIn?.(result.data);
       return result;
     },
@@ -112,6 +112,10 @@ export function createLoginView({ controller, state = controller?.getState?.() |
 
   const heading = doc.createElement('div');
   heading.className = 'uw-auth__heading';
+  const brand = doc.createElement('div'); brand.className = 'uw-auth__brand';
+  const mark = doc.createElement('span'); mark.textContent = 'U';
+  const name = doc.createElement('strong'); name.textContent = 'USTORE';
+  brand.append(mark, name); heading.append(brand);
   const title = doc.createElement('h1'); title.textContent = tr('UStorE’ga kirish', 'Вход в UStorE');
   const subtitle = doc.createElement('p'); subtitle.textContent = tr('Do‘koningiz yoki xarid profilingizga xavfsiz kiring.', 'Безопасно войдите в магазин или профиль покупателя.');
   heading.append(title, subtitle);
@@ -139,7 +143,7 @@ export function createLoginView({ controller, state = controller?.getState?.() |
 
   if (state.tab === 'telegram') {
     const telegramBody = doc.createElement('div'); telegramBody.className='uw-auth-telegram-body';
-    telegramBody.append(createButton({ label: state.busy ? tr('Telegram ochilmoqda…', 'Открывается Telegram…') : tr('Telegram’da davom etish', 'Продолжить через Telegram'), busy: state.busy, onClick: () => controller.signInTelegram() }, doc));
+    telegramBody.append(createButton({ label: state.busyAction === 'telegram' ? tr('Telegram ochilmoqda…', 'Открывается Telegram…') : tr('Telegram’da davom etish', 'Продолжить через Telegram'), busy: state.busyAction === 'telegram', onClick: () => controller.signInTelegram() }, doc));
     const telegramError = inlineError(); if (telegramError) telegramBody.append(telegramError);
     const telegram = createCard({ title: tr('Telegram orqali kirish', 'Вход через Telegram'), description: tr('Telegram profilingiz bilan tasdiqlang. Tasdiqdan keyin saytga avtomatik qaytasiz.', 'Подтвердите вход в Telegram. Затем вы автоматически вернётесь на сайт.'), body: telegramBody }, doc);
     telegram.dataset.authPanel = 'telegram';
@@ -154,7 +158,7 @@ export function createLoginView({ controller, state = controller?.getState?.() |
     passwordField.input.addEventListener('input', () => controller.updateDraft?.({ password: passwordField.input.value }));
     const passwordRow = doc.createElement('div'); passwordRow.className = 'uw-auth-password-row';
     passwordRow.append(passwordField.element, createButton({ label: state.passwordVisible ? tr('Yashirish', 'Скрыть') : tr('Ko‘rsatish', 'Показать'), variant: 'ghost', onClick: () => controller.togglePassword() }, doc));
-    const submit = createButton({ label: state.busy ? tr('Tekshirilmoqda…', 'Проверка…') : tr('Kirish', 'Войти'), type: 'submit', busy: state.busy }, doc);
+    const submit = createButton({ label: state.busyAction === 'password' ? tr('Tekshirilmoqda…', 'Проверка…') : tr('Kirish', 'Войти'), type: 'submit', busy: state.busyAction === 'password' }, doc);
     const passwordError = inlineError(); if (passwordError) form.append(passwordError);
     form.append(loginField.element, passwordRow, submit);
     form.addEventListener('submit', (event) => { event?.preventDefault?.(); controller.signInPassword({ login: loginField.input.value, password: passwordField.input.value }); });

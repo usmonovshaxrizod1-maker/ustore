@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>UStorE 9b Browser QA</title>
+  <link rel="stylesheet" href="/web/styles/index.css">
+  <style>
+    html,body{margin:0;min-height:100%;background:var(--uw-color-bg,#f5f7fb)}
+    #qa-root{min-height:100vh}
+    .qa-banner{position:fixed;right:8px;bottom:8px;z-index:9999;padding:5px 8px;border-radius:999px;background:#111827;color:#fff;font:600 10px/1.2 system-ui;opacity:.72;pointer-events:none}
+  </style>
+</head>
+<body>
+  <div id="qa-root"></div>
+  <div class="qa-banner" id="qa-banner">9b LOCAL BROWSER QA</div>
+  <script type="module" src="/tests/browser/qa-app.js"></script>
+</body>
+</html>

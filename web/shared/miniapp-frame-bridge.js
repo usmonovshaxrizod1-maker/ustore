@@ -10,6 +10,7 @@
   let parentOrigin = '';
   let nonce = '';
   let initialRoute = '/';
+  let authenticated = false;
   let resolveReady;
   const ready = new Promise((resolve) => { resolveReady = resolve; });
   const safeOrigin = (origin) => {
@@ -30,6 +31,7 @@
       parentOrigin = event.origin;
       nonce = message.nonce;
       initialRoute = String(message.route || '/');
+      authenticated = message.authenticated === true;
       document.body.classList.add('ustore-browser-mode');
       resolveReady();
       return;
@@ -63,6 +65,6 @@
     if (!parentOrigin || !String(route || '').startsWith('/')) return;
     window.parent.postMessage({ bridge: 'ustore-miniapp-v1', type: 'NAVIGATE', kind, nonce, route }, parentOrigin);
   }
-  window.USTORE_FRAME_BRIDGE = Object.freeze({ kind, ready, request, navigate, get initialRoute() { return initialRoute; } });
+  window.USTORE_FRAME_BRIDGE = Object.freeze({ kind, ready, request, navigate, get initialRoute() { return initialRoute; }, get authenticated() { return authenticated; } });
   window.parent.postMessage({ bridge: 'ustore-miniapp-v1', type: 'HELLO', kind }, '*');
 })();
