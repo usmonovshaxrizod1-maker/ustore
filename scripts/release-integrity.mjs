@@ -12,8 +12,13 @@ export function inspectRelease(root) {
   if (!files || !Object.keys(files).length) throw Error('empty_build_manifest');
   for (const [rel, expected] of Object.entries(files)) {
     if (rel.includes('..') || path.isAbsolute(rel) || hash(read(`dist/${rel}`)) !== expected) throw Error(`artifact_mismatch:${rel}`);
-    const source = rel === 'web/config.public.js' ? 'config.public.js' : rel;
-    const sourceBytes = rel === 'web/index.html' ? Buffer.from(productionWebEntry(read(source).toString('utf8'))) : fs.existsSync(path.join(root,source)) ? read(source) : null;
+    // The production build intentionally overlays root files on the preview
+    // web/ tree. Compare against the file the builder actually copied.
+    const overlaid = ['web/config.public.js', 'web/excel-import.js', 'web/ustore-image-io.js'];
+    const source = overlaid.includes(rel) || rel.startsWith('web/vendor/') ? rel.slice(4) : rel;
+    const sourceBytes = rel === 'web/index.html' || rel === 'web/404.html'
+      ? Buffer.from(productionWebEntry(read('web/index.html').toString('utf8')))
+      : fs.existsSync(path.join(root,source)) ? read(source) : null;
     if (!['BUILD_AUDIT.json','PERFORMANCE_AUDIT.json'].includes(rel) && sourceBytes && hash(sourceBytes) !== expected) throw Error(`source_build_mismatch:${rel}`);
   }
   for (const full of walk(path.join(root,'dist'))) {

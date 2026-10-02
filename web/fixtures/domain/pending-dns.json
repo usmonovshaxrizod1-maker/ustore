@@ -1,0 +1,1 @@
+{"id":"dom-custom-pending","hostname":"shop-demo.example","kind":"CUSTOM","status":"PENDING_DNS","ownershipVerified":false,"dnsStatus":"PENDING","tlsStatus":"UNKNOWN","isPrimary":false,"records":[{"type":"TXT","name":"_ustore-verify.shop-demo.example","value":"ustore-demo-verification.example","purpose":"OWNERSHIP"}],"lastCheckedAt":null,"errorCode":null}

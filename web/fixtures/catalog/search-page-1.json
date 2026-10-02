@@ -1,0 +1,5 @@
+{
+  "query":"protein",
+  "items":[{"id":"prod-protein","sku":"PROT-001","name":"Whey Protein Demo","name_ru":null,"price":399000,"old_price":429000,"stock":12,"category_id":"cat-supp","status":"ACTIVE","img":null,"thumb_img":null,"description":"Demo product","description_ru":null,"is_featured":true,"is_visible":true,"sort_order":10,"sizes":[],"variants":[],"sold_count":0,"created_at":"2026-09-01T00:00:00.000Z","import_batch_id":null,"badge":null}],
+  "nextCursor":null
+}

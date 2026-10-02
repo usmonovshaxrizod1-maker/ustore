@@ -1,0 +1,43 @@
+{
+  "mode": "web",
+  "shop": {
+    "id": "shop-fitcore-demo",
+    "slug": "fitcore-demo",
+    "name": "Fitcore Demo",
+    "logoUrl": null,
+    "lifecycle": "ACTIVE",
+    "currency": "UZS",
+    "canonicalWebUrl": "https://fitcore-demo.example"
+  },
+  "actor": {
+    "accountId": "acct-manager-001",
+    "displayName": "Demo Manager",
+    "telegramLinked": true,
+    "shopRole": "STAFF",
+    "roleCodes": [
+      "MANAGER"
+    ],
+    "permissions": [
+      "catalog.manage",
+      "products.manage",
+      "products.import_export",
+      "stock.view",
+      "stock.manage",
+      "orders.view",
+      "orders.manage",
+      "customers.view",
+      "customers.manage",
+      "support.manage",
+      "reports.view",
+      "marketing.manage",
+      "domains.manage"
+    ]
+  },
+  "capabilities": {
+    "catalog": true,
+    "checkout": true,
+    "support": true,
+    "admin": true,
+    "domains": true
+  }
+}

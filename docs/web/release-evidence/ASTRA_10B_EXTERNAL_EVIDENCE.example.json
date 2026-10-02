@@ -1,0 +1,30 @@
+{
+  "target": "PRODUCTION_TARGET_NAME_ONLY_NO_SECRETS",
+  "capturedAt": "YYYY-MM-DDTHH:MM:SSZ",
+  "operator": "release-operator-name-or-ticket",
+  "gates": {
+    "remoteMigrationLedgerVerified": false,
+    "postgresDryRunVerified": false,
+    "backupRestoreVerified": false,
+    "stagingSmokeVerified": false,
+    "productionAccessVerified": false,
+    "productionSecretsReady": false,
+    "centralHostnameOwnershipVerified": false,
+    "rollbackOwnerAssigned": false
+  },
+  "evidenceRefs": {
+    "remoteLedger": "ticket/log/artifact reference only",
+    "postgresDryRun": "ticket/log/artifact reference only",
+    "backupRestore": "ticket/log/artifact reference only",
+    "stagingSmoke": "ticket/log/artifact reference only",
+    "productionAccess": "ticket/reference only",
+    "secrets": "secret-manager path/name only, never secret values",
+    "hostnameOwnership": "DNS/provider evidence reference only",
+    "rollbackOwner": "person/team/ticket reference"
+  },
+  "candidate": {
+    "buildManifestSha256": "copy exact current candidate value",
+    "migrationSetSha256": "copy exact current candidate value",
+    "sourceSha256": "copy exact current candidate value"
+  }
+}

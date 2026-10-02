@@ -18,8 +18,8 @@ const css = fs.readFileSync(path.join(root, 'ustore.css'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const mig060 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '060_shop_logo_wordmark.sql'), 'utf8');
 const mig061 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '061_support_auto_close.sql'), 'utf8');
-const mig062 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '062_variant_price.sql'), 'utf8');
-const mig007 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '007_tenant_rpcs.sql'), 'utf8');
+const mig062 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '062_variant_price.sql'), 'utf8').replace(/\r\n/g, '\n');
+const mig007 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '007_tenant_rpcs.sql'), 'utf8').replace(/\r\n/g, '\n');
 
 function actionBlock(action) {
   const start = api.indexOf(`case "${action}"`);

@@ -1,0 +1,6 @@
+{
+  "tariffs": [
+    {"id":"tariff-demo-start","name":"Start","price":99000,"productLimit":100,"isPopular":false,"features":["Telegram e-do'kon","Katalog va mahsulotlar"]},
+    {"id":"tariff-demo-business","name":"Business","price":199000,"productLimit":500,"isPopular":true,"features":["Telegram e-do'kon","Katalog va mahsulotlar","Buyurtmalarni boshqarish","Ombor nazorati"]}
+  ]
+}

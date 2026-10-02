@@ -1,0 +1,5 @@
+{"items":[
+  {"id":"ord-demo-001","status":"NEW","subtotal":433000,"deliveryFee":25000,"payableTotal":458000,"total":458000,"currency":"UZS","createdAt":"2026-09-21T08:00:00.000Z","paymentStatus":"PENDING","source":"WEB","items":[{"name":"Demo protein","qty":1,"price":433000}]},
+  {"id":"ord-demo-002","status":"PROCESSING","subtotal":285000,"deliveryFee":0,"payableTotal":285000,"total":285000,"currency":"UZS","createdAt":"2026-09-20T11:30:00.000Z","paidAt":"2026-09-20T11:32:00.000Z","paymentStatus":"PAID","source":"TELEGRAM","items":[{"name":"Demo creatine","qty":1,"price":285000}]},
+  {"id":"ord-demo-003","status":"DELIVERED","subtotal":190000,"deliveryFee":25000,"payableTotal":215000,"total":215000,"currency":"UZS","createdAt":"2026-09-18T09:00:00.000Z","paidAt":"2026-09-18T09:02:00.000Z","deliveredAt":"2026-09-19T15:45:00.000Z","paymentStatus":"PAID","source":"WEB","items":[{"name":"Demo shaker","qty":2,"price":95000}]}
+],"nextCursor":null,"total":3}

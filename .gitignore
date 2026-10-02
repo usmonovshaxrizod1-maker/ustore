@@ -23,3 +23,9 @@ dist/
 supabase/.temp/
 # Destructive local maintenance script
 supabase/RESET_TEST_SHOPS_EXCEPT_FITCORE.sql
+
+# Generated local release audit evidence; keep reviewed examples in Git.
+docs/web/release-evidence/ASTRA_10A_AUDIT.json
+docs/web/release-evidence/ASTRA_10A_MIGRATION_LEDGER.json
+docs/web/release-evidence/ASTRA_10B_DEPLOY_PLAN.json
+docs/web/release-evidence/ASTRA_10C_RELEASE_CANDIDATE.json

@@ -1,0 +1,4 @@
+{
+  "categories":[{"id":"cat-supp","name":"Sport ozuqalari","name_ru":null,"parent_id":null,"img":null,"sort_order":10}],
+  "products":[{"id":"prod-visible","sku":"VISIBLE-001","name":"Visible Demo","name_ru":null,"price":100000,"old_price":null,"stock":5,"category_id":"cat-supp","status":"ACTIVE","img":null,"thumb_img":null,"description":null,"description_ru":null,"is_featured":false,"is_visible":true,"sort_order":10,"sizes":[],"variants":[],"sold_count":0,"created_at":"2026-09-01T00:00:00.000Z","import_batch_id":null,"badge":null}]
+}

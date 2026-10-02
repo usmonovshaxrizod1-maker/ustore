@@ -1,0 +1,45 @@
+{
+  "target": "PRODUCTION_TARGET_NAME_ONLY_NO_SECRETS",
+  "capturedAt": "YYYY-MM-DDTHH:MM:SSZ",
+  "operator": "release-operator-name-or-ticket",
+  "release": {
+    "deploymentCompleted": false,
+    "productionAccessVerified": false,
+    "productionSecretsVerified": false,
+    "domainActivationVerified": false,
+    "deployedBuildManifestSha256": "copy exact candidate BUILD_MANIFEST sha256",
+    "deployedMigrationMax": 0,
+    "releaseArtifactId": "immutable hosting/deploy artifact id",
+    "sourceCommit": "optional real git commit if available"
+  },
+  "smoke": {
+    "catalogGuestVerified": false,
+    "checkoutPaymentVerified": false,
+    "centralLoginVerified": false,
+    "ownerAdminVerified": false,
+    "limitedStaffVerified": false,
+    "customDomainTlsVerified": false,
+    "miniAppVerified": false
+  },
+  "rollback": {
+    "previousArtifactRecorded": false,
+    "rollbackOwnerConfirmed": false,
+    "previousArtifactId": "previous immutable artifact id only"
+  },
+  "evidenceRefs": {
+    "deployment": "ticket/log/artifact reference only",
+    "catalog": "screenshot/test-log reference only",
+    "checkoutPayment": "sanitized test-order/payment reference only",
+    "login": "sanitized auth smoke reference only",
+    "ownerAdmin": "screenshot/test-log reference only",
+    "limitedStaff": "permission-denial screenshot/test-log reference only",
+    "customDomainTls": "TLS/route evidence reference only",
+    "miniApp": "physical Telegram-device smoke reference only",
+    "rollback": "runbook/sign-off reference only"
+  },
+  "candidate": {
+    "buildManifestSha256": "copy exact current candidate value",
+    "migrationSetSha256": "copy exact current candidate value",
+    "sourceSha256": "copy exact current candidate value"
+  }
+}
