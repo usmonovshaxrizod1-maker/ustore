@@ -23,14 +23,20 @@ test('CORS permits the request ID sent by both web adapters',async()=>{
 test('new owner membership without backfilled account mapping remains usable; conflicting mapping denied',async()=>{
  const fn=extract('supabase/functions/shop-api/index.ts','async function resolveWebShopPrincipal(', '\nfunction webOwnedFilter','resolveWebShopPrincipal',{});
  for(const mapped of [null,'wrong']){
+  const membership={role:'OWNER',status:'ACTIVE',telegram_user_id:'12345',account_id:mapped};
   const db={from(table){
-   const rows={accounts:{id:'a',status:'ACTIVE'},account_identities:{provider_subject:'12345'},app_users:{tg_id:'12345',account_id:'a'},shop_memberships:{role:'OWNER',status:'ACTIVE',account_id:mapped}};
+   const rows={accounts:{id:'a',status:'ACTIVE'},account_identities:{provider_subject:'12345'},app_users:{tg_id:'12345',account_id:'a'},shop_memberships:membership};
    const q=query(rows[table]);
-   if(table==='shop_memberships')q.eq=(key,value)=>{assert.notEqual(key,'account_id');if(key==='telegram_user_id')assert.equal(value,'12345');return q;};
+   if(table==='shop_memberships'){
+    q.eq=(key,value)=>{assert.notEqual(key,'account_id');if(key==='telegram_user_id')assert.equal(value,'12345');return q;};
+    q.is=(key,value)=>{assert.equal(key,'account_id');assert.equal(value,null);return q;};
+    q.update=values=>{assert.equal(membership.account_id,null);Object.assign(membership,values);return q;};
+    q.maybeSingle=async()=>({data:{...membership},error:null});
+   }
    return q;
   }};
   const r=await fn(db,'shop','a');
-  if(mapped===null)assert.equal(r.principal.actor.shopRole,'OWNER');else assert.equal(r.error,'account_mapping_conflict');
+  if(mapped===null){assert.equal(r.principal.actor.shopRole,'OWNER');assert.equal(membership.account_id,'a');}else assert.equal(r.error,'account_mapping_conflict');
  }
 });
 test('platform role derives only from verified identity, not shop membership',async()=>{

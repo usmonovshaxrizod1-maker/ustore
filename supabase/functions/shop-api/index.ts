@@ -1593,6 +1593,21 @@ async function resolveWebShopPrincipal(db: any, shopId: string, accountId: strin
   if (membership?.account_id && String(membership.account_id) !== accountId) {
     return { ok: false as const, error: "account_mapping_conflict", status: 409 };
   }
+  if (membership && !membership.account_id) {
+    // The Telegram identity is verified from the server-side web session.
+    // Backfill memberships created after migration 091 without changing role.
+    const { data: linked, error: linkError } = await db.from("shop_memberships")
+      .update({ account_id: accountId }).eq("shop_id", shopId)
+      .eq("telegram_user_id", tgId).is("account_id", null)
+      .select("account_id").maybeSingle();
+    if (linkError) throw linkError;
+    if (!linked) {
+      const { data: current, error: currentError } = await db.from("shop_memberships")
+        .select("account_id").eq("shop_id", shopId).eq("telegram_user_id", tgId).maybeSingle();
+      if (currentError) throw currentError;
+      if (String(current?.account_id || "") !== accountId) return { ok: false as const, error: "account_mapping_conflict", status: 409 };
+    }
+  }
   let roleCodes: string[] = [];
   let permissions: string[] = [];
   if (membership?.role === "OWNER") {

@@ -61,11 +61,11 @@ test('4-band: the header cart icon is hidden while in admin mode (unchanged/conf
   assert.match(block, /cartBtn\.classList\.toggle\('hidden', isAdminMode && isUserAnAdmin\)/);
 });
 
-test('6-band: banner carousel loops for customers, starts from the middle slot and tracks the active card', () => {
+test('6-band: banner carousel loops from first slot and tracks the active card', () => {
   const start = app.indexOf('function initBannerCarousel()');
   const end = app.indexOf('\n    }\n\n', start);
   const block = app.slice(start, end > start ? end : start + 3500);
-  assert.match(block, /const initialIndex = Math\.min\(2, originalCards\.length - 1\);/);
+  assert.match(block, /const initialIndex = 0;/);
   assert.match(block, /centerCard\(originalCards\[initialIndex\], 'auto'\)/);
   assert.match(block, /strip\.addEventListener\('scroll', updateActiveCard, \{ passive: true \}\);/);
   assert.match(block, /cloneNode\(true\)/);

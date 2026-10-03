@@ -145,14 +145,23 @@ function escapeHtml(str) {
       // Server/DB ichki matni foydalanuvchiga chiqmaydi. To'liq tafsilot
       // brauzer jurnalida qoladi, ekranda esa bajariladigan yechim beriladi.
       const technical = /\b(DEBUG|PGRST\d*|JWT|postgres|supabase|duplicate key|violates|constraint|relation\s+.+does not exist|column\s+.+does not exist|invalid input syntax|cannot read propert|undefined is not|stack trace|internal server error)\b/i.test(original)
+        || /^(?:invalid|forbidden|permission|auth|session|network|request|category|credential|not_found|duplicate|server)[a-z0-9_:]*$/i.test(original.trim())
         || /:\s*[a-z][a-z0-9_]{2,}(?::[^\s]+)?\s*$/i.test(original);
       if (technical) console.error('[USTORE_USER_NOTICE_DETAIL]', original);
-      const raw = technical
-        ? tr("Amal bajarilmadi. Internetni tekshirib, qayta urinib ko'ring.", 'Не удалось выполнить действие. Проверьте интернет и повторите.')
-        : original;
+      const raw = technical ? friendlyOperationError(original) : original;
       const state = preferredState || (/^(✅|✓)/.test(raw) ? 'success' : /^(⚠|⏳)/.test(raw) ? 'saving' : 'error');
       const duration = state === 'success' ? 3000 : state === 'saving' ? 2800 : 4000;
-      showActionToast(escapeHtml(raw).replace(/\n/g, '<br>'), state, duration);
+      showActionToast(raw, state, duration);
+    }
+    function friendlyOperationError(message) {
+      const value = String(message || '').toLowerCase();
+      if (/permission|forbidden|denied|not allowed|403/.test(value)) return tr('Bu amal uchun huquqingiz yo‘q.', 'У вас нет прав для этого действия.');
+      if (/jwt|session|unauthorized|401|auth/.test(value)) return tr('Sessiya tugadi. Qayta kiring.', 'Сессия истекла. Войдите снова.');
+      if (/duplicate|unique|already exists/.test(value)) return tr('Bu nom allaqachon band. Boshqasini tanlang.', 'Это имя уже занято. Выберите другое.');
+      if (/icon/.test(value)) return tr('Katalog ikonkasi noto‘g‘ri. Boshqasini tanlang.', 'Неверная иконка каталога. Выберите другую.');
+      if (/category|katalog/.test(value)) return tr('Katalog ma’lumotlarini tekshiring.', 'Проверьте данные каталога.');
+      if (/network|fetch|offline|internet|request_timeout/.test(value)) return tr('Aloqa uzildi. Internetni tekshirib qayta urinib ko‘ring.', 'Нет соединения. Проверьте интернет и повторите.');
+      return tr('Saqlash amalga oshmadi. Qayta urinib ko‘ring.', 'Не удалось сохранить. Повторите попытку.');
     }
     async function appConfirm(message, opts = {}) {
       const danger = opts.danger === true;
@@ -1099,13 +1108,12 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     let categoryIconPickerGroup = 'all';
     let categoryIconPickerChoice = null;
     function categoryIconMarkup(category) {
-      const id = String(category?.iconId || '');
+      const id = String(category?.iconId || 'stationery_folder');
       if (/^[a-z][a-z0-9_]{1,63}$/.test(id)) {
         const color = CATEGORY_ICON_COLORS.includes(category?.iconColor) ? category.iconColor : 'brand';
         return `<svg class="fc-category-svg is-${color}" aria-hidden="true" focusable="false"><use href="${CATEGORY_ICON_SPRITE}#${escapeHtml(id)}"></use></svg>`;
       }
-      if (category?.img && /^(https?:\/\/|data:image\/(?:png|jpeg|webp|gif);base64,)/i.test(category.img)) return `<img referrerpolicy="no-referrer" src="${escapeHtml(category.img)}" alt="" loading="lazy">`;
-      return `<i data-lucide="folder" class="w-4 h-4" aria-hidden="true"></i>`;
+      return `<svg class="fc-category-svg is-brand" aria-hidden="true" focusable="false"><use href="${CATEGORY_ICON_SPRITE}#stationery_folder"></use></svg>`;
     }
     function normalizedIconSearch(value) {
       return String(value || '').toLocaleLowerCase().normalize('NFKD')
@@ -2978,6 +2986,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       // klassi BOSHQA istalgan modal uchun ham amal qilishi mumkin edi — shu
       // yerda umumiy mudofaa sifatida yopiladi.
       activePopupModal = null;
+      selectedProductModal = null;
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('text-blue-600', 'font-bold'));
       const activeNav = document.getElementById(`nav-${tab}`);
       if (activeNav) activeNav.classList.add('text-blue-600', 'font-bold');
@@ -4098,7 +4107,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       }
 
       const roleTag = document.getElementById('role-tag');
-      if (roleTag && authReady) roleTag.classList.remove('hidden');
+      if (roleTag) roleTag.classList.toggle('hidden', !(authReady && isAdminMode && isUserAnAdmin));
       const whBtn = document.getElementById('nav-warehouse-btn');
       const cartNavBtn = document.getElementById('nav-cart');
       const ordersNavBtn = document.getElementById('nav-orders');
@@ -4115,7 +4124,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         // 1-band: admin bo'lsa murojaatlar (Support badge) doim fonda yuklab boriladi.
         if (hasPermission('support.manage')) loadAdminSupportTicketsLazy();
       } else {
-        roleTag.innerText = "STORE";
+        roleTag.innerText = "";
         roleTag.dataset.role = 'store';
         whBtn.classList.add('hidden');
         whBtn.classList.remove('flex');
@@ -6188,7 +6197,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const entries = featuredCategories.map(e => ({ e, c: categories.find(c => c.id === e.categoryId) })).filter(x => x.c);
       if (!entries.length) return '';
       return `<div class="fc-cat-nav-row fc-home-default-block">
-        ${entries.map(({ c }) => `<button type="button" onclick="scrollToFeaturedCategoryBlock('${c.id}')" class="fc-cat-nav-pill">${escapeHtml(categoryName(c))}</button>`).join('')}
+        ${entries.map(({ c }) => `<button type="button" onclick="scrollToFeaturedCategoryBlock('${c.id}')" class="fc-cat-nav-pill"><span class="fc-featured-cat-icon">${categoryIconMarkup(c)}</span><span>${escapeHtml(categoryName(c))}</span></button>`).join('')}
       </div>`;
     }
     function scrollToFeaturedCategoryBlock(catId) {
@@ -6321,7 +6330,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const cards = [...strip.querySelectorAll('.fc-banner-card:not([data-clone])')];
       const card = cards[Math.max(0, Math.min(Number(index) || 0, cards.length - 1))];
       if (!card) return;
-      strip.scrollTo({ left: card.offsetLeft - (strip.clientWidth - card.clientWidth) / 2, behavior: 'smooth' });
+      strip.scrollTo({ left: card.offsetLeft - (strip.clientWidth - card.clientWidth) / 2, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 'instant' : 'smooth' });
       resetHomeBannerAutoplay?.();
     }
 
@@ -6363,9 +6372,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           dot.setAttribute('aria-current', i === realIndex ? 'true' : 'false');
         });
       };
-      // Uchinchi banner mavjud bo'lsa undan boshlanadi; chet kartalar
-      // nusxasi aylanishda oxiridan boshiga uzluksiz o'tishni ta'minlaydi.
-      const initialIndex = Math.min(2, originalCards.length - 1);
+      // First real slide starts the loop; clones make the final-to-first move adjacent.
+      const initialIndex = 0;
       requestAnimationFrame(() => { centerCard(originalCards[initialIndex], 'auto'); updateActiveCard(); });
       strip.addEventListener('scroll', updateActiveCard, { passive: true });
       let settleTimer = null;
@@ -6377,9 +6385,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           const near = [first, last].find(card => Math.abs(card.offsetLeft + card.clientWidth / 2 - center) < card.clientWidth / 2);
           if (near) {
             const target = near === first ? originalCards[originalCards.length - 1] : originalCards[0];
+            strip.classList.add('is-rebasing');
             strip.style.scrollSnapType = 'none';
-            centerCard(target, 'instant');
-            requestAnimationFrame(() => { strip.style.scrollSnapType = ''; updateActiveCard(); });
+            strip.scrollLeft = target.offsetLeft - (strip.clientWidth - target.clientWidth) / 2;
+            requestAnimationFrame(() => requestAnimationFrame(() => { strip.style.scrollSnapType = ''; strip.classList.remove('is-rebasing'); updateActiveCard(); }));
           }
         }, 120);
       }, { passive: true });
@@ -6391,7 +6400,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             if (!strip.isConnected || document.hidden || motion?.matches || strip.matches(':hover') || strip.contains(document.activeElement)) return;
             const center = strip.scrollLeft + strip.clientWidth / 2;
             const current = cards.reduce((best, card) => Math.abs(card.offsetLeft + card.clientWidth / 2 - center) < Math.abs(best.offsetLeft + best.clientWidth / 2 - center) ? card : best, cards[0]);
-            centerCard(cards[Math.min(cards.indexOf(current) + 1, cards.length - 1)], 'smooth');
+            centerCard(cards[Math.min(cards.indexOf(current) + 1, cards.length - 1)], motion?.matches ? 'instant' : 'smooth');
           }, 5000);
         };
         resetHomeBannerAutoplay = startAutoplay;
@@ -7023,6 +7032,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (free) signals.push({icon:'truck', text:tr('Bepul yetkazib berish mavjud','Доступна бесплатная доставка')});
       else if (fixed || taxi) signals.push({icon:'truck', text:tr('Yetkazib berish mavjud','Доступна доставка')});
       if (post) signals.push({icon:'package-check', text:tr('Pochta orqali yetkazib berish mavjud','Доступна доставка почтой')});
+      const paymentLabels = { CASH: tr('Naqd', 'Наличные'), CARD: tr('Karta', 'Карта'), QR: 'QR', CLICK: 'Click', PAYME: 'Payme', UZUM: 'Uzum' };
+      const enabledPayments = (fulfillmentConfig?.payments?.methods || [])
+        .filter(method => method?.enabled && Object.values(method.regions || {}).some(region => region?.enabled))
+        .map(method => paymentLabels[method.id] || method.name || method.id);
+      if (enabledPayments.length) signals.push({icon:'credit-card', text:`${tr('To‘lov', 'Оплата')}: ${enabledPayments.join(', ')}`});
       if (!signals.length) return '';
       return `<div class="fc-product-delivery-signals">${signals.map(x=>`<span><i data-lucide="${x.icon}" class="w-4 h-4"></i>${escapeHtml(x.text)}</span>`).join('')}</div>`;
     }
@@ -7030,39 +7044,34 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function storefrontFooterHtml() {
       if (isAdminMode && isUserAnAdmin) return '';
       const contact = shopContact || {};
-      const links = [];
-      for (const phone of [contact.phone, contact.phone2, contact.phone3].filter(Boolean)) {
-        links.push(`<a href="tel:${escapeHtml(String(phone).replace(/[^\d+]/g, ''))}">${escapeHtml(phone)}</a>`);
-      }
-      if (contact.email) links.push(`<a href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a>`);
-      for (const [label, raw, base] of [['Telegram', contact.telegram, 'https://t.me/'], ['Instagram', contact.instagram, 'https://instagram.com/'], ['Facebook', contact.facebook, 'https://facebook.com/']]) {
-        const handle = cleanSocialNick(raw);
-        if (handle) links.push(`<a href="${base}${encodeURIComponent(handle)}" target="_blank" rel="noopener noreferrer">${label}</a>`);
-      }
-      for (const [label, raw, base] of [['YouTube', contact.youtube, 'https://youtube.com/@'], ['TikTok', contact.tiktok, 'https://tiktok.com/@']]) {
-        const handle = String(raw || '').replace(/^@/, '');
-        if (/^[A-Za-z0-9._-]+$/.test(handle)) links.push(`<a href="${base}${encodeURIComponent(handle)}" target="_blank" rel="noopener noreferrer">${label}</a>`);
-      }
+      const phones = [contact.phone, contact.phone2, contact.phone3].filter(Boolean)
+        .map(phone => `<a class="fc-footer-contact" href="tel:${escapeHtml(String(phone).replace(/[^\d+]/g, ''))}"><i data-lucide="phone"></i>${escapeHtml(phone)}</a>`).join('');
+      const social = [['Telegram', contact.telegram, 'https://t.me/', 'send'], ['Instagram', contact.instagram, 'https://instagram.com/', 'instagram'], ['Facebook', contact.facebook, 'https://facebook.com/', 'facebook'], ['YouTube', contact.youtube, 'https://youtube.com/@', 'youtube'], ['TikTok', contact.tiktok, 'https://tiktok.com/@', 'music-2']]
+        .map(([label, raw, base, icon]) => {
+          const handle = cleanSocialNick(raw);
+          return handle && /^[A-Za-z0-9._-]+$/.test(handle) ? `<a class="fc-footer-social" href="${base}${encodeURIComponent(handle)}" target="_blank" rel="noopener noreferrer" aria-label="${label}" title="${label}"><i data-lucide="${icon}"></i></a>` : '';
+        }).join('');
       const d = fulfillmentConfig?.delivery || {};
-      const delivery = [];
-      if (d.free?.enabled) delivery.push(tr('Bepul yetkazish', 'Бесплатная доставка'));
-      if (d.fixed?.enabled) delivery.push(tr('Kuryer orqali', 'Курьерская доставка'));
-      if (d.taxi?.enabled) delivery.push(tr('Taksi orqali', 'Доставка такси'));
-      if (d.post?.enabled) delivery.push(...(d.post.providers || []).filter(p => p.enabled).map(p => escapeHtml(p.name || p.id)));
+      const coverage = bucket => Object.entries(bucket?.regions || {}).filter(([, setting]) => setting?.enabled).map(([id, setting]) => {
+        const region = topLevelRegionLabel(id);
+        return Array.isArray(setting.districts) && setting.districts.length ? `${region}: ${setting.districts.join(', ')}` : region;
+      });
+      const coverageRows = (name, bucket) => bucket?.enabled && coverage(bucket).length ? `<p>${escapeHtml(name)} — ${escapeHtml(coverage(bucket).join(', '))}</p>` : '';
+      const delivery = [coverageRows(tr('Bepul yetkazish', 'Бесплатная доставка'), d.free), coverageRows(tr('Kuryer', 'Курьер'), d.fixed), coverageRows(tr('Taksi', 'Такси'), d.taxi), ...(d.post?.enabled ? (d.post.providers || []).map(provider => coverageRows(provider.name || provider.id, provider)) : [])].filter(Boolean);
       const paymentNames = { CASH: tr('Naqd', 'Наличные'), CARD: tr('Karta', 'Карта'), QR: 'QR', CLICK: 'Click', PAYME: 'Payme', UZUM: 'Uzum' };
-      const payments = (fulfillmentConfig?.payments?.methods || []).filter(m => m.enabled).map(m => paymentNames[m.id] || escapeHtml(m.name || m.id));
+      const payments = (fulfillmentConfig?.payments?.methods || []).map(method => coverageRows(paymentNames[method.id] || method.name || method.id, method)).filter(Boolean);
       const docs = (legalDocuments || []).filter(doc => doc?.enabled && legalDocContent(doc));
       const col = (title, body) => body ? `<div class="fc-storefront-footer-column"><h3>${title}</h3>${body}</div>` : '';
       const about = [contact.about, contact.workHours && `${tr('Ish vaqti','Часы работы')}: ${contact.workHours}`].filter(Boolean).map(x => `<p>${escapeHtml(x)}</p>`).join('');
       const address = uiLang === 'ru' ? (contact.addressRu || contact.address) : contact.address;
-      const mapLink = contact.coordinates ? `https://www.google.com/maps?q=${encodeURIComponent(contact.coordinates)}` : '';
+      const mapLink = contact.coordinates ? `https://www.google.com/maps?q=${encodeURIComponent(contact.coordinates)}` : (address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : '');
       return `<footer class="fc-storefront-footer fc-home-default-block" aria-label="${tr('Do‘kon ma’lumotlari','Информация о магазине')}">
         <div class="fc-storefront-footer-grid">
-          ${col(escapeHtml(shopDisplayName()), about)}
-          ${col(tr('Aloqa va manzil','Контакты и адрес'), `${links.join('')}${address ? `<p>${escapeHtml(address)}</p>` : ''}${mapLink ? `<a href="${mapLink}" target="_blank" rel="noopener noreferrer">${tr('Xaritada ko‘rish','Посмотреть на карте')}</a>` : ''}`)}
-          ${col(tr('Yetkazib berish va to‘lov','Доставка и оплата'), `${delivery.length ? `<p>${tr('Yetkazib berish','Доставка')}: ${delivery.join(', ')}</p>` : ''}${payments.length ? `<p>${tr('To‘lov','Оплата')}: ${payments.join(', ')}</p>` : ''}`)}
+          <div class="fc-storefront-footer-column"><h3>${escapeHtml(shopDisplayName())}</h3>${about}${social ? `<div class="fc-footer-socials">${social}</div>` : ''}</div>
+          ${col(tr('Aloqa va manzil','Контакты и адрес'), `${phones}${contact.email ? `<a href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a>` : ''}${address && mapLink ? `<a class="fc-footer-contact" href="${escapeHtml(mapLink)}" target="_blank" rel="noopener noreferrer"><i data-lucide="map-pin"></i>${escapeHtml(address)}</a>` : ''}`)}
+          ${col(tr('Yetkazib berish va to‘lov','Доставка и оплата'), `${delivery.length ? `<div class="fc-footer-coverage"><b>${tr('Yetkazib berish','Доставка')}</b>${delivery.join('')}</div>` : ''}${payments.length ? `<div class="fc-footer-coverage"><b>${tr('To‘lov','Оплата')}</b>${payments.join('')}</div>` : ''}`)}
           ${col(tr('Huquqiy hujjatlar','Правовые документы'), docs.map(doc => `<button type="button" onclick="openStorefrontLegalDocument('${doc.type}')">${escapeHtml(legalDocTitle(doc))}</button>`).join(''))}
-        </div><div class="fc-storefront-footer-attribution"><a href="https://ustr.uz" target="_blank" rel="noopener noreferrer">Powered by UStorE</a></div>
+        </div><div class="fc-storefront-footer-attribution"><a href="https://ustr.uz" target="_blank" rel="noopener noreferrer">${tr('UStorE platformasida ishlaydi','Работает на платформе UStorE')}</a></div>
       </footer>`;
     }
     function openStorefrontLegalDocument(type) {
@@ -11502,9 +11511,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const editing = s.editing === true;
       const note = s.credentialExists && !s.issuedPassword
         ? `<p class="fc-web-credential-note">${tr('Parol xavfsizlik sabab qayta ko‘rsatilmaydi. Yangisini shu yerda o‘rnata olasiz.', 'Пароль нельзя показать повторно. Здесь можно задать новый.')}</p>` : '';
-      const secret = s.issuedPassword ? `<div class="fc-web-credential-secret"><span>${tr('Yangi parol', 'Новый пароль')}</span><div class="fc-web-credential-value"><input id="fc-web-issued-password" type="password" readonly value="${escapeHtml(s.issuedPassword)}" aria-label="${tr('Yangi parol', 'Новый пароль')}"><button type="button" class="fc-btn fc-btn-secondary" onclick="toggleShopWebIssuedPassword()">${tr('Ko‘rsatish', 'Показать')}</button><button type="button" class="fc-btn fc-btn-secondary" onclick="copyShopWebPassword()">${tr('Nusxa olish', 'Скопировать')}</button></div><small>${tr('Parol faqat hozir ko‘rsatiladi. Xavfsiz joyga saqlang.', 'Пароль показан только сейчас. Сохраните его в надёжном месте.')}</small></div>` : '';
+      const secret = s.issuedPassword ? `<div class="fc-web-credential-secret"><span>${tr('Parol', 'Пароль')}</span><div class="fc-web-credential-value"><input id="fc-web-issued-password" type="password" readonly value="${escapeHtml(s.issuedPassword)}" aria-label="${tr('Yangi parol', 'Новый пароль')}"><button type="button" class="fc-credential-icon-btn" onclick="toggleShopWebIssuedPassword()" aria-label="${tr('Parolni ko‘rsatish','Показать пароль')}" title="${tr('Parolni ko‘rsatish','Показать пароль')}"><i data-lucide="eye"></i></button><button type="button" class="fc-credential-icon-btn" onclick="copyShopWebPassword()" aria-label="${tr('Parolni nusxalash','Скопировать пароль')}" title="${tr('Parolni nusxalash','Скопировать пароль')}"><i data-lucide="copy"></i></button></div><small>${tr('Parol faqat hozir ko‘rsatiladi. Xavfsiz joyga saqlang.', 'Пароль показан только сейчас. Сохраните его в надёжном месте.')}</small></div>` : '';
       const overview = `<p>${tr('Shu Telegram akkauntingizga bog‘langan. Login va parol faqat sizga tegishli.', 'Привязано к вашему Telegram-аккаунту. Эти данные доступны только вам.')}</p>
-        ${s.login ? `<div class="fc-web-credential-login"><span>Login</span><div class="fc-web-credential-value"><strong>${escapeHtml(s.login)}</strong><button type="button" class="fc-btn fc-btn-secondary" onclick="copyShopWebLogin()">${tr('Nusxa olish', 'Скопировать')}</button></div></div>` : ''}
+        ${s.login ? `<div class="fc-web-credential-login"><span>Login</span><div class="fc-web-credential-value"><strong>${escapeHtml(s.login)}</strong><button type="button" class="fc-credential-icon-btn" onclick="copyShopWebLogin()" aria-label="${tr('Loginni nusxalash','Скопировать логин')}" title="${tr('Loginni nusxalash','Скопировать логин')}"><i data-lucide="copy"></i></button></div></div>` : ''}
         ${secret || note}
         ${s.valid ? (!s.credentialExists ? `<button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="issueShopWebCredentials()">${tr('Login va parolni olish', 'Получить логин и пароль')}</button>` : `<button type="button" class="fc-btn fc-btn-primary" onclick="openShopWebCredentialEdit()">${tr('Login va parolni almashtirish', 'Изменить логин и пароль')}</button>`) : ''}`;
       const edit = `<p>${tr('Login va parolni alohida o‘zgartirishingiz mumkin. Parol yangilansa, eski web sessiyalar yopiladi.', 'Логин и пароль можно менять отдельно. После смены пароля старые веб-сессии завершатся.')}</p>
@@ -11537,7 +11546,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (!input) return;
       input.type = input.type === 'password' ? 'text' : 'password';
       const button = input.nextElementSibling;
-      if (button) button.textContent = input.type === 'password' ? tr('Ko‘rsatish', 'Показать') : tr('Yashirish', 'Скрыть');
+      if (button) {
+        button.setAttribute('aria-label', input.type === 'password' ? tr('Parolni ko‘rsatish', 'Показать пароль') : tr('Parolni yashirish', 'Скрыть пароль'));
+        button.innerHTML = `<i data-lucide="${input.type === 'password' ? 'eye' : 'eye-off'}"></i>`;
+        safeCreateIcons();
+      }
     }
 
     async function issueShopWebCredentials() {
@@ -11601,7 +11614,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       try {
         const result = await callApi('shop_web_credentials_set_password', { password });
         if (activePage !== 'WEB_CREDENTIALS') return;
-        webCredentialState = { ...webCredentialState, busy: false, valid: true, editing: false, login: String(result.login || webCredentialState.login || ''), issuedPassword: null,
+        webCredentialState = { ...webCredentialState, busy: false, valid: true, editing: false, login: String(result.login || webCredentialState.login || ''), issuedPassword: password,
           notice: tr('Parol almashtirildi. Eski web sessiyalar bekor qilindi.', 'Пароль изменён. Старые веб-сессии отменены.') };
       } catch (error) {
         if (activePage !== 'WEB_CREDENTIALS') return;
@@ -15316,28 +15329,6 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           </section>
 
           ${myStatus.isBlocked ? `<div class="fc-bg-danger-soft border fc-border-danger p-4 rounded-2xl text-xs"><p class="font-bold fc-text-danger">${tr("Siz botdan foydalanish huquqidan mahrum qilingansiz", "Доступ к оформлению заказов заблокирован")}</p><p class="fc-text-danger mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.blockReason || tr("ko'rsatilmagan", "не указана"))}</p></div>` : myStatus.isWarned ? `<div class="bg-amber-50 border border-amber-300 p-4 rounded-2xl text-xs"><p class="font-bold text-amber-800">${tr("Sizga ogohlantirish berilgan", "Вам вынесено предупреждение")}</p><p class="text-amber-700 mt-1">${tr("Sabab", "Причина")}: ${escapeHtml(myStatus.warnReason || tr("ko'rsatilmagan", "не указана"))}</p></div>` : ''}
-
-          <section class="shop-about-card fc-shop-public-card">
-            <div class="fc-shop-public-head">
-              <div class="min-w-0 flex-1"><div class="fc-shop-public-eyebrow">${tr("Do'kon ma'lumotlari", 'Данные магазина')}</div><h3>${escapeHtml(shopDisplayName())}</h3></div>
-              ${(isUserAnAdmin && isAdminMode && hasPermission('shop.settings.manage')) ? `<button onclick="openShopInfoModal(); activePopupModal='SHOP_INFO'" class="fc-btn fc-btn-secondary fc-shop-public-edit"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>${tr("Tahrirlash", "Изменить")}</button>` : ''}
-            </div>
-
-            <div class="fc-shop-contact-list">
-              ${shopContact.address ? `<div class="fc-shop-contact-row rounded-xl p-1 -m-1"><span class="fc-shop-contact-icon"><i data-lucide="map-pin" class="w-4 h-4"></i></span><span class="fc-shop-contact-value">${escapeHtml(address)}</span><span></span></div>` : ''}
-              ${locationAvailable ? `<button type="button" onclick="openShopLocationChooser()" class="fc-shop-contact-row is-clickable active:bg-gray-50 rounded-xl p-1 -m-1 w-full text-left"><span class="fc-shop-contact-icon"><i data-lucide="map" class="w-4 h-4"></i></span><span class="fc-shop-contact-value">${tr('Xaritada ochish','Открыть на карте')}</span><i data-lucide="chevron-right" class="w-4 h-4 fc-shop-contact-chevron"></i></button>` : ''}
-              ${shopContact.workHours ? `<div class="fc-shop-contact-row rounded-xl p-1 -m-1"><span class="fc-shop-contact-icon"><i data-lucide="clock-3" class="w-4 h-4"></i></span><span class="fc-shop-contact-value">${escapeHtml(shopContact.workHours)}</span><span></span></div>` : ''}
-              ${phones.map(phone => `<a href="tel:${escapeHtml(String(phone).replace(/[^\d+]/g, ''))}" class="fc-shop-contact-row is-clickable active:bg-gray-50 rounded-xl p-1 -m-1"><span class="fc-shop-contact-icon"><i data-lucide="phone" class="w-4 h-4"></i></span><span class="fc-shop-contact-value">${escapeHtml(phone)}</span><span></span></a>`).join('')}
-            </div>
-
-            ${(instagramNick || telegramNick || facebookNick) ? `<div class="fc-shop-social-actions">
-              ${instagramNick ? `<a href="https://instagram.com/${encodeURIComponent(instagramNick)}" target="_blank" class="fc-shop-social-chip" title="Instagram"><span class="fc-shop-social-chip-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5" ry="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"></circle></svg></span><span>Instagram</span></a>` : ''}
-              ${telegramNick ? `<a href="https://t.me/${encodeURIComponent(telegramNick)}" target="_blank" class="fc-shop-social-chip" title="Telegram"><span class="fc-shop-social-chip-icon"><i data-lucide="send" class="w-4 h-4"></i></span><span>Telegram</span></a>` : ''}
-              ${facebookNick ? `<a href="https://facebook.com/${encodeURIComponent(facebookNick)}" target="_blank" class="fc-shop-social-chip" title="Facebook"><span class="fc-shop-social-chip-icon"><i data-lucide="globe-2" class="w-4 h-4"></i></span><span>Facebook</span></a>` : ''}
-            </div>` : ''}
-
-            ${shopInfoIsEmpty() ? `<p class="text-[11px] text-gray-400 text-center py-2">${(isUserAnAdmin && isAdminMode) ? tr("Do'kon ma'lumotlarini Tahrirlash orqali kiriting.", "Заполните данные магазина через Изменить.") : ''}</p>` : ''}
-          </section>
         </div>`;
     }
 
@@ -17157,13 +17148,6 @@ function renderModalContainer() {
                 <label class="font-bold text-gray-600">${tr('Katalog ikonkasi','Иконка каталога')}</label>
                 <div class="fc-category-icon-select"><span data-category-icon-preview>${categoryIconMarkup({iconId:categoryIconDraft.id,iconColor:categoryIconDraft.color})}</span><button type="button" onclick="openCategoryIconPicker()" class="fc-btn fc-btn-secondary">${tr('Almashtirish','Изменить')}</button></div>
               </div>
-              <div>
-                <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
-                <input id="m-cat-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
-                <input id="m-cat-image-input-files" type="file" onchange="onImagePicked(event, 'm-cat-prev', 'm-cat-image-button', 'm-cat-image-url', 'm-cat-image-url-error')" class="hidden">
-                <img referrerpolicy="no-referrer" id="m-cat-prev" src="" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 hidden border mt-1">
-                <div class="fc-image-source-row mt-1"><button id="m-cat-image-button" type="button" onclick="openImagePickerSheet('m-cat-image-input','m-cat-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="m-cat-image-url" type="url" value="" placeholder="https://..." oninput="onImageUrlInput(this.value,'m-cat-prev','m-cat-image-url-error','m-cat-image-button')"><p id="m-cat-image-url-error" class="hidden"></p></div></div>
-              </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveCategoryFromModal()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
                 <button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -17187,13 +17171,6 @@ function renderModalContainer() {
               <div>
                 <label class="font-bold text-gray-600">${tr('Katalog ikonkasi','Иконка каталога')}</label>
                 <div class="fc-category-icon-select"><span data-category-icon-preview>${categoryIconMarkup({iconId:categoryIconDraft.id,iconColor:categoryIconDraft.color})}</span><button type="button" onclick="openCategoryIconPicker()" class="fc-btn fc-btn-secondary">${tr('Almashtirish','Изменить')}</button></div>
-              </div>
-              <div>
-                <label class="font-bold text-gray-600">${tr("Katalog rasmi", "Изображение каталога")}</label>
-                <input id="ec-image-input" type="file" accept="image/*" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
-                <input id="ec-image-input-files" type="file" onchange="onImagePicked(event, 'ec-img-prev', 'ec-image-button', 'ec-image-url', 'ec-image-url-error')" class="hidden">
-                <img referrerpolicy="no-referrer" id="ec-img-prev" src="${escapeHtml((c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? c.img : '')}" onerror="this.onerror=null;this.src='${FALLBACK_IMG}';" class="w-16 h-16 object-contain bg-gray-50 rounded-xl p-0.5 ${(c.img && (c.img.startsWith('http') || c.img.startsWith('data:'))) ? '' : 'hidden'} border mt-1">
-                <div class="fc-image-source-row mt-1"><button id="ec-image-button" type="button" onclick="openImagePickerSheet('ec-image-input','ec-image-input-files')" class="fc-image-icon-action" aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><div class="fc-image-url-field"><input id="ec-image-url" type="url" value="${escapeHtml(c.img || '')}" placeholder="https://..." oninput="onImageUrlInput(this.value,'ec-img-prev','ec-image-url-error','ec-image-button')"><p id="ec-image-url-error" class="hidden"></p></div></div>
               </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveCategoryEdit('${c.id}')" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
@@ -18012,8 +17989,9 @@ if (activePopupModal === 'LOGO_CROP') {
         const displayHasDiscount = activeVariant ? (displayOldPrice && displayOldPrice > displayPrice) : hasDiscount;
 
         container.innerHTML = `
-          <div class="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onclick="selectedProductModal=null; render();">
-            <div id="product-detail-sheet" class="bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl" onclick="event.stopPropagation()">
+          <div class="${!isAdminMode ? 'fc-product-detail-page' : 'fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4'}" onclick="if(event.target===this)closeProductDetailPage()">
+            <div id="product-detail-sheet" class="${!isAdminMode ? 'fc-product-detail-layout' : 'bg-white rounded-t-3xl sm:rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl'}" onclick="event.stopPropagation()">
+              ${!isAdminMode ? `<button type="button" class="fc-product-detail-back" onclick="closeProductDetailPage()"><i data-lucide="arrow-left"></i>${tr('Mahsulotlarga qaytish','Вернуться к товарам')}</button>` : ''}
               <div class="relative">
                 ${(() => {
                   const images = productGalleryImages(p);
@@ -18026,6 +18004,7 @@ if (activePopupModal === 'LOGO_CROP') {
                     `).join('')}
                   </div>
                   ${images.length > 1 ? `<div class="fc-product-gallery-dots">${images.map((_, i) => `<span class="fc-gallery-dot ${i === productGalleryIndex ? 'is-active' : ''}"></span>`).join('')}</div>` : ''}
+                  ${images.length > 1 ? `<div class="fc-product-thumbnails">${images.map((img, i) => `<button type="button" class="${i === productGalleryIndex ? 'is-active' : ''}" onclick="scrollProductGalleryTo(${i},true)" aria-label="${tr('Rasm','Изображение')} ${i + 1}"><img src="${escapeHtml(img.url)}" alt="" loading="lazy" referrerpolicy="no-referrer"></button>`).join('')}</div>` : ''}
                   `;
                 })()}
                 ${(canManageProducts()) ? `
@@ -18059,6 +18038,7 @@ if (activePopupModal === 'LOGO_CROP') {
                       <div class="flex items-center space-x-2">
                         <span class="text-xs text-gray-400 line-through font-bold">${money(displayOldPrice)}</span>
                         <span class="text-base fc-text-danger font-black">${money(displayPrice)}</span>
+                        <span class="fc-product-discount-badge rounded-lg px-1.5 py-0.5 text-[11px] font-black">-${Math.round((1 - Number(displayPrice) / Number(displayOldPrice)) * 100)}%</span>
                       </div>
                     ` : `
                       <p class="text-base font-black text-blue-600">${money(displayPrice)}</p>
@@ -18123,6 +18103,7 @@ if (activePopupModal === 'LOGO_CROP') {
                 </div>
 
                 ${storefrontDeliverySignalsHtml()}
+                ${p.stock > 0 ? `<button type="button" class="fc-product-buy-now" onclick="buyProductNow('${p.id}')">${tr('Hozir sotib olish','Купить сейчас')}</button>` : ''}
 
                 ${productDesc(p) ? `
                   <div class="bg-gray-50 p-3 rounded-2xl border text-xs space-y-1">
@@ -18130,6 +18111,7 @@ if (activePopupModal === 'LOGO_CROP') {
                     <p class="text-gray-600 leading-relaxed">${escapeHtml(productDesc(p))}</p>
                   </div>
                 ` : ''}
+                ${(p.sku || categories.some(c => c.id === p.categoryId)) ? `<div class="bg-gray-50 p-3 rounded-2xl border text-xs space-y-1"><h4 class="font-bold text-gray-700">${tr('Xususiyatlar','Характеристики')}</h4>${p.sku ? `<p>${tr('Mahsulot kodi','Код товара')}: ${escapeHtml(p.sku)}</p>` : ''}${categories.some(c => c.id === p.categoryId) ? `<p>${tr('Katalog','Каталог')}: ${escapeHtml(categoryName(categories.find(c => c.id === p.categoryId)))}</p>` : ''}</div>` : ''}
 
                 <button onclick="toggleFavorite('${p.id}', event)" class="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border font-bold text-xs ${favoriteProductIds.has(p.id) ? 'fc-bg-danger-soft fc-border-danger fc-text-danger' : 'bg-white border-gray-200 text-gray-600'}">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="${favoriteProductIds.has(p.id) ? '#ef4444' : 'none'}" stroke="${favoriteProductIds.has(p.id) ? '#ef4444' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"></path></svg>
@@ -18141,6 +18123,11 @@ if (activePopupModal === 'LOGO_CROP') {
             </div>
           </div>
         `;
+        if (!isAdminMode) {
+          const pageRoot = document.getElementById('app-content');
+          const page = container.firstElementChild;
+          if (pageRoot && page) pageRoot.replaceChildren(page);
+        }
         // Har render (miqdor +/-, sevimli, va h.k.) galereya DOM tugunini
         // qayta yaratadi — foydalanuvchi surib qo'ygan slaydda qolishi
         // uchun joriy indeksga darhol (animatsiyasiz) qaytariladi.
@@ -18460,6 +18447,9 @@ if (activePopupModal === 'LOGO_CROP') {
       document.querySelectorAll('.fc-gallery-dot').forEach((dot, i) => {
         dot.classList.toggle('is-active', i === productGalleryIndex);
       });
+      document.querySelectorAll('.fc-product-thumbnails button').forEach((button, i) => {
+        button.classList.toggle('is-active', i === productGalleryIndex);
+      });
     }
     // MODAL OPENERS & HANDLERS — Rang→O'lcham tanlash (Uzum Market uslubi).
     // Ikkita bosqich: 1) Rang bosiladi (asosiy rasm o'zgaradi, galereya
@@ -18541,6 +18531,16 @@ if (activePopupModal === 'LOGO_CROP') {
       activePopupModal = null;
       switchTab('cart');
     }
+    function buyProductNow(productId) {
+      const p = selectedProductModal;
+      if (!p || String(p.id) !== String(productId)) return;
+      const hasVariants = productVariants(p).length > 0;
+      const key = cartKey(productId, hasVariants ? activeSizeName : null, hasVariants ? activeColorName : null);
+      const before = Number(cart[key]?.qty || 0);
+      if (hasVariants) addVariantToCart(productId);
+      else addToCart(productId);
+      if (Number(cart[key]?.qty || 0) > before) goToCartFromProductDetail();
+    }
     function changeActiveVariantCartQty(delta, event) {
       if (event) event.stopPropagation();
       const p = selectedProductModal;
@@ -18587,6 +18587,11 @@ if (activePopupModal === 'LOGO_CROP') {
       // 18-band: faqat mijoz ko'rinishida (admin tahrirlash klikini "ko'rish"
       // sifatida hisoblamaymiz) — recentViewProductIds optimistik yangilanadi.
       if (!(isAdminMode && isUserAnAdmin) && selectedProductModal) recordProductView(id);
+    }
+    function closeProductDetailPage() {
+      selectedProductModal = null;
+      render();
+      if (browserBridge && !applyingWebRoute) browserBridge.navigate(currentTab === 'categories' ? '/catalog' : '/');
     }
 
     function openEditFieldModal(prodId, fieldName) {
@@ -19024,20 +19029,12 @@ if (activePopupModal === 'LOGO_CROP') {
     async function saveCategoryFromModal() {
       const name = document.getElementById('m-cat-name').value.trim();
       if (!name) return showAppNotice(tr("Katalog nomini kiriting!", "Введите название каталога!"));
-      const imageSnap = takeTempImageSnapshot();
       const parentId = adminCatParentId;
       activePopupModal = null;
       render();
       showActionToast(tr("⏳ Katalog saqlanmoqda...", "⏳ Каталог сохраняется..."), 'saving');
       try {
-        // 14-band: uploadImageSnapshot faqat FAYL yuklashni biladi
-        // (snapshot.url'ni hech qachon o'qimaydi) — admin URL kiritib fayl
-        // tanlamasa, bu chaqiruv jim ravishda null qaytarardi va katalog
-        // rasmsiz saqlanardi. productImagePayloadFromSnapshot ikkalasini ham
-        // (fayl VA URL) to'g'ri qayta ishlaydi — mahsulot rasmi shu orqali
-        // ishlaydigan bir xil yo'l.
-        const { img: imgUrl } = await productImagePayloadFromSnapshot(imageSnap, false);
-        const result = await callApi('add_category', { name, img: imgUrl, parentId,
+        const result = await callApi('add_category', { name, parentId,
           iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color });
         upsertLocalCategory(result.category);
         saveCatalogCache();
@@ -19046,8 +19043,8 @@ if (activePopupModal === 'LOGO_CROP') {
       } catch (e) {
         console.error(e);
         showActionToast(tr("❌ Katalog saqlanmadi", "❌ Каталог не сохранён"), 'error', 1800);
-        showAppNotice(tr("❌ Katalogni saqlashda xatolik yuz berdi: ", "❌ Ошибка сохранения каталога: ") + ((imageSnap?.file || imageSnap?.preparing || imageSnap?.url) ? friendlyImageError(e) : (e.message || e)));
-      } finally { releaseImageSnapshot(imageSnap); }
+        showAppNotice(e.message || e);
+      }
     }
 
     async function saveAdminFromModal() {
@@ -19605,25 +19602,13 @@ if (activePopupModal === 'LOGO_CROP') {
       const old = cloneData(c);
       const name = document.getElementById('ec-name').value.trim();
       if (!name) return showAppNotice(tr("Katalog nomini kiriting!", "Введите название каталога!"));
-      const imageSnap = takeTempImageSnapshot();
-      // 14-band: uploadImageSnapshot faqat FAYL yuklashni biladi, URL
-      // maydonini hech qachon o'qimasdi — admin URL kiritsa, u yerga
-      // yozilgan qiymat jim ravishda tashlab yuborilib, eski rasm (yoki
-      // hech narsa) qaytaverardi. productImagePayloadFromSnapshot fayl VA
-      // URL'ni bir xil to'g'ri yo'l bilan qayta ishlaydi (mahsulot rasmi
-      // shu orqali ishlaydi) — admin hech narsa tanlamagan holatdagina
-      // eski rasm saqlanib qoladi.
-      const imageChanged = !!(imageSnap.file || imageSnap.preparing || imageSnap.url);
-
       c.name = name;
-      if (imageSnap.preview) c.img = imageSnap.preview;
       activePopupModal = null;
       render();
       showActionToast(tr("⏳ Katalog saqlanmoqda...", "⏳ Каталог сохраняется..."), 'saving');
 
       try {
-        const newImg = imageChanged ? (await productImagePayloadFromSnapshot(imageSnap, false)).img : old.img;
-        const result = await callApi('edit_category', { categoryId: id, name, img: newImg,
+        const result = await callApi('edit_category', { categoryId: id, name,
           iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color });
         const current = categories.find(cat => cat.id === id);
         if (current) Object.assign(current, mapCategoryFromDB(result.category));
@@ -19636,9 +19621,7 @@ if (activePopupModal === 'LOGO_CROP') {
         if (curIdx >= 0) categories[curIdx] = old;
         render();
         showActionToast(tr("❌ Saqlanmadi", "❌ Не сохранено"), 'error', 1800);
-        showAppNotice(tr("❌ Xatolik yuz berdi: ", "❌ Произошла ошибка: ") + (imageChanged ? friendlyImageError(e2) : (e2.message || e2)));
-      } finally {
-        releaseImageSnapshot(imageSnap);
+        showAppNotice(e2.message || e2);
       }
     }
 

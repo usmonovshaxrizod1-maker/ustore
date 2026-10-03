@@ -916,13 +916,11 @@ test('5.3: coordinates are only ever used to build a maps link, never rendered a
   assert.doesNotMatch(block, /\$\{coords\}|\$\{escapeHtml\(coords\)\}|\$\{shopContact\.coordinates\}/);
 });
 
-test('5.4: up to 3 shop phones render only when present, each as a working tel: link', () => {
+test('5.4: up to 3 configured shop phones render as footer tel: links', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  const start = app.indexOf('function renderProfile');
-  const end = app.indexOf('shopInfoIsEmpty()', start);
-  const block = app.slice(start, end > start ? end : start + 2500);
-  assert.match(block, /const phones = \[shopContact\.phone, shopContact\.phone2, shopContact\.phone3\]\.filter\(Boolean\)/);
-  assert.match(block, /phones\.map\(phone => `/);
+  const block = app.slice(app.indexOf('function storefrontFooterHtml()'), app.indexOf('function openStorefrontLegalDocument'));
+  assert.match(block, /const phones = \[contact\.phone, contact\.phone2, contact\.phone3\]\.filter\(Boolean\)/);
+  assert.match(block, /\.map\(phone => `/);
   assert.match(block, /href="tel:\$\{escapeHtml\(String\(phone\)\.replace\(\/\[\^\\d\+\]\/g, ''\)\)\}"/);
 });
 
@@ -942,35 +940,26 @@ test('5.5/5.6: admin types only an Instagram/Telegram nickname (no full URL), an
   assert.match(modal, /id="sc-telegram"/);
   assert.doesNotMatch(modal, /instagram\.com\/|t\.me\//);
 
-  const start = app.indexOf('function renderProfile');
-  const end = app.indexOf('shopInfoIsEmpty()', start);
-  const block = app.slice(start, end > start ? end : start + 2500);
-  assert.match(block, /href="https:\/\/instagram\.com\/\$\{encodeURIComponent\(instagramNick\)\}"/);
-  assert.match(block, /href="https:\/\/t\.me\/\$\{encodeURIComponent\(telegramNick\)\}"/);
+  const block = app.slice(app.indexOf('function storefrontFooterHtml()'), app.indexOf('function openStorefrontLegalDocument'));
+  assert.match(block, /\['Instagram', contact\.instagram, 'https:\/\/instagram\.com\//);
+  assert.match(block, /\['Telegram', contact\.telegram, 'https:\/\/t\.me\//);
 });
 
-test('5.7: every optional shop-about field hides its entire row when empty; map row now uses the Yandex/Google chooser availability guard instead of a direct Google-only mapsUrl row', () => {
+test('5.7: footer only displays configured shop information and maps address', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  const start = app.indexOf('function renderProfile');
-  const end = app.indexOf('shopInfoIsEmpty()', start);
-  const block = app.slice(start, end > start ? end : start + 5000);
-  assert.match(block, /\$\{shopContact\.address \? `/);
-  assert.match(block, /const locationAvailable = !!\(coords \|\| address\);/);
-  assert.match(block, /\$\{locationAvailable \? `<button[^`]*openShopLocationChooser\(\)/);
-  assert.match(block, /\$\{instagramNick \? `/);
-  assert.match(block, /\$\{telegramNick \? `/);
+  const block = app.slice(app.indexOf('function storefrontFooterHtml()'), app.indexOf('function openStorefrontLegalDocument'));
+  assert.match(block, /contact\.workHours &&/);
+  assert.match(block, /address && mapLink/);
+  assert.match(block, /data-lucide="map-pin"/);
+  assert.match(block, /const social =/);
   assert.doesNotMatch(block, />-<|>—<|: '-'|: '—'/);
 });
 
-test('5.8: the shop-about card is view-only for regular users; the edit affordance (pencil button opening SHOP_INFO) only renders for an admin in admin mode', () => {
+test('5.8: duplicate shop-about card is absent from Profile and settings edit flow remains', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  const start = app.indexOf('shop-about-card');
-  const end = app.indexOf('shopInfoIsEmpty()', start);
-  const block = app.slice(start, end > start ? end : start + 2000);
-  const editBtnIdx = block.indexOf("activePopupModal='SHOP_INFO'");
-  assert.ok(editBtnIdx >= 0, 'edit button must exist');
-  const guardIdx = block.lastIndexOf('isUserAnAdmin && isAdminMode', editBtnIdx);
-  assert.ok(guardIdx >= 0 && guardIdx < editBtnIdx, 'edit button must be gated behind admin+adminMode');
+  const block = app.slice(app.indexOf('function renderProfile'), app.indexOf('function readShopContactFormValues'));
+  assert.doesNotMatch(block, /class="shop-about-card/);
+  assert.match(app, /function openShopInfoModal/);
 });
 
 // ============================================================
@@ -1646,9 +1635,9 @@ test('cache-busting: ustore.css and ustore-commerce.js query versions were bumpe
   // mini-modal redesign, per-variant price, swipe gallery, object-fit
   // consistency) — bumped v99->v100. ustore-commerce.js was NOT touched
   // Commerce logic was updated again after this historical round.
-  assert.match(html, /ustore\.css\?v=317"/, 'current ustore.css must not be served stale');
+  assert.match(html, /ustore\.css\?v=318"/, 'current ustore.css must not be served stale');
   assert.match(html, /ustore-commerce\.js\?v=8"/, 'ustore-commerce.js gained the FREE/FIXED "Umumiy qiymat" general-value blocks (2026-09) and must not be served stale');
-  assert.match(html, /ustore-shop-app\.js\?v=317"/, "current ustore-shop-app.js must not be served stale");
+  assert.match(html, /ustore-shop-app\.js\?v=318"/, "current ustore-shop-app.js must not be served stale");
 });
 
 test('13-band: delivery region comment is optional, capped at 200 chars, and omitted when blank', () => {
@@ -2283,12 +2272,13 @@ test('10/11-band: the four inner "Do\'kon sozlamalari" sub-sections that were mo
   assert.doesNotMatch(settingsBlock, /Yetkazib berish va to'lov/, 'the old single combined entry must be gone from the Settings page');
 });
 
-test('12-band: product/category image pickers offer BOTH a Gallery entry point (accept="image/*", the existing/working path) and a separate Files entry point (no accept restriction, so Android routes to its generic document picker instead of the Photos picker) — both feed the same, already-validated onImagePicked handler', () => {
+test('12-band: product image pickers retain Gallery and Files entry points; category image pickers are removed', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  for (const prefix of ['m-prod-image-input', 'm-cat-image-input', 'ec-image-input', 'ef-image-input']) {
+  for (const prefix of ['m-prod-image-input', 'ef-image-input']) {
     assert.match(app, new RegExp(`id="${prefix}" type="file" accept="image/\\*" onchange="onImagePicked`), `${prefix}: the original Gallery input must be untouched`);
     assert.match(app, new RegExp(`id="${prefix}-files" type="file" onchange="onImagePicked`), `${prefix}-files: a new accept-less Files input must exist, wired to the SAME onImagePicked handler (reusing its already-tested validation/preview logic)`);
   }
+  assert.doesNotMatch(app, /id="(?:m-cat-image-input|ec-image-input)"/);
 });
 
 test('13-band: product search ranks name-matches before description-only matches (case-insensitive), computing each product\'s match once so a product matching in both name and description is never listed twice', () => {
@@ -2302,18 +2292,17 @@ test('13-band: product search ranks name-matches before description-only matches
   assert.match(block, /return aNameRank - bNameRank;/, 'name-matched products must sort before description-only matches, after the existing SKU-prefix tier');
 });
 
-test('14-band: category image URL (add AND edit) now goes through the same URL-aware productImagePayloadFromSnapshot() wrapper products already use, instead of the file-only uploadImageSnapshot() that silently dropped a typed URL — an untouched image on edit still falls back to the OLD value, never null', () => {
+test('14-band: category add/edit preserve legacy image by omitting image fields', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
   const addStart = app.indexOf('async function saveCategoryFromModal');
   const addEnd = app.indexOf('\n    async function saveAdminFromModal', addStart);
   const addBlock = app.slice(addStart, addEnd);
-  assert.match(addBlock, /await productImagePayloadFromSnapshot\(imageSnap, false\)/, 'category creation must resolve its image via the URL-aware wrapper');
+  assert.doesNotMatch(addBlock, /productImagePayloadFromSnapshot|img:|imageUpload/);
 
   const editStart = app.indexOf('async function saveCategoryEdit');
   const editEnd = app.indexOf('\n    // ⬆️⬇️', editStart);
   const editBlock = app.slice(editStart, editEnd > editStart ? editEnd : editStart + 3000);
-  assert.match(editBlock, /const imageChanged = !!\(imageSnap\.file \|\| imageSnap\.preparing \|\| imageSnap\.url\);/);
-  assert.match(editBlock, /imageChanged \? \(await productImagePayloadFromSnapshot\(imageSnap, false\)\)\.img : old\.img/, 'editing without touching the image must keep the OLD value, not silently null it out');
+  assert.doesNotMatch(editBlock, /productImagePayloadFromSnapshot|img:|imageUpload/);
 });
 
 test('admin mode hides Favorites/Recently-viewed nav (user-mode feature stays intact)', () => {
@@ -2369,10 +2358,9 @@ test('5-band: "Tayyor"/"Tayyorlanmoqda" removed as a selectable shipment-status 
   assert.doesNotMatch(labelFnBlock, /Tayyor/, 'the shared status-label lookup must not reintroduce "Tayyor" wording for legacy READY orders');
 });
 
-test('image upload UX: ordinary visual content supports file + HTTPS URL, while logo and receipt/proof remain file-only', () => {
+test('image upload UX: product and marketing still accept URL while category image fields are removed', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  assert.match(app, /id="m-cat-image-url" type="url"/, 'ADD_CAT must visibly support URL images');
-  assert.match(app, /id="ec-image-url" type="url"/, 'EDIT_CAT must visibly support URL images');
+  assert.doesNotMatch(app, /id="(?:m-cat-image-url|ec-image-url)"/);
   assert.match(app, /id="m-prod-image-url" type="url"/, 'product add/edit must support URL images');
   assert.match(app, /id="banner-image-url"[^>]*type="url"|type="url"[^>]*id="banner-image-url"/, 'banner must support URL images');
   assert.match(app, /id="bundle-image-url"[^>]*type="url"|type="url"[^>]*id="bundle-image-url"/, 'bundle must support URL images');
@@ -2402,7 +2390,7 @@ test('work hours: shop_settings gains a work_hours column (010 migration), wired
   assert.match(server, /workHours: shopRow\?\.work_hours \|\| null/, 'boot must return workHours');
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
   assert.doesNotMatch(app, /Ish vaqti.*10:00.*22:00|10:00 – 22:00/, 'the fake hardcoded "10:00-22:00" must be gone — it lied to every shop regardless of real hours');
-  assert.match(app, /shopContact\.workHours \? `/, 'work hours line must only render when the admin actually set it');
+  assert.match(app, /contact\.workHours &&/, 'footer work hours line must only render when the admin actually set it');
 });
 
 test('Azure translation: secret values are trimmed/quote-stripped (same class of bug as the token/secret paste issue found earlier this session) and every failure path logs a distinct greppable [TRANSLATE_FAILED:*] code instead of a silent generic console.error', () => {
@@ -2552,22 +2540,13 @@ test('product image "spilling out of frame" root cause: max-w-full/max-h-full we
   assert.match(css, /\.h-full\s*\{\s*height: 100%;\s*\}/, 'h-full must actually exist in the compiled CSS (max-w-full/max-h-full do not, and must never be reintroduced without also adding their CSS rules)');
 });
 
-test('the Profile page\'s shop-about-card: social media icons (Instagram/Telegram/Facebook) now render in their own row BELOW the phone numbers, not squeezed into the header next to the shop name — and every info row (address/maps-link/work-hours/phone) shares the exact same spacing wrapper so "Joylashuv"/"Ish vaqti" no longer look uneven relative to each other', () => {
+test('the storefront footer owns social icons and profile no longer duplicates shop contact', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  const cardStart = app.indexOf('class="shop-about-card');
-  const cardEnd = app.indexOf('${(isUserAnAdmin && isAdminMode) ? `\n            <button onclick="openDashboardLite()"');
-  const cardBlock = app.slice(cardStart, cardEnd > cardStart ? cardEnd : cardStart + 4000);
-
-  // Social icons block must come AFTER the phone numbers block, not inside the header.
-  const phonesIdx = cardBlock.indexOf('phones.map(phone =>');
-  const socialIdx = cardBlock.indexOf('instagramNick ? `<a href="https://instagram.com');
-  assert.ok(phonesIdx >= 0 && socialIdx > phonesIdx, 'social icons must be positioned after (below) the phone numbers, not in the header row');
-
-  // Every info row must share the identical spacing/tap-target wrapper tail
-  // (clickable rows additionally get "active:bg-gray-50" before it, static
-  // rows don't — but the actual spacing/margin classes must be identical).
-  const spacingMatches = cardBlock.match(/fc-shop-contact-row[^"`]*rounded-xl p-1 -m-1/g) || [];
-  assert.ok(spacingMatches.length >= 4, `expected address/maps/hours/phone rows to share rounded-xl p-1 -m-1 spacing, found ${spacingMatches.length}`);
+  const profile = app.slice(app.indexOf('function renderProfile'), app.indexOf('function readShopContactFormValues'));
+  const footer = app.slice(app.indexOf('function storefrontFooterHtml()'), app.indexOf('function openStorefrontLegalDocument'));
+  assert.doesNotMatch(profile, /class="shop-about-card/);
+  assert.match(footer, /fc-footer-socials/);
+  assert.match(footer, /fc-footer-contact/);
 });
 
 test('6-band (round 4): both index.html entry documents (shop app and platform bot) now explicitly disable caching on themselves — Telegram WebView sometimes keeps serving a stale entry document even after the child JS/CSS ?v= numbers are bumped and re-uploaded, since the WebView never re-fetches an entry document it considers still cached', () => {

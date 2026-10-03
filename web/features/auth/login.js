@@ -157,7 +157,12 @@ export function createLoginView({ controller, state = controller?.getState?.() |
     loginField.input.addEventListener('input', () => controller.updateDraft?.({ login: loginField.input.value }));
     passwordField.input.addEventListener('input', () => controller.updateDraft?.({ password: passwordField.input.value }));
     const passwordRow = doc.createElement('div'); passwordRow.className = 'uw-auth-password-row';
-    passwordRow.append(passwordField.element, createButton({ label: state.passwordVisible ? tr('Yashirish', 'Скрыть') : tr('Ko‘rsatish', 'Показать'), variant: 'ghost', onClick: () => controller.togglePassword() }, doc));
+    const reveal = createButton({ label: '', variant: 'ghost', onClick: () => controller.togglePassword() }, doc);
+    reveal.innerHTML = state.passwordVisible
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.9 10.9 0 0 1 12 5c4.7 0 8.5 3.2 10 7a10.7 10.7 0 0 1-3.1 4.4"/><path d="M6.2 6.2A10.8 10.8 0 0 0 2 12c1.5 3.8 5.3 7 10 7a10.5 10.5 0 0 0 4.2-.9"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+    reveal.setAttribute('aria-label', state.passwordVisible ? tr('Parolni yashirish', 'Скрыть пароль') : tr('Parolni ko‘rsatish', 'Показать пароль'));
+    passwordRow.append(passwordField.element, reveal);
     const submit = createButton({ label: state.busyAction === 'password' ? tr('Tekshirilmoqda…', 'Проверка…') : tr('Kirish', 'Войти'), type: 'submit', busy: state.busyAction === 'password' }, doc);
     const passwordError = inlineError(); if (passwordError) form.append(passwordError);
     form.append(loginField.element, passwordRow, submit);
@@ -189,7 +194,10 @@ export function createLoginView({ controller, state = controller?.getState?.() |
       link.textContent = shopBotUsername ? tr('Do‘kon botini ochish ↗', 'Открыть бота магазина ↗') : tr('UStorE Mini App botini ochish ↗', 'Открыть бот UStorE ↗');
       helpBody.append(link);
     }
-    const help = createCard({ title: tr('Login va parolni qayerdan olaman?', 'Где взять логин и пароль?'), body: helpBody }, doc);
+    const help = doc.createElement('details');
+    const summary = doc.createElement('summary');
+    summary.textContent = tr('Login va parolni qayerdan olaman?', 'Где взять логин и пароль?');
+    help.append(summary, helpBody);
     help.dataset.authHelp = 'credentials';
     body.append(form, help);
   }

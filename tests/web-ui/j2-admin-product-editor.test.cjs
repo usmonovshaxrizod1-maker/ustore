@@ -56,11 +56,11 @@ test('J2 edit sections reuse existing edit_product_field and variants keep exact
   const variantCall=calls.find(x=>x.action==='edit_product_field'&&x.payload.field==='variants'); assert.equal(variantCall.payload.value[0].price,220); assert.equal(variantCall.payload.value[0].oldPrice,260); assert.equal(variantCall.payload.value[0].sku,'KEEP'); assert.equal(variantCall.payload.variantImageUploads.length,1);
 });
 
-test('J2 category editor requires catalog.manage and supports create/edit image file', async () => {
+test('J2 category editor requires catalog.manage and sends only icon fields', async () => {
   const { createAdminCategoryEditorController } = await import(moduleUrl('web/features/admin-products/editor.js'));
   const deniedCalls=[]; const denied=createAdminCategoryEditorController({adminPort:{invoke:async(...a)=>{deniedCalls.push(a);return {ok:true,data:{}};}},actor:{permissions:['products.manage']},imageIO:imageIO()}); assert.equal(denied.openCreate().error.code,'FORBIDDEN'); assert.equal(deniedCalls.length,0);
-  const {port,calls}=makePort(); const c=createAdminCategoryEditorController({adminPort:port,actor:{permissions:['catalog.manage']},imageIO:imageIO()}); c.openCreate({categories:[]}); c.setField('name','Vitaminlar'); c.chooseImageFile(file()); assert.equal((await c.save()).ok,true); assert.equal(calls.at(-1).action,'add_category'); assert.equal(calls.at(-1).payload.imageUpload.base64,'QUJD');
-  c.openEdit({id:'c1',name:'Protein',img:'📦'},[]); c.setField('name','Proteinlar'); c.chooseImageFile(file()); assert.equal((await c.save()).ok,true); assert.equal(calls.at(-1).action,'edit_category');
+  const {port,calls}=makePort(); const c=createAdminCategoryEditorController({adminPort:port,actor:{permissions:['catalog.manage']},imageIO:imageIO()}); c.openCreate({categories:[]}); c.setField('name','Vitaminlar'); c.setField('iconId','nutrition_vitamins'); assert.equal((await c.save()).ok,true); assert.equal(calls.at(-1).action,'add_category'); assert.equal(calls.at(-1).payload.iconId,'nutrition_vitamins'); assert.equal('img' in calls.at(-1).payload,false); assert.equal('imageUpload' in calls.at(-1).payload,false);
+  c.openEdit({id:'c1',name:'Protein',img:'📦'},[]); c.setField('name','Proteinlar'); assert.equal((await c.save()).ok,true); assert.equal(calls.at(-1).action,'edit_category'); assert.equal('img' in calls.at(-1).payload,false);
 });
 
 test('J2 denies product editor before network without products.manage', async () => {
@@ -84,8 +84,8 @@ test('J2 live/server allowlists are narrow and server re-checks product/catalog 
   assert.match(api,/case "get_admin_product_editor"[\s\S]*requirePermission\('products\.manage'\)/); assert.match(api,/variantImageUploads/); assert.match(api,/invalid_variant_image_upload/); assert.match(api,/case "add_category"[\s\S]*payload\.imageUpload/); assert.match(api,/case "edit_category"[\s\S]*payload\.imageUpload/); assert.match(api,/normalizeProductImageUrl/);
 });
 
-test('J2 view renders premium product/category editors with drag-drop and normal file picker', async () => {
+test('J2 view keeps product image picker but category editor only exposes icon fields', async () => {
   const { createAdminProductEditorController, createAdminProductEditorView, createAdminCategoryEditorController, createAdminCategoryEditorView } = await import(moduleUrl('web/features/admin-products/editor.js'));
   const {port}=makePort(); const doc=new FakeDocument(); const pc=createAdminProductEditorController({adminPort:port,actor:owner(),imageIO:imageIO()}); pc.openCreate({categories:[{id:'c1',name:'Protein'}]}); pc.setField('name','Demo'); pc.setField('price','100'); pc.addVariant({color:'Qora',size:'M',qty:1,price:100}); const pv=createAdminProductEditorView({controller:pc,documentRef:doc}).element; assert.equal(pv.dataset.feature,'admin-product-editor'); const nodes=flatten(pv); assert.ok(nodes.some(n=>n.className?.includes('uw-image-drop'))); assert.ok(nodes.some(n=>n.tagName==='INPUT'&&n.type==='file'));
-  const cc=createAdminCategoryEditorController({adminPort:port,actor:owner(),imageIO:imageIO()}); cc.openCreate({categories:[]}); const cv=createAdminCategoryEditorView({controller:cc,documentRef:doc}).element; assert.equal(cv.dataset.feature,'admin-category-editor'); assert.ok(flatten(cv).some(n=>n.listeners?.drop));
+  const cc=createAdminCategoryEditorController({adminPort:port,actor:owner(),imageIO:imageIO()}); cc.openCreate({categories:[]}); const cv=createAdminCategoryEditorView({controller:cc,documentRef:doc}).element; assert.equal(cv.dataset.feature,'admin-category-editor'); assert.equal(flatten(cv).some(n=>n.listeners?.drop),false); assert.equal(flatten(cv).some(n=>n.tagName==='INPUT'&&n.type==='file'),false);
 });

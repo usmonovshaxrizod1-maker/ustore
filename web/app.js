@@ -346,7 +346,7 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20260930hotfix1');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261002premium1');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
@@ -356,7 +356,7 @@ function loadAuthFeatureModule() {
 function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
-  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20260930hotfix1');
+  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20261002premium1');
   return loginFeatureModulePromise;
 }
 function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.' } = {}) {
@@ -967,7 +967,7 @@ async function startWebApp() {
     mount(stateView('loading', 'Telegram kirishi tekshirilmoqda', 'Bir oz kuting.'));
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20260930hotfix1'), import('./services/live/auth.js?v=20260930hotfix1'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261002premium1'), import('./services/live/auth.js?v=20261002premium1'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,
