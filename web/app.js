@@ -346,7 +346,7 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261002premium1');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261003oidc1');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
@@ -356,7 +356,7 @@ function loadAuthFeatureModule() {
 function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
-  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20261002premium1');
+  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20261003oidc1');
   return loginFeatureModulePromise;
 }
 function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.' } = {}) {
@@ -423,6 +423,12 @@ async function renderCentralHandoff(routeState, epoch) {
       onSignedIn: () => renderRoute(routeState),
       onRedirect: (url) => location.assign(url),
     });
+    if (handoffParams.get('method') === 'telegram' && handoffInfo.ok &&
+        String(handoffInfo.data?.status || '').toUpperCase() === 'PENDING') {
+      mount(stateView('loading', 'Telegram ochilmoqda', 'Kirish xavfsiz tarzda davom etmoqda.'));
+      const started = await controller.signInTelegram();
+      if (epoch !== renderEpoch || started?.ok) return;
+    }
     const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, shopBotUsername: handoffInfo.ok ? handoffInfo.data?.botUsername || '' : '', locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz' }));
     mount(view); remember(view.destroy); return;
   }
@@ -967,7 +973,7 @@ async function startWebApp() {
     mount(stateView('loading', 'Telegram kirishi tekshirilmoqda', 'Bir oz kuting.'));
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261002premium1'), import('./services/live/auth.js?v=20261002premium1'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261003oidc1'), import('./services/live/auth.js?v=20261003oidc1'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,
@@ -975,7 +981,7 @@ async function startWebApp() {
         pendingStore: authStore.createSessionStorageOfficialTelegramStore(sessionStorage),
       });
       if (result?.ok && typeof result.data?.returnTo === 'string' &&
-          (result.data.returnTo.startsWith('/platform/') || result.data.returnTo.startsWith('/auth/origin/handoff?'))) {
+          (result.data.returnTo.startsWith('/platform/') || result.data.returnTo.startsWith('/auth/handoff?'))) {
         const path = result.data.returnTo;
         history.replaceState(history.state, '', previewBase() ? `${previewBase()}#${path}` : path);
         router.start();

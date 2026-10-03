@@ -34,7 +34,7 @@ function validateOrigin(origin: string) {
   if (canonicalHttpOrigin(origin) !== origin) throw new Error("VALIDATION_ERROR:origin");
 }
 function safeLoginDestination(path: string) {
-  return isSafeReturnPath(path) && (path.startsWith("/platform/") || path.startsWith("/auth/origin/handoff?"));
+  return isSafeReturnPath(path) && (path.startsWith("/platform/") || path.startsWith("/auth/handoff?"));
 }
 
 export async function beginOfficialTelegramLogin(db: any, input: {

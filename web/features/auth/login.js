@@ -7,6 +7,7 @@ const AUTH_ERROR_COPY = Object.freeze({
   NETWORK_ERROR: { title: 'Tarmoq xatosi', message: 'Internet aloqasini tekshirib, qayta urinib ko‘ring.' },
   FORBIDDEN: { title: 'Kirishga ruxsat berilmadi', message: 'Bu sayt manzili Telegram orqali kirish uchun serverda ruxsat etilmagan.' },
   CAPABILITY_UNAVAILABLE: { title: 'Telegram orqali kirish yakunlanmadi', message: 'Telegram tasdiqlash xizmatini hozir ochib bo‘lmadi. Birozdan keyin qayta urinib ko‘ring.' },
+  VALIDATION_ERROR: { title: 'Kirish havolasi yaroqsiz', message: 'Do‘kon sahifasiga qaytib, Telegram orqali kirishni qayta boshlang.' },
 });
 
 function getDocument(documentRef) {

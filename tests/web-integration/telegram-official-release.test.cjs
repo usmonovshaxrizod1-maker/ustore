@@ -37,3 +37,45 @@ test('official login accepts www only for the configured platform host', () => {
   assert.equal(check('https://fitcore.ustr.uz'), false);
   assert.equal(check('https://evil.example'), false);
 });
+
+test('shop handoff returns from Telegram to the actual routed central path', () => {
+  const app = read('web/app.js');
+  const routes = read('web/navigation/routes.js');
+  const server = read('supabase/functions/_shared/telegram-oidc.ts');
+  assert.match(routes, /path: '\/auth\/handoff'/);
+  assert.match(server, /path\.startsWith\("\/auth\/handoff\?"\)/);
+  assert.match(app, /result\.data\.returnTo\.startsWith\('\/auth\/handoff\?'\)/);
+  assert.match(app, /await controller\.signInTelegram\(\)/);
+});
+
+test('shop Telegram choice starts OIDC without a second click and retains retry on failure', async () => {
+  const app = read('web/app.js');
+  const start = app.indexOf('async function renderCentralHandoff(routeState, epoch) {');
+  const end = app.indexOf('async function renderOriginCallback', start);
+  assert.ok(start >= 0 && end > start);
+  for (const fail of [false, true]) {
+    let starts = 0;
+    const shown = [];
+    const loginController = { signInTelegram: async () => { starts++; return { ok: !fail }; } };
+    const context = {
+      URLSearchParams,
+      renderEpoch: 1,
+      loadProductionRuntimeModule: async () => ({ createProductionAuthRuntime: () => ({ auth: {
+        getSession: async () => ({ ok: false }),
+        getOriginHandoff: async () => ({ ok: true, data: { status: 'PENDING', botUsername: 'fitcore_bot' } }),
+      } }) }),
+      loadAuthFeatureModule: async () => ({}),
+      loadLoginFeatureModule: async () => ({ createLoginController: () => loginController, createLoginView: () => ({ element: {} }) }),
+      stateView: () => ({ kind: 'loading' }),
+      reactive: () => ({ element: { kind: 'retry' }, destroy() {} }),
+      mount: (view) => shown.push(view.element || view),
+      remember: () => {},
+      location: { assign: () => {} },
+    };
+    const render = vm.runInNewContext(`${app.slice(start, end)}\nrenderCentralHandoff`, context);
+    await render({ search: `?state=${'s'.repeat(43)}&method=telegram`, target: `/auth/handoff?state=${'s'.repeat(43)}` }, 1);
+    assert.equal(starts, 1);
+    assert.equal(shown[0].kind, 'loading');
+    assert.equal(shown.some((view) => view.kind === 'retry'), fail);
+  }
+});
