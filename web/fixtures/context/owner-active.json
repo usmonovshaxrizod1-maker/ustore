@@ -1,0 +1,6 @@
+{
+  "mode": "web",
+  "shop": {"id":"shop-fitcore-demo","slug":"fitcore-demo","name":"Fitcore Demo","logoUrl":null,"lifecycle":"ACTIVE","currency":"UZS","canonicalWebUrl":"https://fitcore-demo.example"},
+  "actor": {"accountId":"acct-owner-001","displayName":"Demo Owner","telegramLinked":true,"shopRole":"OWNER","roleCodes":["OWNER"],"permissions":["*"]},
+  "capabilities": {"catalog":true,"checkout":true,"support":true,"admin":true,"domains":true}
+}

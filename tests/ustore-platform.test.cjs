@@ -409,7 +409,7 @@ test('billz-sync is a cron-only Edge Function: it authenticates via a shared x-c
 });
 
 test('a Billz sync crawl uses billzCrawlProductMap (paginates until Billz\'s own count is exhausted) rather than a single unpaginated page — otherwise a catalog past page 1 would silently look fully deleted', () => {
-  const client = fs.readFileSync(path.join(FUNCTIONS_DIR, '_shared', 'billz-client.ts'), 'utf8');
+  const client = fs.readFileSync(path.join(FUNCTIONS_DIR, '_shared', 'billz-client.ts'), 'utf8').replace(/\r\n/g, '\n');
   const start = client.indexOf('export async function billzCrawlProductMap');
   assert.ok(start >= 0, 'billzCrawlProductMap not found');
   const block = client.slice(start, start + 1600);

@@ -1,0 +1,12 @@
+{
+  "deliveryOptions": [
+    {"id":"PICKUP","label":"Do‘kondan olib ketish","price":0,"available":true},
+    {"id":"TASHKENT","label":"Toshkent bo‘ylab yetkazib berish","price":25000,"available":true},
+    {"id":"REGIONS","label":"Viloyatlarga yetkazib berish","price":40000,"available":true}
+  ],
+  "paymentMethods": [
+    {"id":"CASH","label":"Naqd / qabul qilganda","available":true},
+    {"id":"CLICK","label":"Click","available":true},
+    {"id":"PAYME","label":"Payme","available":true}
+  ]
+}

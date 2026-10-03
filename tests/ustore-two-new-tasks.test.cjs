@@ -7,7 +7,7 @@ const root = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'ustore-shop-app.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'ustore.css'), 'utf8');
 
-test('task 1: storefront banner carousel starts on the third banner whenever it exists and renders one position indicator per rendered banner', () => {
+test('task 1: storefront banner carousel starts on the first banner and renders one position indicator per rendered banner', () => {
   const renderStart = app.indexOf('function renderBannerCarouselHtml()');
   const renderBlock = app.slice(renderStart, app.indexOf('let homeBannerDrag', renderStart));
   assert.match(renderBlock, /const banners = activeBanners\.slice\(0,5\);/);
@@ -16,7 +16,7 @@ test('task 1: storefront banner carousel starts on the third banner whenever it 
 
   const initStart = app.indexOf('function initBannerCarousel()');
   const initBlock = app.slice(initStart, initStart + 3000);
-  assert.match(initBlock, /const initialIndex = Math\.min\(2, originalCards\.length - 1\);/);
+  assert.match(initBlock, /const initialIndex = 0;/);
   assert.match(initBlock, /indicators\.forEach\(\(dot, i\) =>/);
   assert.match(initBlock, /dot\.classList\.toggle\('is-active', i === realIndex\)/);
   assert.match(css, /\.fc-banner-indicator\.is-active\{width:1\.08rem;/);

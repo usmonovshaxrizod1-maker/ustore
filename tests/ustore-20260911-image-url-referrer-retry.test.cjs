@@ -36,8 +36,6 @@ test('every dynamically-sourced <img> tag (product/category/banner/bundle/order/
     '<img referrerpolicy="no-referrer" id="banner-image-prev"',
     '<img referrerpolicy="no-referrer" id="bundle-image-prev"',
     '<img referrerpolicy="no-referrer" id="m-prod-prev"',
-    '<img referrerpolicy="no-referrer" id="m-cat-prev"',
-    '<img referrerpolicy="no-referrer" id="ec-img-prev"',
     '<img referrerpolicy="no-referrer" id="miq-img-prev"',
     '<img referrerpolicy="no-referrer" id="ef-img-prev"',
     '<img referrerpolicy="no-referrer" src="${escapeHtml(img.url)}"',
@@ -65,6 +63,6 @@ test('QR-code reading (payment merchant QR) is unaffected — it decodes an uplo
 
 test('cache version bumped for this fix', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.match(html, /ustore-shop-app\.js\?v=317/);
+  assert.match(html, /ustore-shop-app\.js\?v=318/);
 });
 

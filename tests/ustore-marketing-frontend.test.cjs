@@ -7,7 +7,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
+const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8').replace(/\r\n/g, '\n');
 const shopApi = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'shop-api', 'index.ts'), 'utf8');
 
 test('renderActivePage routes all 6 new marketing pages (BUNDLES/DISCOUNT_TIERS/REWARD_RULES/MARKETING_HUB/CAMPAIGNS/CAMPAIGN_DETAIL)', () => {

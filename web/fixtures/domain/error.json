@@ -1,0 +1,1 @@
+{"id":"dom-custom-error","hostname":"shop-error.example","kind":"CUSTOM","status":"ERROR","ownershipVerified":false,"dnsStatus":"ERROR","tlsStatus":"UNKNOWN","isPrimary":false,"records":[],"lastCheckedAt":"2026-09-22T05:00:00.000Z","errorCode":"DNS_NOT_VERIFIED"}

@@ -18,8 +18,8 @@ const css = fs.readFileSync(path.join(root, 'ustore.css'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const mig060 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '060_shop_logo_wordmark.sql'), 'utf8');
 const mig061 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '061_support_auto_close.sql'), 'utf8');
-const mig062 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '062_variant_price.sql'), 'utf8');
-const mig007 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '007_tenant_rpcs.sql'), 'utf8');
+const mig062 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '062_variant_price.sql'), 'utf8').replace(/\r\n/g, '\n');
+const mig007 = fs.readFileSync(path.join(root, 'supabase', 'migrations', '007_tenant_rpcs.sql'), 'utf8').replace(/\r\n/g, '\n');
 
 function actionBlock(action) {
   const start = api.indexOf(`case "${action}"`);
@@ -387,7 +387,7 @@ test('banner carousel loop keeps only boundary clones and does not use the old t
   const fnStart = app.indexOf('function initBannerCarousel()');
   assert.ok(fnStart >= 0, 'initBannerCarousel must exist');
   const fnBlock = app.slice(fnStart, fnStart + 5500);
-  assert.match(fnBlock, /const initialIndex = Math\.min\(2, originalCards\.length - 1\);/);
+  assert.match(fnBlock, /const initialIndex = 0;/);
   assert.match(fnBlock, /centerCard\(originalCards\[initialIndex\], 'auto'\)/);
   assert.match(fnBlock, /cloneNode\(true\)/);
   assert.doesNotMatch(fnBlock, /jumpWithoutSnap|is-jump-instant/);
@@ -432,10 +432,9 @@ test("customer variant picker is Uzum-style Rang -> O'lcham: selection changes a
   assert.match(app, /rerenderProductDetailPreserveScroll/);
 });
 
-test('product/category image previews use fixed/consistent containers with object-contain rather than crop', () => {
+test('product image previews use fixed/consistent containers with object-contain rather than crop', () => {
   assert.match(css, /\.fc-image-preview-square\{[^}]*aspect-ratio:1\/1[^}]*object-fit:contain/s);
-  assert.match(app, /id="m-cat-prev"[^>]*object-contain/);
-  assert.match(app, /id="ec-img-prev"[^>]*object-contain/);
+  assert.doesNotMatch(app, /id="(?:m-cat-prev|ec-img-prev)"/);
   assert.match(app, /id="ef-img-prev"[^>]*object-contain/);
 });
 

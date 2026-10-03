@@ -18,13 +18,26 @@
     try { alreadyEntered = globalThis.sessionStorage?.getItem(`ustore:shop:entered:${host}`) === '1'; } catch (_) {}
     if (alreadyEntered) {
       globalThis.__USTORE_SHOP_LAUNCH_SKIP__ = true;
-      document.querySelector('#ustore-web-app')?.replaceChildren();
-      return;
     }
     const rawSlug = host.endsWith(`.${base}`) ? host.slice(0, -(base.length + 1)).split('.').at(-1) : host.split('.')[0];
     let cached = null;
     try { cached = JSON.parse(globalThis.localStorage?.getItem(`ustore:shop:brand:${host}`) || 'null'); } catch (_) {}
     const name = String(cached?.name || '').trim() || rawSlug.split('-').filter(Boolean).map((part) => part ? part[0].toUpperCase() + part.slice(1) : '').join(' ') || 'Do‘kon';
+    if (alreadyEntered) {
+      const app = document.querySelector('#ustore-web-app');
+      if (!app) return;
+      const shell = document.createElement('main');
+      shell.className = 'uw-shop-first-paint';
+      shell.setAttribute('aria-busy', 'true');
+      shell.innerHTML = '<header class="uw-shop-first-paint__header"><span class="uw-shop-first-paint__logo"></span><strong></strong><span class="uw-shop-first-paint__search"></span></header><div class="uw-shop-first-paint__body"><div class="uw-shop-first-paint__hero"></div><div class="uw-shop-first-paint__cards"><span></span><span></span><span></span><span></span></div></div>';
+      shell.querySelector('strong').textContent = name;
+      if (cached?.logoUrl && /^https:\/\//i.test(cached.logoUrl)) {
+        const img = document.createElement('img'); img.src = cached.logoUrl; img.alt = '';
+        shell.querySelector('.uw-shop-first-paint__logo').append(img);
+      }
+      app.replaceChildren(shell);
+      return;
+    }
     const root = document.querySelector('#ustore-web-app .uw-launch');
     if (!root) return;
     root.classList.remove('uw-launch--platform'); root.classList.add('uw-launch--shop');

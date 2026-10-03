@@ -1,0 +1,125 @@
+{
+  "products": [
+    {
+      "id": "prod-001",
+      "sku": "FC-PROT-001",
+      "name": "Whey Protein",
+      "name_ru": "Сывороточный протеин",
+      "price": 399000,
+      "old_price": 449000,
+      "stock": 18,
+      "category_id": "cat-protein",
+      "status": "ACTIVE",
+      "img": "https://example.invalid/whey.jpg",
+      "thumb_img": null,
+      "is_featured": true,
+      "is_visible": true,
+      "sort_order": 1,
+      "sizes": [],
+      "variants": [],
+      "sold_count": 42,
+      "created_at": "2026-09-01T08:00:00Z",
+      "import_batch_id": null,
+      "badge": "TOP",
+      "description": "Whey protein demo tavsifi"
+    },
+    {
+      "id": "prod-002",
+      "sku": "FC-CRE-001",
+      "name": "Creatine Monohydrate",
+      "name_ru": "Креатин моногидрат",
+      "price": 219000,
+      "old_price": null,
+      "stock": 0,
+      "category_id": "cat-creatine",
+      "status": "OUT_OF_STOCK",
+      "img": null,
+      "thumb_img": null,
+      "is_featured": false,
+      "is_visible": false,
+      "sort_order": 2,
+      "sizes": [],
+      "variants": [],
+      "sold_count": 16,
+      "created_at": "2026-09-02T08:00:00Z",
+      "import_batch_id": "batch-demo",
+      "badge": null,
+      "description": "Creatine demo tavsifi"
+    },
+    {
+      "id": "prod-003",
+      "sku": "FC-TEE-001",
+      "name": "Training T-shirt",
+      "name_ru": "Тренировочная футболка",
+      "price": 179000,
+      "old_price": 199000,
+      "stock": 12,
+      "category_id": "cat-clothes",
+      "status": "ACTIVE",
+      "img": null,
+      "thumb_img": null,
+      "is_featured": false,
+      "is_visible": true,
+      "sort_order": 3,
+      "sizes": [
+        "M",
+        "L"
+      ],
+      "variants": [
+        {
+          "sku": "FC-TEE-BLK-M",
+          "color": "Qora",
+          "size": "M",
+          "qty": 5,
+          "price": 179000,
+          "oldPrice": 199000,
+          "colorImg": "https://example.invalid/tee-black.jpg"
+        },
+        {
+          "sku": "FC-TEE-BLK-L",
+          "color": "Qora",
+          "size": "L",
+          "qty": 7,
+          "price": 189000,
+          "oldPrice": 209000,
+          "colorImg": "https://example.invalid/tee-black.jpg"
+        }
+      ],
+      "sold_count": 8,
+      "created_at": "2026-09-03T08:00:00Z",
+      "import_batch_id": null,
+      "badge": null,
+      "description": "Training T-shirt demo tavsifi"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat-protein",
+      "name": "Protein",
+      "name_ru": "Протеин",
+      "parent_id": "cat-supplements",
+      "img": "📦",
+      "sort_order": 1
+    },
+    {
+      "id": "cat-creatine",
+      "name": "Creatine",
+      "name_ru": "Креатин",
+      "parent_id": "cat-supplements",
+      "img": "📦",
+      "sort_order": 2
+    },
+    {
+      "id": "cat-clothes",
+      "name": "Sport kiyimlari",
+      "name_ru": "Спортивная одежда",
+      "parent_id": null,
+      "img": "👕",
+      "sort_order": 3
+    }
+  ],
+  "page": 1,
+  "pageSize": 25,
+  "totalCount": 3,
+  "totalPages": 1
+}

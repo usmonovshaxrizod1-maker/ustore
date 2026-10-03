@@ -1,0 +1,6 @@
+{
+  "mode": "web",
+  "shop": {"id":"shop-fitcore-demo","slug":"fitcore-demo","name":"Fitcore Demo","logoUrl":null,"lifecycle":"ACTIVE","currency":"UZS","canonicalWebUrl":"https://fitcore-demo.example"},
+  "actor": null,
+  "capabilities": {"catalog":true,"checkout":false,"support":false,"admin":false,"domains":false}
+}

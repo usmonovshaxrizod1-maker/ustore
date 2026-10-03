@@ -75,9 +75,10 @@ test('5 — products with color variants do not show general image edit; each co
 });
 
 test('6 — general visual content has file + HTTPS URL; logo, receipts/proofs and QR/payment logos remain file-only', () => {
-  for (const id of ['m-prod-image-url', 'm-cat-image-url', 'ec-image-url', 'miq-image-url', 'ef-image-url', 'banner-image-url', 'bundle-image-url']) {
+  for (const id of ['m-prod-image-url', 'miq-image-url', 'ef-image-url', 'banner-image-url', 'bundle-image-url']) {
     assert.match(app, new RegExp(`id="${id}"[^>]*type="url"|type="url"[^>]*id="${id}"`), `${id} should be visible URL input`);
   }
+  assert.doesNotMatch(app, /id="(?:m-cat-image-url|ec-image-url)"/);
   assert.match(app, /id="vc-\$\{ci\}-image-url"[^>]*type="url"|type="url"[^>]*id="vc-\$\{ci\}-image-url"/);
   assert.match(app, /function validateExternalImageUrl\(/);
   assert.doesNotMatch(app, /shop-logo-url-input|SHOP_LOGO_URL/);
@@ -100,8 +101,8 @@ test('7–8 + 24h report cleanup from previous fixes are still present', () => {
 });
 
 test('cache versions are bumped for the changed Shop App and Platform assets', () => {
-  assert.match(indexHtml, /ustore\.css\?v=317/);
-  assert.match(indexHtml, /ustore-shop-app\.js\?v=317/);
+  assert.match(indexHtml, /ustore\.css\?v=318/);
+  assert.match(indexHtml, /ustore-shop-app\.js\?v=318/);
   assert.match(platformHtml, /platform\.css\?v=40/);
   assert.match(platformHtml, /platform-app\.js\?v=61/);
 });

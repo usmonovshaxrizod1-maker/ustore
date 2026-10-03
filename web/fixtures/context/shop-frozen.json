@@ -1,0 +1,6 @@
+{
+  "mode": "web",
+  "shop": {"id":"shop-frozen-demo","slug":"frozen-demo","name":"Frozen Demo","logoUrl":null,"lifecycle":"FROZEN","currency":"UZS","canonicalWebUrl":"https://frozen-demo.example"},
+  "actor": {"accountId":"acct-owner-frozen","displayName":"Frozen Owner","telegramLinked":true,"shopRole":"OWNER","roleCodes":["OWNER"],"permissions":["*"]},
+  "capabilities": {"catalog":true,"checkout":false,"support":true,"admin":true,"domains":false}
+}

@@ -307,4 +307,15 @@ textarea.uw-field__control {
 .uw-launch__message{margin:.05rem 0 0;font-size:1rem;font-weight:750;color:#334155}.uw-launch__foot{color:#94a3b8;font-size:.78rem;line-height:1.45}
 .uw-launch--shop{background:radial-gradient(circle at 50% 10%,rgb(16 185 129/.11),transparent 22rem),linear-gradient(180deg,#fbfefd 0%,#f5f7fb 100%)}
 .uw-launch--shop .uw-launch__monogram{background:linear-gradient(145deg,#111827,#059669);box-shadow:0 9px 25px rgb(5 150 105/.18)}.uw-launch--shop .uw-launch__loader span{background:#059669}
+.uw-shop-first-paint{min-height:100dvh;background:var(--uw-color-canvas,#f6f8fb);color:var(--uw-color-text,#172033)}
+.uw-shop-first-paint__header{min-height:4.5rem;padding:1rem clamp(1rem,3vw,2.5rem);display:flex;align-items:center;gap:1rem;background:var(--uw-color-surface,#fff);border-bottom:1px solid var(--uw-color-border,#e2e8f0)}
+.uw-shop-first-paint__logo{width:3rem;height:3rem;flex:none;border-radius:.75rem;background:var(--uw-color-canvas,#f6f8fb)}
+.uw-shop-first-paint__logo img{width:100%;height:100%;object-fit:contain}
+.uw-shop-first-paint__header strong{font-size:.9rem}
+.uw-shop-first-paint__search{width:min(35vw,30rem);height:2.2rem;margin-left:auto;border-radius:.7rem;background:var(--uw-color-canvas,#f6f8fb)}
+.uw-shop-first-paint__body{width:min(calc(100% - 2rem),1680px);margin:auto;padding:1.5rem 0}
+.uw-shop-first-paint__hero{width:100%;aspect-ratio:5/2;max-height:25rem;border-radius:1.2rem;background:var(--uw-color-surface,#fff)}
+.uw-shop-first-paint__cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin-top:1.5rem}.uw-shop-first-paint__cards span{height:12rem;border-radius:1rem;background:var(--uw-color-surface,#fff)}
+@media(min-width:768px){.uw-shop-first-paint__cards{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:767px){.uw-shop-first-paint__search{display:none}.uw-shop-first-paint__hero{max-height:14rem}}
 @media(max-width:40rem){.uw-launch{min-height:calc(100dvh - .25rem);padding:.9rem}.uw-launch__inner{border-radius:1.35rem;padding:1.25rem 1rem}.uw-launch__brand{align-items:center}.uw-launch__brand-copy h1{font-size:1.38rem}}

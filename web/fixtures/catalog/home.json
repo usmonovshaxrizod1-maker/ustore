@@ -1,0 +1,13 @@
+{
+  "categories": [
+    {"id":"cat-supp","name":"Sport ozuqalari","name_ru":null,"parent_id":null,"img":null,"sort_order":10},
+    {"id":"cat-accessories","name":"Sport buyumlari","name_ru":null,"parent_id":null,"img":null,"sort_order":20}
+  ],
+  "products": [
+    {"id":"prod-protein","sku":"PROT-001","name":"Whey Protein Demo","name_ru":null,"price":399000,"old_price":429000,"stock":12,"category_id":"cat-supp","status":"ACTIVE","img":null,"thumb_img":null,"description":"Demo product","description_ru":null,"is_featured":true,"is_visible":true,"sort_order":10,"sizes":[],"variants":[],"sold_count":0,"created_at":"2026-09-01T00:00:00.000Z","import_batch_id":null,"badge":null},
+    {"id":"prod-shaker","sku":"SHAKER-001","name":"Shaker Demo","name_ru":null,"price":59000,"old_price":null,"stock":30,"category_id":"cat-accessories","status":"ACTIVE","img":null,"thumb_img":null,"description":null,"description_ru":null,"is_featured":false,"is_visible":true,"sort_order":20,"sizes":[],"variants":[],"sold_count":0,"created_at":"2026-09-01T00:00:00.000Z","import_batch_id":null,"badge":null}
+  ],
+  "bundles": [
+    {"id":"bundle-starter","name":"Starter to‘plam","description":"Protein va shaker bir to‘plamda.","items":[{"productId":"prod-protein","qty":1,"unitPrice":399000},{"productId":"prod-shaker","qty":1,"unitPrice":59000}],"resolvedItems":[{"productId":"prod-protein","qty":1,"name":"Whey Protein Demo","nameRu":null,"img":null,"price":399000},{"productId":"prod-shaker","qty":1,"name":"Shaker Demo","nameRu":null,"img":null,"price":59000}],"bundlePrice":429000,"regularTotal":458000,"savings":29000,"coverImageUrl":null,"startsAt":null,"endsAt":null,"sortOrder":10}
+  ]
+}

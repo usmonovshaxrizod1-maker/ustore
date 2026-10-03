@@ -295,15 +295,14 @@ export function createAdminProductEditorController({ adminPort, actor, imageIO =
 export function createAdminCategoryEditorController({ adminPort, actor, imageIO = globalThis.UstoreImageIO } = {}) {
   if (!adminPort?.invoke) throw new TypeError('adminPort kerak');
   const capabilities = adminEditorCapabilities(actor);
-  let state = { status: 'idle', mode: 'create', draft: { id: null, name: '', parentId: null, imageUrl: '', imageFile: null }, originalImageUrl: '', categories: [], error: null, busy: false, capabilities };
+  let state = { status: 'idle', mode: 'create', draft: { id: null, name: '', parentId: null, iconId: 'stationery_folder', iconColor: 'brand' }, categories: [], error: null, busy: false, capabilities };
   const listeners = new Set(); const snapshot = () => clone(state); const emit = () => listeners.forEach((fn) => fn(snapshot())); const set = (patch) => { state = { ...state, ...patch }; emit(); return snapshot(); };
   const deny = () => fail('FORBIDDEN', 'Kataloglarni boshqarish uchun ruxsat yo‘q.');
-  function openCreate({ categories = [], parentId = null } = {}) { if (!capabilities.catalog) return deny(); set({ status:'ready', mode:'create', categories:clone(categories), draft:{id:null,name:'',parentId:idText(parentId),imageUrl:'',imageFile:null}, originalImageUrl:'', error:null }); return ok(snapshot()); }
-  function openEdit(category, categories = []) { if (!capabilities.catalog) return deny(); set({ status:'ready', mode:'edit', categories:clone(categories), draft:{id:idText(category?.id),name:text(category?.name),parentId:idText(category?.parent_id ?? category?.parentId),imageUrl:text(category?.img),imageFile:null}, originalImageUrl:text(category?.img), error:null }); return ok(snapshot()); }
+  function openCreate({ categories = [], parentId = null } = {}) { if (!capabilities.catalog) return deny(); set({ status:'ready', mode:'create', categories:clone(categories), draft:{id:null,name:'',parentId:idText(parentId),iconId:'stationery_folder',iconColor:'brand'}, error:null }); return ok(snapshot()); }
+  function openEdit(category, categories = []) { if (!capabilities.catalog) return deny(); set({ status:'ready', mode:'edit', categories:clone(categories), draft:{id:idText(category?.id),name:text(category?.name),parentId:idText(category?.parent_id ?? category?.parentId),iconId:text(category?.icon_id || category?.iconId || 'stationery_folder'),iconColor:text(category?.icon_color || category?.iconColor || 'brand')}, error:null }); return ok(snapshot()); }
   let pending=null;
-  function setField(field,value){ if(pending)return snapshot(); if(!['name','parentId','imageUrl'].includes(field)) return snapshot(); set({draft:{...state.draft,[field]:value}}); return snapshot(); }
-  function chooseImageFile(file){if(pending)return snapshot(); const v=validateImageFile(file); if(!v.ok){set({error:v.error});return v;} set({draft:{...state.draft,imageFile:file},error:null}); return ok(true); }
-  async function save(){ if(!capabilities.catalog) return deny(); const name=text(state.draft.name); if(!name) return fieldError('Katalog nomini kiriting.',{name:'Katalog nomini kiriting.'}); let imageUpload=null; if(state.draft.imageFile){const p=await imageUploadFromFile(state.draft.imageFile,imageIO);if(!p.ok)return p;imageUpload=p.data;} set({busy:true,error:null}); let result; if(state.mode==='create'){result=await adminPort.invoke('add_category',{name,parentId:idText(state.draft.parentId),img:imageUpload?null:(text(state.draft.imageUrl)||null),imageUpload});}else{const imageChanged=text(state.draft.imageUrl)!==text(state.originalImageUrl);const editPayload={categoryId:state.draft.id,name,parentId:idText(state.draft.parentId),imageUpload};if(!imageUpload&&imageChanged)editPayload.img=text(state.draft.imageUrl)||null;result=await adminPort.invoke('edit_category',editPayload);} if(!result.ok){set({busy:false,error:result.error});return result;} const category=result.data?.category||{}; set({busy:false,error:null,mode:'edit',originalImageUrl:text(category.img),draft:{id:idText(category.id),name:text(category.name),parentId:idText(category.parent_id),imageUrl:text(category.img),imageFile:null}}); return result; }
+  function setField(field,value){ if(pending)return snapshot(); if(!['name','parentId','iconId','iconColor'].includes(field)) return snapshot(); set({draft:{...state.draft,[field]:value}}); return snapshot(); }
+  async function save(){ if(!capabilities.catalog) return deny(); const name=text(state.draft.name); if(!name) return fieldError('Katalog nomini kiriting.',{name:'Katalog nomini kiriting.'}); const iconId=text(state.draft.iconId)||'stationery_folder'; const iconColor=text(state.draft.iconColor)||'brand'; if(!/^[a-z][a-z0-9_]{1,63}$/.test(iconId)||!['brand','blue','green','rose','amber','slate'].includes(iconColor)) return fieldError('Ikonka yoki rang noto‘g‘ri.',{iconId:'Ikonka yoki rang noto‘g‘ri.'}); set({busy:true,error:null}); const payload={name,parentId:idText(state.draft.parentId),iconId,iconColor}; const result=await adminPort.invoke(state.mode==='create'?'add_category':'edit_category',state.mode==='create'?payload:{...payload,categoryId:state.draft.id}); if(!result.ok){set({busy:false,error:result.error});return result;} const category=result.data?.category||{}; set({busy:false,error:null,mode:'edit',draft:{id:idText(category.id),name:text(category.name),parentId:idText(category.parent_id),iconId:text(category.icon_id||iconId),iconColor:text(category.icon_color||iconColor)}}); return result; }
   function saveProtected(){
     if(pending)return pending;
     pending=Promise.resolve().then(save).catch(()=>fail('NETWORK_ERROR','Katalogni saqlash natijasini tekshiring.',{retryable:true})).then(result=>{
@@ -311,7 +310,7 @@ export function createAdminCategoryEditorController({ adminPort, actor, imageIO 
     }).finally(()=>{pending=null;});
     set({busy:true,error:null,success:null});return pending;
   }
-  return Object.freeze({ subscribe(fn){listeners.add(fn);fn(snapshot());return()=>listeners.delete(fn);}, getState:snapshot, openCreate, openEdit, setField, chooseImageFile, save:saveProtected });
+  return Object.freeze({ subscribe(fn){listeners.add(fn);fn(snapshot());return()=>listeners.delete(fn);}, getState:snapshot, openCreate, openEdit, setField, save:saveProtected });
 }
 
 function elText(doc, tag, className, value) { const node = doc.createElement(tag); if (className) node.className = className; node.textContent = String(value ?? ''); return node; }
@@ -355,6 +354,22 @@ export function createAdminProductEditorView({ controller, documentRef = globalT
 }
 
 export function createAdminCategoryEditorView({ controller, documentRef = globalThis.document } = {}) {
-  const doc=documentRef;if(!doc?.createElement)throw new Error('DOM document kerak');const state=controller.getState();const d=state.draft;const root=doc.createElement('section');root.className='uw-admin-category-editor';root.dataset.feature='admin-category-editor';
-  const name=createTextField({label:'Katalog nomi',value:d.name,required:true},doc);name.input.addEventListener('input',()=>controller.setField('name',name.input.value));const parent=createSelectField({label:'Ichki katalog',value:d.parentId||'',options:[{value:'',label:'Asosiy katalog'},...(state.categories||[]).filter(c=>String(c.id)!==String(d.id||'')).map(c=>({value:c.id,label:c.name}))],help:'Katalogni boshqa ota katalogga ko‘chirishda server siklni tekshiradi.'},doc);parent.select.addEventListener('change',()=>controller.setField('parentId',parent.select.value||null));const url=createTextField({label:'Rasm URL',value:d.imageUrl,placeholder:'https://…'},doc);url.input.addEventListener('input',()=>controller.setField('imageUrl',url.input.value));const body=doc.createElement('div');body.className='uw-editor-grid';body.append(name.element,parent.element,url.element);const picker=filePicker(doc,{label:'Katalog rasmi',onFile:(file)=>controller.chooseImageFile(file)});body.append(picker.wrap);root.append(createCard({title:state.mode==='create'?'Yangi katalog':'Katalogni tahrirlash',body,actions:[createButton({label:state.mode==='create'?'Katalog yaratish':'Saqlash',busy:state.busy,onClick:()=>controller.save()},doc)]},doc));if(state.success)root.append(createStatePanel({kind:'success',title:state.success},doc));if(state.error)root.append(createStatePanel({kind:'error',title:'Saqlash bajarilmadi',message:state.error.message||'Xatolik yuz berdi.'},doc));if(state.busy)root.querySelectorAll?.('input,select,button').forEach(node=>{node.disabled=true;});return{element:root};
+  const doc=documentRef;if(!doc?.createElement)throw new Error('DOM document kerak');
+  const state=controller.getState(),d=state.draft,root=doc.createElement('section');
+  root.className='uw-admin-category-editor';root.dataset.feature='admin-category-editor';
+  const body=doc.createElement('div');body.className='uw-editor-grid';
+  const name=createTextField({label:'Katalog nomi',value:d.name,required:true},doc);
+  name.input.addEventListener('input',()=>controller.setField('name',name.input.value));
+  const parent=createSelectField({label:'Ichki katalog',value:d.parentId||'',options:[{value:'',label:'Asosiy katalog'},...(state.categories||[]).filter(c=>String(c.id)!==String(d.id||'')).map(c=>({value:c.id,label:c.name}))]},doc);
+  parent.select.addEventListener('change',()=>controller.setField('parentId',parent.select.value||null));
+  const icon=createTextField({label:'Katalog ikonasi (SVG ID)',value:d.iconId||'stationery_folder'},doc);
+  icon.input.addEventListener('input',()=>controller.setField('iconId',icon.input.value));
+  const color=createSelectField({label:'Ikonka rangi',value:d.iconColor||'brand',options:['brand','blue','green','rose','amber','slate'].map(value=>({value,label:value}))},doc);
+  color.select.addEventListener('change',()=>controller.setField('iconColor',color.select.value));
+  body.append(name.element,parent.element,icon.element,color.element);
+  root.append(createCard({title:state.mode==='create'?'Yangi katalog':'Katalogni tahrirlash',body,actions:[createButton({label:state.mode==='create'?'Katalog yaratish':'Saqlash',busy:state.busy,onClick:()=>controller.save()},doc)]},doc));
+  if(state.success)root.append(createStatePanel({kind:'success',title:state.success},doc));
+  if(state.error)root.append(createStatePanel({kind:'error',title:'Saqlash bajarilmadi',message:state.error.message||'Xatolik yuz berdi.'},doc));
+  if(state.busy)root.querySelectorAll?.('input,select,button').forEach(node=>{node.disabled=true;});
+  return{element:root};
 }
