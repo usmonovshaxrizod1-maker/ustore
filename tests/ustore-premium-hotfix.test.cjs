@@ -85,7 +85,7 @@ test('shop and deep-link HTML load one coherent web release', () => {
   for (const entry of ['web/index.html', 'web/404.html']) {
     const html = read(entry);
     for (const asset of ['styles/index.css', 'app.js', 'launch-boot.js']) {
-      assert.match(html, new RegExp(`${asset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=20261002premium1`));
+      assert.match(html, new RegExp(`${asset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=20261003oidc1`));
     }
   }
 });

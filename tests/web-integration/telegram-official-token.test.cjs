@@ -61,6 +61,16 @@ test('authorization stays bound to the approved browser verifier and exact redir
     codeChallenge: 'z'.repeat(43), clientId,
   });
   assert.equal(new URL(central.redirectUrl).searchParams.get('redirect_uri'), 'https://ustr.uz/');
+  const shopHandoff = `/auth/handoff?state=${'s'.repeat(43)}&method=telegram&lang=uz`;
+  await beginOfficialTelegramLogin(fakeDb, {
+    origin: 'https://ustr.uz', returnTo: shopHandoff,
+    codeChallenge: 'z'.repeat(43), clientId,
+  });
+  assert.equal(inserted.return_path, shopHandoff);
+  await assert.rejects(beginOfficialTelegramLogin(fakeDb, {
+    origin: 'https://ustr.uz', returnTo: `/auth/origin/handoff?state=${'s'.repeat(43)}`,
+    codeChallenge: 'z'.repeat(43), clientId,
+  }), /VALIDATION_ERROR/);
   let requested = 0;
   // The fake row deliberately has no matching state lookup because the real
   // server query hashes both state and browser verifier. PKCE mismatch is
