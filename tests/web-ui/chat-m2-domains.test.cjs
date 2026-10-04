@@ -52,7 +52,7 @@ test('M2 add form shows normalization plus explicit apex/www separate-hostname g
   const currentTexts=texts(feature.element);
   assert.ok(currentTexts.includes('Tayyor domen: www.fitcore.uz'));
   assert.ok(currentTexts.includes('Texnik ma’lumot'));
-  assert.ok(currentTexts.some(x=>x.includes('fitcore.uz va www.fitcore.uz alohida hostname hisoblanadi')));
+  assert.ok(currentTexts.some(x=>x.includes('dokon.uz va www.dokon.uz alohida manzil hisoblanadi')));
 });
 
 test('M2 add sends only normalized hostname to existing domains_add port and does not invent paired www/apex add', async()=>{

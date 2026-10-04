@@ -80,8 +80,9 @@ test('M3 REMOVING state is read-only apart from copy and cannot verify/primary/r
   await feature.load();
   const card=flat(feature.element).find(x=>x.className==='uw-domain-card');
   const labels=buttons(card).map(b=>b.textContent);
-  assert.deepEqual(labels,['⧉']);
-  assert.equal(buttons(card)[0].attributes['aria-label'],'Manzilni nusxalash');
+  assert.deepEqual(labels,['','⧉']);
+  assert.equal(buttons(card)[0].attributes['aria-expanded'],'true');
+  assert.equal(buttons(card)[1].attributes['aria-label'],'Manzilni nusxalash');
 });
 
 test('M3 no-permission state remains explicit and does not fetch domains',async()=>{

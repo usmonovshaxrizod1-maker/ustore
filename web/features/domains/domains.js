@@ -1,4 +1,5 @@
 import { createDomainsPort } from '../../services/ports/domains.js';
+import { buildDomainAssistantPrompt } from './domain-assistant-prompt.js';
 const STATUS_COPY = {
   DRAFT: ['Tayyorlanmoqda', 'Черновик'],
   PENDING_DNS: ['DNS kutilmoqda', 'Ожидание DNS'],
@@ -117,7 +118,7 @@ export function createDomainsFeature(options = {}, documentRef) {
   let destroyed = false;
   if (!port || ['list','add','verify','setPrimary','remove'].some((name) => typeof port[name] !== 'function')) throw new TypeError('domains port incomplete');
 
-  const state = { items: [], loading: false, error: null, busy: new Set(), adding: false, addOpen: false, hostname: '', editingSubdomainId: null, subdomainSlug: '', subdomainError: '', miniApp: null, miniAppBusy: false };
+  const state = { items: [], loading: false, error: null, busy: new Set(), expandedDomains: new Map(), adding: false, addOpen: false, hostname: '', editingSubdomainId: null, subdomainSlug: '', subdomainError: '', miniApp: null, miniAppBusy: false };
   const root = doc.createElement('section');
   root.className = `uw-domains${context?.mode === 'telegram' ? ' is-telegram' : ''}`;
   root.dataset.feature = 'domains';
@@ -233,33 +234,41 @@ export function createDomainsFeature(options = {}, documentRef) {
     await load();
   }
   function domainCard(domain) {
-    const card = doc.createElement('article'); card.className = 'uw-domain-card'; card.dataset.status = domain.status;
+    const card = doc.createElement('article'); card.className = 'uw-domain-card'; card.dataset.status = domain.status; card.dataset.kind = domain.kind;
+    const expanded = state.expandedDomains.get(domain.id) ?? domain.kind !== 'SUBDOMAIN';
     const head = doc.createElement('div'); head.className = 'uw-domain-card__head';
     const copyBlock = doc.createElement('div'); copyBlock.className = 'uw-domain-card__copy';
     const title = doc.createElement('div'); title.className = 'uw-domain-card__title';
     const host = doc.createElement('strong'); host.textContent = domain.hostname;
     const copyButton = button('⧉', () => copy(domain.hostname, t(language,'Manzil','Адрес')), { ariaLabel: t(language,'Manzilni nusxalash','Копировать адрес') });
     copyButton.className = `${copyButton.className || ''} uw-domain-copy-icon`.trim();
-    title.append(host, copyButton);
+    title.append(host);
     title.append(chip(domain.kind === 'SUBDOMAIN' ? t(language,'UStorE manzili','Адрес UStorE') : t(language,'Shaxsiy domen','Свой домен'), domain.kind === 'SUBDOMAIN' ? 'primary' : 'muted'));
     if (domain.isPrimary) title.append(chip(t(language,'Asosiy','Основной'), 'primary'));
     const sub = doc.createElement('small'); sub.textContent = domain.kind === 'SUBDOMAIN' ? t(language,'Do‘koningizning doimiy web manzili','Постоянный веб-адрес магазина') : t(language,'Siz sotib olgan domen','Купленный вами домен');
-    copyBlock.append(title, sub); head.append(copyBlock, chip(pick(language, STATUS_COPY[domain.status]) || domain.status, statusTone(domain.status)));
-    card.append(head);
+    copyBlock.append(title, sub);
+    const toggle = doc.createElement('button'); toggle.type = 'button'; toggle.className = 'uw-domain-card__toggle';
+    toggle.setAttribute('aria-expanded', String(expanded)); toggle.setAttribute('aria-controls', `uw-domain-body-${domain.id}`);
+    toggle.setAttribute('aria-label', t(language, `${domain.hostname} tafsilotlari`, `Подробности ${domain.hostname}`));
+    const chevron = doc.createElement('span'); chevron.className = 'uw-domain-card__chevron'; chevron.setAttribute('aria-hidden', 'true'); chevron.textContent = '⌄';
+    toggle.append(copyBlock, chip(pick(language, STATUS_COPY[domain.status]) || domain.status, statusTone(domain.status)), chevron);
+    toggle.addEventListener('click', () => { state.expandedDomains.set(domain.id, !expanded); render(); });
+    head.append(toggle, copyButton); card.append(head);
+    const content = doc.createElement('div'); content.className = 'uw-domain-card__body'; content.id = `uw-domain-body-${domain.id}`; content.hidden = !expanded;
 
     const grid = doc.createElement('div'); grid.className = 'uw-domain-details';
     grid.append(
       detail('DNS', pick(language, DNS_COPY[domain.dnsStatus]) || domain.dnsStatus, domain.dnsStatus === 'VERIFIED' ? 'success' : domain.dnsStatus === 'ERROR' ? 'danger' : 'warning'),
       detail('HTTPS', pick(language, TLS_COPY[domain.tlsStatus]) || domain.tlsStatus, domain.tlsStatus === 'ACTIVE' ? 'success' : domain.tlsStatus === 'ERROR' ? 'danger' : 'warning'),
     );
-    card.append(grid);
+    content.append(grid);
     const lifecycle = doc.createElement('div'); lifecycle.className = 'uw-domain-lifecycle'; lifecycle.dataset.tone = lifecycleTone(domain); lifecycle.dataset.status = String(domain.status || 'DRAFT').toLowerCase();
     const lifecycleTitle = doc.createElement('strong'); lifecycleTitle.textContent = t(language,'Holat','Статус');
     const lifecycleText = doc.createElement('p'); lifecycleText.textContent = lifecycleCopy(language, domain);
-    lifecycle.append(lifecycleTitle, lifecycleText); card.append(lifecycle);
-    const rec = records(domain); if (rec) card.append(rec);
+    lifecycle.append(lifecycleTitle, lifecycleText); content.append(lifecycle);
+    const rec = records(domain); if (rec) content.append(rec);
 
-    if (domain.errorCode) { const e = doc.createElement('p'); e.className = 'uw-domain-inline-error'; e.textContent = `${t(language,'Xato kodi','Код ошибки')}: ${domain.errorCode}`; card.append(e); }
+    if (domain.errorCode) { const e = doc.createElement('p'); e.className = 'uw-domain-inline-error'; e.textContent = `${t(language,'Xato kodi','Код ошибки')}: ${domain.errorCode}`; content.append(e); }
     const actions = doc.createElement('div'); actions.className = 'uw-domain-actions';
     const busy = state.busy.has(domain.id);
     if (domain.kind === 'SUBDOMAIN' && typeof port.changeSubdomain === 'function') {
@@ -295,8 +304,9 @@ export function createDomainsFeature(options = {}, documentRef) {
       if (!await confirm(prompt)) return;
       await run(domain.id, 'remove', () => port.remove({ domainId: domain.id }), t(language,'Domenni uzish boshlandi','Отключение домена начато'));
     }, { disabled: busy, danger: true }));
-    card.append(actions);
-    if (domain.lastCheckedAt) { const checked = doc.createElement('small'); checked.className = 'uw-domain-checked'; checked.textContent = `${t(language,'Oxirgi tekshiruv','Последняя проверка')}: ${new Date(domain.lastCheckedAt).toLocaleString(language === 'ru' ? 'ru-RU' : 'uz-UZ')}`; card.append(checked); }
+    content.append(actions);
+    if (domain.lastCheckedAt) { const checked = doc.createElement('small'); checked.className = 'uw-domain-checked'; checked.textContent = `${t(language,'Oxirgi tekshiruv','Последняя проверка')}: ${new Date(domain.lastCheckedAt).toLocaleString(language === 'ru' ? 'ru-RU' : 'uz-UZ')}`; content.append(checked); }
+    card.append(content);
     return card;
   }
   async function add() {
@@ -310,6 +320,7 @@ export function createDomainsFeature(options = {}, documentRef) {
     state.adding = false;
     if (!result?.ok) { state.error = result?.error || { code:'NETWORK_ERROR', message:t(language,'Domen qo‘shilmadi','Домен не добавлен') }; toast(state.error.message, 'danger'); render(); return; }
     state.hostname = ''; state.addOpen = false; state.error = null;
+    if (result.data?.id) state.expandedDomains.set(result.data.id, true);
     toast(t(language,'Domen qo‘shildi. DNS yozuvlari hali ko‘rinmasa, “Tekshirish”ni bosing.','Домен добавлен. Если DNS-записи ещё не появились, нажмите «Проверить».'), 'success'); await load();
   }
   function render() {
@@ -321,34 +332,47 @@ export function createDomainsFeature(options = {}, documentRef) {
       const p = doc.createElement('p'); p.textContent = t(language,'Domenlar bilan ishlash huquqi kerak.','Требуется право управления доменами.'); box.append(b,p); root.append(box); return;
     }
     const header = doc.createElement('header'); header.className = 'uw-domains__header';
-    const copy = doc.createElement('div'); copy.className='uw-domains__copy';
+    const headerCopy = doc.createElement('div'); headerCopy.className='uw-domains__copy';
     const eyebrow=doc.createElement('span'); eyebrow.className='uw-domains__eyebrow'; eyebrow.textContent=t(language,'WEB MANZIL','ВЕБ-АДРЕС');
     const h = doc.createElement('h2'); h.textContent = t(language,'Domen va manzil','Домен и адрес');
-    const p = doc.createElement('p'); p.textContent = t(language,'Do‘koningizning UStorE manzilini boshqaring yoki o‘zingiz sotib olgan domenni ulang.','Управляйте адресом UStorE магазина или подключите собственный домен.'); copy.append(eyebrow,h,p);
-    header.append(copy, button(t(language,'O‘z domenimni ulash','Подключить свой домен'), () => { state.addOpen = !state.addOpen; render(); }, { primary:true, disabled: state.loading })); root.append(header);
+    const p = doc.createElement('p'); p.textContent = t(language,'Do‘koningizning UStorE manzilini boshqaring yoki o‘zingiz sotib olgan domenni ulang.','Управляйте адресом UStorE магазина или подключите собственный домен.'); headerCopy.append(eyebrow,h,p);
+    header.append(headerCopy, button(t(language,'O‘z domenimni ulash','Подключить свой домен'), () => { state.addOpen = !state.addOpen; render(); }, { primary:true, disabled: state.loading })); root.append(header);
+    let previewText;
     if (state.addOpen) {
       const form = doc.createElement('div'); form.className = 'uw-domain-add';
       const field = doc.createElement('div'); field.className = 'uw-domain-add__field';
       const label = doc.createElement('label'); label.textContent = t(language,'O‘zingiz sotib olgan domen','Купленный вами домен');
-      const input = doc.createElement('input'); input.type='text'; input.autocomplete='off'; input.inputMode='url'; input.placeholder='fitcore.uz'; input.value=state.hostname; input.disabled=state.adding;
+      const input = doc.createElement('input'); input.type='text'; input.autocomplete='off'; input.inputMode='url'; input.placeholder='dokon.uz yoki www.dokon.uz'; input.value=state.hostname; input.disabled=state.adding;
       const hint = doc.createElement('small'); hint.className = 'uw-domain-normalization'; hint.setAttribute('aria-live','polite');
       const updateHint = (value) => {
         const normalized = normalizeDomainInput(value);
         hint.dataset.tone = !value ? 'muted' : normalized.valid ? 'success' : 'danger';
-        if (!value) hint.textContent = t(language,'Masalan: fitcore.uz','Например: fitcore.uz');
-        else if (!normalized.valid) hint.textContent = t(language,'Domen nomini tekshiring. Masalan: fitcore.uz','Проверьте домен. Например: fitcore.uz');
+        if (!value) hint.textContent = t(language,'Masalan: dokon.uz yoki www.dokon.uz','Например: magazin.uz или www.magazin.uz');
+        else if (!normalized.valid) hint.textContent = t(language,'Domen nomini tekshiring. Masalan: dokon.uz','Проверьте домен. Например: magazin.uz');
         else if (normalized.changed) hint.textContent = `${t(language,'Tayyor domen','Готовый домен')}: ${normalized.hostname}`;
         else hint.textContent = t(language,'Domen nomi to‘g‘ri','Домен указан верно');
       };
       updateHint(state.hostname);
-      input.addEventListener('input', () => { state.hostname = input.value; updateHint(input.value); }); input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
+      input.addEventListener('input', () => { state.hostname = input.value; updateHint(input.value); if (previewText) previewText.textContent = buildDomainAssistantPrompt({ domains: state.items, draftHostname: state.hostname, language }); }); input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } });
       label.append(input); field.append(label,hint);
       const explainer = doc.createElement('details'); explainer.className = 'uw-domain-tech';
       const summary=doc.createElement('summary'); summary.textContent=t(language,'Texnik ma’lumot','Техническая информация');
-      const technical=doc.createElement('p'); technical.className='uw-domain-add__note'; technical.textContent=t(language,'fitcore.uz va www.fitcore.uz alohida hostname hisoblanadi. Faqat kiritilgan manzil ulanadi.','fitcore.uz и www.fitcore.uz считаются отдельными hostname. Подключается только введённый адрес.');
+      const technical=doc.createElement('p'); technical.className='uw-domain-add__note'; technical.textContent=t(language,'dokon.uz va www.dokon.uz alohida manzil hisoblanadi. Faqat kiritilgan manzil ulanadi.','magazin.uz и www.magazin.uz считаются отдельными адресами. Подключается только введённый адрес.');
       explainer.append(summary,technical); field.append(explainer);
       form.append(field, button(state.adding ? t(language,'Qo‘shilmoqda…','Добавление…') : t(language,'Qo‘shish','Добавить'), add, { primary:true, disabled:state.adding })); root.append(form);
     }
+    const guide = doc.createElement('section'); guide.className = 'uw-domain-ai-guide';
+    const guideCopy = doc.createElement('div'); guideCopy.className = 'uw-domain-ai-guide__copy';
+    const guideTitle = doc.createElement('strong'); guideTitle.textContent = t(language,'AI yordamida domen ulang','Подключите домен с помощью AI');
+    const guideText = doc.createElement('p'); guideText.textContent = t(language,'Yo‘riqnomani nusxalab, istalgan AI chatiga yuboring. U sizga DNS paneli va ilovadagi holatga qarab bittadan qadam aytadi.','Скопируйте инструкцию в любой AI-чат. Он будет подсказывать шаги с учётом вашей DNS-панели и статуса в приложении.');
+    guideCopy.append(guideTitle, guideText);
+    const guideActions = doc.createElement('div'); guideActions.className = 'uw-domain-ai-guide__actions';
+    guideActions.append(button(t(language,'AI yo‘riqnomasini nusxalash','Скопировать инструкцию для AI'), () => copy(buildDomainAssistantPrompt({ domains: state.items, draftHostname: state.hostname, language }), t(language,'AI yo‘riqnomasi','Инструкция для AI')), { primary: true }));
+    const preview = doc.createElement('details'); preview.className = 'uw-domain-ai-guide__preview';
+    const previewSummary = doc.createElement('summary'); previewSummary.textContent = t(language,'Promptni ko‘rish','Посмотреть промпт');
+    previewText = doc.createElement('pre'); previewText.textContent = buildDomainAssistantPrompt({ domains: state.items, draftHostname: state.hostname, language });
+    preview.append(previewSummary, previewText); guideActions.append(preview);
+    guide.append(guideCopy, guideActions); root.append(guide);
     if (state.error) { const e=doc.createElement('div'); e.className='uw-domain-state is-error'; e.setAttribute('role','alert'); e.textContent=state.error.message || state.error.code; root.append(e); }
     if (state.loading) { const l=doc.createElement('div'); l.className='uw-domain-state'; l.textContent=t(language,'Domenlar yuklanmoqda…','Загрузка доменов…'); root.append(l); return; }
     const list=doc.createElement('div'); list.className='uw-domain-list';
