@@ -32,6 +32,7 @@ export function createCustomerShell(options = {}, documentRef) {
     onOpenCart,
     onOpenAccount,
     onOpenAdmin,
+    hideAccountAction = false,
     mobileNavItems = null,
     locale = 'uz',
     onLocaleChange,
@@ -56,10 +57,10 @@ export function createCustomerShell(options = {}, documentRef) {
 
   const desktopNav = doc.createElement('nav'); desktopNav.className = 'uw-customer-desktop-nav'; desktopNav.setAttribute('aria-label', 'Do‘kon bo‘limlari');
   for (const item of [
-    { id:'home', label:tr.t('nav.home', 'Bosh sahifa'), href:'/' },
-    { id:'catalog', label:tr.t('nav.catalog', 'Katalog'), href:'/catalog' },
-    { id:'promotions', label:tr.t('nav.promotions', 'Aksiyalar'), href:'/promotions' },
-    { id:'orders', label:tr.t('nav.orders', 'Buyurtmalar'), href:'/orders' },
+    { id:'home', label:tr.t('nav.home', 'Bosh sahifa'), iconName:'home', href:'/' },
+    { id:'catalog', label:tr.t('nav.catalog', 'Katalog'), iconName:'folder', href:'/catalog' },
+    { id:'promotions', label:tr.t('nav.promotions', 'Aksiyalar'), iconName:'gift', href:'/promotions' },
+    { id:'orders', label:tr.t('nav.orders', 'Buyurtmalar'), iconName:'package', href:'/orders' },
   ]) desktopNav.append(createNavLink(item, { activeId:activeNav, onNavigate }, doc));
   headerInner.append(desktopNav);
 
@@ -67,15 +68,13 @@ export function createCustomerShell(options = {}, documentRef) {
   actions.className = 'uw-customer-header__actions';
   const languages = doc.createElement('div'); languages.className = 'uw-customer-language'; languages.setAttribute('aria-label', 'Til / Язык');
   for (const language of ['uz', 'ru']) {
-    const choice = createShellButton({ label: language.toUpperCase(), className: 'uw-customer-language__choice', onClick: () => onLocaleChange?.(language) }, doc);
+    const choice = createShellButton({ label: language === 'uz' ? '🇺🇿' : '🇷🇺', className: 'uw-customer-language__choice', onClick: () => onLocaleChange?.(language) }, doc);
     choice.dataset.active = locale === language ? 'true' : 'false'; choice.setAttribute('aria-pressed', locale === language ? 'true' : 'false'); languages.append(choice);
   }
   actions.append(languages);
   const accountLabel = context.actor?.displayName || tr.t('shell.signIn', 'Kirish');
-  actions.append(
-    createShellButton({ label: accountLabel, className: 'uw-shell-action', onClick: onOpenAccount }, doc),
-    createShellButton({ label: tr.t('nav.cart', 'Savat'), className: 'uw-shell-action uw-shell-action--primary', onClick: onOpenCart }, doc),
-  );
+  if (!hideAccountAction) actions.append(createShellButton({ label: accountLabel, className: 'uw-shell-action', onClick: onOpenAccount }, doc));
+  actions.append(createShellButton({ label: tr.t('nav.cart', 'Savat'), className: 'uw-shell-action uw-shell-action--primary', onClick: onOpenCart }, doc));
   if (typeof onOpenAdmin === 'function') actions.prepend(createShellButton({ label:'Boshqaruv', className:'uw-shell-action uw-shell-action--admin', onClick:onOpenAdmin }, doc));
   headerInner.append(actions);
   header.append(headerInner);

@@ -8,8 +8,8 @@
     if (globalThis.location?.pathname === '/auth/handoff') {
       const title = document.querySelector('.uw-launch__brand-copy h1');
       const message = document.querySelector('.uw-launch__message');
-      if (title) title.textContent = 'Kirish tasdiqlanmoqda';
-      if (message) message.textContent = 'Do‘konga xavfsiz qaytish tayyorlanmoqda';
+      if (title) title.textContent = 'UStorE';
+      if (message) message.textContent = 'Xavfsiz kirish tayyorlanmoqda…';
       document.querySelector('.uw-launch__foot')?.remove();
       return;
     }
@@ -49,9 +49,17 @@
       mark?.remove();
       root.querySelector('.uw-launch__brand')?.prepend(logo);
     } else if (mark) mark.textContent = name.slice(0, 1).toUpperCase();
-    const title = root.querySelector('.uw-launch__brand-copy h1'); if (title) title.textContent = `${name}’ga xush kelibsiz`;
+    const title = root.querySelector('.uw-launch__brand-copy h1'); if (title) title.textContent = name;
     root.querySelector('.uw-launch__loader')?.remove();
     root.querySelector('.uw-launch__message')?.remove();
     root.querySelector('.uw-launch__foot')?.remove();
+    const inner = root.querySelector('.uw-launch__inner');
+    if (inner && !inner.querySelector('.uw-launch__shop-skeleton')) {
+      const skeleton = document.createElement('div');
+      skeleton.className = 'uw-launch__shop-skeleton';
+      skeleton.setAttribute('aria-hidden','true');
+      skeleton.innerHTML = '<span class="uw-launch__shop-hero"></span><span></span><span></span><span></span><span></span>';
+      inner.append(skeleton);
+    }
   } catch (_) {}
 })();

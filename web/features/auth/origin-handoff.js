@@ -182,8 +182,12 @@ export function createCustomDomainSignInView({ controller, state = controller?.g
   root.append(actions);
   const bot = String(botUsername || '').replace(/^@/, '');
   if (/^[A-Za-z0-9_]{5,32}$/.test(bot)) {
-    const help = doc.createElement('p'); help.textContent = tr('Login va parolni do‘kon botidagi /login buyrug‘i yoki Mini App → Profil → Web login va parol bo‘limidan oling.', 'Получите логин и пароль командой /login в боте магазина или в Mini App → Профиль → Логин и пароль для сайта.');
-    const link = doc.createElement('a'); link.href = `https://t.me/${bot}?start=credentials`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = `${shopName || bot} — ${tr('botni ochish ↗', 'открыть бота ↗')}`; help.append(' ', link); root.append(help);
+    const details = doc.createElement('details'); details.className = 'uw-origin-signin__help';
+    const summary = doc.createElement('summary'); summary.textContent = tr('Login va parolni qayerdan olaman?', 'Где взять логин и пароль?');
+    const help = doc.createElement('div'); help.className = 'uw-origin-signin__help-body';
+    const text = doc.createElement('p'); text.textContent = tr('Mini App → Profil → Web login va parol bo‘limidan oling yoki botda /login yuboring.', 'Откройте Mini App → Профиль → Логин и пароль для сайта или отправьте /login боту.');
+    const link = doc.createElement('a'); link.href = `https://t.me/${bot}?start=credentials`; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.className = 'uw-button uw-button--secondary uw-button--md'; link.textContent = tr('Do‘kon botini ochish', 'Открыть бота магазина');
+    help.append(text, link); details.append(summary, help); root.append(details);
   }
   return { element: root };
 }

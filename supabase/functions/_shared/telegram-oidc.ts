@@ -28,7 +28,7 @@ function decodeBase64Url(value: string) {
 function redirectUri(origin: string) {
   // Exact origin and callback path, never a user-supplied redirect URL.
   const preview = origin === "https://usmonovshaxrizod1-maker.github.io";
-  return `${origin}${preview ? "/ustore/web/" : "/"}`;
+  return `${origin}${preview ? "/ustore/web/" : "/auth/telegram/callback"}`;
 }
 function validateOrigin(origin: string) {
   if (canonicalHttpOrigin(origin) !== origin) throw new Error("VALIDATION_ERROR:origin");

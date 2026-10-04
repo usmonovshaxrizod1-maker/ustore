@@ -28,6 +28,7 @@ test('first paint on managed subdomain is shop-branded before the module graph r
   assert.ok(html.indexOf('launch-boot.js?v=') > html.indexOf('id="ustore-web-app"'));
   assert.doesNotMatch(boot,/USTORE SHOP/);
   assert.doesNotMatch(boot,/Do‘kon tayyorlanmoqda/);
-  assert.match(boot,/xush kelibsiz/);
+  assert.doesNotMatch(boot,/xush kelibsiz/);
+  assert.match(boot,/uw-launch__shop-skeleton/);
   assert.match(boot,/USTORE_BASE_HOSTNAME/);
 });

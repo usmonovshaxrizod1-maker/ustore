@@ -75,7 +75,8 @@ test('shop Telegram choice starts OIDC without a second click and retains retry 
     const render = vm.runInNewContext(`${app.slice(start, end)}\nrenderCentralHandoff`, context);
     await render({ search: `?state=${'s'.repeat(43)}&method=telegram`, target: `/auth/handoff?state=${'s'.repeat(43)}` }, 1);
     assert.equal(starts, 1);
-    assert.equal(shown[0].kind, 'loading');
-    assert.equal(shown.some((view) => view.kind === 'retry'), fail);
+    assert.equal(shown[0].kind, 'retry');
+    assert.equal(starts, 1); // explicit shop choice immediately starts OIDC; no extra loading page
+    assert.equal(shown.some((view) => view.kind === 'retry'), true);
   }
 });

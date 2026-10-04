@@ -60,7 +60,7 @@ test('authorization stays bound to the approved browser verifier and exact redir
     origin: 'https://ustr.uz', returnTo: '/platform/app',
     codeChallenge: 'z'.repeat(43), clientId,
   });
-  assert.equal(new URL(central.redirectUrl).searchParams.get('redirect_uri'), 'https://ustr.uz/');
+  assert.equal(new URL(central.redirectUrl).searchParams.get('redirect_uri'), 'https://ustr.uz/auth/telegram/callback');
   const shopHandoff = `/auth/handoff?state=${'s'.repeat(43)}&method=telegram&lang=uz`;
   await beginOfficialTelegramLogin(fakeDb, {
     origin: 'https://ustr.uz', returnTo: shopHandoff,

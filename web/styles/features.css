@@ -5,6 +5,43 @@
   gap: var(--uw-space-6);
   padding-block: var(--uw-space-8);
 }
+.uw-auth[data-feature="login"] {
+  padding: clamp(1.15rem, 3vw, 1.8rem);
+  border: 1px solid var(--uw-color-border);
+  border-radius: 1.35rem;
+  background: var(--uw-color-surface);
+  box-shadow: var(--uw-shadow-md);
+  font-family: var(--uw-font-sans);
+  gap: clamp(1rem, 2.5vw, 1.4rem);
+}
+.uw-auth[data-feature="login"] .uw-auth__heading h1 {
+  font-size: clamp(1.55rem, 4vw, 2rem);
+  line-height: 1.12;
+  letter-spacing: -.025em;
+}
+.uw-auth[data-feature="login"] .uw-auth__heading p {
+  max-width: 31rem;
+  font-size: .92rem;
+  line-height: 1.55;
+}
+.uw-auth[data-feature="login"] .uw-auth-tabs .uw-button {
+  min-height: 2.85rem;
+  border-radius: .9rem;
+  font-weight: 750;
+}
+.uw-auth[data-feature="login"] .uw-card {
+  border-radius: 1rem;
+  box-shadow: none;
+}
+.uw-auth[data-feature="login"] .uw-field__control {
+  min-height: 3rem;
+  border-radius: .85rem;
+}
+.uw-auth[data-feature="login"] .uw-auth-form > .uw-button[type="submit"] {
+  min-height: 3.1rem;
+  border-radius: .9rem;
+  font-weight: 800;
+}
 .uw-auth__heading { display: grid; gap: var(--uw-space-2); }
 .uw-auth__heading h1 { margin: 0; font-size: var(--uw-text-3xl); }
 .uw-auth__heading p { margin: 0; color: var(--uw-color-text-muted); }
@@ -729,3 +766,16 @@
 .uw-domains.is-telegram .uw-domain-miniapp{margin-top:0;display:grid;grid-template-columns:1fr;gap:.55rem;padding:.95rem;border-radius:1.05rem;background:linear-gradient(145deg,#fff,#f8fafc);box-shadow:0 8px 22px rgb(15 23 42/.05)}.uw-domains.is-telegram .uw-domain-miniapp strong{font-size:.9rem}.uw-domains.is-telegram .uw-domain-miniapp p{font-size:.8rem;color:#64748b}.uw-domains.is-telegram .uw-domain-miniapp .uw-domain-btn{width:100%}
 .uw-domains.is-telegram .uw-domain-audit-note{margin:.1rem .25rem 0;text-align:center;line-height:1.45;color:#94a3b8;font-size:.68rem}
 @media(max-width:25rem){.uw-domains.is-telegram .uw-domain-card__head{grid-template-columns:1fr}.uw-domains.is-telegram .uw-domain-actions{grid-template-columns:1fr}.uw-domains.is-telegram .uw-domain-actions>.uw-domain-btn:last-child:nth-child(odd){grid-column:auto}}
+
+/* Desktop/tablet auth polish. Mobile auth keeps its existing compact flow. */
+@media(min-width:48rem){
+  .uw-customer-shell .uw-origin-signin{width:min(100%,36rem);margin:0 auto;padding:1.65rem 1.8rem;gap:1rem}
+  .uw-customer-shell .uw-origin-signin__brand{display:none}
+  .uw-customer-shell .uw-origin-signin h1{font-size:1.9rem}
+  .uw-customer-shell .uw-origin-signin>p{font-size:.92rem;max-width:34rem}
+  .uw-customer-shell .uw-origin-signin__actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+  .uw-customer-shell .uw-origin-signin__actions .uw-button{min-height:3rem}
+  .uw-customer-shell .uw-origin-signin__help{margin-top:.2rem;padding:.8rem 1rem;border:1px solid var(--uw-color-border);border-radius:.9rem;background:#f8fafc}
+  .uw-customer-shell .uw-origin-signin__help summary{cursor:pointer;font-weight:750;color:#40506c}
+  .uw-customer-shell .uw-origin-signin__help-body{display:grid;gap:.75rem;padding-top:.75rem}
+}

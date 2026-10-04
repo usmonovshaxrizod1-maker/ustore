@@ -172,10 +172,14 @@ function launchView({ mode = 'platform', name = '', logoUrl = null, message = ''
   }
   const brandText=document.createElement('div'); brandText.className='uw-launch__brand-copy';
   const eyebrow=document.createElement('span'); eyebrow.className='uw-launch__eyebrow'; eyebrow.textContent='USTORE';
-  const heading=document.createElement('h1'); heading.textContent=shop ? `${title}’ga xush kelibsiz` : 'UStorE';
+  const heading=document.createElement('h1'); heading.textContent=shop ? title : 'UStorE';
   if (!shop) brandText.append(eyebrow);
   brandText.append(heading); brand.append(brandText);
-  if (shop) { inner.append(brand); section.append(inner); return section; }
+  if (shop) {
+    const skeleton=document.createElement('div'); skeleton.className='uw-launch__shop-skeleton'; skeleton.setAttribute('aria-hidden','true');
+    skeleton.innerHTML='<span class="uw-launch__shop-hero"></span><span></span><span></span><span></span><span></span>';
+    inner.append(brand,skeleton); section.append(inner); return section;
+  }
   const loader=document.createElement('div'); loader.className='uw-launch__loader'; loader.setAttribute('aria-hidden','true'); loader.innerHTML='<span></span><span></span><span></span>';
   const text=document.createElement('p'); text.className='uw-launch__message'; text.textContent=subtitle;
   const foot=document.createElement('small'); foot.className='uw-launch__foot'; foot.textContent=shop ? 'Mahsulotlar va do‘kon ma’lumotlari yuklanmoqda' : 'Xavfsiz ulanish va kerakli modullar yuklanmoqda';
@@ -199,6 +203,7 @@ function shellFor(routeState, content, pageTitle = '') {
     context, activeNav: routeState.route?.navId || 'home', content, locale: uiLocale,
     onNavigate: navHandler, onOpenCart: () => go('/cart'), onOpenAccount: () => go('/profile'),
     onOpenAdmin: actorIsAdmin(context.actor) ? () => go('/admin') : null,
+    hideAccountAction: routeState.route?.id === 'signin',
     onLocaleChange: (next) => setUiLocale(next),
   });
 }
@@ -405,6 +410,11 @@ async function renderShopSignIn(routeState, epoch) {
   const view = reactive(controller, (state) => createCustomDomainSignInView({ controller, state, botUsername: shopRuntime.tenant?.botUsername, shopName: shopRuntime.tenant?.shopName, logoUrl: shopRuntime.tenant?.logoUrl, locale: uiLocale }));
   mountShell(routeState, view.element, 'Kirish');
   remember(view.destroy);
+  const requestedMethod = new URLSearchParams(routeState.search || '').get('method');
+  if (requestedMethod === 'telegram' || requestedMethod === 'password') {
+    const started = await controller.begin(requestedMethod);
+    if (epoch !== renderEpoch || started?.ok) return;
+  }
 }
 
 async function renderCentralHandoff(routeState, epoch) {
@@ -423,23 +433,22 @@ async function renderCentralHandoff(routeState, epoch) {
       onSignedIn: () => renderRoute(routeState),
       onRedirect: (url) => location.assign(url),
     });
+    const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, shopBotUsername: handoffInfo.ok ? handoffInfo.data?.botUsername || '' : '', locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz' }));
+    mount(view); remember(view.destroy);
     if (handoffParams.get('method') === 'telegram' && handoffInfo.ok &&
         String(handoffInfo.data?.status || '').toUpperCase() === 'PENDING') {
-      mount(stateView('loading', 'Telegram ochilmoqda', 'Kirish xavfsiz tarzda davom etmoqda.'));
       const started = await controller.signInTelegram();
       if (epoch !== renderEpoch || started?.ok) return;
     }
-    const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, shopBotUsername: handoffInfo.ok ? handoffInfo.data?.botUsername || '' : '', locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz' }));
-    mount(view); remember(view.destroy); return;
+    return;
   }
   const controller = authFeature.createCentralOriginHandoffController({ authPort: authRuntime.auth, state, onRedirect:(url)=>location.assign(url) });
+  const view = reactive(controller, (snapshot) => authFeature.createCentralOriginHandoffView({ controller, state:snapshot }));
+  mount(view); remember(view.destroy);
   if (handoffInfo.ok && String(handoffInfo.data?.status || '').toUpperCase() === 'PENDING') {
-    mount(stateView('loading', 'Kirish tasdiqlanmoqda', 'Do‘konga xavfsiz qaytish tayyorlanmoqda.'));
     const authorized = await controller.authorize();
     if (epoch !== renderEpoch || authorized?.ok) return;
   }
-  const view = reactive(controller, (snapshot) => authFeature.createCentralOriginHandoffView({ controller, state:snapshot }));
-  mount(view); remember(view.destroy);
   if (!handoffInfo.ok || String(handoffInfo.data?.status || '').toUpperCase() !== 'PENDING') await controller.load();
 }
 async function renderOriginCallback(routeState, epoch) {
@@ -448,6 +457,7 @@ async function renderOriginCallback(routeState, epoch) {
   const authRuntime = runtimeModule.createProductionAuthRuntime();
   const result = await authFeature.completeCustomDomainLogin({ authPort: authRuntime.auth, url: location.href });
   if (epoch !== renderEpoch) return;
+  if (result?.ok) { go(result.data?.returnTo || '/', true); return; }
   mount(authFeature.createOriginCallbackView({ result, onNavigate:(target)=>go(target, true) }));
 }
 
@@ -889,6 +899,7 @@ async function renderRoute(routeState, reason = 'refresh') {
       await renderCentralHandoff(routeState,epoch); return;
     }
     if(routeState.route?.id==='auth-origin-callback') { await renderOriginCallback(routeState,epoch); return; }
+    if(routeState.route?.id==='auth-telegram-callback') { return; }
     if(!routeState.found) { mount(createNotFoundView({locale:uiLocale,onHome:()=>go('/')})); return; }
     const centralOrigin = isConfiguredPlatformOrigin() || (!!previewBase() && routeState.route?.id === 'home' && !new URLSearchParams(location.search).has('bot_id'));
     if (centralOrigin && routeState.route?.id === 'home') {
@@ -969,8 +980,7 @@ router=createRouter({previewBase:previewBase(),onChange:(state,reason)=>renderRo
 async function startWebApp() {
   const params = new URLSearchParams(location.search);
   if ((params.has('code') || params.has('state') || params.has('error')) && allowExplicitPlatformRoute() &&
-      (location.pathname === '/' || !!previewBase())) {
-    mount(stateView('loading', 'Telegram kirishi tekshirilmoqda', 'Bir oz kuting.'));
+      (location.pathname === '/auth/telegram/callback' || location.pathname === '/' || !!previewBase())) {
     try {
       const [runtime, callback, authStore] = await Promise.all([
         loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261003oidc1'), import('./services/live/auth.js?v=20261003oidc1'),
@@ -1001,4 +1011,10 @@ async function startWebApp() {
   }
   router.start();
 }
+window.addEventListener('pageshow', (event) => {
+  // When the browser restores this page from BFCache after an auth cancel/back,
+  // keep the already-live storefront/frame intact. Re-starting the router here
+  // destroys the restored iframe and turns an instant Back action into a cold boot.
+  if (event.persisted) applyDocumentLocale(uiLocale);
+});
 void startWebApp();

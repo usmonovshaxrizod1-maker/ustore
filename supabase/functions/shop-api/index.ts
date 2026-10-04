@@ -1489,7 +1489,7 @@ async function publicWebBundles(db: any, shopId: string) {
 
 async function publicWebBoot(db: any, shopId: string) {
   const [shopR, designR, legalDocuments, activeBanners, clickConnR, paymeConnR, promoCodeR] = await Promise.all([
-    db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,address_ru,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,start_message,start_image_url,fulfillment_config,work_hours,orders_paused,orders_paused_note,featured_category_ids,customer_cancel_cutoff,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle(),
+    db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,address_ru,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,seller_legal_name,seller_tax_id,seller_registration_number,seller_legal_address,seller_bank_details,start_message,start_image_url,fulfillment_config,work_hours,orders_paused,orders_paused_note,featured_category_ids,customer_cancel_cutoff,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle(),
     db.from("design_settings").select("theme_id,colors").eq("shop_id", shopId).maybeSingle(),
     readShopLegalDocuments(db, shopId),
     activeBannersForClient(db, shopId),
@@ -4591,7 +4591,7 @@ Deno.serve(async (req: Request) => {
       case "get_admin_settings": {
         await requirePermission('shop.settings.manage');
         const [shopR, designR] = await Promise.all([
-          db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,start_message,start_image_url,fulfillment_config,work_hours,low_stock_threshold,orders_paused,orders_paused_note,customer_cancel_cutoff,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle(),
+          db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,seller_legal_name,seller_tax_id,seller_registration_number,seller_legal_address,seller_bank_details,start_message,start_image_url,fulfillment_config,work_hours,low_stock_threshold,orders_paused,orders_paused_note,customer_cancel_cutoff,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle(),
           db.from("design_settings").select("theme_id,colors").eq("shop_id", shopId).maybeSingle(),
         ]);
         if (shopR.error) throw shopR.error;
@@ -4603,6 +4603,8 @@ Deno.serve(async (req: Request) => {
             phone: row.phone || null, phone2: row.phone_2 || null, phone3: row.phone_3 || null,
             instagram: row.instagram || null, telegram: row.telegram || null, facebook: row.facebook || null,
             about: row.about || null, email: row.email || null, youtube: row.youtube || null, tiktok: row.tiktok || null,
+            sellerLegalName: row.seller_legal_name || null, sellerTaxId: row.seller_tax_id || null, sellerRegistrationNumber: row.seller_registration_number || null,
+            sellerLegalAddress: row.seller_legal_address || null, sellerBankDetails: row.seller_bank_details || null,
             workHours: row.work_hours || null,
           },
           branding: {
@@ -4780,7 +4782,7 @@ Deno.serve(async (req: Request) => {
           shop_id: shopId, tg_id: tgId, first_name: ctx.firstName ?? null, last_name: ctx.lastName ?? null,
           username: ctx.username ?? null, last_seen_at: new Date().toISOString(),
         }, { onConflict: "shop_id,tg_id" }).select("is_blocked,block_reason,warned,warn_reason,profile_first_name,profile_last_name,phone").single();
-        const shopPromise = db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,address_ru,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,start_message,start_image_url,fulfillment_config,work_hours,low_stock_threshold,orders_paused,orders_paused_note,featured_category_ids,customer_cancel_cutoff,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle();
+        const shopPromise = db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,address_ru,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,seller_legal_name,seller_tax_id,seller_registration_number,seller_legal_address,seller_bank_details,start_message,start_image_url,fulfillment_config,work_hours,low_stock_threshold,orders_paused,orders_paused_note,featured_category_ids,customer_cancel_cutoff,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle();
         const designPromise = db.from("design_settings").select("theme_id,colors").eq("shop_id", shopId).maybeSingle();
         const legalPromise = readShopLegalDocuments(db, shopId);
         const subsPromise = db.from("stock_notifications").select("product_id,variant_sku").eq("shop_id", shopId).eq("tg_id", tgId).is("notified_at", null);
@@ -4866,6 +4868,9 @@ Deno.serve(async (req: Request) => {
             phone: shopRow?.phone || null, phone2: shopRow?.phone_2 || null, phone3: shopRow?.phone_3 || null,
             instagram: shopRow?.instagram || null, telegram: shopRow?.telegram || null, facebook: shopRow?.facebook || null,
             about: shopRow?.about || null, email: shopRow?.email || null, youtube: shopRow?.youtube || null, tiktok: shopRow?.tiktok || null,
+            sellerLegalName: shopRow?.seller_legal_name || null, sellerTaxId: shopRow?.seller_tax_id || null,
+            sellerRegistrationNumber: shopRow?.seller_registration_number || null, sellerLegalAddress: shopRow?.seller_legal_address || null,
+            sellerBankDetails: shopRow?.seller_bank_details || null,
             startMessage: shopRow?.start_message || null, startImageUrl: shopRow?.start_image_url || null, workHours: shopRow?.work_hours || null,
           },
           lowStockThreshold: resolveLowStockThreshold(shopRow?.low_stock_threshold),
@@ -5184,6 +5189,11 @@ Deno.serve(async (req: Request) => {
             email: nullableText(payload.email, 254),
             youtube: nullableText(payload.youtube, 120),
             tiktok: nullableText(payload.tiktok, 120),
+            seller_legal_name: nullableText(payload.sellerLegalName, 200),
+            seller_tax_id: nullableText(payload.sellerTaxId, 64),
+            seller_registration_number: nullableText(payload.sellerRegistrationNumber, 120),
+            seller_legal_address: nullableText(payload.sellerLegalAddress, 600),
+            seller_bank_details: nullableText(payload.sellerBankDetails, 2000),
             work_hours: nullableText(payload.workHours, 120),
           };
           // Ruscha manzil inputi UI'dan olib tashlangan. Eski qiymatni oddiy
@@ -5200,6 +5210,9 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true, shopContact: {
           name: clean.name, address: clean.address, coordinates: clean.coordinates, phone: clean.phone, phone2: clean.phone_2, phone3: clean.phone_3,
           instagram: clean.instagram, telegram: clean.telegram, facebook: clean.facebook, workHours: clean.work_hours,
+          sellerLegalName: clean.seller_legal_name, sellerTaxId: clean.seller_tax_id,
+          sellerRegistrationNumber: clean.seller_registration_number, sellerLegalAddress: clean.seller_legal_address,
+          sellerBankDetails: clean.seller_bank_details,
         } });
       }
       // Phase 3, 14-band: shop-specific "kam qolgan" chegarasi — admin
@@ -10141,6 +10154,38 @@ Deno.serve(async (req: Request) => {
           } : null,
           nextTier, gift,
         });
+      }
+
+      case "get_checkout_draft": {
+        const { data, error } = await db.from("checkout_drafts")
+          .select("step,payload,cart_signature,updated_at,expires_at")
+          .eq("shop_id", shopId).eq("tg_id", tgId).maybeSingle();
+        if (error) throw error;
+        if (!data || new Date(data.expires_at).getTime() <= Date.now()) {
+          if (data) await db.from("checkout_drafts").delete().eq("shop_id", shopId).eq("tg_id", tgId);
+          return json({ draft: null });
+        }
+        return json({ draft: { step: Number(data.step) || 1, payload: data.payload || {}, cartSignature: data.cart_signature || null, updatedAt: data.updated_at, expiresAt: data.expires_at } });
+      }
+
+      case "save_checkout_draft": {
+        const step = Math.max(1, Math.min(3, Number(payload.step) || 1));
+        const draftPayload = payload.draft && typeof payload.draft === "object" && !Array.isArray(payload.draft) ? payload.draft : {};
+        const encoded = JSON.stringify(draftPayload);
+        if (encoded.length > 24000) return json({ error: "checkout_draft_too_large" }, 400);
+        const cartSignature = nullableText(payload.cartSignature, 500);
+        const { data, error } = await db.from("checkout_drafts").upsert({
+          shop_id: shopId, tg_id: tgId, step, payload: draftPayload, cart_signature: cartSignature,
+          updated_at: new Date().toISOString(), expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+        }, { onConflict: "shop_id,tg_id" }).select("step,payload,cart_signature,updated_at,expires_at").single();
+        if (error) throw error;
+        return json({ ok: true, draft: { step: data.step, payload: data.payload || {}, cartSignature: data.cart_signature || null, updatedAt: data.updated_at, expiresAt: data.expires_at } });
+      }
+
+      case "clear_checkout_draft": {
+        const { error } = await db.from("checkout_drafts").delete().eq("shop_id", shopId).eq("tg_id", tgId);
+        if (error) throw error;
+        return json({ ok: true });
       }
 
       case "create_order": {

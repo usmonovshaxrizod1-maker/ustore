@@ -63,7 +63,6 @@
     </nav>
     <div class="ustore-header-actions flex items-center space-x-2">
       <button type="button" class="ustore-desktop-action" onclick="switchTab('orders')" title="Buyurtmalar" aria-label="Buyurtmalar"><i data-lucide="package"></i><span id="desktop-nav-orders">Buyurtmalar</span></button>
-      <button type="button" class="ustore-desktop-action" onclick="openPage('FAVORITES')" title="Sevimlilar" aria-label="Sevimlilar"><i data-lucide="heart"></i><span id="desktop-nav-favorites">Sevimlilar</span></button>
       <button type="button" class="ustore-desktop-action" onclick="switchTab('cart')" title="Savatcha" aria-label="Savatcha"><i data-lucide="shopping-bag"></i><span id="desktop-nav-cart">Savatcha</span><small id="desktop-cart-count" hidden>0</small></button>
       <!-- Foydalanuvchi qaytardi: savatcha tugmasi FAQAT admin rejimida
            yashiriladi (updateHeaderChrome()da), oddiy mijoz uchun header'da
@@ -74,7 +73,7 @@
       </button>
       <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi (savatchadan keyin). -->
       <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
-      <button type="button" onclick="toggleUiLang()" class="ustore-desktop-lang" id="desktop-lang-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿 UZ</button>
+      <button type="button" onclick="toggleUiLang()" class="ustore-desktop-lang" id="desktop-lang-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
       <button type="button" onclick="switchTab('profile')" class="ustore-desktop-profile" id="desktop-profile-btn" aria-label="Profil"><i data-lucide="user"></i><span id="desktop-nav-profile">Profil</span></button>
       <button onclick="switchTab('profile')" class="p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
         <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
