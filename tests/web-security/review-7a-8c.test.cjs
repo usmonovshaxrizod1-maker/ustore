@@ -27,6 +27,27 @@ test('provider reconciles exact existing hostname before create and treats delet
   assert.deepEqual(calls.map(x=>x[1]),['GET','DELETE']);
   assert.match(calls[0][0],/hostname=fitcore.uz/);
 });
+test('provider provisions and reconciles hostnames on Cloudflare Free without custom metadata', async () => {
+  const {createCloudflareDomainProvider} = await shared();
+  const created = {id:'cf-free',hostname:'www.fitcoreshop.uz',status:'pending',ssl:{status:'pending_validation'}};
+  let existing = [];
+  let posts = 0;
+  const provider = createCloudflareDomainProvider(async(_url, init) => {
+    if (init.method === 'GET') return response(existing);
+    if (init.method === 'POST') {
+      posts++;
+      const body = JSON.parse(init.body);
+      assert.equal(body.hostname, 'www.fitcoreshop.uz');
+      assert.equal(Object.hasOwn(body, 'custom_metadata'), false);
+      existing = [created];
+      return response(created);
+    }
+    throw new Error('unexpected provider call');
+  });
+  assert.equal((await provider.createHostname('www.fitcoreshop.uz','ustore-domain-1')).providerId,'cf-free');
+  assert.equal((await provider.createHostname('www.fitcoreshop.uz','ustore-domain-1')).providerId,'cf-free');
+  assert.equal(posts, 1);
+});
 test('malformed provider result is rejected rather than recorded as pending success', async()=>{
   const {createCloudflareDomainProvider}=await shared();
   await assert.rejects(createCloudflareDomainProvider(async()=>response({status:'active'})).inspectHostname('x'),/domain_provider_error/);

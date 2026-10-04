@@ -79,10 +79,14 @@ export function createCloudflareDomainProvider(fetchImpl: typeof fetch = fetch):
       const matches = existing.filter((item: any) => item?.hostname === hostname);
       if (matches.length > 1) throw new Error('domain_provider_error');
       if (matches.length === 1) {
-        if (matches[0]?.custom_metadata?.ustore_domain_key !== idempotencyKey) throw new Error('domain_provider_error');
+        // Custom metadata is unavailable on Cloudflare for SaaS Free/Pro/Business.
+        // The database reserves hostnames uniquely before reaching this provider.
+        // Still reject an explicit key belonging to a different operation.
+        const existingKey = matches[0]?.custom_metadata?.ustore_domain_key;
+        if (existingKey && existingKey !== idempotencyKey) throw new Error('domain_provider_error');
         return cloudflareSnapshot(matches[0]);
       }
-      const result = await call(base, { method: 'POST', body: JSON.stringify({ hostname, custom_metadata: { ustore_domain_key: idempotencyKey }, ssl: { method: 'txt', type: 'dv', settings: { min_tls_version: '1.2' } } }) });
+      const result = await call(base, { method: 'POST', body: JSON.stringify({ hostname, ssl: { method: 'txt', type: 'dv', settings: { min_tls_version: '1.2' } } }) });
       return cloudflareSnapshot(result);
     },
     async inspectHostname(providerId) { return cloudflareSnapshot(await call(`${base}/${encodeURIComponent(providerId)}`, { method: 'GET' })); },
