@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=318">
+  <link rel="stylesheet" href="./ustore.css?v=319">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -36,34 +36,31 @@
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=8"></script>
   <script defer src="./config.public.js?v=4"></script>
-  <script defer src="./web/shared/miniapp-frame-bridge.js?v=2"></script>
-  <script defer src="./ustore-shop-app.js?v=318"></script>
+  <script defer src="./web/shared/miniapp-frame-bridge.js?v=3"></script>
+  <script defer src="./ustore-shop-app.js?v=319"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
 
   <!-- HEADER -->
   <header class="ustore-topbar bg-white sticky top-0 z-40 px-4 py-3 flex items-center justify-between">
     <div class="flex items-center space-x-2 min-w-0">
-      <!-- Logotip TO'LIQ ko'rinadi: balandligi qatorga moslab cheklangan
-           (h-7), eni esa logotipning o'z nisbatiga qarab avtomatik, lekin
-           ADMIN/STORE belgisini surib yubormasligi uchun max-w bilan
-           cheklangan. Avval `w-7 h-7 object-cover` edi — u logotipni
-           kvadratga QIRQIB tashlardi (kengroq logotiplarning chekkalari
-           ko'rinmasdi). Do'kon nomi matni bu yerdan olib tashlandi —
-           logotipning o'zi do'konni bildiradi. -->
-      <img id="header-shop-logo" class="hidden ustore-header-logo" alt="">
-      <span id="header-shop-logo-wordmark" class="hidden ustore-header-wordmark"></span>
+      <!-- Desktop/tablet: shop logo is also the shortest path back to Home. -->
+      <button type="button" id="header-home-logo-btn" class="ustore-header-home-logo" onclick="switchTab('home')" aria-label="Bosh sahifa" title="Bosh sahifa">
+        <img id="header-shop-logo" class="hidden ustore-header-logo" alt="">
+        <span id="header-shop-logo-wordmark" class="hidden ustore-header-wordmark"></span>
+      </button>
       <span id="role-tag" class="hidden bg-slate-900 text-white font-black px-2.5 py-1 rounded-xl text-[10px] tracking-widest border border-amber-400 text-amber-400 shrink-0"></span>
     </div>
     <nav class="ustore-desktop-nav" aria-label="Do‘kon bo‘limlari">
-      <button type="button" data-desktop-tab="categories" onclick="switchTab('categories')" title="Kategoriyalar"><i data-lucide="layout-grid"></i><span id="desktop-nav-categories">Kategoriyalar</span></button>
       <div class="ustore-desktop-search"><i data-lucide="search" aria-hidden="true"></i><input id="desktop-search-input" type="search" oninput="desktopSearchInput(this.value)" onkeydown="if(event.key==='Enter')desktopSearchSubmit()" autocomplete="off" aria-label="Mahsulot qidirish" placeholder="Mahsulot, kategoriya yoki brend qidiring"><button type="button" onclick="openCategoryFilterModal()" id="desktop-filter-btn" title="Filtr" aria-label="Filtr"><i data-lucide="sliders-horizontal"></i></button></div>
+      <button type="button" data-desktop-tab="home" id="desktop-nav-home-btn" onclick="switchTab('home')" title="Bosh sahifa" hidden><i data-lucide="house"></i><span id="desktop-nav-home">Bosh sahifa</span></button>
+      <button type="button" data-desktop-tab="categories" onclick="switchTab('categories')" title="Kategoriyalar"><i data-lucide="layout-grid"></i><span id="desktop-nav-categories">Kategoriyalar</span></button>
       <button type="button" data-desktop-tab="warehouse" id="desktop-nav-warehouse-btn" onclick="switchTab('warehouse')" hidden><i data-lucide="warehouse"></i><span id="desktop-nav-warehouse">Ombor</span></button>
-      <button type="button" id="desktop-nav-admin-btn" onclick="openAdminCommandCenter()" hidden><i data-lucide="layout-dashboard"></i><span id="desktop-nav-admin">Boshqaruv</span></button>
     </nav>
     <div class="ustore-header-actions flex items-center space-x-2">
       <button type="button" class="ustore-desktop-action" onclick="switchTab('orders')" title="Buyurtmalar" aria-label="Buyurtmalar"><i data-lucide="package"></i><span id="desktop-nav-orders">Buyurtmalar</span></button>
-      <button type="button" class="ustore-desktop-action" onclick="switchTab('cart')" title="Savatcha" aria-label="Savatcha"><i data-lucide="shopping-bag"></i><span id="desktop-nav-cart">Savatcha</span><small id="desktop-cart-count" hidden>0</small></button>
+      <button type="button" class="ustore-desktop-action" id="desktop-admin-panel-btn" onclick="switchTab('profile')" title="Admin panel" aria-label="Admin panel" hidden><i data-lucide="layout-dashboard"></i><span id="desktop-nav-admin-panel">Admin panel</span></button>
+      <button type="button" class="ustore-desktop-action" data-desktop-tab="cart" id="desktop-nav-cart-btn" onclick="switchTab('cart')" title="Savatcha" aria-label="Savatcha"><i data-lucide="shopping-bag"></i><span id="desktop-nav-cart">Savatcha</span><small id="desktop-cart-count" hidden>0</small></button>
       <!-- Foydalanuvchi qaytardi: savatcha tugmasi FAQAT admin rejimida
            yashiriladi (updateHeaderChrome()da), oddiy mijoz uchun header'da
            ko'rinadi — pastki menyudagi savatcha bilan bir qatorda. -->
@@ -73,7 +70,8 @@
       </button>
       <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi (savatchadan keyin). -->
       <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
-      <button type="button" onclick="toggleUiLang()" class="ustore-desktop-lang" id="desktop-lang-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
+      <button type="button" onclick="toggleUiLang()" class="ustore-desktop-lang" id="desktop-lang-btn" title="Til / Язык" aria-label="Til / Язык"><span class="ustore-desktop-flag-placeholder" aria-hidden="true"></span></button>
+      <button type="button" onclick="togglePersonMenu(event)" class="ustore-desktop-role-switch" id="desktop-role-switch-btn" aria-label="Admin/User rejimini almashtirish" title="Admin/User" hidden><i data-lucide="user-round-cog"></i></button>
       <button type="button" onclick="switchTab('profile')" class="ustore-desktop-profile" id="desktop-profile-btn" aria-label="Profil"><i data-lucide="user"></i><span id="desktop-nav-profile">Profil</span></button>
       <button onclick="switchTab('profile')" class="p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
         <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>

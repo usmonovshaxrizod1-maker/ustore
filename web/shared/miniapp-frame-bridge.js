@@ -65,6 +65,10 @@
     if (!parentOrigin || !String(route || '').startsWith('/')) return;
     window.parent.postMessage({ bridge: 'ustore-miniapp-v1', type: 'NAVIGATE', kind, nonce, route }, parentOrigin);
   }
-  window.USTORE_FRAME_BRIDGE = Object.freeze({ kind, ready, request, navigate, get initialRoute() { return initialRoute; }, get authenticated() { return authenticated; } });
+  function appReady() {
+    if (!parentOrigin) return;
+    window.parent.postMessage({ bridge: 'ustore-miniapp-v1', type: 'APP_READY', kind, nonce }, parentOrigin);
+  }
+  window.USTORE_FRAME_BRIDGE = Object.freeze({ kind, ready, request, navigate, appReady, get initialRoute() { return initialRoute; }, get authenticated() { return authenticated; } });
   window.parent.postMessage({ bridge: 'ustore-miniapp-v1', type: 'HELLO', kind }, '*');
 })();

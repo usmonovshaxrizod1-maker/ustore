@@ -123,7 +123,7 @@ test('PDF stays device-side, uses vector charts, same loaded report data and a s
 
 test('cache versions are bumped together for the report frontend release', () => {
   // POLISH ROUND (7-topshiriq, 2026-08-30): v99->v100 for this round's changes.
-  assert.match(html, /ustore\.css\?v=318/);
-  assert.match(html, /ustore-shop-app\.js\?v=318/);
+  assert.match(html, /ustore\.css\?v=319/);
+  assert.match(html, /ustore-shop-app\.js\?v=319/);
 });
 

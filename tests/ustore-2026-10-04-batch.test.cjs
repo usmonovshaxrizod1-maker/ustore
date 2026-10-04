@@ -30,7 +30,8 @@ test('batch task 2: Telegram uses one central callback and guest profile is expl
 test('batch task 3: startup uses readiness skeletons instead of welcome pages', () => {
   assert.match(app, /fc-boot-skeleton/);
   assert.doesNotMatch(app, /do'koniga xush kelibsiz!/);
-  assert.match(read('web/launch-boot.js'), /uw-launch__shop-skeleton/);
+  assert.match(read('web/index.html'), /uw-shop-first-paint uw-initial-shop-skeleton/);
+  assert.match(read('web/launch-boot.js'), /dataset\.ustoreHost = isShop \? 'shop' : 'platform'/);
   assert.doesNotMatch(read('web/launch-boot.js'), /xush kelibsiz/);
 });
 
@@ -62,7 +63,8 @@ test('batch task 6: desktop banner keeps 5:2 and has manual arrows', () => {
 test('desktop-only polish: flags, wider search, aligned cards, no header favorites', () => {
   const html = read('index.html');
   assert.doesNotMatch(html, /desktop-nav-favorites/);
-  assert.match(html, /id="desktop-lang-btn"[^>]*>🇺🇿<\/button>/);
+  assert.match(html, /id="desktop-lang-btn"[^>]*><span class="ustore-desktop-flag-placeholder"/);
+  assert.match(app, /function desktopFlagSvg\(lang\)/);
   assert.match(css, /@media \(min-width:768px\)/);
   assert.match(css, /body\.ustore-browser-mode \.ustore-desktop-search\{flex:1 1 auto;max-width:none\}/);
   assert.match(css, /body\.ustore-browser-mode \[data-product-card-title\]/);

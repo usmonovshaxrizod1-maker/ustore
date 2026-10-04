@@ -55,8 +55,10 @@ test('home has no separate promotions section call', () => {
   assert.doesNotMatch(home, /renderHomeBundlesSectionHtml\(\)/);
 });
 
-test('profile exposes one modern reports row and no platform-admin row', () => {
+test('profile exposes reports in responsive mobile + desktop admin views and no platform-admin row', () => {
   const profile = app.slice(app.indexOf('function renderProfile(container)'), app.indexOf('function readShopContactFormValues'));
-  assert.equal((profile.match(/openReportsPage\(\)/g) || []).length, 1);
+  assert.equal((profile.match(/openReportsPage\(\)/g) || []).length, 2);
+  assert.match(profile, /profileMenuRowHtml\(\{ icon: 'bar-chart-3'/);
+  assert.match(profile, /profileAdminTileHtml\(\{ icon:'bar-chart-3'/);
   assert.doesNotMatch(profile, /openPlatformAdminsPage|Platforma adminlari/);
 });

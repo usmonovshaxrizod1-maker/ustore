@@ -3915,6 +3915,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const roots = categories.filter(c => !c.parentId && (counts.get(String(c.id)) || 0) > 0).sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
       host.innerHTML = `<button type="button" onclick="switchTab('home')">${tr('Bosh sahifa','Главная')}</button>${roots.slice(0, 7).map(c => `<button type="button" onclick="openDesktopCategory('${escapeHtml(String(c.id))}')">${escapeHtml(categoryName(c))}</button>`).join('')}${roots.length > 7 ? `<button type="button" onclick="switchTab('categories')">${tr('Yana','Ещё')} →</button>` : ''}`;
     }
+    function desktopFlagSvg(lang) {
+      if (lang === 'ru') return `<svg class="fc-lang-flag-svg" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" rx="2" fill="#fff"/><rect y="6.667" width="30" height="6.667" fill="#1c57a7"/><rect y="13.334" width="30" height="6.666" fill="#d52b1e"/></svg>`;
+      return `<svg class="fc-lang-flag-svg" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" rx="2" fill="#1eb5e9"/><rect y="6.2" width="30" height="1" fill="#ce1126"/><rect y="7.2" width="30" height="5.6" fill="#fff"/><rect y="12.8" width="30" height="1" fill="#ce1126"/><rect y="13.8" width="30" height="6.2" fill="#1eb53a"/><circle cx="5.4" cy="4" r="2.15" fill="#fff"/><circle cx="6.2" cy="3.7" r="2.15" fill="#1eb5e9"/><g fill="#fff"><circle cx="9.2" cy="2.1" r=".45"/><circle cx="11" cy="2.1" r=".45"/><circle cx="12.8" cy="2.1" r=".45"/><circle cx="10.1" cy="3.7" r=".45"/><circle cx="11.9" cy="3.7" r=".45"/><circle cx="9.2" cy="5.25" r=".45"/><circle cx="11" cy="5.25" r=".45"/></g></svg>`;
+    }
     function updateHeaderChrome() {
       const flagBtn = document.getElementById('lang-flag-btn');
       if (flagBtn) flagBtn.innerText = uiLang === 'uz' ? '🇷🇺' : '🇺🇿';
@@ -3954,7 +3958,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       }
       const desktopLangBtn = document.getElementById('desktop-lang-btn');
       if (desktopLangBtn) {
-        desktopLangBtn.textContent = uiLang === 'uz' ? '🇺🇿' : '🇷🇺';
+        desktopLangBtn.innerHTML = desktopFlagSvg(uiLang);
         desktopLangBtn.setAttribute('aria-label', uiLang === 'uz' ? 'Joriy til: o‘zbekcha. Rus tiliga o‘tish' : 'Текущий язык: русский. Переключить на узбекский');
       }
       const desktopSearch = document.getElementById('desktop-search-input');
@@ -3969,7 +3973,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         ['home', 'Bosh sahifa', 'Главная'], ['categories', 'Kategoriyalar', 'Категории'],
         ['cart', 'Savatcha', 'Корзина'], ['orders', 'Buyurtmalar', 'Заказы'],
         ['favorites', 'Sevimlilar', 'Избранное'],
-        ['warehouse', 'Ombor', 'Склад'], ['admin', 'Boshqaruv', 'Управление'],
+        ['warehouse', 'Ombor', 'Склад'], ['admin-panel', 'Admin panel', 'Админ-панель'],
         ['profile', 'Profil', 'Профиль'],
       ]) {
         const label = document.getElementById(`desktop-nav-${id}`);
@@ -3981,14 +3985,23 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         else button.removeAttribute('aria-current');
       }
       const adminMode = isAdminMode && isUserAnAdmin;
-      const desktopCart = document.querySelector('[data-desktop-tab="cart"]');
+      const desktopCart = document.getElementById('desktop-nav-cart-btn');
       if (desktopCart) desktopCart.hidden = adminMode;
+      const desktopAdminPanel = document.getElementById('desktop-admin-panel-btn');
+      if (desktopAdminPanel) desktopAdminPanel.hidden = !adminMode;
       const desktopWarehouse = document.getElementById('desktop-nav-warehouse-btn');
       if (desktopWarehouse) desktopWarehouse.hidden = !adminMode || !hasPermission('stock.view');
-      const desktopAdmin = document.getElementById('desktop-nav-admin-btn');
-      if (desktopAdmin) desktopAdmin.hidden = !adminMode;
+      const desktopHome = document.getElementById('desktop-nav-home-btn');
+      if (desktopHome) desktopHome.hidden = !browserBridge || currentWebRoute === '/';
+      const desktopRoleSwitch = document.getElementById('desktop-role-switch-btn');
+      if (desktopRoleSwitch) desktopRoleSwitch.hidden = !isUserAnAdmin;
       const desktopProfile = document.getElementById('desktop-profile-btn');
-      if (desktopProfile) desktopProfile.onclick = isUserAnAdmin ? togglePersonMenu : () => switchTab('profile');
+      if (desktopProfile) desktopProfile.onclick = () => switchTab('profile');
+      const logoHome = document.getElementById('header-home-logo-btn');
+      if (logoHome) {
+        logoHome.title = tr('Bosh sahifa','Главная');
+        logoHome.setAttribute('aria-label', tr('Bosh sahifa','Главная'));
+      }
     }
 
     // 20-band: Profildagi katta "rejim almashtirish" tugmasi o'rniga headerdagi
@@ -4094,13 +4107,22 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       requestAnimationFrame(()=>{apply();requestAnimationFrame(apply);});setTimeout(apply,60);
     }
 
+    let webFrameReadyNotified = false;
     function render() {
       clearInterval(homeBannerAutoplayTimer);
       homeBannerAutoplayTimer = null;
       const decodedImageNodes = captureCatalogImageNodes();
       const uiKeyBeforeRender = currentShopUiKey();
       const preserveSnapshot = lastRenderedUiKey === uiKeyBeforeRender ? captureShopRenderState() : null;
-      if (authReady) document.body.dataset.appReady = 'true';
+      if (authReady) {
+        document.body.dataset.appReady = 'true';
+        if (browserBridge && !webFrameReadyNotified) {
+          webFrameReadyNotified = true;
+          Promise.resolve(browserBridge.ready).then(() => {
+            requestAnimationFrame(() => browserBridge.appReady?.());
+          }).catch(() => { webFrameReadyNotified = false; });
+        }
+      }
       document.body.classList.toggle('fc-admin-mode', !!(isAdminMode && isUserAnAdmin));
       updateCartBadge();
       updateNavLabels();
@@ -11807,6 +11829,24 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         <i data-lucide="chevron-right" class="w-4 h-4 fc-profile-menu-chevron"></i>
       </button>`;
     }
+    function profileAdminTileHtml({ icon, title, subtitle = '', onclick, badge = '' }) {
+      return `<button type="button" onclick="${onclick}" class="fc-admin-desktop-tile">
+        <span class="fc-admin-desktop-tile-icon"><i data-lucide="${icon}"></i></span>
+        <span class="fc-admin-desktop-tile-copy"><b>${title}</b>${subtitle ? `<small>${subtitle}</small>` : ''}</span>
+        ${badge ? `<span class="fc-profile-menu-badge">${badge}</span>` : ''}
+        <i data-lucide="chevron-right" class="fc-admin-desktop-tile-chevron"></i>
+      </button>`;
+    }
+    async function performWebProfileSignOut() {
+      if (!browserBridge || !browserBridge.authenticated) return;
+      try {
+        showActionToast(tr('Chiqilmoqda…','Выход…'), 'saving');
+        await browserBridge.request('web_sign_out', {});
+      } catch (e) {
+        console.error('[WEB_SIGN_OUT_FAILED]', e);
+        showActionToast(tr('Chiqib bo‘lmadi. Qayta urinib ko‘ring.','Не удалось выйти. Попробуйте ещё раз.'), 'error', 3000);
+      }
+    }
 
     // ==================== BOSH SAHIFA KATALOGLARI (foydalanuvchi qo'shimcha so'rovi) ====================
 
@@ -15437,7 +15477,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function renderProfile(container) {
       if (browserBridge && !browserBridge.authenticated) {
-        container.innerHTML = `<div class="space-y-4"><section class="fc-profile-card fc-guest-profile-card"><div class="fc-profile-avatar"><i data-lucide="user-round" class="w-7 h-7"></i></div><div class="fc-profile-copy"><div class="fc-profile-eyebrow">${tr('Profil','Профиль')}</div><h2>${tr('Profilga kirish','Войти в профиль')}</h2><p class="fc-profile-phone">${tr('Buyurtmalar, sevimlilar va shaxsiy ma’lumotlaringiz uchun tizimga kiring.','Войдите, чтобы открыть заказы, избранное и личные данные.')}</p></div></section><section class="fc-profile-menu fc-guest-auth-actions"><button type="button" onclick="browserBridge.navigate('/signin?next=/profile&method=telegram')" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="send"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Telegram orqali kirish','Войти через Telegram')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button><button type="button" onclick="browserBridge.navigate('/signin?next=/profile&method=password')" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="key-round"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Login va parol bilan kirish','Войти по логину и паролю')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button></section></div>`;
+        container.innerHTML = `<div class="fc-guest-profile-shell space-y-4"><section class="fc-profile-card fc-guest-profile-card"><div class="fc-profile-avatar"><i data-lucide="user-round" class="w-7 h-7"></i></div><div class="fc-profile-copy"><div class="fc-profile-eyebrow">${tr('Profil','Профиль')}</div><h2>${tr('Profilga kirish','Войти в профиль')}</h2><p class="fc-profile-phone">${tr('Buyurtmalar, sevimlilar va shaxsiy ma’lumotlaringiz uchun tizimga kiring.','Войдите, чтобы открыть заказы, избранное и личные данные.')}</p></div></section><section class="fc-profile-menu fc-guest-auth-actions"><button type="button" onclick="browserBridge.navigate('/signin?next=/profile&method=telegram')" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="send"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Telegram orqali kirish','Войти через Telegram')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button><button type="button" onclick="browserBridge.navigate('/signin?next=/profile&method=password')" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="key-round"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Login va parol bilan kirish','Войти по логину и паролю')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button></section></div>`;
         return;
       }
       const phones = [shopContact.phone, shopContact.phone2, shopContact.phone3].filter(Boolean);
@@ -15469,6 +15509,22 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           ${hasPermission('support.manage') ? `<section class="fc-profile-admin-group"><div class="fc-profile-admin-group-title">${tr('Yordam','Помощь')}</div><div class="fc-profile-menu">${profileMenuRowHtml({ icon: 'messages-square', title: tr("Qo'llab-quvvatlash", 'Поддержка'), subtitle: tr('Murojaatlar va yozishmalar', 'Обращения и переписка'), onclick: 'openAdminSupportOrUserSupport()', badge: supportBadge })}</div></section>` : ''}
         </div>` : '';
 
+      const adminDesktopGrid = (isAdminMode && isUserAnAdmin) ? `<section class="fc-admin-desktop-hub">
+        <div class="fc-admin-desktop-hub-title"><span>${tr('Boshqaruv','Управление')}</span><b>${tr('Admin panel','Админ-панель')}</b></div>
+        <div class="fc-admin-desktop-grid">
+          ${profileAdminTileHtml({ icon:'layout-dashboard', title:tr('Boshqaruv markazi','Центр управления'), subtitle:tr('Bugungi vazifalar, savdo va tezkor amallar','Задачи, продажи и быстрые действия'), onclick:'openAdminCommandCenter()' })}
+          ${hasPermission('reports.view') ? profileAdminTileHtml({ icon:'bar-chart-3', title:tr('Hisobotlar','Отчёты'), subtitle:tr("Savdo, mijozlar va mahsulotlar bo‘yicha tahlil",'Аналитика продаж, клиентов и товаров'), onclick:'openReportsPage()' }) : ''}
+          ${hasPermission('shop.settings.manage') ? profileAdminTileHtml({ icon:'settings-2', title:tr("Do‘kon parametrlari",'Параметры магазина'), subtitle:tr("Do‘kon, yetkazib berish, to‘lov va dizayn",'Магазин, доставка, оплата и дизайн'), onclick:'openShopParams()' }) : ''}
+          ${hasPermission('marketing.manage') ? profileAdminTileHtml({ icon:'megaphone', title:tr('Marketing','Маркетинг'), subtitle:tr('Bannerlar, aksiyalar, promo-kodlar','Баннеры, акции и промокоды'), onclick:'openMarketingHubPage()' }) : ''}
+          ${hasPermission('marketing.manage') ? profileAdminTileHtml({ icon:'shopping-cart', title:tr('Tashlab ketilgan savatlar','Брошенные корзины'), subtitle:tr('Buyurtma bermagan mijozlarning savatlari','Корзины без оформленного заказа'), onclick:'openAbandonedCartsPage()' }) : ''}
+          ${(staffRole === 'OWNER' || hasPermission('staff.manage') || hasPermission('staff.permissions.manage')) ? profileAdminTileHtml({ icon:'users-round', title:tr('Xodimlar','Сотрудники'), subtitle:tr('Rol va huquqlarni boshqarish','Управление ролями и правами'), onclick:'openStaffPage()' }) : ''}
+          ${canViewAuditLog ? profileAdminTileHtml({ icon:'clipboard-list', title:tr('Amallar jurnali','Журнал действий'), subtitle:tr('Xodimlar amallarini tekshirish','Проверка действий сотрудников'), onclick:'openAuditLogPage()' }) : ''}
+          ${hasPermission('support.manage') ? profileAdminTileHtml({ icon:'messages-square', title:tr("Qo‘llab-quvvatlash",'Поддержка'), subtitle:tr('Murojaatlar va yozishmalar','Обращения и переписка'), onclick:'openAdminSupportOrUserSupport()', badge:supportBadge }) : ''}
+          ${canManageDomainsPage() ? profileAdminTileHtml({ icon:'globe-2', title:tr('Domen va manzil','Домен и адрес'), subtitle:tr('Subdomen va shaxsiy domenni boshqarish','Управление доменами'), onclick:'openDomainsSettingsPage()' }) : ''}
+          ${profileAdminTileHtml({ icon:'key-round', title:tr('Web login va parol','Логин и пароль для сайта'), subtitle:browserBridge ? tr('Login va parolni do‘kon botidan oling','Получите данные в боте магазина') : tr('Shu yerda olish yoki yangilash','Получить или обновить здесь'), onclick:'openShopWebCredentials()' })}
+        </div>
+      </section>` : '';
+
       const userQuick = !(isAdminMode && isUserAnAdmin) ? `
         <div class="grid grid-cols-2 gap-2">
           <button onclick="openPage('FAVORITES','nav-profile')" class="fc-card flex items-center gap-2 text-left"><i data-lucide="heart" class="w-5 h-5 fc-text-danger shrink-0"></i><span class="font-bold text-xs">${tr('Sevimlilar', 'Избранное')}</span></button>
@@ -15490,14 +15546,18 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               ${currentUser.username ? `<p class="fc-profile-username">@${escapeHtml(currentUser.username)}</p>` : ''}
               ${currentUser.phone && currentUser.phone !== '+998' ? `<p class="fc-profile-phone">${escapeHtml(currentUser.phone)}</p>` : ''}
             </div>
-            <button type="button" onclick="activePopupModal='REGISTRATION'; render();" class="fc-btn fc-btn-icon fc-profile-edit" title="${tr("Ma'lumotlarni tahrirlash", 'Изменить данные')}"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+            <div class="fc-profile-actions">
+              <button type="button" onclick="activePopupModal='REGISTRATION'; render();" class="fc-btn fc-btn-icon fc-profile-edit" title="${tr("Ma'lumotlarni tahrirlash", 'Изменить данные')}"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+              ${browserBridge?.authenticated ? `<button type="button" onclick="performWebProfileSignOut()" class="fc-btn fc-btn-icon fc-desktop-profile-logout" title="${tr('Chiqish','Выйти')}" aria-label="${tr('Chiqish','Выйти')}"><i data-lucide="log-out" class="w-4 h-4"></i></button>` : ''}
+            </div>
           </section>
 
           ${renderPendingInviteBannerHtml()}
           ${adminMenu}
+          ${adminDesktopGrid}
           ${userQuick}
 
-          <section class="fc-profile-menu">
+          <section class="fc-profile-menu ${isAdminMode && isUserAnAdmin ? 'fc-admin-tail-menu' : ''}">
             ${canManageDomainsPage() ? profileMenuRowHtml({ icon: 'globe-2', title: tr('Domen va manzil','Домен и адрес'), subtitle: tr('Subdomen va shaxsiy domenni boshqarish','Управление субдоменом и собственным доменом'), onclick: 'openDomainsSettingsPage()' }) : ''}
             ${profileMenuRowHtml({ icon: 'key-round', title: tr('Web login va parol', 'Логин и пароль для сайта'), subtitle: browserBridge ? tr('Login va parolni do‘kon botidan oling', 'Получите логин и пароль в боте магазина') : tr('Shu yerda olish yoki yangilash', 'Получить или обновить здесь'), onclick: 'openShopWebCredentials()' })}
           </section>
@@ -18215,7 +18275,7 @@ if (activePopupModal === 'LOGO_CROP') {
                 ` : ''}
               </div>
 
-              <div class="space-y-1">
+              <div class="space-y-1 fc-product-detail-info-head">
                 <div class="flex justify-between items-center gap-1">
                   ${(isAdminMode && isUserAnAdmin && (hasPermission('products.manage') || hasPermission('stock.view'))) ? `<span class="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-0.5 rounded">ID: ${escapeHtml(p.sku)}</span>` : '<span></span>'}
                   ${canManageProducts() ? `
@@ -18275,7 +18335,7 @@ if (activePopupModal === 'LOGO_CROP') {
               ${canManageProducts() ? `
                 <div class="bg-gray-50 p-3 rounded-2xl border text-xs space-y-1 relative">
                   <div class="flex justify-between items-center">
-                    <h4 class="font-bold text-gray-700">${tr("📝 Tavsif / Izoh:", "📝 Описание:")}</h4>
+                    <h4 class="font-bold text-gray-700 fc-product-section-heading"><span class="fc-product-desktop-svg"><i data-lucide="file-text" class="w-4 h-4"></i></span><span class="fc-product-mobile-emoji">📝</span><span>${tr("Tavsif / Izoh:", "Описание:")}</span></h4>
                     <button onclick="openEditFieldModal('${p.id}', 'desc')" class="text-xs p-1 bg-blue-50 text-blue-600 rounded-lg font-bold">${ICON_EDIT}</button>
                   </div>
                   <p class="text-gray-600 leading-relaxed">${escapeHtml(productDesc(p) || tr('Tavsif kiritilmagan.','Описание не указано.'))}</p>
@@ -18284,7 +18344,7 @@ if (activePopupModal === 'LOGO_CROP') {
 
               ${!isAdminMode ? `
                 <!-- 25-band: mijoz uchun tartib — rasm/nom/narx (yuqorida) -> mavjudlik -> variant/savatga -> tavsif -> sevimli -> o'xshash. -->
-                <div class="flex items-center gap-1.5 text-xs font-bold ${p.stock > 0 ? 'fc-text-success' : 'fc-text-danger'}">
+                <div class="fc-product-detail-stock flex items-center gap-1.5 text-xs font-bold ${p.stock > 0 ? 'fc-text-success' : 'fc-text-danger'}">
                   <i data-lucide="${p.stock > 0 ? 'check-circle' : 'x-circle'}" class="w-3.5 h-3.5"></i>
                   ${p.stock > 0 ? tr('Omborda bor', 'В наличии') : tr('Mahsulot tugagan', 'Товара нет в наличии')}
                 </div>
@@ -18300,21 +18360,21 @@ if (activePopupModal === 'LOGO_CROP') {
                       ${activeColorName !== null ? `<p class="text-xs font-bold text-gray-600 mt-1">${tr("O'lcham",'Размер')}: <span class="font-normal text-gray-500">${activeSizeName ? escapeHtml(localizedVariantSize(activeSizeName)) : tr('tanlanmagan','не выбран')}</span></p><div class="flex gap-2 flex-wrap">${sizesForActiveColor.map((v) => { const out = Number(v.qty) <= 0; return `<button onclick="selectSize(${escapeHtml(JSON.stringify(v.size))})" class="fc-size-chip ${v.size === activeSizeName ? 'is-active' : ''} ${out ? 'is-out' : ''}" aria-label="${escapeHtml(localizedVariantSize(v.size))}${out ? ' · ' + tr('tugagan','нет в наличии') : ''}">${escapeHtml(localizedVariantSize(v.size))}${out ? `<small>${tr('Tugagan','Нет')}</small>` : ''}</button>`; }).join('')}</div>` : ''}
                       <div class="mt-2">${activeVariant ? (Number(activeVariant.qty) > 0 ? (cartEntry ? `<div class="fc-variant-cart-inline"><div class="fc-customer-variant-stepper"><button type="button" onclick="changeActiveVariantCartQty(-1,event)" aria-label="${tr('Kamaytirish','Уменьшить')}"><i data-lucide="minus" class="w-5 h-5"></i></button><b>${cartEntry.qty}</b><button type="button" onclick="changeActiveVariantCartQty(1,event)" aria-label="${tr('Ko‘paytirish','Увеличить')}"><i data-lucide="plus" class="w-5 h-5"></i></button></div><button type="button" onclick="goToCartFromProductDetail()" class="fc-variant-go-cart">${tr('Savatga o‘tish','Перейти в корзину')}</button></div>` : `<button type="button" onclick="addVariantToCart('${p.id}')" class="fc-variant-add-cart"><i data-lucide="shopping-cart" class="w-4 h-4"></i><span>${tr('Savatga qo‘shish','Добавить в корзину')}</span></button>`) : `<div class="fc-variant-restock"><span class="fc-stock-out-badge"><i data-lucide="package-x" class="w-3.5 h-3.5"></i>${tr('Bu variant tugagan','Этого варианта нет')}</span>${renderStockSubscribeButtonHtml(p, activeVariant.sku)}</div>`) : `<p class="text-[10px] text-gray-400 text-center py-2">${tr("Avval o'lchamni tanlang.",'Сначала выберите размер.')}</p>`}</div>
                     </div>`;
-                  })() : (p.stock > 0 ? (inCart ? `<div class="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl p-2"><button onclick="changeCartQty('${p.id}', -1, event); openProductDetailModal('${p.id}');" class="w-10 h-10 bg-white font-bold rounded-xl shadow text-base text-blue-600">-</button><span class="font-bold text-base text-blue-800">${inCart.qty} ${tr('ta savatda','шт. в корзине')}</span><button onclick="changeCartQty('${p.id}', 1, event); openProductDetailModal('${p.id}');" class="w-10 h-10 bg-blue-600 font-bold rounded-xl text-base text-white">+</button></div>` : `<button onclick="addToCart('${p.id}', event); openProductDetailModal('${p.id}');" class="w-full bg-blue-600 text-white font-bold py-3 rounded-2xl text-sm">🛒 ${t('add_to_cart')}</button>`) : `<div class="fc-variant-restock"><span class="fc-stock-out-badge"><i data-lucide="package-x" class="w-3.5 h-3.5"></i>${tr('Mahsulot tugagan','Товара нет в наличии')}</span>${renderStockSubscribeButtonHtml(p)}</div>`)}
+                  })() : (p.stock > 0 ? (inCart ? `<div class="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl p-2"><button onclick="changeCartQty('${p.id}', -1, event); openProductDetailModal('${p.id}');" class="w-10 h-10 bg-white font-bold rounded-xl shadow text-base text-blue-600">-</button><span class="font-bold text-base text-blue-800">${inCart.qty} ${tr('ta savatda','шт. в корзине')}</span><button onclick="changeCartQty('${p.id}', 1, event); openProductDetailModal('${p.id}');" class="w-10 h-10 bg-blue-600 font-bold rounded-xl text-base text-white">+</button></div>` : `<button onclick="addToCart('${p.id}', event); openProductDetailModal('${p.id}');" class="fc-product-detail-add"><span class="fc-product-desktop-svg"><i data-lucide="shopping-cart" class="w-4 h-4"></i></span><span class="fc-product-mobile-emoji">🛒</span><span>${t('add_to_cart')}</span></button>`) : `<div class="fc-variant-restock"><span class="fc-stock-out-badge"><i data-lucide="package-x" class="w-3.5 h-3.5"></i>${tr('Mahsulot tugagan','Товара нет в наличии')}</span>${renderStockSubscribeButtonHtml(p)}</div>`)}
                 </div>
 
                 ${storefrontDeliverySignalsHtml()}
                 ${p.stock > 0 ? `<button type="button" class="fc-product-buy-now" onclick="buyProductNow('${p.id}')">${tr('Hozir sotib olish','Купить сейчас')}</button>` : ''}
 
                 ${productDesc(p) ? `
-                  <div class="bg-gray-50 p-3 rounded-2xl border text-xs space-y-1">
-                    <h4 class="font-bold text-gray-700">${tr("📝 Tavsif", "📝 Описание")}</h4>
+                  <div class="fc-product-detail-section bg-gray-50 p-3 rounded-2xl border text-xs space-y-1">
+                    <h4 class="font-bold text-gray-700 fc-product-section-heading"><span class="fc-product-desktop-svg"><i data-lucide="file-text" class="w-4 h-4"></i></span><span class="fc-product-mobile-emoji">📝</span><span>${tr("Tavsif", "Описание")}</span></h4>
                     <p class="text-gray-600 leading-relaxed">${escapeHtml(productDesc(p))}</p>
                   </div>
                 ` : ''}
-                ${(p.sku || categories.some(c => c.id === p.categoryId)) ? `<div class="bg-gray-50 p-3 rounded-2xl border text-xs space-y-1"><h4 class="font-bold text-gray-700">${tr('Xususiyatlar','Характеристики')}</h4>${p.sku ? `<p>${tr('Mahsulot kodi','Код товара')}: ${escapeHtml(p.sku)}</p>` : ''}${categories.some(c => c.id === p.categoryId) ? `<p>${tr('Katalog','Каталог')}: ${escapeHtml(categoryName(categories.find(c => c.id === p.categoryId)))}</p>` : ''}</div>` : ''}
+                ${(p.sku || categories.some(c => c.id === p.categoryId)) ? `<div class="fc-product-detail-section bg-gray-50 p-3 rounded-2xl border text-xs space-y-1"><h4 class="font-bold text-gray-700 fc-product-section-heading"><span class="fc-product-desktop-svg"><i data-lucide="list-checks" class="w-4 h-4"></i></span><span>${tr('Xususiyatlar','Характеристики')}</span></h4>${p.sku ? `<p>${tr('Mahsulot kodi','Код товара')}: ${escapeHtml(p.sku)}</p>` : ''}${categories.some(c => c.id === p.categoryId) ? `<p>${tr('Katalog','Каталог')}: ${escapeHtml(categoryName(categories.find(c => c.id === p.categoryId)))}</p>` : ''}</div>` : ''}
 
-                <button onclick="toggleFavorite('${p.id}', event)" class="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border font-bold text-xs ${favoriteProductIds.has(p.id) ? 'fc-bg-danger-soft fc-border-danger fc-text-danger' : 'bg-white border-gray-200 text-gray-600'}">
+                <button onclick="toggleFavorite('${p.id}', event)" class="fc-product-detail-favorite w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl border font-bold text-xs ${favoriteProductIds.has(p.id) ? 'fc-bg-danger-soft fc-border-danger fc-text-danger' : 'bg-white border-gray-200 text-gray-600'}">
                   <svg class="w-4 h-4" viewBox="0 0 24 24" fill="${favoriteProductIds.has(p.id) ? '#ef4444' : 'none'}" stroke="${favoriteProductIds.has(p.id) ? '#ef4444' : 'currentColor'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"></path></svg>
                   ${favoriteProductIds.has(p.id) ? tr('Sevimlilarda', 'В избранном') : tr('Sevimlilarga qo‘shish', 'Добавить в избранное')}
                 </button>
@@ -21073,9 +21133,11 @@ if (activePopupModal === 'LOGO_CROP') {
     // Browser URLs reuse the same Mini App pages; the host remains the only
     // holder of Web auth and tenant authority.
     let applyingWebRoute = false;
+    let currentWebRoute = '/';
     window.USTORE_APPLY_WEB_ROUTE = (route) => {
       if (!browserBridge || !authReady) return;
       const path = String(route || '/').split('?')[0];
+      currentWebRoute = path || '/';
       applyingWebRoute = true;
       try {
         if (path.startsWith('/product/')) {

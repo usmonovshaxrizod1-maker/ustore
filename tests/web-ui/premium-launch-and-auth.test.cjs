@@ -25,10 +25,12 @@ test('first paint on managed subdomain is shop-branded before the module graph r
   const html = fs.readFileSync('web/index.html','utf8');
   const boot = fs.readFileSync('web/launch-boot.js','utf8');
   assert.match(html,/launch-boot\.js\?v=[0-9a-z]+/);
-  assert.ok(html.indexOf('launch-boot.js?v=') > html.indexOf('id="ustore-web-app"'));
+  assert.ok(html.indexOf('launch-boot.js?v=') < html.indexOf('id="ustore-web-app"'));
+  assert.ok(html.indexOf('launch-boot.js?v=') < html.indexOf('type="module" src="./app.js'));
+  assert.match(html,/uw-shop-first-paint uw-initial-shop-skeleton/);
   assert.doesNotMatch(boot,/USTORE SHOP/);
   assert.doesNotMatch(boot,/Do‘kon tayyorlanmoqda/);
   assert.doesNotMatch(boot,/xush kelibsiz/);
-  assert.match(boot,/uw-launch__shop-skeleton/);
+  assert.match(boot,/dataset\.ustoreHost = isShop \? 'shop' : 'platform'/);
   assert.match(boot,/USTORE_BASE_HOSTNAME/);
 });

@@ -37,3 +37,23 @@ Migration audit: 001–117, gaps 0, duplicates 0.
   `https://ustr.uz/auth/telegram/callback`
 - Verify required Telegram OIDC client/server secrets in the production environment.
 - Run remote migration-ledger, staging smoke and real backup/restore evidence checks before final production sign-off.
+
+
+## Desktop/tablet follow-up
+
+8. Shop guest Profile authentication UI is now compact on desktop/tablet: centered card, stacked Telegram and login/password actions, while Mini App/mobile styling remains unchanged.
+9. Shared shop desktop/tablet navigation is normalized: clickable shop logo -> Home, a contextual Home button on non-home routes, search before Home/Categories, SVG Uzbekistan/Russia flags, web logout, and admin/user role-switch parity.
+10. Desktop/tablet category cards no longer place SVG category icons on a separate white tile; the icon sits directly on the category-card surface.
+11. Shop storefront first paint no longer shows the generic UStorE waiting card. Managed shop hosts use one continuous shop-branded skeleton until the iframe/app reports `APP_READY`; Platform/Admin loading was left unchanged.
+12. Admin desktop/tablet Profile/Management view now has a responsive management grid: 3 columns on large desktop and 2 columns on smaller desktop/tablet, while the existing Mini App/mobile single-column menu remains intact.
+13. Admin desktop header removes the customer Cart and redundant Management shortcut in admin mode, exposes the Admin panel entry, keeps Home/logo navigation, role switching and the same SVG flag system.
+14. Desktop/tablet product detail was polished into a more cohesive layout; legacy system emojis in Description/Add-to-cart are replaced with project SVG icons on desktop/tablet, with mobile behavior preserved.
+15. Desktop/tablet header behavior remains functional at common browser zoom-equivalent widths: core navigation is not silently removed, search shrinks responsively, and narrow desktop/tablet layouts retain access to Home/Categories/Orders/Admin actions.
+
+### Follow-up validation
+
+- Main regression suite after follow-up: **1107/1107 PASS**
+- Edge TypeScript syntax: **28/28 OK**
+- Production build: **PASS, 428 files**
+- Web suite: **500/507 PASS**
+  - The same 7 SQL-integration runners are unavailable in this review environment because `@electric-sql/pglite` is not installed/usable here; no new product/UI regression was observed in the runnable 500 tests.

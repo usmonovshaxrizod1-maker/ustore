@@ -6199,3 +6199,104 @@ body.ustore-browser-mode .fc-initial-loader{opacity:0;animation:fc-reveal-initia
 @media(min-width:768px){body.ustore-browser-mode .fc-boot-skeleton-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
 .fc-footer-socials{display:inline-flex;align-items:center;gap:.45rem;flex-wrap:wrap}
+
+/* 2026-10-04 follow-up — desktop/tablet shop polish only. Mini App/mobile stays unchanged. */
+.ustore-header-home-logo{display:inline-flex;align-items:center;justify-content:center;min-width:0;border:0;background:transparent;padding:0;border-radius:12px;pointer-events:none}
+.ustore-desktop-role-switch{display:none}
+.fc-admin-desktop-hub{display:none}
+.fc-desktop-profile-logout{display:none!important}
+.fc-product-desktop-svg{display:none}
+.fc-product-mobile-emoji{display:inline}
+
+@media (min-width:768px){
+  body.ustore-browser-mode .ustore-header-home-logo{display:inline-flex;cursor:pointer;pointer-events:auto}
+  body.ustore-browser-mode .ustore-header-home-logo:focus-visible{outline:2px solid color-mix(in srgb,var(--ustore-button) 55%,transparent);outline-offset:4px}
+  body.ustore-browser-mode .ustore-desktop-role-switch{display:inline-grid;place-items:center;width:44px;height:44px;flex:none;border:1px solid var(--ustore-border);border-radius:12px;background:var(--ustore-header-bg);color:var(--ustore-header-text)}
+  body.ustore-browser-mode .ustore-desktop-role-switch[hidden]{display:none!important}
+  body.ustore-browser-mode .ustore-desktop-role-switch svg{width:18px;height:18px}
+  body.ustore-browser-mode .fc-lang-flag-svg{display:block;width:26px;height:18px;border-radius:3px;box-shadow:0 0 0 1px rgba(15,23,42,.09)}
+  body.ustore-browser-mode .ustore-desktop-lang{min-width:48px;padding-inline:10px}
+
+  /* Guest profile: a compact centered sign-in card, not full-width rows. */
+  body.ustore-browser-mode .fc-guest-profile-shell{width:min(100%,560px);margin:clamp(2rem,8vh,5.5rem) auto 0}
+  body.ustore-browser-mode .fc-guest-profile-card{grid-template-columns:3.5rem minmax(0,1fr);padding:1.15rem 1.2rem}
+  body.ustore-browser-mode .fc-guest-auth-actions{padding:.55rem;background:var(--ustore-card-bg);border-radius:1.1rem;display:grid;grid-template-columns:1fr;gap:.55rem;overflow:visible}
+  body.ustore-browser-mode .fc-guest-auth-actions .fc-profile-menu-row{border:1px solid var(--ustore-border);border-radius:.9rem;min-height:58px;padding:.7rem .85rem;background:var(--ustore-input-bg)}
+  body.ustore-browser-mode .fc-guest-auth-actions .fc-profile-menu-row:last-child{border-bottom:1px solid var(--ustore-border)}
+
+  /* Authenticated desktop profile actions. */
+  body.ustore-browser-mode .fc-profile-card{grid-template-columns:3.75rem minmax(0,1fr) auto}
+  body.ustore-browser-mode .fc-profile-actions{display:flex;align-items:center;gap:.5rem}
+  body.ustore-browser-mode .fc-desktop-profile-logout{display:inline-grid!important;color:var(--ustore-danger,#dc2626);border-color:color-mix(in srgb,var(--ustore-danger,#dc2626) 22%,var(--ustore-border));background:color-mix(in srgb,var(--ustore-danger,#dc2626) 5%,var(--ustore-card-bg))}
+
+  /* Desktop admin profile becomes a tidy tile dashboard. */
+  body.ustore-browser-mode.fc-admin-mode .fc-profile-admin-sections{display:none}
+  body.ustore-browser-mode.fc-admin-mode .fc-admin-tail-menu{display:none}
+  body.ustore-browser-mode.fc-admin-mode .fc-admin-desktop-hub{display:block}
+  body.ustore-browser-mode .fc-admin-desktop-hub-title{display:flex;align-items:baseline;gap:.6rem;margin:0 2px .75rem;color:var(--ustore-muted-text)}
+  body.ustore-browser-mode .fc-admin-desktop-hub-title span{font-size:.68rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+  body.ustore-browser-mode .fc-admin-desktop-hub-title b{font-size:1rem;color:var(--ustore-text)}
+  body.ustore-browser-mode .fc-admin-desktop-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}
+  body.ustore-browser-mode .fc-admin-desktop-tile{min-width:0;min-height:118px;display:grid;grid-template-columns:3.35rem minmax(0,1fr) auto;align-items:center;gap:.9rem;padding:1rem 1.05rem;border:1px solid var(--ustore-border);border-radius:1rem;background:var(--ustore-card-bg);box-shadow:0 4px 16px rgba(15,23,42,.035);text-align:left;transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}
+  body.ustore-browser-mode .fc-admin-desktop-tile:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--ustore-button) 28%,var(--ustore-border));box-shadow:0 9px 22px rgba(15,23,42,.06)}
+  body.ustore-browser-mode .fc-admin-desktop-tile-icon{width:3.35rem;height:3.35rem;display:grid;place-items:center;border-radius:.95rem;background:color-mix(in srgb,var(--ustore-button) 8%,var(--ustore-card-bg));color:var(--ustore-button)}
+  body.ustore-browser-mode .fc-admin-desktop-tile-icon svg{width:1.65rem;height:1.65rem}
+  body.ustore-browser-mode .fc-admin-desktop-tile-copy{min-width:0;display:flex;flex-direction:column;gap:.28rem}
+  body.ustore-browser-mode .fc-admin-desktop-tile-copy b{font-size:.84rem;line-height:1.25;color:var(--ustore-text)}
+  body.ustore-browser-mode .fc-admin-desktop-tile-copy small{font-size:.7rem;line-height:1.35;color:var(--ustore-secondary-text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  body.ustore-browser-mode .fc-admin-desktop-tile-chevron{width:1rem;height:1rem;color:var(--ustore-muted-text)}
+
+  /* Category SVGs should look native to their card, not pasted on a white square. */
+  body.ustore-browser-mode .fc-category-responsive-grid .fc-category-icon-frame{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
+
+  /* Product detail: denser image, cohesive right-hand information, SVG iconography. */
+  body.ustore-browser-mode .fc-product-detail-layout{width:min(calc(100% - 3rem),1440px);grid-template-columns:minmax(0,42%) minmax(0,1fr);gap:1rem 2rem}
+  body.ustore-browser-mode .fc-product-detail-layout>.relative{padding:1rem;border:1px solid var(--ustore-border);border-radius:1.15rem;background:var(--ustore-card-bg);box-shadow:0 5px 18px rgba(15,23,42,.04)}
+  body.ustore-browser-mode .fc-product-detail-layout .fc-product-gallery{max-height:560px}
+  body.ustore-browser-mode .fc-product-detail-info-head{padding:1.05rem 1.1rem;border:1px solid var(--ustore-border);border-radius:1rem;background:var(--ustore-card-bg)}
+  body.ustore-browser-mode .fc-product-detail-stock{padding:.15rem .15rem 0}
+  body.ustore-browser-mode .fc-product-detail-add{width:100%;min-height:3rem;display:flex;align-items:center;justify-content:center;gap:.5rem;border-radius:.9rem;background:var(--ustore-button);color:#fff;font-size:.88rem;font-weight:850;box-shadow:0 7px 18px color-mix(in srgb,var(--ustore-button) 18%,transparent)}
+  body.ustore-browser-mode .fc-product-detail-section{background:var(--ustore-card-bg)!important;border-color:var(--ustore-border)!important;padding:1rem!important;border-radius:1rem!important}
+  body.ustore-browser-mode .fc-product-section-heading{display:flex;align-items:center;gap:.45rem}
+  body.ustore-browser-mode .fc-product-desktop-svg{display:inline-flex;align-items:center;justify-content:center;color:var(--ustore-button)}
+  body.ustore-browser-mode .fc-product-mobile-emoji{display:none}
+  body.ustore-browser-mode .fc-product-detail-favorite{width:auto!important;min-height:2.75rem;padding-inline:1rem!important;justify-self:start}
+  body.ustore-browser-mode .fc-product-delivery-signals{padding:12px 14px;border-radius:14px;background:var(--ustore-card-bg)}
+  body.ustore-browser-mode .fc-product-buy-now{min-height:3rem;border-radius:.9rem}
+
+  /* The orders page already has a global Admin-panel shortcut in the header. */
+  body.ustore-browser-mode.fc-admin-mode .fc-orders-command-btn{display:none!important}
+}
+
+@media (min-width:1200px){
+  body.ustore-browser-mode .fc-admin-desktop-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* Browser zoom reduces the effective CSS viewport. Keep every desktop/tablet action reachable. */
+@media (min-width:768px) and (max-width:1099px){
+  body.ustore-browser-mode .ustore-topbar{grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;column-gap:12px;row-gap:8px}
+  body.ustore-browser-mode .ustore-header-actions{grid-column:2;grid-row:1;justify-content:flex-end;min-width:0}
+  body.ustore-browser-mode .ustore-desktop-nav{grid-column:1/-1;grid-row:2;width:100%;display:flex!important;gap:7px}
+  body.ustore-browser-mode .ustore-desktop-nav>button:not([hidden]){display:inline-flex!important}
+  body.ustore-browser-mode .ustore-desktop-nav>button[hidden]{display:none!important}
+  body.ustore-browser-mode .ustore-desktop-search{min-width:180px;flex:1 1 320px}
+  body.ustore-browser-mode .ustore-header-logo{max-width:118px!important}
+  body.ustore-browser-mode .ustore-desktop-action span,body.ustore-browser-mode .ustore-desktop-profile span,body.ustore-browser-mode #desktop-admin-panel-btn span{display:none}
+  body.ustore-browser-mode .ustore-desktop-action,body.ustore-browser-mode .ustore-desktop-profile{width:44px;padding:0}
+}
+@media (min-width:1100px) and (max-width:1399px){
+  body.ustore-browser-mode .ustore-topbar{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto;column-gap:10px;row-gap:0}
+  body.ustore-browser-mode .ustore-desktop-nav{grid-column:auto;grid-row:auto;width:auto;display:flex!important;gap:6px}
+  body.ustore-browser-mode .ustore-desktop-nav>button:not([hidden]){display:inline-flex!important;padding-inline:9px}
+  body.ustore-browser-mode .ustore-desktop-nav>button[hidden]{display:none!important}
+  body.ustore-browser-mode .ustore-desktop-search{min-width:150px;flex:1 1 260px}
+  body.ustore-browser-mode .ustore-header-actions{grid-column:auto;grid-row:auto;justify-content:flex-end;min-width:0}
+  body.ustore-browser-mode .ustore-header-logo{max-width:118px!important}
+}
+@media (min-width:1100px) and (max-width:1219px){
+  body.ustore-browser-mode .ustore-desktop-action span,body.ustore-browser-mode .ustore-desktop-profile span,body.ustore-browser-mode #desktop-admin-panel-btn span{display:none}
+  body.ustore-browser-mode .ustore-desktop-action,body.ustore-browser-mode .ustore-desktop-profile{width:44px;padding:0}
+}
+@media (min-width:1220px) and (max-width:1399px){
+  body.ustore-browser-mode .ustore-desktop-action span,body.ustore-browser-mode .ustore-desktop-profile span,body.ustore-browser-mode #desktop-admin-panel-btn span{display:inline!important}
+}

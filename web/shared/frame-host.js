@@ -11,7 +11,7 @@ function safeRoute(value) {
   return route.startsWith('/') && !route.startsWith('//') && !route.includes('\\') ? route : '/';
 }
 
-export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewerKey = '', guestViewerKey = '', runtime, fetchImpl = fetch, onNavigate = () => {}, onAuthRequired = () => {} } = {}) {
+export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewerKey = '', guestViewerKey = '', runtime, fetchImpl = fetch, onNavigate = () => {}, onAuthRequired = () => {}, onSignedOut = () => {} } = {}) {
   if (kind !== 'shop' && kind !== 'platform') throw new TypeError('Mini App turi noto‘g‘ri.');
   if (!runtime?.endpoints || !runtime?.tokenStore?.get) throw new TypeError('Web runtime tayyor emas.');
   const botId = kind === 'shop' ? String(tenant?.botId || '') : '';
@@ -32,7 +32,18 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   if (guestViewerKey && /^[0-9a-f-]{36}$/i.test(guestViewerKey)) src.searchParams.set('guest_viewer', guestViewerKey);
   if (botId) src.searchParams.set('bot_id', botId);
   frame.src = src.href;
+  let placeholder = null;
+  if (kind === 'shop') {
+    wrapper.className = `${wrapper.className} is-loading`.trim();
+    placeholder = document.createElement('section');
+    placeholder.className = 'uw-shop-first-paint';
+    placeholder.setAttribute('role', 'status');
+    placeholder.setAttribute('aria-busy', 'true');
+    const logo = tenant?.logoUrl ? `<span class="uw-shop-first-paint__logo"><img src="${String(tenant.logoUrl).replace(/"/g, '&quot;')}" alt=""></span>` : '<span class="uw-shop-first-paint__logo"></span>';
+    placeholder.innerHTML = `<div class="uw-shop-first-paint__header">${logo}<strong>${String(tenant?.shopName || 'Do‘kon').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong><span class="uw-shop-first-paint__search"></span></div><div class="uw-shop-first-paint__body"><span class="uw-shop-first-paint__hero"></span><div class="uw-shop-first-paint__cards"><span></span><span></span><span></span><span></span></div></div>`;
+  }
   wrapper.append(frame);
+  if (placeholder) wrapper.append(placeholder);
   let alive = true;
   let ready = false;
   let lastRoute = safeRoute(route);
@@ -42,6 +53,11 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   const invoke = async (action, payload) => {
     if (!/^[a-z][a-z0-9_]{0,79}$/.test(String(action || ''))) throw new Error('invalid_action');
     const token = String(runtime.tokenStore.get() || '');
+    if (kind === 'shop' && action === 'web_sign_out') {
+      const result = await runtime.services?.auth?.signOut?.();
+      if (!result?.ok) throw new Error(String(result?.error?.message || result?.error?.code || 'sign_out_failed'));
+      return { signedOut: true };
+    }
     if (kind === 'shop' && action === 'boot' && !token) {
       const cached = runtime.takeGuestBoot?.();
       if (cached) return { ...cached, botUsername: cached.botUsername || String(tenant?.botUsername || '').replace(/^@/, '') || null };
@@ -109,6 +125,13 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
       return;
     }
     if (!ready || message.nonce !== nonce) return;
+    if (message.type === 'APP_READY') {
+      wrapper.className = `${String(wrapper.className || '').replace(/\bis-loading\b/g, '').replace(/\bis-ready\b/g, '').trim()} is-ready`.trim();
+      if (typeof placeholder?.remove === 'function') placeholder.remove();
+      else if (placeholder && Array.isArray(wrapper.children)) wrapper.children = wrapper.children.filter((child) => child !== placeholder);
+      placeholder = null;
+      return;
+    }
     if (message.type === 'NAVIGATE') {
       const next = safeRoute(message.route);
       lastRoute = next;
@@ -119,6 +142,7 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     try {
       const data = await invoke(message.action, message.payload);
       send({ type: 'RESULT', id: message.id, ok: true, data });
+      if (message.action === 'web_sign_out') setTimeout(() => onSignedOut(), 0);
     } catch (error) {
       send({ type: 'RESULT', id: message.id, ok: false, error: String(error?.message || 'request_failed') });
     }
