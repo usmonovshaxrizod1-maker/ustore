@@ -15,6 +15,20 @@ function getDocument(documentRef) {
   return doc;
 }
 
+
+function languageFlagSvg(language) {
+  if (language === 'ru') return '<svg class="uw-language-flag-svg" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" rx="2" fill="#fff"/><rect y="6.667" width="30" height="6.667" fill="#1c57a7"/><rect y="13.334" width="30" height="6.666" fill="#d52b1e"/></svg>';
+  return '<svg class="uw-language-flag-svg" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" rx="2" fill="#1eb5e9"/><rect y="6.2" width="30" height="1" fill="#ce1126"/><rect y="7.2" width="30" height="5.6" fill="#fff"/><rect y="12.8" width="30" height="1" fill="#ce1126"/><rect y="13.8" width="30" height="6.2" fill="#1eb53a"/><circle cx="5.4" cy="4" r="2.15" fill="#fff"/><circle cx="6.2" cy="3.7" r="2.15" fill="#1eb5e9"/><g fill="#fff"><circle cx="9.2" cy="2.1" r=".45"/><circle cx="11" cy="2.1" r=".45"/><circle cx="12.8" cy="2.1" r=".45"/><circle cx="10.1" cy="3.7" r=".45"/><circle cx="11.9" cy="3.7" r=".45"/><circle cx="9.2" cy="5.25" r=".45"/><circle cx="11" cy="5.25" r=".45"/></g></svg>';
+}
+
+function shellActionIconSvg(name) {
+  const paths = {
+    search: ['M21 21l-4.35-4.35', 'M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0'],
+    user: ['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8', 'M4 21a8 8 0 0 1 16 0'],
+  }[name] || [];
+  return `<svg class="uw-shell-action-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths.map((d) => `<path d="${d}"></path>`).join('')}</svg>`;
+}
+
 function appendSlot(target, value) {
   if (value == null) return;
   if (Array.isArray(value)) target.append(...value);
@@ -68,7 +82,11 @@ export function createCustomerShell(options = {}, documentRef) {
   actions.className = 'uw-customer-header__actions';
   const languages = doc.createElement('div'); languages.className = 'uw-customer-language'; languages.setAttribute('aria-label', 'Til / Язык');
   for (const language of ['uz', 'ru']) {
-    const choice = createShellButton({ label: language === 'uz' ? '🇺🇿' : '🇷🇺', className: 'uw-customer-language__choice', onClick: () => onLocaleChange?.(language) }, doc);
+    const languageLabel = language === 'uz' ? 'O‘zbekcha' : 'Русский';
+    const choice = createShellButton({ label: languageLabel, className: 'uw-customer-language__choice', onClick: () => onLocaleChange?.(language) }, doc);
+    choice.innerHTML = languageFlagSvg(language);
+    choice.setAttribute('aria-label', languageLabel);
+    choice.title = languageLabel;
     choice.dataset.active = locale === language ? 'true' : 'false'; choice.setAttribute('aria-pressed', locale === language ? 'true' : 'false'); languages.append(choice);
   }
   actions.append(languages);
@@ -86,9 +104,11 @@ export function createCustomerShell(options = {}, documentRef) {
   if (typeof onOpenAdmin === 'function') mobileActions.append(createShellButton({ label:'ADMIN', className:'uw-customer-admin-badge', onClick:onOpenAdmin }, doc));
   const mobileLanguage = createShellButton({ label: locale.toUpperCase(), className: 'uw-shell-icon-button uw-customer-mobile-language', onClick: () => onLocaleChange?.(locale === 'uz' ? 'ru' : 'uz') }, doc);
   mobileLanguage.setAttribute('aria-label', locale === 'uz' ? 'Русский язык' : 'O‘zbek tili');
-  const mobileSearch = createShellButton({ label: '⌕', className: 'uw-shell-icon-button', onClick: () => onNavigate?.({ id: 'search', label: tr.t('shell.search', 'Qidirish') }) }, doc);
+  const mobileSearch = createShellButton({ label: tr.t('shell.search', 'Qidirish'), className: 'uw-shell-icon-button', onClick: () => onNavigate?.({ id: 'search', label: tr.t('shell.search', 'Qidirish') }) }, doc);
+  mobileSearch.innerHTML = shellActionIconSvg('search');
   mobileSearch.setAttribute('aria-label', tr.t('shell.search', 'Qidirish'));
-  const mobileAccount = createShellButton({ label: '○', className: 'uw-shell-icon-button', onClick:onOpenAccount }, doc);
+  const mobileAccount = createShellButton({ label: tr.t('nav.profile', 'Profil'), className: 'uw-shell-icon-button', onClick:onOpenAccount }, doc);
+  mobileAccount.innerHTML = shellActionIconSvg('user');
   mobileAccount.setAttribute('aria-label', tr.t('nav.profile', 'Profil'));
   mobileActions.append(mobileLanguage, mobileSearch, mobileAccount);
   mobileHeader.append(mobileActions);

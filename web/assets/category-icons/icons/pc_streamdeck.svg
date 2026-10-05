@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="9" y="12" width="46" height="40" rx="5" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M16 20h8v8h-8zM28 20h8v8h-8zM40 20h8v8h-8zM16 34h8v8h-8zM28 34h8v8h-8zM40 34h8v8h-8z" fill="none" stroke="currentColor" stroke-width="2.5" />
+<text x="32" y="59" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">STREAM</text>
+</svg>

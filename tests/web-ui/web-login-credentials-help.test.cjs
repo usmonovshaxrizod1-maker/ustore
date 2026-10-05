@@ -54,7 +54,7 @@ test('all Mini App profiles offer own credentials and only a verified shop Teleg
   const platform = read('platform/platform-app.js');
   const platformApi = read('supabase/functions/platform-api/index.ts');
   const shopApi = read('supabase/functions/shop-api/index.ts');
-  assert.match(shop, /\$\{userQuick\}[\s\S]*?Web login va parol[\s\S]*?openShopWebCredentials\(\)/);
+  assert.match(shop, /const commonTailMenu = `[\s\S]*?Web login va parol[\s\S]*?openShopWebCredentials\(\)/);
   assert.match(shop, /callApi\('shop_web_credentials_open'/);
   assert.match(shop, /case 'WEB_CREDENTIALS': renderWebCredentialsPage\(container\)/);
   assert.match(shop, /function closePage\(\) \{\s*forgetWebCredentialSecret\(\)/);

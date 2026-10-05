@@ -184,6 +184,8 @@
 .uw-customer-language { display:flex; gap:.1rem; padding:.2rem; border:1px solid #dce6f3; border-radius:.7rem; background:#f3f7fd; }
 .uw-customer-language__choice { min-height:2.15rem; min-width:2.3rem; border:0; border-radius:.5rem; background:transparent; color:#64748b; padding:0 .45rem; font-size:.72rem; font-weight:800; }
 .uw-customer-language__choice[data-active="true"] { background:#fff; color:#1d4ed8; box-shadow:0 2px 7px rgb(15 23 42/.09); }
+.uw-customer-language__choice .uw-language-flag-svg { display:block; width:1.5rem; height:1rem; border-radius:.18rem; box-shadow:0 0 0 1px rgb(15 23 42/.08); }
+.uw-shell-icon-button .uw-shell-action-svg { display:block; width:1.15rem; height:1.15rem; }
 .uw-customer-shell .uw-shell-content,.uw-customer-shell .uw-customer-header__inner,.uw-customer-shell .uw-customer-footer__inner { width:calc(100% - clamp(1.5rem,4vw,5rem)); max-width:none; }
 .uw-customer-header { border-bottom-color:#dce6f3; box-shadow:0 4px 24px rgb(15 23 42/.035); }
 .uw-customer-shell .uw-shell-action { border-radius:.75rem; }

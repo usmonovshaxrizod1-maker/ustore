@@ -31,8 +31,9 @@ test('abandoned cart bulk controls distinguish page selection from all matching 
   assert.match(app, /function selectAllEligibleAbandonedMatching\(/);
   assert.match(app, /Shu sahifadagilar/);
   assert.match(app, /Filtrga mos hammasi/);
-  assert.match(app, /👥/);
-  assert.match(app, /📨/);
+  assert.match(app, /ICON_USERS/);
+  assert.match(app, /ICON_SEND/);
+  assert.doesNotMatch(app, /<span>👥<\/span>|<span>📨<\/span>/u);
 });
 
 test('audit log has arbitrary calendar range and Uzbek labels', () => {
@@ -51,7 +52,7 @@ test('support first message is optimistic with spinner, ticks, retry and registe
   assert.match(app, /fc-chat-pending-dot/);
   assert.match(app, /circle-alert/);
   assert.match(app, /rotate-cw/);
-  assert.match(app, /m\.readAt \? '✓✓' : '✓'/);
+  assert.match(app, /\$\{ICON_CHECK\}\$\{m\.readAt \? ICON_CHECK : ''\}/);
   assert.doesNotMatch(app, />💬 \$\{openTicket\.orderId/);
   assert.match(api, /profile_first_name,profile_last_name,first_name,last_name,username,phone/);
   assert.match(api, /customer: customerById/);

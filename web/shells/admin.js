@@ -3,16 +3,16 @@ import { createFocusTrap } from '../a11y/focus-trap.js';
 import { createTranslator } from '../i18n/index.js';
 
 const DEFAULT_ADMIN_NAV = [
-  { id: 'overview', label: 'Boshqaruv', labelKey: 'nav.admin.overview', fallback: 'Boshqaruv', iconText: '⌂', permission: null, href: '/admin' },
-  { id: 'products', label: 'Mahsulotlar', labelKey: 'nav.admin.products', fallback: 'Mahsulotlar', iconText: '▦', permission: 'products.manage', href: '/admin/products' },
-  { id: 'inventory', label: 'Ombor', labelKey: 'nav.admin.inventory', fallback: 'Ombor', iconText: '▤', permission: 'stock.view', href: '/admin/inventory' },
-  { id: 'orders', label: 'Buyurtmalar', labelKey: 'nav.admin.orders', fallback: 'Buyurtmalar', iconText: '≡', permission: 'orders.view', href: '/admin/orders' },
-  { id: 'marketing', label: 'Marketing', labelKey: 'nav.admin.marketing', fallback: 'Marketing', iconText: '◇', permission: 'marketing.manage', href: '/admin/marketing' },
-  { id: 'reports', label: 'Hisobotlar', labelKey: 'nav.admin.reports', fallback: 'Hisobotlar', iconText: '▥', permission: 'reports.view', href: '/admin/reports' },
-  { id: 'team', label: 'Jamoa', labelKey: 'nav.admin.team', fallback: 'Jamoa', iconText: '♙', permissionsAny: ['staff.manage'], rolesAny: ['MANAGER'], href: '/admin/team' },
-  { id: 'support', label: 'Yordam', labelKey: 'nav.admin.support', fallback: 'Yordam', iconText: '?', permission: 'support.manage', href: '/admin/support' },
-  { id: 'settings', label: 'Sozlamalar', labelKey: 'nav.admin.settings', fallback: 'Sozlamalar', iconText: '⚙', permissionsAny: ['shop.settings.manage', 'integrations.manage'], href: '/admin/settings' },
-  { id: 'domains', label: 'Domenlar', labelKey: 'nav.admin.domains', fallback: 'Domenlar', iconText: '◎', permission: 'domains.manage', href: '/admin/domains' },
+  { id: 'overview', label: 'Boshqaruv', labelKey: 'nav.admin.overview', fallback: 'Boshqaruv', iconName: 'home', permission: null, href: '/admin' },
+  { id: 'products', label: 'Mahsulotlar', labelKey: 'nav.admin.products', fallback: 'Mahsulotlar', iconName: 'grid', permission: 'products.manage', href: '/admin/products' },
+  { id: 'inventory', label: 'Ombor', labelKey: 'nav.admin.inventory', fallback: 'Ombor', iconName: 'warehouse', permission: 'stock.view', href: '/admin/inventory' },
+  { id: 'orders', label: 'Buyurtmalar', labelKey: 'nav.admin.orders', fallback: 'Buyurtmalar', iconName: 'package', permission: 'orders.view', href: '/admin/orders' },
+  { id: 'marketing', label: 'Marketing', labelKey: 'nav.admin.marketing', fallback: 'Marketing', iconName: 'tag', permission: 'marketing.manage', href: '/admin/marketing' },
+  { id: 'reports', label: 'Hisobotlar', labelKey: 'nav.admin.reports', fallback: 'Hisobotlar', iconName: 'chart', permission: 'reports.view', href: '/admin/reports' },
+  { id: 'team', label: 'Jamoa', labelKey: 'nav.admin.team', fallback: 'Jamoa', iconName: 'users', permissionsAny: ['staff.manage'], rolesAny: ['MANAGER'], href: '/admin/team' },
+  { id: 'support', label: 'Yordam', labelKey: 'nav.admin.support', fallback: 'Yordam', iconName: 'help', permission: 'support.manage', href: '/admin/support' },
+  { id: 'settings', label: 'Sozlamalar', labelKey: 'nav.admin.settings', fallback: 'Sozlamalar', iconName: 'settings', permissionsAny: ['shop.settings.manage', 'integrations.manage'], href: '/admin/settings' },
+  { id: 'domains', label: 'Domenlar', labelKey: 'nav.admin.domains', fallback: 'Domenlar', iconName: 'globe', permission: 'domains.manage', href: '/admin/domains' },
 ];
 
 function getDocument(documentRef) {

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M19 13h26l4 9v33H15V22l4-9z" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M23 13V7h18v6M18 26h28" stroke="currentColor" stroke-width="3" />
+<text x="32" y="40" text-anchor="middle" font-size="7.5" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">GLU</text>
+</svg>

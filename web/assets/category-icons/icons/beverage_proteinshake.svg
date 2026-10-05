@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M20 15h24l-3 40H23l-3-40z" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M23 15V8h18v7M25 29h14" stroke="currentColor" stroke-width="3" />
+<text x="32" y="42" text-anchor="middle" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">PRO</text>
+</svg>

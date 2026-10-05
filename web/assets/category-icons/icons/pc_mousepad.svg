@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="7" y="15" width="50" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M18 42c5-9 12-13 20-13s13 3 18 9" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="23" y="28" text-anchor="middle" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">PAD</text>
+</svg>

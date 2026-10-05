@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="18" y="8" width="28" height="48" rx="10" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M24 20h16M32 20v10M27 37c4-6 6-9 6-13M37 37c-4-6-6-9-6-13" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="32" y="48" text-anchor="middle" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">HOT</text>
+</svg>

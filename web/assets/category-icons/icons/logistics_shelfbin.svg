@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M12 18h40l-4 34H16l-4-34z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
+<path d="M18 27h28M21 37h22" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="48" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">BIN</text>
+</svg>

@@ -1,0 +1,320 @@
+{
+  "total_groups": 35,
+  "groups": [
+    {
+      "group": "accessories",
+      "labels": {
+        "uz": "Aksessuarlar",
+        "ru": "Аксессуары",
+        "en": "Accessories"
+      },
+      "icon_count": 30
+    },
+    {
+      "group": "apparel",
+      "labels": {
+        "uz": "Kiyimlar",
+        "ru": "Одежда",
+        "en": "Apparel"
+      },
+      "icon_count": 45
+    },
+    {
+      "group": "automotive",
+      "labels": {
+        "uz": "Avtomobil",
+        "ru": "Автотовары",
+        "en": "Automotive"
+      },
+      "icon_count": 35
+    },
+    {
+      "group": "bags",
+      "labels": {
+        "uz": "Sumkalar",
+        "ru": "Сумки",
+        "en": "Bags"
+      },
+      "icon_count": 20
+    },
+    {
+      "group": "beauty",
+      "labels": {
+        "uz": "Go‘zallik",
+        "ru": "Красота",
+        "en": "Beauty"
+      },
+      "icon_count": 30
+    },
+    {
+      "group": "beverages",
+      "labels": {
+        "uz": "Ichimliklar",
+        "ru": "Напитки",
+        "en": "Beverages"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "books_stationery",
+      "labels": {
+        "uz": "Kitob va kanselyariya",
+        "ru": "Книги и канцелярия",
+        "en": "Books & stationery"
+      },
+      "icon_count": 35
+    },
+    {
+      "group": "care",
+      "labels": {
+        "uz": "Parvarish",
+        "ru": "Уход",
+        "en": "Care"
+      },
+      "icon_count": 30
+    },
+    {
+      "group": "computer_gaming",
+      "labels": {
+        "uz": "Kompyuter va gaming",
+        "ru": "Компьютеры и гейминг",
+        "en": "Computer & gaming"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "construction",
+      "labels": {
+        "uz": "Qurilish",
+        "ru": "Строительство",
+        "en": "Construction"
+      },
+      "icon_count": 35
+    },
+    {
+      "group": "digital_products",
+      "labels": {
+        "uz": "Raqamli mahsulotlar",
+        "ru": "Цифровые товары",
+        "en": "Digital products"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "electrical_lighting",
+      "labels": {
+        "uz": "Elektr va yoritish",
+        "ru": "Электрика и освещение",
+        "en": "Electrical & lighting"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "electronics",
+      "labels": {
+        "uz": "Elektronika",
+        "ru": "Электроника",
+        "en": "Electronics"
+      },
+      "icon_count": 45
+    },
+    {
+      "group": "fitness",
+      "labels": {
+        "uz": "Fitnes",
+        "ru": "Фитнес",
+        "en": "Fitness"
+      },
+      "icon_count": 40
+    },
+    {
+      "group": "food",
+      "labels": {
+        "uz": "Oziq-ovqat",
+        "ru": "Продукты питания",
+        "en": "Food"
+      },
+      "icon_count": 40
+    },
+    {
+      "group": "furniture",
+      "labels": {
+        "uz": "Mebel",
+        "ru": "Мебель",
+        "en": "Furniture"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "garden",
+      "labels": {
+        "uz": "Bog‘ va tomorqa",
+        "ru": "Сад и огород",
+        "en": "Garden"
+      },
+      "icon_count": 30
+    },
+    {
+      "group": "gifts_party",
+      "labels": {
+        "uz": "Sovg‘alar va bayram",
+        "ru": "Подарки и праздники",
+        "en": "Gifts & party"
+      },
+      "icon_count": 30
+    },
+    {
+      "group": "health",
+      "labels": {
+        "uz": "Salomatlik",
+        "ru": "Здоровье",
+        "en": "Health"
+      },
+      "icon_count": 30
+    },
+    {
+      "group": "hobby",
+      "labels": {
+        "uz": "Xobbi",
+        "ru": "Хобби",
+        "en": "Hobby"
+      },
+      "icon_count": 35
+    },
+    {
+      "group": "home",
+      "labels": {
+        "uz": "Uy-ro‘zg‘or",
+        "ru": "Дом и быт",
+        "en": "Home"
+      },
+      "icon_count": 45
+    },
+    {
+      "group": "home_appliances",
+      "labels": {
+        "uz": "Maishiy texnika",
+        "ru": "Бытовая техника",
+        "en": "Home appliances"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "jewelry",
+      "labels": {
+        "uz": "Taqinchoqlar",
+        "ru": "Украшения",
+        "en": "Jewelry"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "kids",
+      "labels": {
+        "uz": "Bolalar",
+        "ru": "Детские товары",
+        "en": "Kids"
+      },
+      "icon_count": 45
+    },
+    {
+      "group": "mobile_accessories",
+      "labels": {
+        "uz": "Telefon va mobil aksessuarlar",
+        "ru": "Телефоны и мобильные аксессуары",
+        "en": "Mobile accessories"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "packaging_logistics",
+      "labels": {
+        "uz": "Qadoqlash va logistika",
+        "ru": "Упаковка и логистика",
+        "en": "Packaging & logistics"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "party_decor",
+      "labels": {
+        "uz": "Bayram dekoratsiyasi",
+        "ru": "Праздничный декор",
+        "en": "Party decor"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "pets",
+      "labels": {
+        "uz": "Uy hayvonlari",
+        "ru": "Зоотовары",
+        "en": "Pets"
+      },
+      "icon_count": 30
+    },
+    {
+      "group": "plumbing",
+      "labels": {
+        "uz": "Santexnika",
+        "ru": "Сантехника",
+        "en": "Plumbing"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "security_surveillance",
+      "labels": {
+        "uz": "Xavfsizlik va kuzatuv",
+        "ru": "Безопасность и видеонаблюдение",
+        "en": "Security & surveillance"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "shoes",
+      "labels": {
+        "uz": "Poyabzallar",
+        "ru": "Обувь",
+        "en": "Shoes"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "supplements",
+      "labels": {
+        "uz": "Ozuqaviy qo‘shimchalar",
+        "ru": "Спортивное питание",
+        "en": "Supplements"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "travel_tourism",
+      "labels": {
+        "uz": "Sayohat va turizm",
+        "ru": "Путешествия и туризм",
+        "en": "Travel & tourism"
+      },
+      "icon_count": 25
+    },
+    {
+      "group": "underwear",
+      "labels": {
+        "uz": "Ichki kiyimlar",
+        "ru": "Нижнее бельё",
+        "en": "Underwear"
+      },
+      "icon_count": 20
+    },
+    {
+      "group": "universal",
+      "labels": {
+        "uz": "Umumiy",
+        "ru": "Универсальные",
+        "en": "Universal"
+      },
+      "icon_count": 20
+    }
+  ]
+}

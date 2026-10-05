@@ -6,7 +6,7 @@ const root = path.join(__dirname, '..', '..');
 const moduleUrl = (file) => pathToFileURL(path.join(root, file)).href;
 class FakeStyle { setProperty(name, value) { this[name] = String(value); } }
 class FakeNode {
-  constructor(tag) { this.tagName = tag.toUpperCase(); this.children = []; this.attributes = {}; this.dataset = {}; this.style = new FakeStyle(); this.className = ''; this.textContent = ''; this.value = ''; this.hidden = false; this.listeners = {}; }
+  constructor(tag) { this.tagName = tag.toUpperCase(); this.children = []; this.attributes = {}; this.dataset = {}; this.style = new FakeStyle(); this.className = ''; this.textContent = ''; this.value = ''; this.hidden = false; this.listeners = {}; this.classList = { add: (name) => { this.className += ` ${name}`; } }; }
   append(...items) { this.children.push(...items); }
   setAttribute(name, value) { this.attributes[name] = String(value); }
   addEventListener(name, fn) { this.listeners[name] = fn; }

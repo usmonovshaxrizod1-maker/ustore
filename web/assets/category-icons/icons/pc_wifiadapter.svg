@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="17" y="31" width="30" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M32 31V19M23 21c5-5 13-5 18 0M17 15c9-9 21-9 30 0" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="45" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">WiFi</text>
+</svg>

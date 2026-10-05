@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M20 9h24l4 28H16L20 9z" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M23 18h18M24 37l-5 9M40 37l5 9M32 37v13M22 53h20" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+<text x="32" y="31" text-anchor="middle" font-size="8" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">GAME</text>
+</svg>

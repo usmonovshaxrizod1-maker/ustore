@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M20 27c0-9 5-16 12-16s12 7 12 16c0 6-3 10-7 14H27c-4-4-7-8-7-14z" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M26 41h12M26 48h12M29 55h6" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="31" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">LED</text>
+</svg>

@@ -36,6 +36,13 @@ import { issueInitialCredentials, resetCredentialsForTelegram, setCredentialsPas
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
 
+async function categoryIconIsAllowed(db: any, iconId: string): Promise<boolean> {
+  if (CATEGORY_ICON_IDS.has(iconId)) return true;
+  const { data, error } = await db.from("category_icon_library").select("id").eq("id", iconId).eq("is_active", true).maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
 function escapeHtml(str: unknown): string {
   if (str === null || str === undefined) return "";
   return String(str)
@@ -4799,11 +4806,14 @@ Deno.serve(async (req: Request) => {
         // faol promo-kod bo'lganda ko'rinsin — admin hech qachon promo-kod
         // qo'shmagan bo'lsa, bo'sh input chalg'itadi. (Muddati o'tgan-o'tmagani
         // bu yerda tekshirilmaydi — real tekshiruv baribir resolvePromoDiscount'da.)
+        const categoryIconLibraryPromise = db.from("category_icon_library")
+          .select("id,group_key,name_uz,name_ru,name_en,search_terms,svg_body,sort_order")
+          .eq("is_active", true).order("group_key").order("sort_order").order("id");
         const promoCodePromise = db.from("promotions")
           .select("id", { count: "exact", head: true })
           .eq("shop_id", shopId).eq("is_active", true)
           .not("code", "is", null).neq("code", "");
-        const [userR, shopR, designR, legalDocuments, subsR, activeBanners, pendingInviteR, clickConnR, paymeConnR, promoCodeR] = await Promise.all([userPromise, shopPromise, designPromise, legalPromise, subsPromise, bannersPromise, pendingInvitePromise, clickPaymeStatusPromise, paymeStatusPromise, promoCodePromise]);
+        const [userR, shopR, designR, legalDocuments, subsR, activeBanners, pendingInviteR, clickConnR, paymeConnR, promoCodeR, categoryIconLibraryR] = await Promise.all([userPromise, shopPromise, designPromise, legalPromise, subsPromise, bannersPromise, pendingInvitePromise, clickPaymeStatusPromise, paymeStatusPromise, promoCodePromise, categoryIconLibraryPromise]);
         if (userR.error) throw userR.error;
         const selfRow = userR.data;
         const shopRow = shopR.data;
@@ -4861,6 +4871,10 @@ Deno.serve(async (req: Request) => {
           allowDiscountCombining: shopRow?.allow_discount_combining === true,
           maxCombinedDiscountPercent: shopRow?.max_combined_discount_percent != null ? Number(shopRow.max_combined_discount_percent) : null,
           hasActivePromoCodes: (promoCodeR.count || 0) > 0,
+          customCategoryIcons: (categoryIconLibraryR.data || []).map((row: any) => ({
+            id: row.id, group: row.group_key, uz: row.name_uz, ru: row.name_ru || row.name_uz, en: row.name_en || row.name_uz,
+            searchTerms: Array.isArray(row.search_terms) ? row.search_terms : [], svg: row.svg_body, sortOrder: Number(row.sort_order || 0),
+          })),
           pendingStaffInvite: pendingInviteR.data ? { id: pendingInviteR.data.id, roleIds: pendingInviteR.data.role_ids, createdAt: pendingInviteR.data.created_at } : null,
           shopContact: {
             name: shopRow?.name || null,
@@ -6691,7 +6705,7 @@ Deno.serve(async (req: Request) => {
         if (!name) return json({ error: "invalid_category_name" }, 400);
         const iconId = payload.iconId === undefined ? 'stationery_folder' : String(payload.iconId || '');
         const iconColor = String(payload.iconColor || 'brand');
-        if (!CATEGORY_ICON_IDS.has(iconId) || !CATEGORY_ICON_COLORS.has(iconColor)) return json({ error: 'invalid_category_icon' }, 400);
+        if (!(await categoryIconIsAllowed(db, iconId)) || !CATEGORY_ICON_COLORS.has(iconColor)) return json({ error: 'invalid_category_icon' }, 400);
         const { data: maxRow } = await db.from("categories").select("sort_order")
           .eq("shop_id", shopId).order("sort_order", { ascending: false }).limit(1).maybeSingle();
         const pendingHash = await translationHashOf(name, null);
@@ -6829,7 +6843,7 @@ Deno.serve(async (req: Request) => {
         const dbUpdate: Record<string, unknown> = {};
         if (payload.iconId !== undefined) {
           const iconId = payload.iconId === null ? null : String(payload.iconId);
-          if (iconId !== null && !CATEGORY_ICON_IDS.has(iconId)) return json({ error: 'invalid_category_icon' }, 400);
+          if (iconId !== null && !(await categoryIconIsAllowed(db, iconId))) return json({ error: 'invalid_category_icon' }, 400);
           dbUpdate.icon_id = iconId;
         }
         if (payload.iconColor !== undefined) {

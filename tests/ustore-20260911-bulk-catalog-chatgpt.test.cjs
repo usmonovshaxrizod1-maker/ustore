@@ -240,7 +240,7 @@ test('copying the prompt uses the existing copyTextToClipboard() helper (navigat
   assert.match(copyPrompt, /ChatGPT prompti nusxalandi/);
   assert.match(copyPrompt, /Promptni nusxalab bo.lmadi/, 'error toast when both clipboard paths fail');
   assert.match(copyPrompt, /if \(btn\?\.disabled\) return;/, 'double-click guard');
-  assert.match(copyPrompt, /Nusxalandi ✓/, 'brief button-label feedback, per follow-up "button is enough" simplification');
+  assert.match(copyPrompt, /label\.textContent = tr\('Nusxalandi', 'Скопировано'\)/, 'brief button-label feedback remains, now without a system-glyph checkmark');
   assert.doesNotMatch(app, /copy_text/, 'Telegram Bot API inline-button copy_text must never be used — this is a Mini App feature, not a bot keyboard');
 });
 

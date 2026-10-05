@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M15 8h28l8 8v40H15V8z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
+<path d="M21 22h24M21 30h16M21 38h24" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="50" text-anchor="middle" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">SKU</text>
+</svg>

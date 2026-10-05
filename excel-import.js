@@ -134,7 +134,7 @@ Oxirida qisqa hisobot bering:
       const label = btn?.querySelector('span:last-child');
       if (label && btn) {
         const original = label.textContent;
-        label.textContent = xl('Nusxalandi ✓', 'Скопировано ✓');
+        label.textContent = xl('Nusxalandi', 'Скопировано');
         if (excelGptCopyResetTimer) clearTimeout(excelGptCopyResetTimer);
         excelGptCopyResetTimer = setTimeout(() => { if (label.isConnected) label.textContent = original; excelGptCopyResetTimer = null; }, 1800);
       }
@@ -150,6 +150,20 @@ Oxirida qisqa hisobot bering:
   function xl(uz, ru) {
     try { return (window.ustoreGetLang?.() === 'ru') ? ru : uz; } catch { return uz; }
   }
+  // 2026-10-05 — task 11: Excel UI also uses deterministic SVG icons,
+  // not OS/system emoji. Inline SVG keeps this lazy module self-contained.
+  const XICONS = {
+    x:'<path d="M18 6 6 18M6 6l12 12"/>', plus:'<path d="M12 5v14M5 12h14"/>',
+    edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>',
+    check:'<path d="M20 6 9 17l-5-5"/>', alert:'<path d="M10.3 3.7 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    info:'<circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/>',
+    sparkles:'<path d="m12 3-1.2 3.6L7 8l3.8 1.4L12 13l1.2-3.6L17 8l-3.8-1.4L12 3ZM5 14l-.8 2.2L2 17l2.2.8L5 20l.8-2.2L8 17l-2.2-.8L5 14Z"/>',
+    bulb:'<path d="M9 18h6M10 22h4"/><path d="M8.5 15.5a7 7 0 1 1 7 0c-.8.6-1.1 1.3-1.2 2.5h-4.6c-.1-1.2-.4-1.9-1.2-2.5Z"/>',
+    shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',
+    download:'<path d="M12 3v12M7 10l5 5 5-5M4 20h16"/>', upload:'<path d="M12 21V9M7 14l5-5 5 5M4 4h16"/>',
+    undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 7 7v1"/>'
+  };
+  function xIcon(name, size=16) { return `<svg class="inline align-[-2px]" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${XICONS[name]||''}</svg>`; }
   function norm(v) {
     return String(v ?? '').trim().toLocaleLowerCase('uz')
       .replace(/[ʻʼ‘’`]/g, "'").replace(/\s+/g, ' ');
@@ -998,7 +1012,7 @@ Oxirida qisqa hisobot bering:
       state.rows=rows;state.sourceRows=sourceRows;state.baseRowIssues=baseIssues;state.decisions={};
       state.editingRow=null;state.editSequential=false;
       analyzeIssues(rows);analyzeRows();
-    }catch(e){console.error(e);alert(xl("❌ Excelni o'qishda xatolik: ",'❌ Ошибка чтения Excel: ')+(e.message||e));state.rows=[];state.issues=[];state.baseRowIssues=[];state.rowIssues=[];state.sourceRows=[];}
+    }catch(e){console.error(e);alert(xl("Excelni o'qishda xatolik: ",'Ошибка чтения Excel: ')+(e.message||e));state.rows=[];state.issues=[];state.baseRowIssues=[];state.rowIssues=[];state.sourceRows=[];}
     finally{state.busy=false;state.busyText='';rerender();}
   }
 
@@ -1041,9 +1055,9 @@ Oxirida qisqa hisobot bering:
     if(state.stagedImport)return commitStagedImport();
     if(!state.rows.length)return alert(xl('Avval Excel faylni tanlang.','Сначала выберите файл Excel.'));
     analyzeIssues(state.rows);analyzeRows();
-    if(state.issues.length)return alert(`⚠️ ${state.issues.length} ${xl('ta katalog masalasini avval hal qiling.','вопросов по каталогам: сначала решите их.')}`);
+    if(state.issues.length)return alert(`${state.issues.length} ${xl('ta katalog masalasini avval hal qiling.','вопросов по каталогам: сначала решите их.')}`);
     const blocking=state.rowIssues.filter(x=>x.severity==='ERROR');
-    if(blocking.length)return alert(`❌ ${blocking.length} ${xl('ta qator xatosini avval tuzating.','ошибок строк: сначала исправьте их.')}`);
+    if(blocking.length)return alert(`${blocking.length} ${xl('ta qator xatosini avval tuzating.','ошибок строк: сначала исправьте их.')}`);
     state.busy=true;state.progressDone=0;state.progressTotal=state.rows.length;state.busyText=xl(`Serverda tekshirilmoqda: 0 / ${state.rows.length}`,`Проверка на сервере: 0 / ${state.rows.length}`);state.result=null;rerender();
     let batchId=null;
     try{
@@ -1132,7 +1146,7 @@ Oxirida qisqa hisobot bering:
     if(!confirm(xl(`Import #${id} bekor qilinsinmi? Shu importdagi tovarlar o'chiriladi.`,`Отменить импорт #${id}? Товары из этого импорта будут удалены.`)))return;
     state.busy=true;state.busyText=xl('Import bekor qilinmoqda...','Импорт отменяется...');rerender();
     try{await apiCall('rollback_import_batch',{batchId:id});state.stagedImport=null;state.result={...(state.result||{}),staged:false,batchId:id,rolledBack:true,ok:false,error:xl('Import admin tomonidan bekor qilindi','Импорт отменён администратором')};state.lastBatch={...(state.lastBatch||{}),id,status:'ROLLED_BACK'};await reloadCatalogCompat();}
-    catch(e){alert(xl('❌ Bekor qilishda xato: ','❌ Ошибка отмены: ')+(e.message||e));}
+    catch(e){alert(xl('Bekor qilishda xato: ','Ошибка отмены: ')+(e.message||e));}
     finally{state.busy=false;state.busyText='';rerender();}
   }
 
@@ -1155,7 +1169,7 @@ Oxirida qisqa hisobot bering:
   function variantRowHtml(v) {
     v = v || {};
     return `<div class="xe-vrow bg-white border border-slate-200 rounded-xl p-2 space-y-1.5">
-      <div class="flex items-center justify-between"><span class="text-[10px] font-bold text-slate-400">${xl('Variant', 'Вариант')}</span><button type="button" onclick="UstoreExcel.removeVariantRow(this)" class="text-slate-400 text-sm leading-none px-1" aria-label="${xl("O'chirish", 'Удалить')}">✕</button></div>
+      <div class="flex items-center justify-between"><span class="text-[10px] font-bold text-slate-400">${xl('Variant', 'Вариант')}</span><button type="button" onclick="UstoreExcel.removeVariantRow(this)" class="text-slate-400 text-sm leading-none px-1" aria-label="${xl("O'chirish", 'Удалить')}">${xIcon('x')}</button></div>
       <div class="grid grid-cols-2 gap-1.5">
         <input class="xe-v-color w-full p-1.5 border rounded-lg text-sm" value="${esc(v.color || '')}" placeholder="${xl('Rang', 'Цвет')}">
         <input class="xe-v-size w-full p-1.5 border rounded-lg text-sm" value="${esc(v.size || '')}" placeholder="${xl("O'lcham", 'Размер')}">
@@ -1194,20 +1208,20 @@ Oxirida qisqa hisobot bering:
       ? `<div>
           <label class="font-bold">${xl('Variantlar', 'Варианты')}</label>
           <div id="xe-variants-list" class="mt-1 space-y-1.5">${(vrows.length ? vrows : [{}]).map(variantRowHtml).join('')}</div>
-          <button type="button" onclick="UstoreExcel.addVariantRow()" class="mt-1.5 w-full border border-dashed border-slate-300 text-slate-600 rounded-xl py-2 font-bold text-sm">➕ ${xl("Variant qo'shish", 'Добавить вариант')}</button>
+          <button type="button" onclick="UstoreExcel.addVariantRow()" class="mt-1.5 w-full border border-dashed border-slate-300 text-slate-600 rounded-xl py-2 font-bold text-sm">${xIcon('plus')} ${xl("Variant qo'shish", 'Добавить вариант')}</button>
           <p class="text-[10px] text-gray-500 mt-1">${xl("Rang yoki o'lchamdan kamida bittasi to'ldirilsin. Narx bo'sh bo'lsa asosiy narx ishlaydi.", 'Заполните хотя бы цвет или размер. Пустая цена — берётся основная.')}</p>
         </div>`
       : `<div><label class="font-bold">${xl("O'lchami", 'Размер')}</label><input id="xe-size" value="${esc(editSource.sizeText || '')}" class="w-full mt-1 p-2 border rounded-xl"></div>
          <div><label class="font-bold">${xl('Rang', 'Цвет')}</label><input id="xe-color" value="${esc(editSource.colorText || '')}" class="w-full mt-1 p-2 border rounded-xl"></div>`;
     return `<div class="bg-slate-50 border border-slate-300 rounded-2xl p-3 space-y-2">
-      <div class="flex items-center justify-between"><h4 class="font-black">✏️ ${xl('Qatorni tuzatish', 'Исправление строки')} ${rowLabel(editSource.excelRow)}</h4><button onclick="UstoreExcel.closeRowEditor()" class="bg-white border px-2 py-1 rounded-lg font-bold">✕</button></div>
+      <div class="flex items-center justify-between"><h4 class="font-black">${xIcon('edit')} ${xl('Qatorni tuzatish', 'Исправление строки')} ${rowLabel(editSource.excelRow)}</h4><button onclick="UstoreExcel.closeRowEditor()" class="bg-white border px-2 py-1 rounded-lg font-bold">${xIcon('x')}</button></div>
       <div><label class="font-bold">${xl("Katalog yo'li", "Katalog yo'li")}</label><input id="xe-path" value="${esc((editSource.categoryPath || []).join(' / '))}" class="w-full mt-1 p-2 border rounded-xl"></div>
       <div><label class="font-bold">${xl('Tovar nomi', 'Название товара')}</label><input id="xe-name" value="${esc(editSource.name || '')}" class="w-full mt-1 p-2 border rounded-xl"></div>
       <div class="grid grid-cols-2 gap-2"><div><label class="font-bold">${xl('Narx', 'Цена')}</label><input id="xe-price" inputmode="decimal" value="${esc(editSource.priceRaw || '')}" class="w-full mt-1 p-2 border rounded-xl"></div><div><label class="font-bold">${xl('Eski narx', 'Старая цена')}</label><input id="xe-oldprice" inputmode="decimal" value="${esc(editSource.oldPriceRaw || '')}" class="w-full mt-1 p-2 border rounded-xl"></div></div>
       <div><label class="font-bold">${xl('Soni', 'Количество')}</label><input id="xe-stock" inputmode="numeric" value="${esc(editSource.stockRaw || '')}" class="w-full mt-1 p-2 border rounded-xl"></div>
       <div><label class="font-bold">${xl('Izoh', 'Описание')}</label><textarea id="xe-desc" rows="2" class="w-full mt-1 p-2 border rounded-xl">${esc(editSource.desc || '')}</textarea></div>
       ${variantBlock}
-      <button onclick="UstoreExcel.saveRowEditor()" class="w-full bg-blue-600 text-white font-black py-2.5 rounded-xl">✅ ${xl('Saqlash va qayta tekshirish', 'Сохранить и перепроверить')}</button>
+      <button onclick="UstoreExcel.saveRowEditor()" class="w-full bg-blue-600 text-white font-black py-2.5 rounded-xl">${xIcon('check')} ${xl('Saqlash va qayta tekshirish', 'Сохранить и перепроверить')}</button>
     </div>`;
   }
 
@@ -1223,23 +1237,23 @@ Oxirida qisqa hisobot bering:
     const issueHtml=state.issues.map((issue,index)=>{
       if(issue.type==='TYPO')return `
         <div class="border border-amber-300 bg-amber-50 rounded-2xl p-3 space-y-2">
-          <p class="font-bold text-amber-900">⚠️ ${xl("O'xshash katalog topildi",'Найден похожий каталог')}</p>
+          <p class="font-bold text-amber-900">${xIcon('alert')} ${xl("O'xshash katalog topildi",'Найден похожий каталог')}</p>
           <p><b>${esc(issue.rawName)}</b> → <b class="text-blue-700">${esc(issue.targetName)}</b> <span class="text-gray-400">(${Math.round(issue.score*100)}%)</span></p>
           <p class="text-[10px] text-gray-500">${xl("Yo'l",'Путь')}: ${esc(issue.rawPath.join(' / '))}</p>
-          <div class="grid grid-cols-1 gap-2"><button onclick="UstoreExcel.acceptSuggestionAt(${index})" class="bg-blue-600 text-white py-2 rounded-xl font-bold">✅ ${xl('Mavjud katalogni tanlash','Выбрать существующий каталог')}</button><button onclick="UstoreExcel.correctCategoryAt(${index})" class="bg-white border border-slate-300 text-slate-700 py-2 rounded-xl font-bold">✏️ ${xl("Nomni qo'lda to'g'rilash",'Исправить название вручную')}</button><button onclick="UstoreExcel.approveNewAt(${index})" class="bg-white border border-amber-400 text-amber-800 py-2 rounded-xl font-bold">➕ ${xl('Ataylab yangi yaratish','Создать как новый')}</button></div>
+          <div class="grid grid-cols-1 gap-2"><button onclick="UstoreExcel.acceptSuggestionAt(${index})" class="bg-blue-600 text-white py-2 rounded-xl font-bold">${xIcon('check')} ${xl('Mavjud katalogni tanlash','Выбрать существующий каталог')}</button><button onclick="UstoreExcel.correctCategoryAt(${index})" class="bg-white border border-slate-300 text-slate-700 py-2 rounded-xl font-bold">${xIcon('edit')} ${xl("Nomni qo'lda to'g'rilash",'Исправить название вручную')}</button><button onclick="UstoreExcel.approveNewAt(${index})" class="bg-white border border-amber-400 text-amber-800 py-2 rounded-xl font-bold">${xIcon('plus')} ${xl('Ataylab yangi yaratish','Создать как новый')}</button></div>
         </div>`;
       return `
         <div class="border border-blue-200 bg-blue-50 rounded-2xl p-3 space-y-2">
-          <p class="font-bold text-blue-900">🆕 ${xl('Yangi katalog topildi','Найден новый каталог')}</p>
+          <p class="font-bold text-blue-900">${xIcon('plus')} ${xl('Yangi katalog topildi','Найден новый каталог')}</p>
           <p><b>${esc(issue.rawName)}</b></p><p class="text-[10px] text-gray-500">${xl("Yo'l",'Путь')}: ${esc(issue.rawPath.join(' / '))}</p>
-          <div class="grid grid-cols-1 gap-2"><button onclick="UstoreExcel.correctCategoryAt(${index})" class="bg-white border border-slate-300 text-slate-700 py-2 rounded-xl font-bold">✏️ ${xl("Nomni qo'lda to'g'rilash",'Исправить название вручную')}</button><button onclick="UstoreExcel.approveNewAt(${index})" class="bg-blue-600 text-white py-2 rounded-xl font-bold">✅ ${xl('Yangi katalog sifatida tasdiqlash','Подтвердить как новый каталог')}</button></div>
+          <div class="grid grid-cols-1 gap-2"><button onclick="UstoreExcel.correctCategoryAt(${index})" class="bg-white border border-slate-300 text-slate-700 py-2 rounded-xl font-bold">${xIcon('edit')} ${xl("Nomni qo'lda to'g'rilash",'Исправить название вручную')}</button><button onclick="UstoreExcel.approveNewAt(${index})" class="bg-blue-600 text-white py-2 rounded-xl font-bold">${xIcon('check')} ${xl('Yangi katalog sifatida tasdiqlash','Подтвердить как новый каталог')}</button></div>
         </div>`;
     }).join('');
     const issuesByRow=new Map();
     for(const item of [...errors,...warnings]){if(!issuesByRow.has(item.excelRow))issuesByRow.set(item.excelRow,[]);issuesByRow.get(item.excelRow).push(item);}
     const rowIssueHtml=[...issuesByRow.entries()].sort((a,b)=>a[0]-b[0]).slice(0,50).map(([excelRow,items])=>{
       const hasError=items.some(x=>x.severity==='ERROR');
-      return `<div class="${hasError?'bg-red-50 border-red-200 text-red-900':'bg-amber-50 border-amber-200 text-amber-900'} border rounded-xl p-2 space-y-1"><div class="flex items-center justify-between gap-2"><p class="font-black">${hasError?'❌':'⚠️'} ${xl('Qator','Строка')} ${rowLabel(excelRow)}</p><button onclick="UstoreExcel.openRowEditor(${excelRow})" class="bg-white border border-current px-2.5 py-1 rounded-lg font-bold">✏️ ${xl('Tuzatish','Исправить')}</button></div>${items.map(x=>`<div><p class="font-bold">${esc(x.message)}</p><p class="text-[10px] opacity-75">${esc(x.suggestion)}</p></div>`).join('')}</div>`;
+      return `<div class="${hasError?'bg-red-50 border-red-200 text-red-900':'bg-amber-50 border-amber-200 text-amber-900'} border rounded-xl p-2 space-y-1"><div class="flex items-center justify-between gap-2"><p class="font-black">${hasError?xIcon('x'):xIcon('alert')} ${xl('Qator','Строка')} ${rowLabel(excelRow)}</p><button onclick="UstoreExcel.openRowEditor(${excelRow})" class="bg-white border border-current px-2.5 py-1 rounded-lg font-bold">${xIcon('edit')} ${xl('Tuzatish','Исправить')}</button></div>${items.map(x=>`<div><p class="font-bold">${esc(x.message)}</p><p class="text-[10px] opacity-75">${esc(x.suggestion)}</p></div>`).join('')}</div>`;
     }).join('');
     const uniquePaths=new Set(state.rows.map(r=>pathKey(r.categoryPath))).size;
     const progressPercent=state.progressTotal?Math.min(100,Math.round(state.progressDone/state.progressTotal*100)):0;
@@ -1249,23 +1263,23 @@ Oxirida qisqa hisobot bering:
     return `
       <div class="fc-excel-overlay" onclick="activePopupModal=null; render();">
         <div class="fc-excel-modal" onclick="event.stopPropagation()">
-          <div class="fc-excel-header"><div><div class="fc-excel-title-icon">XLSX</div><div class="fc-excel-heading"><h3>${xl('Excel orqali tovar importi','Импорт товаров из Excel')}</h3><p>${xl('Xavfsiz preview + katalog typo tekshiruvi','Безопасный предпросмотр + проверка опечаток каталогов')}</p></div></div><button onclick="activePopupModal=null;render();" class="fc-excel-close" aria-label="${xl('Yopish','Закрыть')}">✕</button></div>
-          <button type="button" onclick="UstoreExcel.copyExcelChatGptPrompt(this)" ${state.busy?'disabled':''} class="w-full flex items-center justify-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 font-black py-2.5 rounded-xl text-sm"><span>✨</span><span>${xl('ChatGPT uchun prompt','Промпт для ChatGPT')}</span></button>
+          <div class="fc-excel-header"><div><div class="fc-excel-title-icon">XLSX</div><div class="fc-excel-heading"><h3>${xl('Excel orqali tovar importi','Импорт товаров из Excel')}</h3><p>${xl('Xavfsiz preview + katalog typo tekshiruvi','Безопасный предпросмотр + проверка опечаток каталогов')}</p></div></div><button onclick="activePopupModal=null;render();" class="fc-excel-close" aria-label="${xl('Yopish','Закрыть')}">${xIcon('x')}</button></div>
+          <button type="button" onclick="UstoreExcel.copyExcelChatGptPrompt(this)" ${state.busy?'disabled':''} class="w-full flex items-center justify-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 font-black py-2.5 rounded-xl text-sm"><span>${xIcon('sparkles')}</span><span>${xl('ChatGPT uchun prompt','Промпт для ChatGPT')}</span></button>
           ${state.busy?`<div class="fc-excel-busy"><div class="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div><b>${esc(state.busyText||xl('Bajarilmoqda...','Выполняется...'))}</b>${state.progressTotal?`<div class="mt-3 h-2 bg-blue-100 rounded-full overflow-hidden"><div class="h-full bg-blue-600 transition-all" style="width:${progressPercent}%"></div></div><p class="mt-1 text-[10px] text-blue-700">${progressPercent}%</p>`:''}</div>`:''}
           ${editorHtml}
           <div class="fc-excel-primary-actions">
-            <button onclick="UstoreExcel.downloadTemplate()" ${state.busy?'disabled':''} class="fc-excel-template-btn"><span>↓</span>${xl('Yangi shablon','Новый шаблон')}</button>
-            <label class="fc-excel-file-btn ${state.busy||state.stagedImport?'is-disabled':''}"><span>↑</span>${xl('Excel tanlash','Выбрать Excel')}<input type="file" accept=".xlsx" class="hidden" onchange="UstoreExcel.handleFile(event)" ${state.busy||state.stagedImport?'disabled':''}></label>
+            <button onclick="UstoreExcel.downloadTemplate()" ${state.busy?'disabled':''} class="fc-excel-template-btn"><span>${xIcon('download')}</span>${xl('Yangi shablon','Новый шаблон')}</button>
+            <label class="fc-excel-file-btn ${state.busy||state.stagedImport?'is-disabled':''}"><span>${xIcon('upload')}</span>${xl('Excel tanlash','Выбрать Excel')}<input type="file" accept=".xlsx" class="hidden" onchange="UstoreExcel.handleFile(event)" ${state.busy||state.stagedImport?'disabled':''}></label>
           </div>
-          ${state.templateStatus?`<div class="${state.templateStatus.type==='error'?'bg-red-50 border-red-200 text-red-800':state.templateStatus.type==='success'?'bg-emerald-50 border-emerald-200 text-emerald-800':'bg-slate-50 border-slate-200 text-slate-700'} border rounded-2xl p-3 font-bold">${state.templateStatus.type==='error'?'❌':state.templateStatus.type==='success'?'✅':'ℹ️'} ${esc(state.templateStatus.message)}</div>`:''}
-          <div class="fc-excel-hint">💡 ${xl("Yangi shablonda <b>Oddiy tovarlar</b> va <b>Variativ tovarlar</b> alohida list. Variativ listda Tovar nomi faqat birinchi qatorga yoziladi; keyingi o'lchamlarda nom va bir xil rang bo'lsa rang katagi bo'sh qoladi — tizim yuqoridagi tovar/rangni davom ettiradi. <b>Kataklarni Merge qilmang.</b> Katalog yo'li bo'sh qolsa yuqoridagi oxirgi yo'l davom etadi.","В новом шаблоне обычные и вариативные товары находятся на отдельных листах. На листе Variativ tovarlar название указывается только в первой строке; следующие размеры продолжают товар/цвет сверху. <b>Не объединяйте ячейки.</b> Пустой путь каталога продолжает последний путь сверху.")}</div>
+          ${state.templateStatus?`<div class="${state.templateStatus.type==='error'?'bg-red-50 border-red-200 text-red-800':state.templateStatus.type==='success'?'bg-emerald-50 border-emerald-200 text-emerald-800':'bg-slate-50 border-slate-200 text-slate-700'} border rounded-2xl p-3 font-bold">${state.templateStatus.type==='error'?xIcon('x'):state.templateStatus.type==='success'?xIcon('check'):xIcon('info')} ${esc(state.templateStatus.message)}</div>`:''}
+          <div class="fc-excel-hint">${xIcon('bulb')} ${xl("Yangi shablonda <b>Oddiy tovarlar</b> va <b>Variativ tovarlar</b> alohida list. Variativ listda Tovar nomi faqat birinchi qatorga yoziladi; keyingi o'lchamlarda nom va bir xil rang bo'lsa rang katagi bo'sh qoladi — tizim yuqoridagi tovar/rangni davom ettiradi. <b>Kataklarni Merge qilmang.</b> Katalog yo'li bo'sh qolsa yuqoridagi oxirgi yo'l davom etadi.","В новом шаблоне обычные и вариативные товары находятся на отдельных листах. На листе Variativ tovarlar название указывается только в первой строке; следующие размеры продолжают товар/цвет сверху. <b>Не объединяйте ячейки.</b> Пустой путь каталога продолжает последний путь сверху.")}</div>
           ${state.fileName?`<div class="bg-white border border-slate-200 rounded-2xl p-3 space-y-2"><p><b>${xl('Fayl','Файл')}:</b> ${esc(state.fileName)}</p><div class="grid grid-cols-3 gap-1 text-center"><div class="bg-slate-50 rounded-xl p-2"><b class="block text-base">${state.sourceRows.length}</b>${xl('jami tovar','всего товаров')}</div><div class="bg-emerald-50 rounded-xl p-2"><b class="block text-base text-emerald-700">${readyRows}</b>${xl('tayyor','готово')}</div><div class="bg-red-50 rounded-xl p-2"><b class="block text-base text-red-700">${errors.length}</b>${xl('xato','ошибок')}</div><div class="bg-amber-50 rounded-xl p-2"><b class="block text-base text-amber-700">${warnings.length}</b>${xl('ogohlantirish','предупр.')}</div><div class="bg-blue-50 rounded-xl p-2"><b class="block text-base text-blue-700">${newCategoryCount}</b>${xl('yangi katalog','новых каталогов')}</div><div class="bg-violet-50 rounded-xl p-2"><b class="block text-base text-violet-700">${similarCount}</b>${xl("o'xshash nom",'похожих имён')}</div></div><p class="text-[10px] text-slate-500">${xl("Katalog yo'llari",'Пути каталогов')}: ${uniquePaths} · ${xl('Duplicate belgilar','Признаки дублей')}: ${duplicateCount} · ${xl('Variant qoldiq farqi','Расхождения остатков')}: ${mismatchCount}</p></div>`:''}
-          ${rowIssueHtml?`<div class="space-y-2"><div class="flex items-center justify-between gap-2"><h4 class="font-black">${xl('Qator tekshiruvi','Проверка строк')}</h4><div class="flex gap-1">${errors.length?`<button onclick="UstoreExcel.openFirstErrorEditor()" class="bg-blue-600 text-white px-2 py-1.5 rounded-xl font-bold">✏️ ${xl('Barcha xatolar','Все ошибки')}</button><button onclick="UstoreExcel.downloadErrorRowsCsv()" class="bg-red-600 text-white px-2 py-1.5 rounded-xl font-bold">⬇️ CSV</button>`:''}</div></div><div class="space-y-1 max-h-64 overflow-y-auto">${rowIssueHtml}</div>${issuesByRow.size>50?`<p class="text-[10px] text-gray-500">+ ${issuesByRow.size-50} ${xl('ta boshqa qator','других строк')}</p>`:''}</div>`:''}
+          ${rowIssueHtml?`<div class="space-y-2"><div class="flex items-center justify-between gap-2"><h4 class="font-black">${xl('Qator tekshiruvi','Проверка строк')}</h4><div class="flex gap-1">${errors.length?`<button onclick="UstoreExcel.openFirstErrorEditor()" class="bg-blue-600 text-white px-2 py-1.5 rounded-xl font-bold">${xIcon('edit')} ${xl('Barcha xatolar','Все ошибки')}</button><button onclick="UstoreExcel.downloadErrorRowsCsv()" class="bg-red-600 text-white px-2 py-1.5 rounded-xl font-bold">${xIcon('download')} CSV</button>`:''}</div></div><div class="space-y-1 max-h-64 overflow-y-auto">${rowIssueHtml}</div>${issuesByRow.size>50?`<p class="text-[10px] text-gray-500">+ ${issuesByRow.size-50} ${xl('ta boshqa qator','других строк')}</p>`:''}</div>`:''}
           ${issueHtml?`<div class="space-y-2"><h4 class="font-black">${xl('Katalog qarorlari','Решения по каталогам')}</h4>${issueHtml}</div>`:''}
-          ${state.rows.length && !state.issues.length && !errors.length?`<div class="bg-green-50 border border-green-200 rounded-2xl p-3"><p class="font-bold text-green-800">✅ ${xl('Preview tekshirildi. Importga tayyor.','Предпросмотр проверен. Готово к импорту.')}</p><p class="text-[10px] text-green-700">${warnings.length?xl(`${warnings.length} ta ogohlantirish importni bloklamaydi.`,`${warnings.length} предупреждений не блокируют импорт.`):''} ${xl("Rasmlar import qilinmaydi; keyin 'rasmi yo'q' filtri orqali qo'shiladi.","Изображения не импортируются; их можно добавить через фильтр «без изображения».")}</p></div>`:''}
-          ${state.result?`<div class="${state.result.staged?'bg-blue-50 border-blue-200':state.result.ok?'bg-emerald-50 border-emerald-200':'bg-red-50 border-red-200'} border rounded-2xl p-3 space-y-1"><p class="font-black">${state.result.staged?xl('🛡️ Server tekshiruvi tugadi','🛡️ Проверка на сервере завершена'):state.result.ok?xl('✅ Import tugadi','✅ Импорт завершён'):xl('❌ Import tugamadi','❌ Импорт не завершён')}</p>${state.result.staged?`<p>${state.result.totalRows} ${xl('ta qator vaqtinchalik joyga yozildi. Hali katalog o‘zgarmadi. Endi tasdiqlab bir marta saqlang.','строк сохранено во временной области. Каталог ещё не изменён. Подтвердите сохранение.')}</p>`:state.result.ok?`<p>${state.result.imported} ${xl('ta tovar','товаров')} · ${state.result.createdCategories} ${xl('ta yangi katalog','новых каталогов')} · ${state.result.rasmsiz} ${xl('ta rasmsiz','без изображений')} · ${state.result.warnings||0} ${xl('ta ogohlantirish','предупреждений')}</p>`:`<p>${esc(state.result.error||xl('Xato','Ошибка'))}</p>`}${state.result.batchId?`<p class="font-mono text-[10px]">Batch #${state.result.batchId}</p>`:''}${state.result.batchId&&!state.result.rolledBack?`<button onclick="UstoreExcel.rollbackBatch()" class="mt-2 w-full bg-red-600 text-white py-2 rounded-xl font-bold">↩️ ${xl('Shu importni bekor qilish','Отменить этот импорт')}</button>`:''}</div>`:''}
-          ${canRollbackLast?`<div class="bg-slate-50 border border-slate-200 rounded-2xl p-3"><p class="font-bold">${xl('Oxirgi import','Последний импорт')}: #${state.lastBatch.id}</p><p class="text-[10px] text-slate-500">${esc(state.lastBatch.fileName||'')} · ${state.lastBatch.importedRows||state.lastBatch.totalRows||0} ${xl('ta tovar','товаров')}</p><button onclick="UstoreExcel.rollbackBatch()" class="mt-2 w-full bg-red-600 text-white py-2 rounded-xl font-bold">↩️ ${xl('Oxirgi importni bekor qilish','Отменить последний импорт')}</button></div>`:''}
-          <div class="flex gap-2 pt-1">${state.rows.length?`<button onclick="UstoreExcel.doImport()" ${state.busy||state.issues.length||errors.length?'disabled':''} class="flex-1 ${state.issues.length||errors.length?'bg-gray-200 text-gray-400':state.stagedImport?'bg-blue-600 text-white':'bg-green-600 text-white'} font-black py-3 rounded-xl">${state.stagedImport?`✅ ${xl('Tasdiqlash va katalogga saqlash','Подтвердить и сохранить в каталог')}`:`🛡️ ${state.rows.length} ${xl('ta qatorni serverda tekshirish','строк проверить на сервере')}`}</button>`:''}<button onclick="UstoreExcel.reset()" ${state.busy?'disabled':''} class="bg-gray-100 text-gray-700 font-bold px-4 py-3 rounded-xl">${xl('Tozalash','Очистить')}</button></div>
+          ${state.rows.length && !state.issues.length && !errors.length?`<div class="bg-green-50 border border-green-200 rounded-2xl p-3"><p class="font-bold text-green-800">${xIcon('check')} ${xl('Preview tekshirildi. Importga tayyor.','Предпросмотр проверен. Готово к импорту.')}</p><p class="text-[10px] text-green-700">${warnings.length?xl(`${warnings.length} ta ogohlantirish importni bloklamaydi.`,`${warnings.length} предупреждений не блокируют импорт.`):''} ${xl("Rasmlar import qilinmaydi; keyin 'rasmi yo'q' filtri orqali qo'shiladi.","Изображения не импортируются; их можно добавить через фильтр «без изображения».")}</p></div>`:''}
+          ${state.result?`<div class="${state.result.staged?'bg-blue-50 border-blue-200':state.result.ok?'bg-emerald-50 border-emerald-200':'bg-red-50 border-red-200'} border rounded-2xl p-3 space-y-1"><p class="font-black">${state.result.staged?`${xIcon('shield')} ${xl('Server tekshiruvi tugadi','Проверка на сервере завершена')}`:state.result.ok?`${xIcon('check')} ${xl('Import tugadi','Импорт завершён')}`:`${xIcon('x')} ${xl('Import tugamadi','Импорт не завершён')}`}</p>${state.result.staged?`<p>${state.result.totalRows} ${xl('ta qator vaqtinchalik joyga yozildi. Hali katalog o‘zgarmadi. Endi tasdiqlab bir marta saqlang.','строк сохранено во временной области. Каталог ещё не изменён. Подтвердите сохранение.')}</p>`:state.result.ok?`<p>${state.result.imported} ${xl('ta tovar','товаров')} · ${state.result.createdCategories} ${xl('ta yangi katalog','новых каталогов')} · ${state.result.rasmsiz} ${xl('ta rasmsiz','без изображений')} · ${state.result.warnings||0} ${xl('ta ogohlantirish','предупреждений')}</p>`:`<p>${esc(state.result.error||xl('Xato','Ошибка'))}</p>`}${state.result.batchId?`<p class="font-mono text-[10px]">Batch #${state.result.batchId}</p>`:''}${state.result.batchId&&!state.result.rolledBack?`<button onclick="UstoreExcel.rollbackBatch()" class="mt-2 w-full bg-red-600 text-white py-2 rounded-xl font-bold">${xIcon('undo')} ${xl('Shu importni bekor qilish','Отменить этот импорт')}</button>`:''}</div>`:''}
+          ${canRollbackLast?`<div class="bg-slate-50 border border-slate-200 rounded-2xl p-3"><p class="font-bold">${xl('Oxirgi import','Последний импорт')}: #${state.lastBatch.id}</p><p class="text-[10px] text-slate-500">${esc(state.lastBatch.fileName||'')} · ${state.lastBatch.importedRows||state.lastBatch.totalRows||0} ${xl('ta tovar','товаров')}</p><button onclick="UstoreExcel.rollbackBatch()" class="mt-2 w-full bg-red-600 text-white py-2 rounded-xl font-bold">${xIcon('undo')} ${xl('Oxirgi importni bekor qilish','Отменить последний импорт')}</button></div>`:''}
+          <div class="flex gap-2 pt-1">${state.rows.length?`<button onclick="UstoreExcel.doImport()" ${state.busy||state.issues.length||errors.length?'disabled':''} class="flex-1 ${state.issues.length||errors.length?'bg-gray-200 text-gray-400':state.stagedImport?'bg-blue-600 text-white':'bg-green-600 text-white'} font-black py-3 rounded-xl">${state.stagedImport?`${xIcon('check')} ${xl('Tasdiqlash va katalogga saqlash','Подтвердить и сохранить в каталог')}`:`${xIcon('shield')} ${state.rows.length} ${xl('ta qatorni serverda tekshirish','строк проверить на сервере')}`}</button>`:''}<button onclick="UstoreExcel.reset()" ${state.busy?'disabled':''} class="bg-gray-100 text-gray-700 font-bold px-4 py-3 rounded-xl">${xl('Tozalash','Очистить')}</button></div>
         </div>
       </div>`;
   }

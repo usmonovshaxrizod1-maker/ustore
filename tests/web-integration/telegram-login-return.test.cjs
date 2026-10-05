@@ -9,7 +9,7 @@ function storage() {
   return { getItem: (key) => data.get(key) || null, setItem: (key, value) => data.set(key, value), removeItem: (key) => data.delete(key) };
 }
 class FakeNode {
-  constructor(tag) { this.tagName = tag; this.children = []; this.dataset = {}; this.attributes = {}; this.textContent = ''; this.listeners = {}; }
+  constructor(tag) { this.tagName = tag; this.children = []; this.dataset = {}; this.attributes = {}; this.textContent = ''; this.listeners = {}; this.classList = { add: () => {} }; }
   append(...nodes) { this.children.push(...nodes); }
   setAttribute(key, value) { this.attributes[key] = value; }
   addEventListener(key, listener) { this.listeners[key] = listener; }

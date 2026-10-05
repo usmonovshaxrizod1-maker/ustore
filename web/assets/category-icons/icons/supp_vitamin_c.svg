@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M18 15h28l3 9-2 30H17l-2-30 3-9z" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M22 15V8h20v7M18 27h28" stroke="currentColor" stroke-width="3" />
+<text x="32" y="41" text-anchor="middle" font-size="12" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">C</text>
+</svg>

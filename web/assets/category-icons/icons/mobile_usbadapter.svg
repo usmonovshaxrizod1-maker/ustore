@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="12" y="21" width="26" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M38 27h12v10H38M18 27h8M18 34h8" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="25" y="40" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">OTG</text>
+</svg>

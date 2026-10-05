@@ -241,7 +241,7 @@ export function createMockAdminAdapter({ allowed = true } = {}) {
         return ok({ product: clone(row) });
       }
       if (action === 'add_category') {
-        const category = { id:`cat-demo-${source.categories.length + 1}`, name:String(payload.name || 'Katalog'), name_ru:null, parent_id:payload.parentId || null, img:payload.imageUpload ? 'https://demo.example/category.jpg' : (payload.img || (payload.parentId ? '📦' : '📁')), sort_order:source.categories.length + 1 };
+        const category = { id:`cat-demo-${source.categories.length + 1}`, name:String(payload.name || 'Katalog'), name_ru:null, parent_id:payload.parentId || null, img:payload.imageUpload ? 'https://demo.example/category.jpg' : (payload.img || ''), sort_order:source.categories.length + 1 };
         source.categories.push(category); return ok({ category: clone(category) });
       }
       if (action === 'edit_category') {

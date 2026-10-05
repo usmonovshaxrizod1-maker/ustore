@@ -128,6 +128,10 @@
     layers: '<path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3 13l9 5 9-5"/>',
     chevronDown: '<path d="M6 9l6 6 6-6"/>',
     check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+    checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
+    crown: '<path d="m3 7 4.5 4L12 5l4.5 6L21 7l-2 11H5L3 7z"/><path d="M6 18h12"/>',
+    building: '<path d="M4 21V5l8-3 8 3v16"/><path d="M9 21v-4h6v4M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01"/>',
+    infinity: '<path d="M18.5 8.5c-2.8 0-4.3 3.5-6.5 6-2.2 2.5-3.7 4-6.5 4a5 5 0 0 1 0-10c2.8 0 4.3 1.5 6.5 4 2.2-2.5 3.7-4 6.5-4a5 5 0 0 1 0 10c-2.8 0-4.3-3.5-6.5-6-2.2-2.5-3.7-4-6.5-4"/>',
     gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a1.8 1.8 0 0 0 .36 2l.05.05a2.2 2.2 0 1 1-3.1 3.1l-.05-.05a1.8 1.8 0 0 0-2-.36 1.8 1.8 0 0 0-1.1 1.65V20a2.2 2.2 0 0 1-4.4 0v-.1a1.8 1.8 0 0 0-1.18-1.65 1.8 1.8 0 0 0-2 .36l-.05.05a2.2 2.2 0 1 1-3.1-3.1l.05-.05a1.8 1.8 0 0 0 .36-2 1.8 1.8 0 0 0-1.65-1.1H4a2.2 2.2 0 0 1 0-4.4h.1a1.8 1.8 0 0 0 1.65-1.18 1.8 1.8 0 0 0-.36-2l-.05-.05a2.2 2.2 0 1 1 3.1-3.1l.05.05a1.8 1.8 0 0 0 2 .36H10.5a1.8 1.8 0 0 0 1.1-1.65V4a2.2 2.2 0 0 1 4.4 0v.1a1.8 1.8 0 0 0 1.1 1.65 1.8 1.8 0 0 0 2-.36l.05-.05a2.2 2.2 0 1 1 3.1 3.1l-.05.05a1.8 1.8 0 0 0-.36 2v.09a1.8 1.8 0 0 0 1.65 1.1H20a2.2 2.2 0 0 1 0 4.4h-.1a1.8 1.8 0 0 0-1.65 1.1z"/>',
     headset: '<path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M19 19v.5a3 3 0 0 1-3 3h-3"/>',
     mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5 12 13l8.5-6.5"/>',
@@ -148,6 +152,9 @@
     arrowRight: '<path d="M5 12h14"/><path d="m14 7 5 5-5 5"/>',
     close: '<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
     trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+    alert: '<path d="M10.3 3.7 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+    paperclip: '<path d="m21.4 11.6-8.5 8.5a6 6 0 0 1-8.5-8.5l9-9a4 4 0 0 1 5.7 5.7l-9 9a2 2 0 0 1-2.8-2.8l8.4-8.4"/>',
+    snow: '<path d="M12 2v20M4.2 6.5l15.6 11M4.2 17.5l15.6-11M8 4l4 2 4-2M8 20l4-2 4 2"/>',
   };
   function pIcon(name, size) {
     const s = size || 18;
@@ -176,17 +183,24 @@
 
   function money(v) { return `${Number(v || 0).toLocaleString('uz-UZ').replace(/,/g, ' ')} so'm`; }
   function statusLabel(s) {
-    if (s === 'ACTIVE') return '🟢 Faol';
+    if (s === 'ACTIVE') return 'Faol';
     if (s === 'PROVISIONING') return 'Sozlanmoqda';
-    if (s === 'FROZEN') return '❄️ Muzlatilgan';
-    if (s === 'TERMINATED') return "🔴 O'chirilgan";
+    if (s === 'FROZEN') return 'Muzlatilgan';
+    if (s === 'TERMINATED') return "O'chirilgan";
     // 'TERMINATING' — purge jarayoni davomidagi vaqtinchalik write-lock
     // holati (odatda bir necha soniya, muvaffaqiyatli yakunlanganda shop
     // qatorining o'zi butunlay o'chadi). Agar purge o'rtada xato bilan
     // to'xtab qolgan bo'lsa, admin buni "O'chirilgan" deb adashtirmasligi
     // uchun alohida, aniq belgi bilan ko'rsatiladi.
-    if (s === 'TERMINATING') return "🔒 O'chirilmoqda...";
+    if (s === 'TERMINATING') return "O'chirilmoqda...";
     return "O'chirilgan";
+  }
+  function statusIcon(s) {
+    if (s === 'ACTIVE') return pIcon('check', 13);
+    if (s === 'PROVISIONING') return pIcon('clock', 13);
+    if (s === 'FROZEN') return pIcon('snow', 13);
+    if (s === 'TERMINATING') return pIcon('lock', 13);
+    return pIcon('close', 13);
   }
   function limitLabel(limit) { return (limit === null || limit === undefined) ? 'Cheksiz mahsulot' : `${limit} tagacha mahsulot`; }
   // 2026-08-28: REAL BUG topildi va tuzatildi — bu funksiya ikkita joyda
@@ -377,6 +391,11 @@
   // Admin: tariflar CRUD
   let adminTariffs = [];
   let tariffDraft = null; // {id?, name, price, productLimit, isActive, isPopular} yoki null
+  let adminCategoryIcons = [];
+  let adminCategoryIconPackagedCount = 1045;
+  let categoryIconUploadFiles = [];
+  let categoryIconUploadBusy = false;
+
 
   // Admin: dashboard
   let dashboardSummary = null;
@@ -627,7 +646,7 @@
     // orqadagi ro'yxat tabini ko'rinadigan qiladi.
     document.body.classList.toggle('plat-support-desktop-split', isAdminMode && (currentTab === 'support' || activePage === 'ADMIN_SUPPORT_THREAD'));
     if (accessDenied) {
-      app.innerHTML = `<div class="wrap"><header class="top"><h1>UStorE</h1></header><div class="card"><p class="notice error">⛔ Xatolik yuz berdi. Iltimos, botni qayta oching.</p></div></div>`;
+      app.innerHTML = `<div class="wrap"><header class="top"><h1>UStorE</h1></header><div class="card"><p class="notice error">${pIcon('alert',16)} Xatolik yuz berdi. Iltimos, botni qayta oching.</p></div></div>`;
       return;
     }
     if (loading) {
@@ -667,6 +686,8 @@
       const baseBody = showLanding ? renderLandingHero() : showDashboard ? renderShopDashboard() : renderTabBody();
       const body = !isAdminMode && currentTab === 'home' ? `${renderUserLifecycleAttention()}${renderUserRequestsHomeTop()}${baseBody}` : baseBody;
       app.innerHTML = `${renderChrome(body)}`;
+      if (showLanding) requestAnimationFrame(() => { syncLandingShowcaseDom(); startLandingShowcaseAutoplay(); });
+      else stopLandingShowcaseAutoplay();
     } catch (e) {
       console.error('platform render error', { currentTab, activePage, error: e });
       app.innerHTML = `${renderChrome(`<div class="plat-render-error"><span>${pIcon('info',24)}</span><h2>Sahifani ochib bo‘lmadi</h2><p>Ma’lumotlar saqlanib turibdi. Qayta urinib ko‘ring.</p><button class="primary" onclick="retryCurrentView()">Qayta urinish</button></div>`)}`;
@@ -894,6 +915,7 @@
     // shu tabga.
     if (p === 'ADMIN_SUPPORT_THREAD') return pageShell(supportThreadTitle(), renderAdminSupportThreadBody(), { onBack: "switchTab('support')" });
     if (p === 'ADMIN_TARIFFS') return pageShell('Tariflar', renderAdminTariffsTab(), { onBack: "switchTab('settings')" });
+    if (p === 'ADMIN_CATEGORY_ICONS') return pageShell('Kategoriya SVG ikonlari', renderAdminCategoryIconsBody(), { onBack: "switchTab('settings')" });
     return '';
   }
 
@@ -1272,27 +1294,150 @@
     "Obunani qanday uzaytirish yoki o'zgartirish mumkin?",
   ];
 
+  // 2026-10-05 TASK 15 — landing hero is no longer a Mini-App-only phone mockup.
+  // It now explains BOTH UStorE channels (Telegram Mini App + Web storefront)
+  // through an 8-slide, 3-second carousel. The visuals are native SVG/CSS UI
+  // mockups so they stay sharp on every breakpoint and do not add image payload.
+  const LANDING_SHOWCASE_SLIDES = [
+    { key:'channels', icon:'globe', eyebrow:'Web + Telegram Mini App', title:'Bitta do‘kon. Ikki kanal.', text:'Mijoz web saytdan ham, Telegram Mini App ichidan ham bir xil do‘konga kiradi.' },
+    { key:'catalog', icon:'box', eyebrow:'Mahsulot va katalog', title:'Katalogni bir joydan boshqaring', text:'Kategoriya, narx, variant va qoldiqni boshqaring — ikkala kanalda ham yangilanadi.' },
+    { key:'orders', icon:'bag', eyebrow:'Buyurtmalar', title:'Buyurtmalar bitta oqimda', text:'Web va Telegram’dan kelgan buyurtmalarni bitta panelda qabul qiling va holatini kuzating.' },
+    { key:'inventory', icon:'dashboard', eyebrow:'Ombor va qoldiq', title:'Qoldiq doim nazoratda', text:'Kirim-chiqim, kam qolgan mahsulotlar va katalog daraxtini bir joydan kuzating.' },
+    { key:'marketing', icon:'bolt', eyebrow:'Marketing', title:'Aksiya va bannerlar bilan soting', text:'Banner, promo va tavsiya mahsulotlarini web hamda Mini App’da bir xil ko‘rsating.' },
+    { key:'checkout', icon:'card', eyebrow:'Checkout va to‘lov', title:'Buyurtmadan to‘lovgacha sodda', text:'Shaxsiy ma’lumot, yetkazib berish va to‘lov — tushunarli, ixcham oqimda.' },
+    { key:'analytics', icon:'chart', eyebrow:'Analitika', title:'Biznesingizni raqamlar bilan ko‘ring', text:'Savdo, buyurtma, qoldiq va asosiy ko‘rsatkichlarni dashboard orqali kuzating.' },
+    { key:'branding', icon:'diamond', eyebrow:'Brending va domen', title:'O‘z nomingiz bilan ishlang', text:'Logo, ranglar, domen va Telegram bot — bitta UStorE boshqaruv markazidan.' },
+  ];
+  let landingShowcaseIndex = 0;
+  let landingShowcaseTimer = null;
+  let landingShowcaseTouchX = null;
+
+  function landingShowcaseScene(kind) {
+    if (kind === 'channels') return `
+      <div class="plat-showcase-device plat-showcase-desktop">
+        <div class="plat-showcase-browser"><i></i><i></i><i></i><span>fitcore.uz</span></div>
+        <div class="plat-showcase-web-head"><b>FITCORE</b><span>${pIcon('search',11)} Qidiruv</span></div>
+        <div class="plat-showcase-product-row"><i></i><i></i><i></i></div>
+      </div>
+      <div class="plat-showcase-device plat-showcase-phone">
+        <div class="plat-showcase-phone-notch"></div>
+        <div class="plat-showcase-telegram-head">${pIcon('send',12)} <b>Telegram</b></div>
+        <div class="plat-showcase-mini-shop"><b>FITCORE</b><small>Mini App</small><div><i></i><i></i></div></div>
+      </div>
+      <span class="plat-showcase-link-badge">${pIcon('swap',14)} Bitta katalog</span>`;
+    if (kind === 'catalog') return `
+      <div class="plat-showcase-panel is-catalog"><div class="plat-showcase-panel-head"><span>${pIcon('box',15)}</span><b>Mahsulotlar</b><em>128 ta</em></div><div class="plat-showcase-catalog-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <div class="plat-showcase-side-card"><b>Kategoriyalar</b><span>Sport kiyimlari <em>48</em></span><span>Protein <em>35</em></span><span>Aksessuarlar <em>45</em></span></div>`;
+    if (kind === 'orders') return `
+      <div class="plat-showcase-panel is-orders"><div class="plat-showcase-panel-head"><span>${pIcon('bag',15)}</span><b>Buyurtmalar</b><em>Bugun</em></div>
+        <div class="plat-showcase-order"><i class="tone-blue"></i><span><b>#1048</b><small>Web sayt</small></span><em>Yangi</em></div>
+        <div class="plat-showcase-order"><i class="tone-violet"></i><span><b>#1047</b><small>Telegram Mini App</small></span><em class="is-progress">Jarayonda</em></div>
+        <div class="plat-showcase-order"><i class="tone-green"></i><span><b>#1046</b><small>Web sayt</small></span><em class="is-done">Yetkazildi</em></div>
+      </div>`;
+    if (kind === 'inventory') return `
+      <div class="plat-showcase-panel is-stock"><div class="plat-showcase-panel-head"><span>${pIcon('dashboard',15)}</span><b>Ombor</b><em>Qoldiq</em></div>
+        <div class="plat-showcase-stock"><span><b>Protein 1kg</b><small>64 dona</small></span><i><u style="width:78%"></u></i></div>
+        <div class="plat-showcase-stock"><span><b>Sport sumka</b><small>18 dona</small></span><i><u style="width:42%"></u></i></div>
+        <div class="plat-showcase-stock is-low"><span><b>Shaker</b><small>4 dona · kam qoldi</small></span><i><u style="width:16%"></u></i></div>
+      </div>`;
+    if (kind === 'marketing') return `
+      <div class="plat-showcase-marketing-banner"><span>-20%</span><div><small>Hafta aksiyasi</small><b>Sport tovarlariga chegirma</b></div>${pIcon('bolt',22)}</div>
+      <div class="plat-showcase-marketing-cards"><div>${pIcon('gift',16)}<b>Promo kod</b><small>FIT20</small></div><div>${pIcon('chart',16)}<b>Natija</b><small>+28% buyurtma</small></div></div>`;
+    if (kind === 'checkout') return `
+      <div class="plat-showcase-panel is-checkout"><div class="plat-showcase-steps"><span class="active">1 <b>Ma’lumot + yetkazish</b></span><span>2 <b>To‘lov</b></span></div>
+        <div class="plat-showcase-input"><i>${pIcon('user',12)}</i><span>Shaxrizod Usmonov</span></div><div class="plat-showcase-input"><i>${pIcon('truck',12)}</i><span>Toshkent · Yetkazib berish</span></div><button>${pIcon('arrowRight',13)} To‘lovga o‘tish</button>
+      </div>`;
+    if (kind === 'analytics') return `
+      <div class="plat-showcase-kpis"><div><small>Savdo</small><b>12.4 mln</b><em>+18%</em></div><div><small>Buyurtma</small><b>284</b><em>+12%</em></div></div>
+      <div class="plat-showcase-chart"><i style="height:32%"></i><i style="height:48%"></i><i style="height:42%"></i><i style="height:68%"></i><i style="height:58%"></i><i style="height:86%"></i><i style="height:74%"></i></div>`;
+    return `
+      <div class="plat-showcase-brand-card"><span class="plat-showcase-brand-logo">U</span><div><small>O‘z domeningiz</small><b>sizningdokon.uz</b><em>${pIcon('check',12)} Ulangan</em></div></div>
+      <div class="plat-showcase-brand-channels"><span>${pIcon('globe',15)} Web shop</span><span>${pIcon('send',15)} Telegram bot</span></div>
+      <div class="plat-showcase-brand-palette"><i></i><i></i><i></i><i></i></div>`;
+  }
+
+  function renderLandingShowcase() {
+    return `
+      <div id="plat-showcase" class="plat-showcase" aria-label="UStorE imkoniyatlari" aria-roledescription="carousel" onmouseenter="pauseLandingShowcase()" onmouseleave="startLandingShowcaseAutoplay()" onfocusin="pauseLandingShowcase()" onfocusout="startLandingShowcaseAutoplay()" ontouchstart="landingShowcaseTouchStart(event)" ontouchend="landingShowcaseTouchEnd(event)">
+        <div class="plat-showcase-viewport">
+          <div id="plat-showcase-track" class="plat-showcase-track">
+            ${LANDING_SHOWCASE_SLIDES.map((slide, index) => `
+              <article class="plat-showcase-slide ${index === 0 ? 'active' : ''}" data-index="${index}" aria-hidden="${index === 0 ? 'false' : 'true'}">
+                <div class="plat-showcase-caption"><span>${pIcon(slide.icon, 14)} ${slide.eyebrow}</span><b>${slide.title}</b><small>${slide.text}</small></div>
+                <div class="plat-showcase-scene scene-${slide.key}">${landingShowcaseScene(slide.key)}</div>
+              </article>`).join('')}
+          </div>
+        </div>
+        <button class="plat-showcase-arrow is-prev" type="button" aria-label="Oldingi imkoniyat" onclick="event.stopPropagation(); landingShowcaseStep(-1)">${pIcon('back', 18)}</button>
+        <button class="plat-showcase-arrow is-next" type="button" aria-label="Keyingi imkoniyat" onclick="event.stopPropagation(); landingShowcaseStep(1)">${pIcon('arrowRight', 18)}</button>
+        <div class="plat-showcase-dots" role="tablist" aria-label="Slaydlar">
+          ${LANDING_SHOWCASE_SLIDES.map((slide,index)=>`<button type="button" class="plat-showcase-dot ${index === 0 ? 'active' : ''}" aria-label="${index+1}-slayd: ${escapeHtml(slide.eyebrow)}" aria-current="${index === 0 ? 'true' : 'false'}" onclick="landingShowcaseGo(${index})"></button>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  function syncLandingShowcaseDom() {
+    const root = document.getElementById('plat-showcase');
+    const track = document.getElementById('plat-showcase-track');
+    if (!root || !track) return false;
+    const count = LANDING_SHOWCASE_SLIDES.length;
+    landingShowcaseIndex = ((landingShowcaseIndex % count) + count) % count;
+    track.style.setProperty('--plat-showcase-offset', `${-landingShowcaseIndex * 100}%`);
+    root.dataset.activeIndex = String(landingShowcaseIndex);
+    root.querySelectorAll('.plat-showcase-slide').forEach((el, index) => {
+      const active = index === landingShowcaseIndex;
+      el.classList.toggle('active', active);
+      el.setAttribute('aria-hidden', active ? 'false' : 'true');
+    });
+    root.querySelectorAll('.plat-showcase-dot').forEach((el, index) => {
+      const active = index === landingShowcaseIndex;
+      el.classList.toggle('active', active);
+      el.setAttribute('aria-current', active ? 'true' : 'false');
+    });
+    return true;
+  }
+  function stopLandingShowcaseAutoplay() {
+    if (landingShowcaseTimer) clearInterval(landingShowcaseTimer);
+    landingShowcaseTimer = null;
+  }
+  function startLandingShowcaseAutoplay() {
+    stopLandingShowcaseAutoplay();
+    if (!document.getElementById('plat-showcase')) return;
+    landingShowcaseTimer = setInterval(() => {
+      if (document.hidden) return;
+      if (!document.getElementById('plat-showcase')) { stopLandingShowcaseAutoplay(); return; }
+      landingShowcaseGo(landingShowcaseIndex + 1, false);
+    }, 3000);
+  }
+  function landingShowcaseGo(index, restart = true) {
+    landingShowcaseIndex = Number(index) || 0;
+    syncLandingShowcaseDom();
+    if (restart) startLandingShowcaseAutoplay();
+  }
+  function landingShowcaseStep(delta) { landingShowcaseGo(landingShowcaseIndex + Number(delta || 0)); }
+  function pauseLandingShowcase() { stopLandingShowcaseAutoplay(); }
+  function landingShowcaseTouchStart(event) { landingShowcaseTouchX = Number(event?.changedTouches?.[0]?.clientX ?? event?.touches?.[0]?.clientX ?? 0); pauseLandingShowcase(); }
+  function landingShowcaseTouchEnd(event) {
+    const x = Number(event?.changedTouches?.[0]?.clientX ?? 0);
+    const delta = x - Number(landingShowcaseTouchX || 0);
+    landingShowcaseTouchX = null;
+    if (Math.abs(delta) >= 42) landingShowcaseStep(delta < 0 ? 1 : -1);
+    else startLandingShowcaseAutoplay();
+  }
+
   function renderLandingHero() {
     return `
       <section class="plat-landing-hero">
         <div class="plat-landing-hero-copy">
-          <span class="plat-eyebrow">${pIcon('bolt', 13)} Telegram uchun e-do'kon platformasi</span>
-          <h1>Telegram'da o'z <span>e-do'koningizni</span> oching</h1>
-          <p>Mahsulotlarni boshqaring, buyurtmalarni qabul qiling, to'lov va yetkazib berishni sozlang — barchasi bitta tizimda.</p>
+          <span class="plat-eyebrow">${pIcon('bolt', 13)} Web + Telegram Mini App savdo platformasi</span>
+          <h1>Bitta do‘kon. <span>Ikki kanal.</span></h1>
+          <p>Web sayt va Telegram Mini App orqali soting. Mahsulot, buyurtma, ombor, marketing va to‘lovlarni bitta UStorE boshqaruv markazidan yuriting.</p>
           <div class="plat-landing-hero-actions">
             <button class="primary" onclick="startNewShopFlow()">${pIcon('shop', 17)} Do'kon ochish</button>
             <button class="secondary" onclick="document.getElementById('plat-why-ustore').scrollIntoView({behavior:'smooth'})">${pIcon('bolt', 15)} Imkoniyatlarni ko'rish</button>
           </div>
         </div>
-        <div class="plat-landing-visual" aria-hidden="true">
-          <div class="plat-landing-phone">
-            <span class="plat-landing-phone-line"></span>
-            <div class="plat-landing-phone-kpi"><b>24</b><small>Buyurtma</small></div>
-            <div class="plat-landing-phone-grid"><span></span><span></span><span></span><span></span></div>
-          </div>
-          <span class="plat-landing-float one">${pIcon('bag', 20)}</span>
-          <span class="plat-landing-float two">${pIcon('box', 20)}</span>
-        </div>
+        ${renderLandingShowcase()}
       </section>
 
       <section id="plat-why-ustore" class="plat-landing-section">
@@ -1352,9 +1497,9 @@
   }
   function renderBillingToggle() {
     return `
-      <div class="plat-billing-toggle" role="group" aria-label="Obuna muddati">
+      <div class="plat-billing-toggle plat-pricing-period-toggle" role="group" aria-label="Obuna muddati">
         <button class="plat-billing-opt ${tariffBillingPeriod === 'monthly' ? 'active' : ''}" onclick="setTariffBillingPeriod('monthly')" type="button"><b>Oylik</b><small>Har oy to‘lov</small></button>
-        <button class="plat-billing-opt ${tariffBillingPeriod === 'annual' ? 'active' : ''}" onclick="setTariffBillingPeriod('annual')" type="button"><b>Yillik <span class="plat-billing-free-badge">2 oy bepul</span></b><small>10 oylik to‘lov bilan 12 oy</small></button>
+        <button class="plat-billing-opt ${tariffBillingPeriod === 'annual' ? 'active' : ''}" onclick="setTariffBillingPeriod('annual')" type="button"><b>Yillik <span class="plat-billing-free-badge">−17%</span></b><small>10 oylik to‘lov bilan 12 oy</small></button>
       </div>`;
   }
   function setTariffBillingPeriod(period) {
@@ -1370,30 +1515,51 @@
     const key = String(t?.name || '').toLowerCase();
     return key.includes('start') ? 'start' : key.includes('stand') ? 'standard' : key.includes('business') ? 'business' : key.includes('premium') ? 'premium' : 'default';
   }
+  function tariffAudienceLabel(tone) {
+    if (tone === 'start') return 'Kichik do‘konlar uchun';
+    if (tone === 'standard') return 'O‘sib borayotgan do‘konlar uchun';
+    if (tone === 'business') return 'Yirik do‘konlar uchun';
+    if (tone === 'premium') return 'Maksimal imkoniyatlar';
+    return 'Biznesingiz uchun mos tarif';
+  }
+  function tariffLimitValue(limit) {
+    return (limit === null || limit === undefined)
+      ? { value: 'Cheksiz', suffix: 'mahsulot' }
+      : { value: Number(limit).toLocaleString('uz-UZ').replace(/,/g, ' '), suffix: 'ta mahsulotgacha' };
+  }
   function renderOneTariffCard(t, opts) {
     opts = opts || {};
     const isCurrent = !!(opts.currentTariffId && opts.currentTariffId === t.id);
     const period = tariffBillingPeriod;
     const tone = tariffTone(t);
+    const limit = tariffLimitValue(t.productLimit);
+    const annualSaving = Math.max(0, annualOriginalPrice(t.price) - annualOfferPrice(t.price));
     const priceHtml = period === 'annual'
-      ? `<div class="plat-tariff-price-strike">${money(annualOriginalPrice(t.price))}</div><div class="plat-tariff-price">${money(annualOfferPrice(t.price))}<span>/yil</span></div><div class="plat-tariff-saving">2 oy bepul</div>`
-      : `<div class="plat-tariff-price">${money(t.price)}<span>/oy</span></div>`;
+      ? `<div class="plat-tariff-price-strike">${money(annualOriginalPrice(t.price))}</div><div class="plat-tariff-price">${money(annualOfferPrice(t.price))}<span>/ yil</span></div><div class="plat-tariff-annual-meta"><span class="plat-tariff-saving">2 oy bepul</span><small>${money(annualSaving)} tejaysiz</small></div><div class="plat-tariff-monthly-note">${money(t.price)} / oy</div>`
+      : `<div class="plat-tariff-price">${money(t.price)}<span>/ oy</span></div><div class="plat-tariff-monthly-note">Istalgan payt yillikka o‘tishingiz mumkin</div>`;
     let selectJs = opts.onSelectJs || `selectTariffAndContinue('${t.id}')`;
     selectJs = selectJs.replace('__TARIFF__', t.id);
     const ctaHtml = isCurrent
       ? `<button class="secondary plat-small-btn plat-tariff-current-btn" disabled>${pIcon('check', 14)} Joriy tarif</button>`
-      : `<button class="primary plat-small-btn plat-tariff-select" onclick="${selectJs}">${opts.ctaLabel || "Tarifni tanlash"}</button>`;
-    const features = (Array.isArray(t.features) && t.features.length ? t.features : TARIFF_FEATURE_LIST).slice(0, 6);
+      : `<button class="primary plat-small-btn plat-tariff-select" onclick="${selectJs}">${opts.ctaLabel || "Tarifni tanlash"} ${pIcon('arrowRight', 14)}</button>`;
+    const features = (Array.isArray(t.features) && t.features.length ? t.features : TARIFF_FEATURE_LIST).slice(0, 4);
+    const badge = isCurrent
+      ? '<span class="plat-tariff-badge is-current">Joriy tarif</span>'
+      : t.isPopular
+        ? `<span class="plat-tariff-badge plat-tariff-recommended">${pIcon('crown', 13)} Tavsiya etiladi</span>`
+        : '';
     return `
-      <article class="plat-tariff-card plat-tariff-tone-${tone} ${flowTariffId === t.id ? 'selected' : ''} ${isCurrent ? 'is-current' : ''}">
-        ${isCurrent ? '<span class="plat-tariff-badge is-current">Joriy tarif</span>' : t.isPopular ? '<span class="plat-tariff-badge">Ommabop</span>' : ''}
-        <div class="plat-tariff-title-row">
-          <div class="plat-tariff-title-main"><span class="plat-tariff-symbol">${pIcon(tone === 'premium' ? 'diamond' : tone === 'business' ? 'bag' : tone === 'standard' ? 'bolt' : 'shop', 19)}</span><div><div class="plat-tariff-name">${escapeHtml(t.name)}</div><span class="plat-tariff-limit">${limitLabel(t.productLimit)}</span></div></div>
-          <div class="plat-tariff-price-block">${priceHtml}</div>
+      <article class="plat-tariff-card plat-pricing-card plat-tariff-tone-${tone} ${flowTariffId === t.id ? 'selected' : ''} ${isCurrent ? 'is-current' : ''} ${t.isPopular ? 'is-recommended' : ''}">
+        ${badge}
+        <div class="plat-pricing-card-head">
+          <div><div class="plat-tariff-name">${escapeHtml(t.name)}</div><div class="plat-tariff-audience">${tariffAudienceLabel(tone)}</div></div>
+          <span class="plat-tariff-symbol">${pIcon(tone === 'premium' ? 'crown' : tone === 'business' ? 'building' : tone === 'standard' ? 'chart' : 'shop', 21)}</span>
         </div>
+        <div class="plat-tariff-limit-hero"><span class="plat-tariff-limit-icon">${pIcon(tone === 'premium' ? 'infinity' : 'box', 22)}</span><div><strong>${limit.value}</strong><small>${limit.suffix}</small></div></div>
+        <div class="plat-tariff-price-block">${priceHtml}</div>
         <div class="plat-tariff-divider"></div>
         <ul class="plat-tariff-features">
-          ${features.map((f) => `<li>${pIcon('check', 12)}<span title="${escapeHtml(f)}">${escapeHtml(f)}</span></li>`).join('')}
+          ${features.map((f) => `<li>${pIcon('checkCircle', 14)}<span title="${escapeHtml(f)}">${escapeHtml(f)}</span></li>`).join('')}
         </ul>
         ${ctaHtml}
       </article>
@@ -2317,7 +2483,7 @@
       </div>
 
       <section class="card plat-dashboard-focus">
-        <div class="plat-dashboard-focus-title"><div><small>Tanlangan do'kon</small><h2>${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</h2><p>${escapeHtml(s.tariffName || 'Tarifsiz')}${left === null ? '' : left <= 0 ? ' · Obuna tugagan' : ` · ${left} kun qoldi`}</p></div><span class="status-pill status-${s.status}">${statusLabel(s.status)}</span></div>
+        <div class="plat-dashboard-focus-title"><div><small>Tanlangan do'kon</small><h2>${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</h2><p>${escapeHtml(s.tariffName || 'Tarifsiz')}${left === null ? '' : left <= 0 ? ' · Obuna tugagan' : ` · ${left} kun qoldi`}</p></div><span class="status-pill status-${s.status}">${statusIcon(s.status)} ${statusLabel(s.status)}</span></div>
         <div class="plat-dashboard-kpis">
           <div><span>${pIcon('bag',18)}</span><small>Bugungi buyurtmalar</small><b>${Number(s.ordersToday || 0)}</b></div>
           <div><span>${pIcon('box',18)}</span><small>Mahsulotlar</small><b>${usedProducts}</b>${productPct!==null?`<em>${productPct}% limit</em>`:''}</div>
@@ -2378,7 +2544,7 @@
         const expiry = noPlan ? 'Obuna yo‘q' : left === null ? 'Muddat noma’lum' : left <= 0 ? 'Obuna tugagan' : `${left} kun qoldi`;
         return `<button class="plat-shop-list-card ${warn ? 'is-expiring' : ''}" onclick="openMyShopManage('${shop.id}')">
           <span class="plat-shop-avatar plat-shop-avatar-lg ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span>
-          <div class="plat-shop-list-main"><div class="plat-shop-list-title"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><span class="status-pill status-${shop.status}">${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<small>@${escapeHtml(shop.botUsername)}</small>` : ''}<div class="plat-shop-list-meta"><span>${pIcon('diamond',13)} ${escapeHtml(shop.tariffName || 'Tarifsiz')}</span><span class="${warn ? 'is-warn' : ''}">${pIcon('calendar',13)} ${expiry}</span></div></div>
+          <div class="plat-shop-list-main"><div class="plat-shop-list-title"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><span class="status-pill status-${shop.status}">${statusIcon(shop.status)} ${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<small>@${escapeHtml(shop.botUsername)}</small>` : ''}<div class="plat-shop-list-meta"><span>${pIcon('diamond',13)} ${escapeHtml(shop.tariffName || 'Tarifsiz')}</span><span class="${warn ? 'is-warn' : ''}">${pIcon('calendar',13)} ${expiry}</span></div></div>
           <span class="plat-shop-list-chevron">›</span>
         </button>`;
       }).join('')}</div>
@@ -2409,7 +2575,7 @@
     return `
       <section class="plat-shop-detail-hero ${warn ? 'is-expiring' : ''}">
         <span class="plat-shop-avatar plat-shop-detail-avatar ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span>
-        <div><div class="plat-shop-detail-name"><h2>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</h2><span class="status-pill status-${shop.status}">${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<p>@${escapeHtml(shop.botUsername)}</p>` : '<p>Bot ulanmoqda</p>'}<span class="plan-pill">${escapeHtml(shop.tariffName || 'Tarifsiz')}</span></div>
+        <div><div class="plat-shop-detail-name"><h2>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</h2><span class="status-pill status-${shop.status}">${statusIcon(shop.status)} ${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<p>@${escapeHtml(shop.botUsername)}</p>` : '<p>Bot ulanmoqda</p>'}<span class="plan-pill">${escapeHtml(shop.tariffName || 'Tarifsiz')}</span></div>
       </section>
       ${shop.status === 'ACTIVE' && left !== null ? `<div class="plat-shop-detail-days-strip"><b>${left <= 0 ? 'Tugagan' : `${left} kun`}</b><small>obuna qoldi</small></div>` : ''}
       <div class="plat-shop-nav-rows">
@@ -2909,6 +3075,7 @@
       <div class="plat-admin-settings-intro"><div><span class="plat-admin-eyebrow">Boshqaruv markazi</span><h2>Platforma</h2></div><span>${pIcon('gear',19)}</span></div>
       <div class="plat-admin-settings-list">
         <button onclick="openAdminTariffsPage()"><span class="is-blue">${pIcon('diamond',19)}</span><div><b>Tariflar</b><small>Narx, limit va imkoniyatlar</small></div><em>${adminTariffs.length} ta ${pIcon('arrowRight',16)}</em></button>
+        <button onclick="openAdminCategoryIconsPage()"><span class="is-blue">${pIcon('layers',19)}</span><div><b>Kategoriya SVG ikonlari</b><small>Bazaviy kutubxona va yangi SVGlar</small></div><em>${adminCategoryIconPackagedCount + adminCategoryIcons.filter((x)=>x.isActive).length} ta ${pIcon('arrowRight',16)}</em></button>
         <button onclick="openAdminPaymentSettings()"><span class="is-blue">${pIcon('wallet',19)}</span><div><b>To'lov sozlamalari</b><small>Karta, Click, Payme va Paynet</small></div><em>${activeMethods} faol ${pIcon('arrowRight',16)}</em></button>
         <button onclick="openAdminNotificationSettings()"><span class="is-blue">${pIcon('bell',19)}</span><div><b>Avtomatik xabarlar</b><small>Obuna va onboarding eslatmalari</small></div><em>${activeTemplates} faol ${pIcon('arrowRight',16)}</em></button>
         <button onclick="openAdminLifecycleSettings()"><span class="is-blue">${pIcon('lock',19)}</span><div><b>Do'kon holati parametrlari</b><small>Muzlatish, o'chirish va owner xabarlari</small></div><em>${pIcon('arrowRight',16)}</em></button>
@@ -3326,7 +3493,7 @@
           <div class="meta">${s.botUsername ? '@' + escapeHtml(s.botUsername) : "bot yo'q"} · ${escapeHtml(s.tariffName || 'Tarifsiz')}</div>
           <div class="meta">${days === null ? "Muzlatilgan sana noma'lum" : days <= 0 ? 'Bugun muzlatildi' : `${days} kun oldin muzlatildi`}</div>
         </div>
-        <span class="status-pill status-FROZEN">${statusLabel(s.status)}</span>
+        <span class="status-pill status-FROZEN">${statusIcon(s.status)} ${statusLabel(s.status)}</span>
       </div>`;
   }
   // 2026-08-28: Billz/Click/Payme/Uzum integratsiya UX birlashtirish. Avval
@@ -3384,7 +3551,7 @@
         <div>
           <h2>${escapeHtml(s.botName || s.botUsername || s.publicCode || "Nomsiz do'kon")}</h2>
           <p>Owner: ${escapeHtml(s.ownerTelegramId || '-')} · Yaratilgan: ${formatDate(s.createdAt)}</p>
-          <span class="status-pill status-${s.status}">${statusLabel(s.status)}</span>
+          <span class="status-pill status-${s.status}">${statusIcon(s.status)} ${statusLabel(s.status)}</span>
         </div>
       </section>
       ${s.status === 'ACTIVE' && left !== null ? `<div class="plat-shop-detail-days-strip"><b>${left <= 0 ? 'Tugagan' : `${left} kun`}</b><small>obuna qoldi</small></div>` : ''}
@@ -3739,7 +3906,7 @@
           <label>Muzlatish sababi</label>
           <input type="text" id="plat-freeze-reason" list="plat-freeze-reasons" placeholder="Sababni tanlang yoki yozing">
           <datalist id="plat-freeze-reasons">${(platformLifecycleSettings.freezeReasons||[]).map((reason)=>`<option value="${escapeHtml(reason)}"></option>`).join('')}</datalist>
-          <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitFreezeShop('${s.id}')">❄️ Muzlatish</button>
+          <button class="secondary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitFreezeShop('${s.id}')">${pIcon('snow',16)} Muzlatish</button>
         ` : ''}
         ${s.status === 'FROZEN' ? `<p class="muted" style="margin:0 0 8px">${escapeHtml(freezeDurationStatusText(s))}</p>${renderFreezeProgressBar(s.frozenAt)}` : ''}
         ${s.status === 'FROZEN' ? `<button class="primary ${lifecycleActionSubmitting ? 'plat-btn-dimmed' : ''}" onclick="submitReactivateShop('${s.id}')">${pIcon('check',16)} Qayta faollashtirish</button>` : ''}
@@ -4003,7 +4170,7 @@
           <div class="preview-row"><span>Telegram bot ID</span><span>${escapeHtml(v.telegramBotId)}</span></div>
           ${v.alreadyConnected ? '<p class="notice error">Bu bot allaqachon boshqa do\'konga ulangan.</p>' : ''}
           ${v.retryable ? '<p class="notice warn">Bu bot avval ulanishga urinilgan, lekin tugallanmagan — hozir qayta urinish sifatida davom etadi.</p>' : ''}
-          ${!v.alreadyConnected ? '<p class="notice success">✓ Token to\'g\'ri. OWNER ID kiriting.</p>' : ''}
+          ${!v.alreadyConnected ? `<p class="notice success">${pIcon('check',14)} Token to'g'ri. OWNER ID kiriting.</p>` : ''}
         ` : ''}
       </div>
       ${v && !v.alreadyConnected ? `
@@ -4014,7 +4181,7 @@
         <button class="primary" id="btn-connect" ${connecting ? 'disabled' : ''}>${connecting ? '<span class="spinner"></span> Ulanmoqda...' : 'Ulash'}</button>
       </div>` : ''}
       ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
-      ${connectSuccess ? `<div class="notice success">✓ Do'kon ulandi (holat: ${escapeHtml(connectSuccess.status)}).</div>` : ''}
+      ${connectSuccess ? `<div class="notice success">${pIcon('check',14)} Do'kon ulandi (holat: ${escapeHtml(connectSuccess.status)}).</div>` : ''}
     `;
   }
   function wireConnectShopView() {
@@ -4392,7 +4559,7 @@
     const paymentNotice = r.hasReceipt
       ? `<div class="plat-admin-request-note is-info">Chek yuborildi · ${escapeHtml(receiptSourceLabel(r.receiptSource))}</div>`
       : r.receiptRequestedAt
-        ? `<div class="notice">📎 Chek so'raldi — foydalanuvchi javobi kutilmoqda.</div>`
+        ? `<div class="notice">${pIcon('paperclip',14)} Chek so'raldi — foydalanuvchi javobi kutilmoqda.</div>`
         : r.paymentClaimedAt
           ? `<div class="plat-admin-request-note is-info">To'lov tekshirilmoqda · chek biriktirilmagan.</div>`
           : `<div class="plat-admin-request-note">Chek yo'q · foydalanuvchi hali “To'ladim” demagan.</div>`;
@@ -4596,26 +4763,92 @@
   async function loadAdminSettings() {
     if (!isAdminMode) return;
     try {
-      const [pData, mData, nData, lData] = await Promise.all([
+      const [pData, mData, nData, lData, iconData] = await Promise.all([
         callPlatformApi('platform_get_payment_info', {}),
         callPlatformApi('platform_admin_list_payment_methods', {}),
         callPlatformApi('platform_admin_list_notification_templates', {}),
         callPlatformApi('platform_get_lifecycle_settings', {}),
+        callPlatformApi('platform_list_category_icons', {}),
       ]);
       paymentInfoDraft = { cardNumber: pData.cardNumber || '', cardHolder: pData.cardHolder || '', isActive: pData.isActive !== false };
       adminPaymentMethods = mData.methods || [];
       adminNotificationTemplates = nData.templates || [];
+      adminCategoryIconPackagedCount = Number(iconData?.packagedCount || 1045);
+      adminCategoryIcons = Array.isArray(iconData?.icons) ? iconData.icons : [];
       if (lData?.settings) {
         platformLifecycleSettings = { ...platformLifecycleSettings, ...lData.settings };
         lifecycleSettingsDraft = JSON.parse(JSON.stringify(platformLifecycleSettings));
       }
-      if (currentTab === 'settings' || ['ADMIN_PAYMENT_SETTINGS','ADMIN_NOTIFICATION_SETTINGS','ADMIN_NOTIFICATION_GROUP','ADMIN_LIFECYCLE_SETTINGS'].includes(activePage)) render();
+      if (currentTab === 'settings' || ['ADMIN_PAYMENT_SETTINGS','ADMIN_NOTIFICATION_SETTINGS','ADMIN_NOTIFICATION_GROUP','ADMIN_LIFECYCLE_SETTINGS','ADMIN_CATEGORY_ICONS'].includes(activePage)) render();
     } catch (e) { console.error(e); }
   }
   // Platform 2.0, Bosqich 2 (H-band): Tariflar endi root tab emas —
   // Sozlamalar ichidan ochiladigan sahifa ('ADMIN_TARIFFS'), shu funksiya
   // orqali (ochish + ma'lumotni yuklash bitta joyda, boshqa ADMIN_*_SETTINGS
   // sahifalari bilan bir xil naqsh).
+  function openAdminCategoryIconsPage() { openPage('ADMIN_CATEGORY_ICONS'); loadAdminCategoryIcons(); }
+  async function loadAdminCategoryIcons() {
+    try {
+      const data = await callPlatformApi('platform_list_category_icons', {});
+      adminCategoryIconPackagedCount = Number(data.packagedCount || 1045);
+      adminCategoryIcons = Array.isArray(data.icons) ? data.icons : [];
+      if (activePage === 'ADMIN_CATEGORY_ICONS' || currentTab === 'settings') render();
+    } catch (e) { console.error(e); if (activePage === 'ADMIN_CATEGORY_ICONS') showToast(e.message || String(e), 'error'); }
+  }
+  function categoryIconHumanName(id) {
+    return String(id || '').replace(/^[a-z]+_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  function renderPlatformCategorySvg(icon) {
+    const svg = String(icon?.svg || '');
+    return svg.startsWith('<svg ') ? svg.replace('<svg ', '<svg class="plat-category-icon-svg" ') : pIcon('layers', 22);
+  }
+  function renderAdminCategoryIconsBody() {
+    const activeCustom = adminCategoryIcons.filter((x)=>x.isActive).length;
+    const inactiveCustom = adminCategoryIcons.length - activeCustom;
+    return `<div class="plat-settings-page-intro is-compact"><span class="plat-admin-eyebrow">Task 17 · SVG kutubxona</span><h2>Kategoriya ikonlari</h2><p>1045 ta bazaviy SVG barcha Shop App'larda mavjud. Bu yerdan keyinchalik yangi SVGlarni deploysiz qo'shishingiz mumkin.</p></div>
+      <div class="plat-category-icon-stats"><div><b>${adminCategoryIconPackagedCount}</b><small>Bazaviy SVG</small></div><div><b>${activeCustom}</b><small>Qo'shilgan faol</small></div><div><b>${inactiveCustom}</b><small>O'chirilgan</small></div></div>
+      <section class="plat-settings-section plat-category-icon-upload">
+        <div class="plat-settings-section-head"><div><h3>Yangi SVG qo'shish</h3><p>Bir martada 50 tagacha SVG tanlash mumkin. Fayl nomi icon ID sifatida ishlatiladi.</p></div></div>
+        <label>Guruh<input id="category-icon-group" type="text" value="custom" maxlength="32" placeholder="masalan: sport_new"></label>
+        <label class="plat-category-icon-drop"><input type="file" multiple onchange="onCategoryIconFilesPicked(this.files)"><span>${pIcon('plus',22)}</span><b>SVG fayllarni tanlang</b><small>viewBox 0 0 64 64 · currentColor · xavfsiz SVG</small></label>
+        ${categoryIconUploadFiles.length ? `<div class="plat-category-icon-file-list">${categoryIconUploadFiles.map((f)=>`<span>${pIcon('check',13)} ${escapeHtml(f.name)}</span>`).join('')}</div>` : ''}
+        <button class="primary plat-settings-save-wide" onclick="uploadCategoryIconFiles()" ${!categoryIconUploadFiles.length || categoryIconUploadBusy?'disabled':''}>${categoryIconUploadBusy?'Yuklanmoqda…':`${pIcon('plus',16)} ${categoryIconUploadFiles.length || ''} SVG qo'shish`}</button>
+      </section>
+      <section class="plat-settings-section"><div class="plat-settings-section-head"><div><h3>Platformadan qo'shilgan SVGlar</h3><p>Bazaviy 1045 ikon kod bilan keladi; bu ro'yxat faqat keyin qo'shilgan ikonlarni ko'rsatadi.</p></div></div>
+        <div class="plat-category-icon-admin-grid">${adminCategoryIcons.length ? adminCategoryIcons.map((icon)=>`<article class="plat-category-icon-admin-card ${icon.isActive?'':'is-disabled'}"><span class="plat-category-icon-preview">${renderPlatformCategorySvg(icon)}</span><div><b>${escapeHtml(icon.uz || icon.id)}</b><small>${escapeHtml(icon.id)} · ${escapeHtml(icon.group || 'custom')}</small></div><label class="plat-switch"><input type="checkbox" ${icon.isActive?'checked':''} onchange="toggleAdminCategoryIcon('${icon.id}',this.checked)"><span></span></label></article>`).join('') : `<div class="plat-admin-empty is-compact"><span>${pIcon('layers',22)}</span><b>Hali custom SVG yo'q</b><small>Yuqoridan SVG fayllarni tanlab qo'shing.</small></div>`}</div>
+      </section>`;
+  }
+  function onCategoryIconFilesPicked(fileList) {
+    categoryIconUploadFiles = Array.from(fileList || []).filter((f)=>/\.svg$/i.test(f.name)).slice(0,50);
+    render();
+  }
+  async function uploadCategoryIconFiles() {
+    if (!categoryIconUploadFiles.length || categoryIconUploadBusy) return;
+    const groupRaw = String(document.getElementById('category-icon-group')?.value || 'custom').trim().toLowerCase();
+    const group = groupRaw.replace(/[^a-z0-9_]+/g,'_').replace(/^_+|_+$/g,'').slice(0,32) || 'custom';
+    categoryIconUploadBusy = true; render({ preserve: true });
+    try {
+      const icons = [];
+      for (const file of categoryIconUploadFiles) {
+        let id = file.name.replace(/\.svg$/i,'').toLowerCase().replace(/[^a-z0-9_]+/g,'_').replace(/^_+|_+$/g,'').slice(0,64);
+        if (!/^[a-z]/.test(id)) id = `custom_${id}`.slice(0,64);
+        icons.push({ id, group, uz: categoryIconHumanName(id), ru: categoryIconHumanName(id), en: categoryIconHumanName(id), svg: await file.text() });
+      }
+      const result = await callPlatformApi('platform_upsert_category_icons', { icons });
+      showToast(`${Number(result.count || icons.length)} ta SVG qo'shildi.`, 'success');
+      categoryIconUploadFiles = [];
+      await loadAdminCategoryIcons();
+    } catch (e) { showToast(e.message || String(e), 'error'); }
+    finally { categoryIconUploadBusy = false; if (activePage === 'ADMIN_CATEGORY_ICONS') render(); }
+  }
+  async function toggleAdminCategoryIcon(id, isActive) {
+    try {
+      await callPlatformApi('platform_set_category_icon_active', { id, isActive });
+      const icon = adminCategoryIcons.find((x)=>x.id===id); if (icon) icon.isActive = isActive;
+      render({ preserve: true });
+    } catch (e) { showToast(e.message || String(e), 'error'); await loadAdminCategoryIcons(); }
+  }
+
   function openAdminTariffsPage() { openPage('ADMIN_TARIFFS'); loadAdminTariffs(); }
   async function loadAdminTariffs() {
     try {
@@ -4997,6 +5230,12 @@
   window.switchTab = switchTab;
   window.togglePersonMenu = togglePersonMenu;
   window.toggleFaq = toggleFaq;
+  window.landingShowcaseGo = landingShowcaseGo;
+  window.landingShowcaseStep = landingShowcaseStep;
+  window.pauseLandingShowcase = pauseLandingShowcase;
+  window.startLandingShowcaseAutoplay = startLandingShowcaseAutoplay;
+  window.landingShowcaseTouchStart = landingShowcaseTouchStart;
+  window.landingShowcaseTouchEnd = landingShowcaseTouchEnd;
   window.toggleAdminRole = toggleAdminRole;
   window.openTermsPage = openTermsPage;
   window.openPrivacyPage = openPrivacyPage;
@@ -5087,6 +5326,10 @@
   window.onBugReportAttachmentPicked = onBugReportAttachmentPicked;
   window.submitBugReport = submitBugReport;
   window.openAdminTariffsPage = openAdminTariffsPage;
+  window.openAdminCategoryIconsPage = openAdminCategoryIconsPage;
+  window.onCategoryIconFilesPicked = onCategoryIconFilesPicked;
+  window.uploadCategoryIconFiles = uploadCategoryIconFiles;
+  window.toggleAdminCategoryIcon = toggleAdminCategoryIcon;
   window.setAdminSupportFilter = setAdminSupportFilter;
   window.setAdminSupportTypeFilter = setAdminSupportTypeFilter;
   window.openAdminSupportThread = openAdminSupportThread;

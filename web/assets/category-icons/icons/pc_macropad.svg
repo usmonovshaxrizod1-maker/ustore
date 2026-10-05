@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="12" y="12" width="40" height="40" rx="5" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M19 19h9v9h-9zM36 19h9v9h-9zM19 36h9v9h-9zM36 36h9v9h-9z" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="32" y="59" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">MACRO</text>
+</svg>

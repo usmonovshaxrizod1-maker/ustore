@@ -2178,7 +2178,7 @@ input, select, textarea { max-width: 100%; min-width: 0; }
 .fc-section-icon{width:2.15rem;height:2.15rem;border-radius:.7rem;background:#eff6ff;color:#2563eb;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .fc-trash-sheet{max-width:30rem}.fc-trash-subtitle{font-size:.58rem;color:#94a3b8;margin-top:.08rem}.fc-trash-body{display:flex;flex-direction:column;gap:.65rem;padding-bottom:5.5rem}.fc-trash-search{height:2.75rem;display:grid;grid-template-columns:1.25rem 1fr;align-items:center;gap:.4rem;border:1px solid #dbe4ef;border-radius:.85rem;background:#fbfdff;padding:0 .7rem;color:#94a3b8}.fc-trash-search input{border:0!important;background:transparent!important;outline:0!important;height:100%;font-size:.7rem;color:#1e293b}.fc-trash-hint{font-size:.58rem;color:#64748b;line-height:1.4}.fc-trash-list{display:flex;flex-direction:column;gap:.55rem}.fc-trash-card{display:grid;grid-template-columns:2.25rem minmax(0,1fr) auto;align-items:center;gap:.65rem;border:1px solid #e2e8f0;border-radius:1rem;background:#fff;padding:.72rem .75rem;box-shadow:0 2px 10px rgba(15,23,42,.035);user-select:none;-webkit-user-select:none;touch-action:pan-y}.fc-trash-card.is-selecting{cursor:pointer}.fc-trash-card.is-selected{border-color:#60a5fa;background:#eff6ff;box-shadow:0 0 0 1px rgba(37,99,235,.08)}.fc-trash-card-icon{width:2.25rem;height:2.25rem;border-radius:.7rem;background:#f1f5f9;color:#64748b;display:flex;align-items:center;justify-content:center}.fc-trash-card.is-selected .fc-trash-card-icon{background:#dbeafe;color:#2563eb}.fc-trash-card-main{min-width:0;display:flex;flex-direction:column;gap:.16rem}.fc-trash-card-main b{font-size:.7rem;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fc-trash-card-main small{font-size:.55rem;color:#94a3b8;line-height:1.35}.fc-trash-hold-hint{color:#cbd5e1}.fc-trash-actions{position:absolute;left:.75rem;right:.75rem;bottom:calc(.75rem + env(safe-area-inset-bottom));z-index:12;display:flex;align-items:center;gap:.45rem;padding:.5rem;border-radius:1rem;background:rgba(255,255,255,.98);color:#334155;border:1px solid #dbe4ef;box-shadow:0 14px 34px rgba(15,23,42,.28)}.fc-trash-actions>span{margin-right:auto;min-width:2rem;height:2rem;border-radius:.65rem;background:#eff6ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:850}.fc-trash-actions button{width:2.35rem;height:2.35rem;border-radius:.75rem;background:#f8fafc;border:1px solid #e2e8f0;color:#475569;display:flex;align-items:center;justify-content:center}.fc-trash-actions button.is-danger{background:#fff1f2;border-color:#fecdd3;color:#dc2626}.fc-trash-actions button:disabled{opacity:.35}
 
-.fc-billz-page{--billz-border:#dbe4ef}.fc-billz-tabs{padding:.28rem;background:#f1f5f9;border-radius:.9rem;gap:.2rem}.fc-billz-tabs .fc-tab{flex:1;justify-content:center;border-radius:.68rem;padding:.58rem .4rem;font-size:.65rem;background:transparent;color:#64748b}.fc-billz-tabs .fc-tab.fc-tab-active{background:#fff;color:#2563eb;box-shadow:0 2px 8px rgba(15,23,42,.08)}.fc-billz-control{min-height:2.7rem;border:1px solid var(--billz-border);border-radius:.82rem;background:#fbfdff;padding:0 .75rem;font-size:.7rem;color:#334155;outline:none}.fc-billz-control:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(59,130,246,.08)}.fc-billz-info{width:100%;min-height:2.65rem;display:flex;align-items:center;justify-content:center;gap:.4rem;border:1px solid #bfdbfe;border-radius:.82rem;background:#eff6ff;color:#1d4ed8;font-size:.66rem;font-weight:800}.fc-billz-product-card{border-color:var(--billz-border)!important;border-radius:1rem!important;padding:.8rem!important;box-shadow:0 2px 10px rgba(15,23,42,.025)!important}.fc-billz-product-card:has(.fc-billz-check:checked){border-color:#93c5fd!important;background:#f8fbff}.fc-billz-check{appearance:none;-webkit-appearance:none;width:1.3rem;height:1.3rem;border:1.5px solid #94a3b8;border-radius:.38rem;background:#fff;display:grid;place-items:center;flex-shrink:0}.fc-billz-check:checked{background:#2563eb;border-color:#2563eb}.fc-billz-check:checked::after{content:'✓';color:#fff;font-size:.78rem;line-height:1;font-weight:900}
+.fc-billz-page{--billz-border:#dbe4ef}.fc-billz-tabs{padding:.28rem;background:#f1f5f9;border-radius:.9rem;gap:.2rem}.fc-billz-tabs .fc-tab{flex:1;justify-content:center;border-radius:.68rem;padding:.58rem .4rem;font-size:.65rem;background:transparent;color:#64748b}.fc-billz-tabs .fc-tab.fc-tab-active{background:#fff;color:#2563eb;box-shadow:0 2px 8px rgba(15,23,42,.08)}.fc-billz-control{min-height:2.7rem;border:1px solid var(--billz-border);border-radius:.82rem;background:#fbfdff;padding:0 .75rem;font-size:.7rem;color:#334155;outline:none}.fc-billz-control:focus{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(59,130,246,.08)}.fc-billz-info{width:100%;min-height:2.65rem;display:flex;align-items:center;justify-content:center;gap:.4rem;border:1px solid #bfdbfe;border-radius:.82rem;background:#eff6ff;color:#1d4ed8;font-size:.66rem;font-weight:800}.fc-billz-product-card{border-color:var(--billz-border)!important;border-radius:1rem!important;padding:.8rem!important;box-shadow:0 2px 10px rgba(15,23,42,.025)!important}.fc-billz-product-card:has(.fc-billz-check:checked){border-color:#93c5fd!important;background:#f8fbff}.fc-billz-check{appearance:none;-webkit-appearance:none;width:1.3rem;height:1.3rem;border:1.5px solid #94a3b8;border-radius:.38rem;background:#fff;display:grid;place-items:center;flex-shrink:0}.fc-billz-check:checked{background:#2563eb;border-color:#2563eb}.fc-billz-check:checked::after{content:'';width:.78rem;height:.78rem;background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")}
 
 .fc-order-note{display:flex;align-items:flex-start;gap:.5rem;padding:.65rem .7rem;border-radius:.85rem;font-size:.62rem;line-height:1.45}.fc-order-note svg{flex-shrink:0;margin-top:.05rem}.fc-order-note.is-warning{border:1px solid #fde68a;background:#fffbeb;color:#92400e}.fc-order-note.is-info{border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af}
 
@@ -5651,12 +5651,28 @@ body.fc-admin-mode .fc-theme-card-v2.is-selected{border-color:color-mix(in srgb,
 
 /* Orders: one obvious compact status control left of calendar in both modes. */
 .fc-orders-filter-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%}
+.fc-orders-status-filter{position:relative;min-width:0;flex:1;max-width:250px}
+.fc-orders-status-popover{position:relative;width:100%}
+.fc-orders-status-popover>summary{list-style:none}.fc-orders-status-popover>summary::-webkit-details-marker{display:none}
+.fc-orders-status-summary{height:46px;display:grid;grid-template-columns:28px minmax(0,1fr) 16px;align-items:center;gap:9px;padding:0 12px;border:1px solid var(--ustore-border,#e4e9f0);border-radius:13px;background:var(--ustore-card-bg,#fff);color:var(--ustore-secondary-text,#667085);box-shadow:0 2px 8px rgba(16,24,40,.035);cursor:pointer;user-select:none;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}
+.fc-orders-status-summary:hover{border-color:color-mix(in srgb,var(--ustore-primary) 28%,var(--ustore-border));background:color-mix(in srgb,var(--ustore-primary) 2.5%,var(--ustore-card-bg))}
+.fc-orders-status-popover.is-active .fc-orders-status-summary,.fc-orders-status-popover[open] .fc-orders-status-summary{border-color:color-mix(in srgb,var(--ustore-primary) 42%,var(--ustore-border));background:color-mix(in srgb,var(--ustore-primary) 6%,var(--ustore-card-bg));box-shadow:0 0 0 3px color-mix(in srgb,var(--ustore-primary) 8%,transparent),0 7px 18px rgba(15,23,42,.07)}
+.fc-orders-status-summary-icon{width:28px;height:28px;display:grid;place-items:center;border-radius:9px;background:color-mix(in srgb,var(--ustore-primary) 9%,var(--ustore-card-bg));color:var(--ustore-primary)}
+.fc-orders-status-summary-copy{min-width:0;display:flex;flex-direction:column;gap:1px;line-height:1.08}.fc-orders-status-summary-copy small{font-size:9px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--ustore-muted-text,#98a2b3)}.fc-orders-status-summary-copy b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--ustore-text,#101828)}
+.fc-orders-status-popover[open] .fc-orders-status-chevron{transform:rotate(180deg)}.fc-orders-status-chevron{transition:transform .16s ease}
+.fc-orders-status-menu{position:absolute;z-index:90;top:calc(100% + 8px);left:0;width:min(286px,calc(100vw - 32px));padding:8px;border:1px solid color-mix(in srgb,var(--ustore-border) 84%,transparent);border-radius:16px;background:var(--ustore-card-bg,#fff);box-shadow:0 18px 45px rgba(15,23,42,.16),0 3px 10px rgba(15,23,42,.06);animation:fcOrdersStatusMenuIn .14s ease-out both}
+@keyframes fcOrdersStatusMenuIn{from{opacity:0;transform:translateY(-5px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+.fc-orders-status-menu-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:5px 6px 8px;border-bottom:1px solid color-mix(in srgb,var(--ustore-border) 72%,transparent)}.fc-orders-status-menu-head span{font-size:12px;font-weight:800;color:var(--ustore-text,#101828)}.fc-orders-status-menu-head small{font-size:9px;color:var(--ustore-muted-text,#98a2b3)}
+.fc-orders-status-menu-options{display:grid;gap:3px;padding-top:6px}.fc-orders-status-option{width:100%;min-height:40px;display:grid;grid-template-columns:28px minmax(0,1fr) 18px;align-items:center;gap:9px;padding:5px 7px;border:0;border-radius:11px;background:transparent;color:var(--ustore-text,#101828);text-align:left;font-size:12px;font-weight:700;cursor:pointer;transition:background .12s ease,color .12s ease}.fc-orders-status-option:hover{background:color-mix(in srgb,var(--ustore-primary) 6%,var(--ustore-card-bg))}.fc-orders-status-option.is-selected{background:color-mix(in srgb,var(--ustore-primary) 9%,var(--ustore-card-bg));color:var(--ustore-primary)}
+.fc-orders-status-option-icon{width:28px;height:28px;display:grid;place-items:center;border-radius:9px;background:var(--ustore-soft-bg,#f5f7fa);color:var(--ustore-secondary-text,#667085)}.fc-orders-status-option.is-selected .fc-orders-status-option-icon{background:color-mix(in srgb,var(--ustore-primary) 12%,var(--ustore-card-bg));color:var(--ustore-primary)}.fc-orders-status-option-check{opacity:0;color:var(--ustore-primary)}.fc-orders-status-option.is-selected .fc-orders-status-option-check{opacity:1}
+.fc-orders-status-native{display:none!important}
 .fc-orders-status-select{position:relative;min-width:0;flex:1;max-width:250px;height:46px;display:grid;grid-template-columns:18px minmax(0,1fr) 16px;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--ustore-border,#e4e9f0);border-radius:13px;background:var(--ustore-card-bg,#fff);color:var(--ustore-secondary-text,#667085);box-shadow:0 2px 8px rgba(16,24,40,.035)}
 .fc-orders-status-select.is-active{border-color:color-mix(in srgb,var(--ustore-primary) 36%,var(--ustore-border));background:color-mix(in srgb,var(--ustore-primary) 7%,var(--ustore-card-bg));color:var(--ustore-primary)}
 .fc-orders-status-select>svg:first-child{color:var(--ustore-primary);pointer-events:none}.fc-orders-status-chevron{color:var(--ustore-muted-text);pointer-events:none}
 .fc-orders-status-select select{appearance:none;-webkit-appearance:none;width:100%;height:100%;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;outline:0;font-size:13px;font-weight:750;color:var(--ustore-text)!important;cursor:pointer;min-width:0}
 .fc-orders-status-select select:focus{outline:0;box-shadow:none!important}.fc-orders-calendar-trigger{flex:0 0 46px;width:46px;height:46px;border-radius:13px}
 .fc-admin-orders-filter-card{display:flex;flex-direction:column;gap:10px}
+@media(max-width:767px){.fc-orders-status-popover{display:none}.fc-orders-status-native{display:grid!important}.fc-orders-status-filter{max-width:none}}
 @media(max-width:360px){.fc-orders-status-select{max-width:none}.fc-orders-status-select select{font-size:12px}}
 
 /* =========================================================
@@ -6179,14 +6195,14 @@ body.ustore-browser-mode .fc-initial-loader{opacity:0;animation:fc-reveal-initia
 .fc-store-info-card>button:last-child{border-bottom:0}.fc-store-info-card>button>svg:first-child{width:1.1rem;height:1.1rem;color:var(--ustore-primary,#2563eb)}.fc-store-info-card>button>svg:last-child{width:1rem;height:1rem;color:var(--ustore-muted-text,#94a3b8)}
 .fc-store-info-brand b{font-size:1rem}.fc-store-info-brand p{margin:.2rem 0 0;color:var(--ustore-muted-text,#94a3b8);font-size:.73rem;line-height:1.45}
 .fc-store-info-facts{display:grid;gap:.5rem;margin:.75rem 0}.fc-store-info-facts p{display:flex;align-items:flex-start;gap:.55rem;margin:0;color:var(--ustore-secondary-text,#64748b);font-size:.75rem;line-height:1.45}.fc-store-info-facts svg{width:1rem;height:1rem;margin-top:.08rem;flex:0 0 auto;color:var(--ustore-primary,#2563eb)}
-.fc-store-info-actions{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}.fc-store-info-action{min-height:2.35rem;display:inline-flex;align-items:center;gap:.4rem;padding:0 .7rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.75rem;background:var(--ustore-input-bg,#f8fafc);color:var(--ustore-secondary-text,#64748b);font-size:.7rem;font-weight:800;text-decoration:none}.fc-store-info-action svg{width:1rem;height:1rem;color:var(--ustore-primary,#2563eb)}
+.fc-store-info-actions{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}.fc-store-info-action{min-height:2.35rem;display:inline-flex;align-items:center;gap:.4rem;padding:0 .7rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.75rem;background:var(--ustore-input-bg,#f8fafc);color:var(--ustore-secondary-text,#64748b);font:inherit;font-size:.7rem;font-weight:800;text-decoration:none;cursor:pointer}.fc-store-info-action svg{width:1rem;height:1rem;color:var(--ustore-primary,#2563eb)}
 .fc-store-info-social{width:2.35rem;height:2.35rem;display:grid;place-items:center;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.75rem;background:var(--ustore-input-bg,#f8fafc);color:var(--ustore-primary,#2563eb);text-decoration:none}.fc-store-info-social svg{width:1.05rem;height:1.05rem}
 .fc-storefront-footer-attribution{display:grid;justify-items:center;gap:.35rem;margin-top:.8rem;padding:.8rem .4rem 0;border-top:0;color:var(--ustore-muted-text,#94a3b8);font-size:.68rem}.fc-storefront-footer-attribution>span{display:flex;gap:.45rem;align-items:center}.fc-storefront-footer-attribution button{border:0;background:transparent;color:inherit;text-decoration:underline;text-underline-offset:2px}.fc-storefront-footer-attribution a{color:inherit;text-decoration:none}
 .fc-store-info-detail,.fc-store-info-prose{display:grid;gap:.8rem}.fc-store-info-detail>section,.fc-store-info-prose,.fc-store-info-detail-row{border:1px solid var(--ustore-border,#dbe4ef);border-radius:1rem;background:var(--ustore-card-bg,#fff)}.fc-store-info-detail>section{padding:1rem}.fc-store-info-detail>section h3{margin:0 0 .7rem;font-size:.9rem;font-weight:900}.fc-store-info-detail-row{display:grid;grid-template-columns:2rem minmax(0,1fr);gap:.65rem;padding:.85rem;margin:.5rem 0}.fc-store-info-detail-row>svg{width:1.15rem;height:1.15rem;color:var(--ustore-primary,#2563eb)}.fc-store-info-detail-row b{display:block;font-size:.76rem}.fc-store-info-detail-row p,.fc-store-info-prose p{margin:.15rem 0 0;color:var(--ustore-secondary-text,#64748b);font-size:.74rem;line-height:1.6;white-space:pre-wrap}.fc-store-info-prose{padding:1rem}.fc-store-info-callout{display:flex;gap:.6rem;align-items:center;padding:.8rem;border-radius:.8rem;background:var(--ustore-input-bg,#f8fafc)}.fc-store-info-callout svg{width:1.1rem;height:1.1rem;color:var(--ustore-primary,#2563eb)}
 @media(min-width:1024px){body.ustore-browser-mode .fc-storefront-footer-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}body.ustore-browser-mode .fc-store-info-card{padding:1.15rem}body.ustore-browser-mode .fc-storefront-footer-attribution{margin-top:1rem}}
 
 /* Checkout 3-step flow */
-.fc-checkout-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35rem;padding:.7rem 1rem .2rem}.fc-checkout-progress>div{display:grid;justify-items:center;gap:.25rem;color:var(--ustore-muted-text,#94a3b8);font-size:.58rem;font-weight:800;text-align:center}.fc-checkout-progress span{width:1.7rem;height:1.7rem;display:grid;place-items:center;border:1px solid var(--ustore-border,#dbe4ef);border-radius:999px;background:var(--ustore-input-bg,#f8fafc)}.fc-checkout-progress span svg{width:.9rem;height:.9rem}.fc-checkout-progress .is-active{color:var(--ustore-primary,#2563eb)}.fc-checkout-progress .is-active span{border-color:color-mix(in srgb,var(--ustore-primary,#2563eb) 45%,white);background:color-mix(in srgb,var(--ustore-primary,#2563eb) 10%,white)}.fc-checkout-progress .is-done{color:#059669}.fc-checkout-progress .is-done span{border-color:#a7f3d0;background:#ecfdf5}.fc-checkout-resume-notice{display:flex;align-items:flex-start;gap:.5rem;margin:.55rem 1rem 0;padding:.65rem .75rem;border:1px solid #fde68a;border-radius:.75rem;background:#fffbeb;color:#92400e;font-size:.62rem;line-height:1.45}.fc-checkout-resume-notice svg{width:1rem;height:1rem;flex:0 0 auto}.fc-checkout-step-actions{display:flex;gap:.55rem}.fc-checkout-step-actions>*{flex:1}.fc-checkout-back{min-height:3rem;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.85rem;background:var(--ustore-card-bg,#fff);color:var(--ustore-secondary-text,#64748b);font-weight:850}.fc-checkout-back svg{width:1rem;height:1rem}
+.fc-checkout-progress{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.35rem;padding:.7rem 1rem .2rem}.fc-checkout-progress>div{display:grid;justify-items:center;gap:.25rem;color:var(--ustore-muted-text,#94a3b8);font-size:.58rem;font-weight:800;text-align:center}.fc-checkout-progress span{width:1.7rem;height:1.7rem;display:grid;place-items:center;border:1px solid var(--ustore-border,#dbe4ef);border-radius:999px;background:var(--ustore-input-bg,#f8fafc)}.fc-checkout-progress span svg{width:.9rem;height:.9rem}.fc-checkout-progress .is-active{color:var(--ustore-primary,#2563eb)}.fc-checkout-progress .is-active span{border-color:color-mix(in srgb,var(--ustore-primary,#2563eb) 45%,white);background:color-mix(in srgb,var(--ustore-primary,#2563eb) 10%,white)}.fc-checkout-progress .is-done{color:#059669}.fc-checkout-progress .is-done span{border-color:#a7f3d0;background:#ecfdf5}.fc-checkout-resume-notice{display:flex;align-items:flex-start;gap:.5rem;margin:.55rem 1rem 0;padding:.65rem .75rem;border:1px solid #fde68a;border-radius:.75rem;background:#fffbeb;color:#92400e;font-size:.62rem;line-height:1.45}.fc-checkout-resume-notice svg{width:1rem;height:1rem;flex:0 0 auto}.fc-checkout-step-actions{display:flex;gap:.55rem}.fc-checkout-step-actions>*{flex:1}.fc-checkout-back{min-height:3rem;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.85rem;background:var(--ustore-card-bg,#fff);color:var(--ustore-secondary-text,#64748b);font-weight:850}.fc-checkout-back svg{width:1rem;height:1rem}
 
 /* Readiness-driven storefront first paint. No standalone welcome screen. */
 .fc-boot-skeleton{min-height:calc(100dvh - 9rem);padding:1rem 0 2rem;display:grid;align-content:start;gap:1rem;color:var(--ustore-text,#0f172a)}
@@ -6199,6 +6215,7 @@ body.ustore-browser-mode .fc-initial-loader{opacity:0;animation:fc-reveal-initia
 @media(min-width:768px){body.ustore-browser-mode .fc-boot-skeleton-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
 .fc-footer-socials{display:inline-flex;align-items:center;gap:.45rem;flex-wrap:wrap}
+.fc-lang-flag-svg{display:block;width:24px;height:16px;border-radius:3px;box-shadow:0 0 0 1px rgba(15,23,42,.09)}
 
 /* 2026-10-04 follow-up — desktop/tablet shop polish only. Mini App/mobile stays unchanged. */
 .ustore-header-home-logo{display:inline-flex;align-items:center;justify-content:center;min-width:0;border:0;background:transparent;padding:0;border-radius:12px;pointer-events:none}
@@ -6300,3 +6317,234 @@ body.ustore-browser-mode .fc-initial-loader{opacity:0;animation:fc-reveal-initia
 @media (min-width:1220px) and (max-width:1399px){
   body.ustore-browser-mode .ustore-desktop-action span,body.ustore-browser-mode .ustore-desktop-profile span,body.ustore-browser-mode #desktop-admin-panel-btn span{display:inline!important}
 }
+
+/* 2026-10-05 task 4 — desktop/tablet profile/header layout only. */
+.fc-user-profile-lower-actions{display:flex;flex-direction:column;gap:1rem}
+@media (min-width:768px){
+  /* Every actual desktop navigation action uses the same bordered control. */
+  body.ustore-browser-mode .ustore-desktop-action,
+  body.ustore-browser-mode .ustore-desktop-profile{
+    border:1px solid var(--ustore-border);
+    background:var(--ustore-header-bg);
+  }
+  body.ustore-browser-mode .ustore-desktop-action[aria-current="page"],
+  body.ustore-browser-mode .ustore-desktop-profile[aria-current="page"],
+  body.ustore-browser-mode .ustore-desktop-nav>button[aria-current="page"]{
+    border-color:color-mix(in srgb,var(--ustore-button) 30%,var(--ustore-border));
+    background:color-mix(in srgb,var(--ustore-button) 10%,var(--ustore-header-bg));
+    color:var(--ustore-button);
+    box-shadow:0 0 0 1px color-mix(in srgb,var(--ustore-button) 8%,transparent);
+  }
+  body.ustore-browser-mode .ustore-desktop-profile[hidden]{display:none!important}
+
+  /* User profile: Favorites/Recent stay untouched; the lower actions share one 3-col grid. */
+  body.ustore-browser-mode .fc-user-profile-lower-actions{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:.85rem;
+  }
+  body.ustore-browser-mode .fc-user-profile-lower-actions>.fc-profile-menu{
+    display:contents;
+  }
+  body.ustore-browser-mode .fc-user-profile-lower-actions .fc-profile-menu-row{
+    min-width:0;
+    min-height:112px;
+    grid-template-columns:2.8rem minmax(0,1fr) auto 1rem;
+    align-content:center;
+    gap:.75rem;
+    padding:.9rem;
+    border:1px solid var(--ustore-border)!important;
+    border-radius:1rem;
+    background:var(--ustore-card-bg);
+    box-shadow:0 4px 16px rgba(15,23,42,.035);
+  }
+  body.ustore-browser-mode .fc-user-profile-lower-actions .fc-profile-menu-row:last-child{border-bottom:1px solid var(--ustore-border)!important}
+  body.ustore-browser-mode .fc-user-profile-lower-actions .fc-profile-menu-icon{width:2.8rem;height:2.8rem;border-radius:.85rem}
+  body.ustore-browser-mode .fc-user-profile-lower-actions .fc-profile-menu-subtitle{
+    white-space:normal;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    line-height:1.35;
+  }
+
+  /* Shop settings root menu in the provided desktop screenshot: 3-column cards. */
+  body.ustore-browser-mode .fc-settings-menu-list{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:.85rem;
+  }
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-profile-menu-row,
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-settings-menu-row{
+    min-width:0;
+    min-height:116px;
+    grid-template-columns:42px minmax(0,1fr) 18px;
+    grid-template-rows:auto auto;
+    align-content:center;
+    gap:6px 12px;
+    padding:14px;
+    border:1px solid var(--ustore-border)!important;
+    border-radius:14px;
+    background:var(--ustore-card-bg);
+    box-shadow:0 4px 14px rgba(16,24,40,.04);
+  }
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-profile-menu-row>.fc-profile-menu-icon,
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-settings-menu-row>.fc-settings-menu-icon{grid-column:1;grid-row:1/3}
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-profile-menu-row>.fc-profile-menu-copy,
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-settings-menu-row>.fc-settings-menu-copy{grid-column:2;grid-row:1}
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-profile-menu-row>.fc-profile-menu-badge,
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-settings-menu-row>.fc-settings-menu-status{grid-column:2;grid-row:2;justify-self:start}
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-profile-menu-row>.fc-profile-menu-chevron,
+  body.ustore-browser-mode .fc-settings-menu-list>.fc-settings-menu-row>.fc-settings-menu-chevron{grid-column:3;grid-row:1/3;align-self:center}
+  body.ustore-browser-mode .fc-settings-menu-list .fc-profile-menu-subtitle,
+  body.ustore-browser-mode .fc-settings-menu-list .fc-settings-menu-copy small{white-space:normal;line-height:1.35}
+
+  /* Nested delivery/payment selection menus use the same 3-column rhythm. */
+  body.ustore-browser-mode .fc-settings-submenu-page .fc-acquiring-integration-list,
+  body.ustore-browser-mode #fulfillment-panel>.fc-acquiring-integration-list{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:.85rem;
+  }
+  body.ustore-browser-mode .fc-settings-submenu-page .fc-acquiring-integration-card,
+  body.ustore-browser-mode #fulfillment-panel>.fc-acquiring-integration-list .fc-acquiring-integration-card{
+    min-height:104px;
+    padding:14px;
+    background:var(--ustore-card-bg);
+    border-color:var(--ustore-border);
+  }
+
+  /* Command center must use the panel's remaining height, never crop its bottom. */
+  body.ustore-browser-mode .fc-command-panel{
+    display:flex;
+    flex-direction:column;
+    max-height:calc(100dvh - 32px)!important;
+  }
+  body.ustore-browser-mode .fc-command-header{flex:0 0 auto}
+  body.ustore-browser-mode .fc-command-scroll{
+    flex:1 1 auto;
+    min-height:0;
+    max-height:none!important;
+    overflow-y:auto;
+    padding-bottom:48px!important;
+  }
+}
+
+/* 2026-10-05 TASK 7 — desktop/tablet product detail parity.
+   Browser user view keeps the existing page flow with a slightly more compact
+   media column. Admin gets the same two-column page composition without
+   removing any management controls. Mini App/mobile keeps the old sheet. */
+@media (min-width:768px){
+  body.ustore-browser-mode .fc-product-detail-layout{
+    grid-template-columns:minmax(0,38%) minmax(0,1fr);
+  }
+  body.ustore-browser-mode .fc-product-detail-layout .fc-product-gallery{
+    max-height:500px;
+  }
+
+  body.ustore-browser-mode #modal-container > .fc-product-detail-admin-shell{
+    inset:var(--ustore-header-height,64px) 0 0 0!important;
+    z-index:40!important;
+    display:block!important;
+    padding:0!important;
+    background:var(--ustore-page-bg,#f8fafc)!important;
+    overflow-y:auto;
+    overscroll-behavior:auto;
+  }
+  body.ustore-browser-mode #modal-container > .fc-product-detail-admin-shell > .fc-product-detail-admin-layout{
+    width:min(calc(100% - 3rem),1440px)!important;
+    max-width:1440px!important;
+    min-height:calc(100dvh - var(--ustore-header-height,64px));
+    max-height:none!important;
+    margin:0 auto!important;
+    padding:2rem 0 3rem!important;
+    overflow:visible!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,38%) minmax(0,1fr);
+    align-content:start;
+    align-items:start;
+    gap:1rem 2rem!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:var(--ustore-text);
+  }
+  body.ustore-browser-mode .fc-product-detail-admin-layout > :not([hidden]) ~ :not([hidden]){
+    margin-top:0!important;
+  }
+  body.ustore-browser-mode .fc-product-detail-admin-back{
+    grid-column:1/-1;
+    display:inline-flex;
+    align-items:center;
+    gap:.5rem;
+    justify-self:start;
+    padding:.6rem .8rem;
+    border:1px solid var(--ustore-border);
+    border-radius:.75rem;
+    background:var(--ustore-card-bg);
+    color:var(--ustore-text);
+    font-size:.8rem;
+    font-weight:800;
+  }
+  body.ustore-browser-mode .fc-product-detail-admin-back svg{width:1rem;height:1rem}
+  body.ustore-browser-mode .fc-product-detail-admin-layout > .fc-product-detail-media{
+    grid-column:1;
+    grid-row:2/span 12;
+    position:sticky;
+    top:1.5rem;
+    width:100%;
+    padding:1rem;
+    border:1px solid var(--ustore-border);
+    border-radius:1.15rem;
+    background:var(--ustore-card-bg);
+    box-shadow:0 5px 18px rgba(15,23,42,.04);
+  }
+  body.ustore-browser-mode .fc-product-detail-admin-layout > :not(.fc-product-detail-media):not(.fc-product-detail-admin-back){
+    grid-column:2;
+  }
+  body.ustore-browser-mode .fc-product-detail-admin-layout .fc-product-gallery{
+    max-height:500px;
+  }
+  body.ustore-browser-mode .fc-product-detail-admin-layout .fc-product-detail-info-head,
+  body.ustore-browser-mode .fc-product-detail-admin-layout .fc-product-admin-description{
+    padding:1.05rem 1.1rem!important;
+    border:1px solid var(--ustore-border)!important;
+    border-radius:1rem!important;
+    background:var(--ustore-card-bg)!important;
+    box-shadow:0 5px 18px rgba(15,23,42,.035);
+  }
+}
+
+.fc-product-detail-admin-back{display:none}
+
+/* 2026-10-05 — task 8: desktop/tablet storefront banners are intentionally
+   more compact. Mobile/Mini App keeps the original carousel dimensions. */
+@media (min-width:768px){
+  body.ustore-browser-mode .fc-banner-strip{padding-left:20%!important;padding-right:20%!important}
+  body.ustore-browser-mode .fc-banner-card{flex-basis:60%!important;transform:scale(.94)!important}
+  body.ustore-browser-mode .fc-banner-card.is-active{transform:scale(1)!important}
+  body.ustore-browser-mode .fc-banner-card.is-before,
+  body.ustore-browser-mode .fc-banner-card.is-after{transform:perspective(700px) rotateY(0deg) scale(.94)!important}
+}
+
+
+/* 2026-10-05 Task 12: two-step checkout + branded region/district pickers on every viewport. */
+.fc-checkout-custom-select{display:block;border:1px solid #d6e0eb;border-radius:.78rem;background:#fff;color:#334155;overflow:hidden;transition:border-color .12s ease,box-shadow .12s ease}
+.fc-checkout-custom-select[open]{border-color:#93c5fd;box-shadow:0 0 0 3px rgba(59,130,246,.07)}
+.fc-checkout-custom-select>summary{list-style:none;min-height:2.65rem;display:grid;grid-template-columns:1.3rem minmax(0,1fr) 1rem;align-items:center;gap:.45rem;padding:0 .72rem;cursor:pointer;color:#94a3b8;user-select:none}
+.fc-checkout-custom-select>summary::-webkit-details-marker{display:none}
+.fc-checkout-custom-select>summary [data-checkout-select-label]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#334155;font-size:.72rem;font-weight:650}
+.fc-checkout-custom-select-chevron{transition:transform .14s ease}.fc-checkout-custom-select[open] .fc-checkout-custom-select-chevron{transform:rotate(180deg)}
+.fc-checkout-native-select{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important}
+.fc-checkout-custom-select-menu{display:grid;gap:.22rem;max-height:14rem;overflow-y:auto;padding:.38rem;border-top:1px solid #e7edf5;background:#fbfdff}
+.fc-checkout-custom-select-menu button{width:100%;min-height:2.35rem;display:grid;grid-template-columns:minmax(0,1fr) 1rem;align-items:center;gap:.5rem;border:0;border-radius:.62rem;padding:.48rem .58rem;background:transparent;color:#475569;text-align:left;font-size:.68rem;font-weight:750;cursor:pointer}
+.fc-checkout-custom-select-menu button:hover{background:#eef5ff}.fc-checkout-custom-select-menu button>svg{opacity:0;color:#2563eb}.fc-checkout-custom-select-menu button.is-selected{background:#eaf2ff;color:#1d4ed8}.fc-checkout-custom-select-menu button.is-selected>svg{opacity:1}
+.fc-checkout-upload-hint{margin:.22rem 0 .48rem;color:#94a3b8;font-size:.59rem;line-height:1.45}
+.fc-checkout-upload-row{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.fc-checkout-upload-action{min-height:2.65rem;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border:1px solid #bfdbfe;border-radius:.78rem;padding:.55rem .8rem;background:#eff6ff;color:#1d4ed8;font-size:.67rem;font-weight:850;cursor:pointer;transition:transform .1s ease,border-color .12s ease,background .12s ease}
+.fc-checkout-upload-action:active{transform:scale(.98)}.fc-checkout-upload-action:hover{border-color:#93c5fd;background:#dbeafe}.fc-checkout-receipt-preview{width:4rem;height:4rem;object-fit:cover;border:1px solid #dbe4ef;border-radius:.8rem;background:#fff}
+@media(min-width:768px){.fc-checkout-custom-select-menu{max-height:16rem}.fc-checkout-upload-action{min-width:10.5rem}}
+
+/* Task 17 — packaged + platform-managed category SVGs share one visual contract. */
+.fc-category-svg{display:block;width:100%;height:100%;max-width:100%;max-height:100%;color:currentColor}

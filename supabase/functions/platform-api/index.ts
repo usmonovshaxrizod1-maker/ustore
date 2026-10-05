@@ -21,8 +21,46 @@ import { ensureTelegramAccount } from "../_shared/account-identity.ts";
 import { approveTelegramWebChallenge } from "../_shared/web-telegram-auth.ts";
 import { changeLogin, issueInitialCredentials, resetCredentialsForTelegram, setCredentialsPasswordForTelegram, resolveSession } from "../_shared/web-auth.ts";
 import { handlePlatformDomainAction } from "../_shared/shop-domains.ts";
+import { CATEGORY_ICON_IDS } from "../_shared/category-icons.ts";
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
+
+
+const CATEGORY_ICON_ALLOWED_TAGS = new Set(["svg","g","path","circle","rect","line","polyline","polygon","ellipse"]);
+const CATEGORY_ICON_ALLOWED_ATTRS = new Set([
+  "viewBox","d","fill","stroke","stroke-width","stroke-linecap","stroke-linejoin","fill-rule","clip-rule",
+  "cx","cy","r","rx","ry","x","y","x1","y1","x2","y2","points","transform","opacity","width","height"
+]);
+function sanitizeCategorySvg(raw: unknown): string {
+  let svg = String(raw || "").trim().replace(/^<\?xml[^>]*>\s*/i, "").replace(/<!--([\s\S]*?)-->/g, "");
+  if (svg.length < 20 || svg.length > 20000) throw new Error("invalid_category_svg_size");
+  if (!/^<svg\b[\s\S]*<\/svg>$/i.test(svg)) throw new Error("invalid_category_svg");
+  if (/\b(?:script|foreignObject|style|iframe|object|embed|image|a|use|symbol)\b/i.test(svg)) throw new Error("unsafe_category_svg");
+  if (/\bon[a-z]+\s*=|\b(?:href|xlink:href|style)\s*=|url\s*\(|javascript:|data:/i.test(svg)) throw new Error("unsafe_category_svg");
+  const open = svg.match(/^<svg\b([^>]*)>/i);
+  if (!open || !/\bviewBox\s*=\s*["']0\s+0\s+64\s+64["']/i.test(open[1])) throw new Error("invalid_category_svg_viewbox");
+  const tags = Array.from(svg.matchAll(/<\/?\s*([a-zA-Z][\w:-]*)\b/g)).map((m) => m[1]);
+  if (tags.some((tag) => !CATEGORY_ICON_ALLOWED_TAGS.has(tag))) throw new Error("unsafe_category_svg_tag");
+  for (const m of svg.matchAll(/\s([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*["'][^"']*["']/g)) {
+    const attr = m[1];
+    if (attr === "xmlns" || attr === "aria-hidden" || attr === "focusable") continue;
+    if (!CATEGORY_ICON_ALLOWED_ATTRS.has(attr)) throw new Error("unsafe_category_svg_attribute");
+    if ((attr === "fill" || attr === "stroke") && !/^(?:none|currentColor|inherit)$/i.test(m[0].split(/=\s*/)[1].replace(/["']/g, "").trim())) throw new Error("category_svg_color_must_use_currentcolor");
+  }
+  const inner = svg.replace(/^<svg\b[^>]*>/i, "").replace(/<\/svg>\s*$/i, "").trim();
+  if (!inner) throw new Error("invalid_category_svg");
+  return `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${inner}</svg>`;
+}
+function categoryIconId(raw: unknown): string {
+  const id = String(raw || "").trim().toLowerCase();
+  if (!/^[a-z][a-z0-9_]{1,63}$/.test(id)) throw new Error("invalid_category_icon_id");
+  return id;
+}
+function categoryIconGroup(raw: unknown): string {
+  const group = String(raw || "custom").trim().toLowerCase() || "custom";
+  if (!/^[a-z][a-z0-9_]{0,31}$/.test(group)) throw new Error("invalid_category_icon_group");
+  return group;
+}
 
 async function ensureShopSubdomain(db: any, shopId: string, name: string) {
   const { data, error } = await db.rpc("ustore_ensure_shop_subdomain", {
@@ -3243,6 +3281,57 @@ Deno.serve(async (req: Request) => {
       // ---- SaaS obuna tizimi, 1-bosqich: tariflar + to'lov ma'lumoti -------
       // Tariflar bazadan boshqariladi — kodga qattiq yozilmaydi, admin
       // Tariflar bo'limidan istalgan vaqt o'zgartira oladi.
+      case "platform_list_category_icons": {
+        requirePlatformSuperAdmin();
+        const { data, error } = await db.from("category_icon_library")
+          .select("id,group_key,name_uz,name_ru,name_en,search_terms,svg_body,is_active,sort_order,created_at,updated_at")
+          .order("group_key").order("sort_order").order("id");
+        if (error) throw error;
+        return json({ packagedCount: CATEGORY_ICON_IDS.size, icons: (data || []).map((row: any) => ({
+          id: row.id, group: row.group_key, uz: row.name_uz, ru: row.name_ru || row.name_uz, en: row.name_en || row.name_uz,
+          searchTerms: Array.isArray(row.search_terms) ? row.search_terms : [], svg: row.svg_body,
+          isActive: row.is_active === true, sortOrder: Number(row.sort_order || 0), createdAt: row.created_at, updatedAt: row.updated_at,
+        })) });
+      }
+
+      case "platform_upsert_category_icons": {
+        requirePlatformSuperAdmin();
+        const requested = Array.isArray(payload.icons) ? payload.icons.slice(0, 50) : [];
+        if (!requested.length) return json({ error: "category_icons_required" }, 400);
+        const rows: any[] = [];
+        for (let index = 0; index < requested.length; index += 1) {
+          const icon = requested[index] || {};
+          const id = categoryIconId(icon.id);
+          if (CATEGORY_ICON_IDS.has(id)) return json({ error: "packaged_category_icon_id_reserved", id }, 409);
+          const groupKey = categoryIconGroup(icon.group);
+          const nameUz = String(icon.uz || icon.nameUz || id.replace(/_/g, " ")).trim().slice(0, 120);
+          const nameRu = String(icon.ru || icon.nameRu || nameUz).trim().slice(0, 120);
+          const nameEn = String(icon.en || icon.nameEn || nameUz).trim().slice(0, 120);
+          if (!nameUz) return json({ error: "invalid_category_icon_name", id }, 400);
+          const svgBody = sanitizeCategorySvg(icon.svg);
+          const searchTerms = Array.from(new Set([id, nameUz, nameRu, nameEn, ...(Array.isArray(icon.searchTerms) ? icon.searchTerms : [])]
+            .map((x) => String(x || "").trim()).filter(Boolean).slice(0, 30)));
+          rows.push({ id, group_key: groupKey, name_uz: nameUz, name_ru: nameRu, name_en: nameEn, search_terms: searchTerms,
+            svg_body: svgBody, is_active: true, sort_order: Number.isFinite(Number(icon.sortOrder)) ? Math.trunc(Number(icon.sortOrder)) : index,
+            created_by: tgId, updated_at: new Date().toISOString() });
+        }
+        const { data, error } = await db.from("category_icon_library").upsert(rows, { onConflict: "id" })
+          .select("id,group_key,name_uz,name_ru,name_en,search_terms,svg_body,is_active,sort_order,created_at,updated_at");
+        if (error) throw error;
+        return json({ ok: true, count: data?.length || rows.length, icons: data || [] });
+      }
+
+      case "platform_set_category_icon_active": {
+        requirePlatformSuperAdmin();
+        const id = categoryIconId(payload.id);
+        if (CATEGORY_ICON_IDS.has(id)) return json({ error: "packaged_category_icon_cannot_be_disabled" }, 409);
+        const { data, error } = await db.from("category_icon_library").update({ is_active: payload.isActive === true, updated_at: new Date().toISOString() })
+          .eq("id", id).select("id,is_active").maybeSingle();
+        if (error) throw error;
+        if (!data) return json({ error: "category_icon_not_found" }, 404);
+        return json({ ok: true, id: data.id, isActive: data.is_active === true });
+      }
+
       case "platform_list_tariffs": {
         // Ochiq — istalgan tasdiqlangan Telegram foydalanuvchi (obuna
         // sahifasi buni ko'radi), faqat FAOL tariflar, token/parol yo'q.

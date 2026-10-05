@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="9" y="25" width="34" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M43 31h10M43 39h10M16 25v-8h20v8" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<path d="M48 20c0-6 4-9 8-9M44 15c0-5 3-7 6-7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="26" y="42" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">SMOKE</text>
+</svg>

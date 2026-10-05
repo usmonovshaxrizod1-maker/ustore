@@ -178,7 +178,7 @@ test('task 5 (read receipts): opening a thread (get_support_messages) marks the 
   assert.ok(readMarkIdx >= 0 && selectIdx > readMarkIdx, 'the read-receipt update must run BEFORE the select, so the response already reflects it');
   assert.match(api, /readAt: m\.read_at \|\| null,/);
 
-  assert.match(app, /\$\{mine && !isPending && !isFailed \? `<span class="fc-chat-ticks \$\{m\.readAt \? 'is-read' : ''\}">\$\{m\.readAt \? '✓✓' : '✓'\}<\/span>` : ''\}/);
+  assert.match(app, /\$\{mine && !isPending && !isFailed \? `<span class="fc-chat-ticks \$\{m\.readAt \? 'is-read' : ''\}">\$\{ICON_CHECK\}\$\{m\.readAt \? ICON_CHECK : ''\}<\/span>` : ''\}/);
 });
 
 test('task 6: sending a support message shows an immediate "Yuborilmoqda..." optimistic bubble (patched into the thread DOM in place, never a full page render — so it never yanks the reader\'s scroll position) that becomes the real message on success or a "Yuborilmadi — Qayta urinish" retry state on failure, and the fast per-thread poll (4s, get_support_messages) only runs while a thread is actually open — started on open, stopped on every exit path (back/close/switch tab)', () => {

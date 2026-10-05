@@ -36,7 +36,8 @@ test('copyExcelChatGptPrompt guards double-click, shows success/error toast, and
   assert.match(fn, /if \(btn\?\.disabled\) return;/);
   assert.match(fn, /btn\.disabled = true/);
   assert.match(fn, /ChatGPT prompti nusxalandi/);
-  assert.match(fn, /Nusxalandi ✓/);
+  assert.match(fn, /Nusxalandi/);
+  assert.doesNotMatch(fn, /Nusxalandi ✓/);
   assert.match(fn, /Promptni nusxalab bo\\'lmadi/);
 });
 

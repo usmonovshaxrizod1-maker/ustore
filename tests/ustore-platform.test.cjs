@@ -914,7 +914,8 @@ test('both status-label helpers (statusLabel, adminShopStatusLabel) have an expl
   const platformAppJs = fs.readFileSync(path.join(__dirname, '..', 'platform', 'platform-app.js'), 'utf8');
   const statusLabelStart = platformAppJs.indexOf('function statusLabel(s)');
   const statusLabelBlock = platformAppJs.slice(statusLabelStart, platformAppJs.indexOf('\n  }', statusLabelStart) + 4);
-  assert.match(statusLabelBlock, /if \(s === 'TERMINATING'\) return "🔒 O'chirilmoqda\.\.\.";/);
+  assert.match(statusLabelBlock, /if \(s === 'TERMINATING'\) return "O'chirilmoqda\.\.\.";/);
+  assert.match(platformAppJs, /if \(s === 'TERMINATING'\) return pIcon\('lock', 13\);/);
 
   const adminLabelStart = platformAppJs.indexOf('function adminShopStatusLabel(status)');
   const adminLabelBlock = platformAppJs.slice(adminLabelStart, platformAppJs.indexOf('\n  }', adminLabelStart) + 4);

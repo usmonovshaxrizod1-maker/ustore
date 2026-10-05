@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="17" y="12" width="30" height="43" rx="5" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M21 12V7h22v5M17 22h30" stroke="currentColor" stroke-width="3" />
+<text x="32" y="39" text-anchor="middle" font-size="10" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">Fe</text>
+</svg>

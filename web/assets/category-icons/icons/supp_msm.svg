@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M21 9h22l5 11v35H16V20l5-11z" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M25 9V5h14v4M19 23h26" stroke="currentColor" stroke-width="3" />
+<text x="32" y="39" text-anchor="middle" font-size="8.5" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">MSM</text>
+</svg>

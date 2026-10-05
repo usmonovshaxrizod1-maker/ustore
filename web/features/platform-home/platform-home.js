@@ -98,7 +98,7 @@ function createTariffCard(tariff, { doc, onChoosePlan }) {
     const list = doc.createElement('ul'); list.className = 'uw-platform-plan__features';
     for (const feature of tariff.features) {
       const row = doc.createElement('li');
-      const check = doc.createElement('span'); check.setAttribute('aria-hidden', 'true'); check.textContent = '✓';
+      const check = doc.createElement('span'); check.setAttribute('aria-hidden', 'true'); check.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
       const text = doc.createElement('span'); text.textContent = feature;
       row.append(check, text); list.append(row);
     }

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="19" y="11" width="26" height="44" rx="5" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M23 11V6h18v5M19 20h26" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="32" y="34" text-anchor="middle" font-size="8.5" font-family="Arial, sans-serif" font-weight="700" fill="currentColor">ISO</text>
+<path d="M24 41h16M26 46h12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+</svg>

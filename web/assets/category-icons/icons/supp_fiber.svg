@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M16 17h32l4 10-4 28H16l-4-28 4-10z" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M20 17V9h24v8" stroke="currentColor" stroke-width="3" />
+<text x="32" y="39" text-anchor="middle" font-size="6.5" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">FIBER</text>
+</svg>

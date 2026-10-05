@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="16" y="7" width="32" height="50" rx="3" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M16 20h32M16 33h32M16 46h32" stroke="currentColor" stroke-width="3" />
+<text x="32" y="16" text-anchor="middle" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">FILE</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="10" y="16" width="44" height="34" rx="5" fill="none" stroke="currentColor" stroke-width="5" />
+<circle cx="24" cy="33" r="9" fill="none" stroke="currentColor" stroke-width="3" />
+<path d="M24 24v18M15 33h18M40 26h8M40 34h8M40 42h8" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="59" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">PTZ</text>
+</svg>

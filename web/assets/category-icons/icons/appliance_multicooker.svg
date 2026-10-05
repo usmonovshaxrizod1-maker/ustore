@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="14" y="18" width="36" height="34" rx="8" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M18 18c3-8 25-8 28 0M22 28h20M24 39h16" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="46" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">MULTI</text>
+</svg>

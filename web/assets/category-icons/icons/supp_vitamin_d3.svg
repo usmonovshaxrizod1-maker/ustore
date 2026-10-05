@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="20" y="13" width="24" height="42" rx="5" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M24 13V7h16v6" stroke="currentColor" stroke-width="3" />
+<circle cx="32" cy="31" r="9" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="32" y="35" text-anchor="middle" font-size="8" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">D3</text>
+</svg>

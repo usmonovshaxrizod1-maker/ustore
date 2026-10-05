@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M14 8h36v48H14V8z" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M22 20h20M22 30h12M22 40h8M32 45l5 5 9-11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+<text x="38" y="28" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">POD</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<circle cx="28" cy="32" r="14" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M42 27h12v10H42M14 32H7M28 18V9h10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+<path d="M28 24c5 5 5 11 0 16" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="31" y="55" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">PUMP</text>
+</svg>

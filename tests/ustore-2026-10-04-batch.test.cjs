@@ -41,9 +41,11 @@ test('batch task 4: admin/user switch stays backend-authoritative and visible to
   assert.match(app, /togglePersonMenu/);
 });
 
-test('batch task 5: checkout is 3-step and server draft works in Mini App plus web', () => {
+test('batch task 5/task12: checkout is 2-step and server draft works in Mini App plus web', () => {
   assert.match(app, /fc-checkout-progress/);
   assert.match(app, /checkoutStep/);
+  assert.match(app, /\$\{\[1,2\]\.map\(\(step,index\)=>/);
+  assert.doesNotMatch(app, /\$\{\[1,2,3\]\.map\(\(step,index\)=>/);
   assert.match(app, /checkoutServerDraftAvailable/);
   assert.match(app, /tg\?\.initDataUnsafe\?\.user\?\.id/);
   assert.match(app, /save_checkout_draft/);
@@ -84,4 +86,10 @@ test('auth polish: premium shared login and BFCache back keeps the live storefro
   assert.match(features, /\.uw-auth\[data-feature="login"\] \.uw-auth-tabs \.uw-button/);
   assert.match(webApp, /if \(event\.persisted\) applyDocumentLocale\(uiLocale\)/);
   assert.doesNotMatch(webApp, /if \(event\.persisted && router\) router\.start\(\)/);
+});
+
+test('task 8: browser banners are compact only on tablet and desktop', () => {
+  assert.match(css, /@media \(min-width:768px\)\{[\s\S]*body\.ustore-browser-mode \.fc-banner-strip\{padding-left:20%!important;padding-right:20%!important\}/);
+  assert.match(css, /body\.ustore-browser-mode \.fc-banner-card\{flex-basis:60%!important;transform:scale\(\.94\)!important\}/);
+  assert.match(css, /body\.ustore-browser-mode \.fc-banner-card\.is-active\{transform:scale\(1\)!important\}/);
 });

@@ -92,3 +92,18 @@ test('desktop follow-up: web profile logout signs out host session and returns t
   assert.match(host, /runtime\.services\?\.auth\?\.signOut\?\.\(\)/);
   assert.match(webApp, /onSignedOut\(\)[\s\S]*?go\('\/profile', true\)/);
 });
+
+test('task 4: desktop/tablet header/profile/settings are unified without changing favorites/recent', () => {
+  assert.match(html, /data-desktop-tab="orders"/);
+  assert.match(html, /data-desktop-tab="profile" id="desktop-admin-panel-btn"/);
+  assert.match(html, /class="ustore-desktop-profile" data-desktop-tab="profile" id="desktop-profile-btn"/);
+  assert.match(app, /desktopProfile\.hidden = adminMode/);
+  assert.match(css, /\.ustore-desktop-action\[aria-current="page"\]/);
+  assert.match(app, /fc-user-profile-lower-actions/);
+  assert.match(css, /\.fc-user-profile-lower-actions\{[\s\S]*?grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(app, /openPage\('FAVORITES','nav-profile'\)/);
+  assert.match(app, /openPage\('RECENT','nav-profile'\)/);
+  assert.match(css, /\.fc-settings-menu-list\{[\s\S]*?grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css, /body\.ustore-browser-mode \.fc-command-panel\{[\s\S]*?display:flex;[\s\S]*?max-height:calc\(100dvh - 32px\)!important/);
+  assert.match(css, /body\.ustore-browser-mode \.fc-command-scroll\{[\s\S]*?min-height:0;[\s\S]*?max-height:none!important/);
+});

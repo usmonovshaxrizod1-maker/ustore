@@ -1,0 +1,4954 @@
+{
+  "acc_badge": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_belt": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "acc_bowtie": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_brooch": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_cane": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_card_holder": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_coinpurse": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_cufflinks": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_earmuffs": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_glasses": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "acc_gloves": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "acc_hairclip": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_hairpin": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_handfan": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_handkerchief": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_hat": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "acc_headband": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_keychain": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_lanyard": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_mask": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_moneyclip": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_passport_holder": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_pocketsquare": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_scarf": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "acc_scrunchie": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_sleep_mask": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_suspenders": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_tie": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_travel_pillow": {
+    "type": "expansion",
+    "source_zip": "USTORE_ACCESSORIES_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ACCESSORIES_COMPLETE_24/accessories-new-manifest.json"
+  },
+  "acc_umbrella": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "apparel_abaya": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_blazer": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_blouse_women": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_bomber": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_capri": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_cardigan": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_cargo_pants": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_chinos": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_coat": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "apparel_crop_top": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_denimjacket": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_dress_women": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_hoodie": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_jacket": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "apparel_jeans": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_jumpsuit": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_leatherjacket": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_leggings": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_long_sleeve": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_maternity": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_overalls": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_pants": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_parka": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_polo": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_poncho": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_raincoat": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_shirt_men": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_shorts": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_skirt": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_sleepwear": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  },
+  "apparel_sportswear": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "apparel_suit": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "apparel_sweater": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "apparel_swimwear": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "apparel_tanktop": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_thermal": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_tracksuit": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_trenchcoat": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_tshirt": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_01.zip"
+  },
+  "apparel_tunic": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_turtleneck": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_uniform": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_vest": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_windbreaker": {
+    "type": "expansion",
+    "source_zip": "USTORE_APPAREL_COMPLETE_NEW_27_ICONS.zip",
+    "source_manifest": "USTORE_NEW_APPAREL_COMPLETE_27/apparel-new-manifest.json"
+  },
+  "apparel_workwear": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  },
+  "appliance_airfryer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_breadmaker": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_coffeemachine": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_dehumidifier": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_dishdryer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_dryer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_fanheater": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_foodprocessor": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_freezer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_garmentsteamer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_juicer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_meatgrinder": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_minifridge": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_mixer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_multicooker": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_ricecooker": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_robotvacuum": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_sandwichmaker": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_sewingmachine": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_steamcleaner": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_steamer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_vacuumsealer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_wafflemaker": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_waterdispenser": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "appliance_waterheater": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_APPLIANCES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_HOME_APPLIANCES_COMPLETE_25/home-appliances-new-manifest.json"
+  },
+  "auto_accessories": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "auto_airfilter": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_battery": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "auto_brake": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_bus": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "auto_car": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "auto_carwash": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_dashboard": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "auto_engine": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_evcharger": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_exhaust": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_fuel": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "auto_headlight": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_jack": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_keys": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "auto_mirror": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_motorcycle": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "auto_oil": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "auto_oilfilter": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_parking": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_parts": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "auto_roofrack": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_seat": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_seatbelt": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_shockabsorber": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_sparkplug": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_steering": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_taillight": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_tire": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_tools": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "auto_tow": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_transmission": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_truck": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "auto_wheel": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "auto_wiper": {
+    "type": "expansion",
+    "source_zip": "USTORE_AUTOMOTIVE_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_AUTOMOTIVE_COMPLETE_23/automotive-new-manifest.json"
+  },
+  "bags_backpack": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "bags_briefcase": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_camera": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_clutch": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_cosmetic": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_crossbody": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_drawstring": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_duffel": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_garment": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_gym": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_handbag": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "bags_laptop": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_messenger": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_satchel": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_shopping": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_shoulder": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_suitcase": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_tote": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_waist": {
+    "type": "expansion",
+    "source_zip": "USTORE_BAGS_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BAGS_COMPLETE_17/bags-new-manifest.json"
+  },
+  "bags_wallet": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "beauty_blush": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_bronzer": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_brow_pencil": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_brushes": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "beauty_concealer": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_eyeliner": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_eyeshadow": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "beauty_face_gems": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_false_lashes": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_foundation": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "beauty_highlighter": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_lash_curler": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_lip_gloss": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_lip_liner": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_lipstick": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "beauty_makeup_bag": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_makeup_case": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_makeup_remover": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_mascara": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "beauty_micellar": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_mirror": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_nails": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "beauty_palette": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_perfume": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "beauty_powder": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "beauty_powder_puff": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_primer": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_setting_spray": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_sponge": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beauty_tweezers": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEAUTY_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEAUTY_COMPLETE_22/beauty-new-manifest.json"
+  },
+  "beverage_ayran": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_bubbletea": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_cappuccino": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_cocoa": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_coffee": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "beverage_energy": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "beverage_espresso": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_general": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "beverage_herbaltea": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_hotchocolate": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_icedcoffee": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_icedtea": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_juice": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "beverage_kefir": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_kombucha": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_latte": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_milk": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "beverage_powdermix": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_proteinshake": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_smoothie": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_soda": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "beverage_sportsdrink": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_syrup": {
+    "type": "expansion",
+    "source_zip": "USTORE_BEVERAGES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BEVERAGES_COMPLETE_17/beverages-new-manifest.json"
+  },
+  "beverage_tea": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "beverage_water": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "book_bookmark": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "book_diary": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "book_education": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "book_general": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "book_notebook": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "book_open": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "build_bricks": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_electrical": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_hammer": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_lighting": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_measure": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_paint": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_plumbing": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_safety": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_sanitary": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_screwdriver": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_toolbox": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "build_tools": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "care_body": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "care_bodylotion": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_bodyoil": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_comb": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_conditioner": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_cottonbuds": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_cottonpads": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_curlingiron": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_deodorant": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "care_eyecream": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_face": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "care_facewash": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_footcare": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_hair": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "care_hairdryer": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_hairmask": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_hairoil": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_handcream": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_lipbalm": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_moisturizer": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_nailclipper": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_oral": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "care_serum": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_shampoo": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_05.zip"
+  },
+  "care_shaving": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "care_soap": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "care_straightener": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_sunscreen": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_toner": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "care_wetwipes": {
+    "type": "expansion",
+    "source_zip": "USTORE_CARE_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CARE_COMPLETE_22/care-new-manifest.json"
+  },
+  "construction_blueprint": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_bulldozer": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_chisel": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_compressor": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_concretemixer": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_crane": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_excavator": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_generator": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_goggles": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_ladder": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_lasermeter": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_level": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_nailgun": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_pickaxe": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_pliers": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_respirator": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_safetyvest": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_scaffolding": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_shovel": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_trowel": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_welder": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_wheelbarrow": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "construction_wrench": {
+    "type": "expansion",
+    "source_zip": "USTORE_CONSTRUCTION_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_CONSTRUCTION_COMPLETE_23/construction-new-manifest.json"
+  },
+  "decor_backdrop": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_balloonarch": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_bubblemachine": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_bunting": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_cake_topper": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_candybar": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_chaircover": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_chairsash": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_cupcake_stand": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_dessertstand": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_fabricdrape": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_fairystringlights": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_flowerwall": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_lednumbers": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_neonsign": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_pedestal": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_photo_props": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_photobooth": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_placecard": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_seatingchart": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_smokemachine": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_table_number": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_tablecenterpiece": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_tablecloth": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "decor_welcome_sign": {
+    "type": "expansion",
+    "source_zip": "USTORE_PARTY_DECOR_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PARTY_DECOR_COMPLETE_25/party-decor-new-manifest.json"
+  },
+  "digital_activationcode": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_audio": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_cloudstorage": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_collectible": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_course": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_domain": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_ebook": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_font": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_gamekey": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_hosting": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_iconpack": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_licensekey": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_lutpreset": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_membership": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_pdf": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_psd": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_saas": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_software": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_subscription": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_template": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_themeplugin": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_vector": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_video": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_webinar": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "digital_zip": {
+    "type": "expansion",
+    "source_zip": "USTORE_DIGITAL_PRODUCTS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_DIGITAL_PRODUCTS_COMPLETE_25/digital-products-new-manifest.json"
+  },
+  "electrical_cable": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_clampmeter": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_contactor": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_dimmer": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_distributionbox": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_emergency_exit": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_floodlight": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_fuse": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_generator": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_inverter": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_ledbulb": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_ledstrip": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_mcb": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_multimeter": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_rcd": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_relay": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_socket": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_solarpanel": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_spd": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_spotlight": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_switch": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_terminalblock": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_tracklight": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_voltage_stabilizer": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electrical_walllamp": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_ELECTRICAL_LIGHTING_COMPLETE_25/electrical-lighting-new-manifest.json"
+  },
+  "electronics_camera": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_charger": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_components": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_console": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_desktop": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_doorbell": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_drone": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_earbuds": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_ereader": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_extension": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_flashdrive": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_gamecontroller": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_hdd": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_hdmicable": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_headphones": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_keyboard": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_laptop": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_lighting": {
+    "type": "final_duplicate_fix",
+    "reason": "differentiated from build_lighting; smart-light variant"
+  },
+  "electronics_microphone": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_monitor": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_mouse": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_multimeter": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_phone": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_powerbank": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_printer": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_projector": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_ram": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_router": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_scanner": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_sdcard": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_securitycamera": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_smarthub": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_smartwatch": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_soldering": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_speaker": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_ssd": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_storage": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_tablet": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_thermostat": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_tv": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_ups": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_usbcable": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_video": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "electronics_vr": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "electronics_webcam": {
+    "type": "expansion",
+    "source_zip": "USTORE_ELECTRONICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_ELECTRONICS_COMPLETE_25/electronics-new-manifest.json"
+  },
+  "fitness_abwheel": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_ankleweights": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_barbell": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "fitness_battlerope": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_belt": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "fitness_bench": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "fitness_box": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_cablemachine": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_chalk": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_cones": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_dipstation": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_dumbbell": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "fitness_elliptical": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_foamroller": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_gripper": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_jump_rope": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "fitness_kettlebell": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_medicineball": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_pullupbar": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_pushupbars": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_resistanceband": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "fitness_rower": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_smithmachine": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_speedladder": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_spinbike": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_stepper": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_supplement_bcaa": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_supplement_collagen": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_supplement_creatine": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_supplement_eaa": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_supplement_fatburner": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_supplement_gainer": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_supplement_glutamine": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_supplement_isotonic": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_supplement_preworkout": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_supplement_protein": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_SUPPLEMENTS_10_ICONS.zip",
+    "source_manifest": "USTORE_FITNESS_SUPPLEMENTS_10/fitness-supplements-manifest.json"
+  },
+  "fitness_swissball": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_treadmill": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "fitness_weightplate": {
+    "type": "expansion",
+    "source_zip": "USTORE_FITNESS_COMPLETE_NEW_22_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FITNESS_COMPLETE_22/fitness-new-manifest.json"
+  },
+  "fitness_yogamat": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "food_bakery": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_bread": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_burger": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_cake": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_candy": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_cereal": {
+    "type": "final_collision_replacement",
+    "reason": "replaced duplicate expansion ID/semantics"
+  },
+  "food_cheese": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_chocolate": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_citrus": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_croissant": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_dairy": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_donut": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_egg": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_eggs": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_fastfood": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_fish": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_fries": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_fruit": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_grains": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_honey": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_hotdog": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_icecream": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_kebab": {
+    "type": "final_collision_replacement",
+    "reason": "replaced duplicate expansion ID/semantics"
+  },
+  "food_meat": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_noodles": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_pasta": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_pizza": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_preserves": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_readymeal": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_rice": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_sandwich": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_sausage": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_seafood": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_spicy": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_steak": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_sushi": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_sweets": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_vegetables": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "food_wrap": {
+    "type": "expansion",
+    "source_zip": "USTORE_FOOD_COMPLETE_NEW_24_ICONS.zip",
+    "source_manifest": "USTORE_NEW_FOOD_COMPLETE_24/food-new-manifest.json"
+  },
+  "food_yogurt": {
+    "type": "final_collision_replacement",
+    "reason": "replaced duplicate expansion ID/semantics"
+  },
+  "furniture_barstool": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_beanbag": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_bench": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_chest": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_coatrack": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_console": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_displaycabinet": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_filingcabinet": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_foldingchair": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_gamingchair": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_kitchenisland": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_mattressbase": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_nestingtables": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_nightstand": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_officechair": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_ottoman": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_recliner": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_rockingchair": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_roomdivider": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_shoecabinet": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_shoerack": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_sideboard": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_tvstand": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_vanity": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "furniture_wallunit": {
+    "type": "expansion",
+    "source_zip": "USTORE_FURNITURE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_FURNITURE_COMPLETE_25/furniture-new-manifest.json"
+  },
+  "garden_birdhouse": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_compost": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_fence": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_fertilizer": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "garden_flower": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "garden_flowerpot": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_gloves": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_greenhouse": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_grill": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "garden_hangingplanter": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_hedgetrimmer": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_irrigation": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "garden_lawnmower": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_leaf": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "garden_leafblower": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_light": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_mulch": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_pest": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "garden_plant": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "garden_pruningshears": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_raisedbed": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_rake": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_seeds": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "garden_seedtray": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_soil": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "garden_sprinkler": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "garden_tools": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "garden_tractor": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "garden_tree": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_10_30_ICONS.zip"
+  },
+  "garden_wateringcan": {
+    "type": "expansion",
+    "source_zip": "USTORE_GARDEN_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GARDEN_COMPLETE_18/garden-new-manifest.json"
+  },
+  "gift_anniversary": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_babyshower": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_balloon": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_birthday": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_bouquet": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_candle": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_celebration": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_chocolates": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_confetti": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_frame": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_general": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_graduation": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_holidaystocking": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_jewelry": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_love": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_magic": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_mug": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_musicbox": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_newyear": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_partyhat": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_photoalbum": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_pinata": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_plant": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_premium": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_ribbon": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_star": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_teddy": {
+    "type": "expansion",
+    "source_zip": "USTORE_GIFTS_PARTY_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_GIFTS_PARTY_COMPLETE_18/gifts-party-new-manifest.json"
+  },
+  "gift_theater": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_ticket": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "gift_wedding": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "health_bandage": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_capsules": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_crutches": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_dental": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_ecg": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_eyecare": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "health_firstaid": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "health_gloves": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_glucometer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_hearingaid": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_hotwaterbag": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_icepack": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_inhaler": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_mask": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_massagegun": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_medicinebottle": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_nebulizer": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_orthopedic": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "health_oximeter": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_pillbox": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_pills": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_plaster": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_rehab": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "health_scale": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_stethoscope": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_syringe": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "health_thermometer": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "health_tonometer": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "health_vitamins": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "health_wheelchair": {
+    "type": "expansion",
+    "source_zip": "USTORE_HEALTH_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HEALTH_COMPLETE_23/health-new-manifest.json"
+  },
+  "hobby_archery": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_billiards": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_binoculars": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_bowling": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_camera": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_camping": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_chess": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_crochet": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_darts": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_dice": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_drums": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_embroidery": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_fishing": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_flute": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_gamepad": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_guitar": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "hobby_hiking": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_kayak": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_knitting": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_modelbuilding": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_music": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_origami": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_piano": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_pottery": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_puzzle": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_rc_car": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_saxophone": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_scrapbooking": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_sewing": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_skiing": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_snowboard": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_surfing": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_tabletennis": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "hobby_telescope": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "hobby_violin": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOBBY_COMPLETE_NEW_23_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOBBY_COMPLETE_23/hobby-new-manifest.json"
+  },
+  "home_airconditioner": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_airpurifier": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_bath": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_bed": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "home_bedding": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_blender": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_bookshelf": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_bottle": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_ceilinglight": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_chair": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "home_cleaner": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_cleaning": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_clock": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_coffee": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_curtains": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_detergent": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_dishes": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_dishwasher": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_door": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_dresser": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_fan": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_heater": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_humidifier": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_iron": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_kettle": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_kitchen": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_lamp": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_laundrybasket": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_microwave": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_mirror": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_oven": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_refrigerator": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_rug": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_shower": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_sink": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_soap": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_sofa": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "home_storage": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "home_stove": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_table": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "home_toaster": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_trashbin": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_vacuum": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_wardrobe": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "home_washingmachine": {
+    "type": "expansion",
+    "source_zip": "USTORE_HOME_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_HOME_COMPLETE_25/home-new-manifest.json"
+  },
+  "jewel_anklet": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_beads": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_bodychain": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_bracelet": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "jewel_brooch": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_chain": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_charm": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_crown": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_cufflinks": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_earrings": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "jewel_engagement": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_hairpin": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_jewelrybox": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_locket": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_necklace": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "jewel_nose_ring": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_pendant": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_piercing": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_prayer_beads": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_ring": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "jewel_signet": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_smartwatch": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "jewel_tiara": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_toe_ring": {
+    "type": "expansion",
+    "source_zip": "USTORE_JEWELRY_COMPLETE_NEW_19_ICONS.zip",
+    "source_manifest": "USTORE_NEW_JEWELRY_COMPLETE_19/jewelry-new-manifest.json"
+  },
+  "jewel_watch": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_07_30_ICONS.zip"
+  },
+  "kids_art": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  },
+  "kids_baby": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_baby_bath": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_baby_monitor": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_baby_towel": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_babycarrier": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_babyfood": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_bib": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_bicycle": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_blocks": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_boardgames": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_books": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  },
+  "kids_bottle": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_boys": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_car_seat": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_chess": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_clothes": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_cradle": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_crib": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_diaper": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_doll": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_educational": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_family": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_feeding": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_girls": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_helmet": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_highchair": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_lunchbox": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_pacifier": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_playpen": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_puzzle": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_rattle": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_robot": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "kids_school": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  },
+  "kids_scooter": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_shoes": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_sippy_cup": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_sling": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_socks": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_space": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "kids_stroller": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_teddybear": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_teether": {
+    "type": "expansion",
+    "source_zip": "USTORE_KIDS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_NEW_KIDS_COMPLETE_25/kids-new-manifest.json"
+  },
+  "kids_toycar": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_08_30_ICONS.zip"
+  },
+  "kids_train": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_09_30_ICONS.zip"
+  },
+  "logistics_3pl": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_barcode": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_bubblewrap": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_cod": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_coldchain": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_forklift": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_fragile": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_handtruck": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_inventoryscan": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_keepdry": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_mailerbag": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_packingtape": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_pallet": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_pod": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_returns": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_route": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_shelfbin": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_shippingbox": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_shippinglabel": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_sorting": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_stretchfilm": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_tapedispenser": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_thissideup": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_tracking": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "logistics_warehouse": {
+    "type": "expansion",
+    "source_zip": "USTORE_PACKAGING_LOGISTICS_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PACKAGING_LOGISTICS_COMPLETE_25/packaging-logistics-new-manifest.json"
+  },
+  "mobile_bikeholder": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_camera_lensprotector": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_cardreader": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_carholder": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_case": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_coolingfan": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_dock": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_esim": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_gamecontroller": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_gimbal": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_lanyard": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_lavalier": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_magsafe": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_popgrip": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_ringholder": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_screenprotector": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_selfiestick": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_sim": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_stylus": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_tripod": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_usbadapter": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_vrlens": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_walletcase": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_waterproofpouch": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "mobile_wriststrap": {
+    "type": "expansion",
+    "source_zip": "USTORE_MOBILE_ACCESSORIES_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_MOBILE_ACCESSORIES_COMPLETE_25/mobile-accessories-new-manifest.json"
+  },
+  "pc_capturecard": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_case": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_cpu": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_cpucooler": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_dockingstation": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_flightstick": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_gpu": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_kvmswitch": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_laptopstand": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_liquidcooler": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_macropad": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_mechanicalswitch": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_monitorarm": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_motherboard": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_mousepad": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_numpad": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_psu": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_racingwheel": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_rgbcontroller": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_soundcard": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_ssdenclosure": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_streamdeck": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_thermalpaste": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_usbhub": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pc_wifiadapter": {
+    "type": "expansion",
+    "source_zip": "USTORE_COMPUTER_GAMING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_COMPUTER_GAMING_COMPLETE_25/computer-gaming-new-manifest.json"
+  },
+  "pet_bed": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_bird": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_bowl": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_brush": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_cage": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_carrier": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_cat": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_collar": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_dog": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_farm": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_fish": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_food": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_fountain": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_frog": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_harness": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_horse": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_kennel": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_largeanimal": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_leash": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_litterbox": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_nailclipper": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_otter": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_paw": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_reptile": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_rope_toy": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_scratcher": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_shampoo": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_spider": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "pet_toyball": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "pet_training_whistle": {
+    "type": "expansion",
+    "source_zip": "USTORE_PETS_COMPLETE_NEW_18_ICONS.zip",
+    "source_manifest": "USTORE_NEW_PETS_COMPLETE_18/pets-new-manifest.json"
+  },
+  "plumbing_ballvalve": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_basin": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_bidet": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_boosterpump": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_checkvalve": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_coupling": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_elbow": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_expansiontank": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_faucet": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_floordrain": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_handshower": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_kitchensink": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_manifold": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_pexpipe": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_pipewrench": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_pprpipe": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_pressure_reducer": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_pump": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_pvcpipe": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_showerhead": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_siphon": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_tee": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_toilet": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_urinal": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "plumbing_watermeter": {
+    "type": "expansion",
+    "source_zip": "USTORE_PLUMBING_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_PLUMBING_COMPLETE_25/plumbing-new-manifest.json"
+  },
+  "security_alarm_panel": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_co": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_dvr": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_electriclock": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_emergencylight": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_faceaccess": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_fingerprint": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_gas": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_gatebarrier": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_glassbreak": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_intercom": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_keypad": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_monitorwall": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_motion": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_nvr": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_panicbutton": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_ptzcontroller": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_rfid": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_safe": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_siren": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_smoke": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_strobe": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_turnstile": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_waterleak": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "security_window_sensor": {
+    "type": "expansion",
+    "source_zip": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_SECURITY_SURVEILLANCE_COMPLETE_25/security-surveillance-new-manifest.json"
+  },
+  "shoes_ankleboots": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_aquashoes": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_balletflats": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_boots": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "shoes_cleats": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_derby": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_espadrilles": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_formal": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "shoes_heels": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "shoes_hiking": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_kids": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "shoes_loafers": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_moccasins": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_oxford": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_platform": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_rainboots": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_rollerskates": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_safety": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_sandals": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "shoes_skates": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_slippers": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "shoes_sneakers": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "shoes_sportspecific": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_04.zip"
+  },
+  "shoes_wedges": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "shoes_workboots": {
+    "type": "expansion",
+    "source_zip": "USTORE_SHOES_COMPLETE_NEW_17_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SHOES_COMPLETE_17/shoes-new-manifest.json"
+  },
+  "stationery_art": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_binder": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_brush": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_calculator": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_calendar": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_chalk": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_clipboard": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_compass": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_documents": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_envelope": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_eraser": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_folder": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_glue": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_holepunch": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_labeler": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_marker": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_news": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_paperclip": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_pen": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_pencil": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_protractor": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_ruler": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_scissors": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_11_30_ICONS.zip"
+  },
+  "stationery_sharpener": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_stamp": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_stapler": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_stickynotes": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_tape": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "stationery_whiteboard": {
+    "type": "expansion",
+    "source_zip": "USTORE_BOOKS_STATIONERY_COMPLETE_NEW_21_ICONS.zip",
+    "source_manifest": "USTORE_NEW_BOOKS_STATIONERY_COMPLETE_21/books-stationery-new-manifest.json"
+  },
+  "supp_amino": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "supp_ashwagandha": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_bcaa": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "supp_biotin": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_calcium": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_chondroitin": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_coq10": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_creatine": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "supp_fiber": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_gainer": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "supp_glucosamine": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_iron": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_lcarnitine": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "supp_magnesium": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_melatonin": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_msm": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_omega3": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_preworkout": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "supp_probiotics": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_protein": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "supp_shaker": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "supp_sportvitamins": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_06_30_ICONS.zip"
+  },
+  "supp_vitamin_c": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_vitamin_d3": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "supp_zinc": {
+    "type": "expansion",
+    "source_zip": "USTORE_SUPPLEMENTS_COMPLETE_NEW_16_ICONS.zip",
+    "source_manifest": "USTORE_NEW_SUPPLEMENTS_COMPLETE_16/supplements-new-manifest.json"
+  },
+  "travel_adapter": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_beach": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_boardingpass": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_compass": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_cruise": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_currencyexchange": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_guide": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_hostel": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_hotel": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_landmark": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_luggagelock": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_luggagescale": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_luggagetag": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_map": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_museum": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_organizer": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_packingcubes": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_raincover": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_resort": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_skiresort": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_sleepkit": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_toiletrybag": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_tourbus": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_travelinsurance": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "travel_visa": {
+    "type": "expansion",
+    "source_zip": "USTORE_TRAVEL_TOURISM_COMPLETE_NEW_25_ICONS.zip",
+    "source_manifest": "USTORE_TRAVEL_TOURISM_COMPLETE_25/travel-tourism-new-manifest.json"
+  },
+  "underwear_boxers": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_bra": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "underwear_bralette": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_briefs": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_camisole": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_lingerieset": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_maternity": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_men": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "underwear_nursingbra": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_panties": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "underwear_seamless": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_shapewear": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_slip": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_socks": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "underwear_sportsbra": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_thermalset": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_tights": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "underwear_trunks": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNDERWEAR_COMPLETE_NEW_13_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNDERWEAR_COMPLETE_13/underwear-new-manifest.json"
+  },
+  "underwear_undershirt": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_03.zip"
+  },
+  "underwear_women": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_02.zip"
+  },
+  "universal_cart": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNIVERSAL_COMPLETE_NEW_8_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNIVERSAL_COMPLETE_8/universal-new-manifest.json"
+  },
+  "universal_clock": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "universal_compare": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNIVERSAL_COMPLETE_NEW_8_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNIVERSAL_COMPLETE_8/universal-new-manifest.json"
+  },
+  "universal_delivery": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  },
+  "universal_eco": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  },
+  "universal_filter": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNIVERSAL_COMPLETE_NEW_8_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNIVERSAL_COMPLETE_8/universal-new-manifest.json"
+  },
+  "universal_hot": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "universal_info": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  },
+  "universal_location": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "universal_new": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "universal_pickup": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNIVERSAL_COMPLETE_NEW_8_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNIVERSAL_COMPLETE_8/universal-new-manifest.json"
+  },
+  "universal_qr": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNIVERSAL_COMPLETE_NEW_8_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNIVERSAL_COMPLETE_8/universal-new-manifest.json"
+  },
+  "universal_return": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNIVERSAL_COMPLETE_NEW_8_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNIVERSAL_COMPLETE_8/universal-new-manifest.json"
+  },
+  "universal_sale": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "universal_search": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNIVERSAL_COMPLETE_NEW_8_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNIVERSAL_COMPLETE_8/universal-new-manifest.json"
+  },
+  "universal_store": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "universal_support": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  },
+  "universal_tags": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_CLEANUP_BATCH_12_30_ICONS.zip"
+  },
+  "universal_verified": {
+    "type": "expansion",
+    "source_zip": "USTORE_UNIVERSAL_COMPLETE_NEW_8_ICONS.zip",
+    "source_manifest": "USTORE_NEW_UNIVERSAL_COMPLETE_8/universal-new-manifest.json"
+  },
+  "universal_warranty": {
+    "type": "cleaned_original",
+    "source_zip": "USTORE_SVG_BATCH_13_30_ICONS_FINAL_CLEANUP_PLUS_PHASE05.zip"
+  }
+}

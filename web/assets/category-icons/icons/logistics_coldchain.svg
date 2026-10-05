@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="10" y="13" width="44" height="38" rx="5" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M32 19v26M21 25l22 14M43 25L21 39M24 19l8 6 8-6M24 45l8-6 8 6" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="59" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">COLD</text>
+</svg>

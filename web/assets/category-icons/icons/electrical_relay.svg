@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="14" y="10" width="36" height="44" rx="5" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M21 20h10l6 8h6M21 36h10l6-8h6M24 54v5M40 54v5" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="48" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">RELAY</text>
+</svg>

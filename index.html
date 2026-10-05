@@ -58,8 +58,8 @@
       <button type="button" data-desktop-tab="warehouse" id="desktop-nav-warehouse-btn" onclick="switchTab('warehouse')" hidden><i data-lucide="warehouse"></i><span id="desktop-nav-warehouse">Ombor</span></button>
     </nav>
     <div class="ustore-header-actions flex items-center space-x-2">
-      <button type="button" class="ustore-desktop-action" onclick="switchTab('orders')" title="Buyurtmalar" aria-label="Buyurtmalar"><i data-lucide="package"></i><span id="desktop-nav-orders">Buyurtmalar</span></button>
-      <button type="button" class="ustore-desktop-action" id="desktop-admin-panel-btn" onclick="switchTab('profile')" title="Admin panel" aria-label="Admin panel" hidden><i data-lucide="layout-dashboard"></i><span id="desktop-nav-admin-panel">Admin panel</span></button>
+      <button type="button" class="ustore-desktop-action" data-desktop-tab="orders" onclick="switchTab('orders')" title="Buyurtmalar" aria-label="Buyurtmalar"><i data-lucide="package"></i><span id="desktop-nav-orders">Buyurtmalar</span></button>
+      <button type="button" class="ustore-desktop-action" data-desktop-tab="profile" id="desktop-admin-panel-btn" onclick="switchTab('profile')" title="Admin panel" aria-label="Admin panel" hidden><i data-lucide="layout-dashboard"></i><span id="desktop-nav-admin-panel">Admin panel</span></button>
       <button type="button" class="ustore-desktop-action" data-desktop-tab="cart" id="desktop-nav-cart-btn" onclick="switchTab('cart')" title="Savatcha" aria-label="Savatcha"><i data-lucide="shopping-bag"></i><span id="desktop-nav-cart">Savatcha</span><small id="desktop-cart-count" hidden>0</small></button>
       <!-- Foydalanuvchi qaytardi: savatcha tugmasi FAQAT admin rejimida
            yashiriladi (updateHeaderChrome()da), oddiy mijoz uchun header'da
@@ -69,10 +69,10 @@
         <span id="cart-badge" class="hidden absolute -top-1 -right-1 fc-bg-danger text-white text-[10px] font-bold w-4 h-4 rounded-full items-center justify-center">0</span>
       </button>
       <!-- 4-band: BAYROQ -> ODAMCHA -> SOZLAMA ketma-ketligi (savatchadan keyin). -->
-      <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="Til / Язык">🇺🇿</button>
+      <button onclick="toggleUiLang()" class="p-2 bg-gray-100 rounded-full text-base leading-none" id="lang-flag-btn" title="Til / Язык" aria-label="O‘zbek tiliga o‘tish"><svg class="fc-lang-flag-svg" viewBox="0 0 30 20" aria-hidden="true"><rect width="30" height="20" rx="2" fill="#1eb5e9"/><rect y="6.2" width="30" height="1" fill="#ce1126"/><rect y="7.2" width="30" height="5.6" fill="#fff"/><rect y="12.8" width="30" height="1" fill="#ce1126"/><rect y="13.8" width="30" height="6.2" fill="#1eb53a"/><circle cx="5.4" cy="4" r="2.15" fill="#fff"/><circle cx="6.2" cy="3.7" r="2.15" fill="#1eb5e9"/><g fill="#fff"><circle cx="9.2" cy="2.1" r=".45"/><circle cx="11" cy="2.1" r=".45"/><circle cx="12.8" cy="2.1" r=".45"/><circle cx="10.1" cy="3.7" r=".45"/><circle cx="11.9" cy="3.7" r=".45"/><circle cx="9.2" cy="5.25" r=".45"/><circle cx="11" cy="5.25" r=".45"/></g></svg></button>
       <button type="button" onclick="toggleUiLang()" class="ustore-desktop-lang" id="desktop-lang-btn" title="Til / Язык" aria-label="Til / Язык"><span class="ustore-desktop-flag-placeholder" aria-hidden="true"></span></button>
       <button type="button" onclick="togglePersonMenu(event)" class="ustore-desktop-role-switch" id="desktop-role-switch-btn" aria-label="Admin/User rejimini almashtirish" title="Admin/User" hidden><i data-lucide="user-round-cog"></i></button>
-      <button type="button" onclick="switchTab('profile')" class="ustore-desktop-profile" id="desktop-profile-btn" aria-label="Profil"><i data-lucide="user"></i><span id="desktop-nav-profile">Profil</span></button>
+      <button type="button" onclick="switchTab('profile')" class="ustore-desktop-profile" data-desktop-tab="profile" id="desktop-profile-btn" aria-label="Profil"><i data-lucide="user"></i><span id="desktop-nav-profile">Profil</span></button>
       <button onclick="switchTab('profile')" class="p-2 bg-gray-100 rounded-full" id="header-person-btn" aria-label="Profil" title="Profil">
         <i data-lucide="user" class="w-5 h-5 text-gray-700"></i>
       </button>

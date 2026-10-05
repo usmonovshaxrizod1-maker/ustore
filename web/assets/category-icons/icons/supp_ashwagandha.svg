@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M22 11h20l5 10v34H17V21l5-10z" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M25 11V6h14v5" stroke="currentColor" stroke-width="3" />
+<text x="32" y="37" text-anchor="middle" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">ASH</text>
+<path d="M26 45c4-7 8-7 12 0" fill="none" stroke="currentColor" stroke-width="2.5" />
+</svg>

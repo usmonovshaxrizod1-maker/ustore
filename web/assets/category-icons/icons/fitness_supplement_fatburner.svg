@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M22 9h20l4 8v37H18V17l4-8z" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M26 9V5h12v4M22 20h20" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="32" y="35" text-anchor="middle" font-size="6.8" font-family="Arial, sans-serif" font-weight="700" fill="currentColor">BURN</text>
+<path d="M32 40c3 3 4 5 4 7a4 4 0 0 1-8 0c0-2 1-4 4-7z" fill="none" stroke="currentColor" stroke-width="2.2" />
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="18" y="12" width="28" height="42" rx="5" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M22 12V7h20v5M18 21h28" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="32" y="33" text-anchor="middle" font-size="6.2" font-family="Arial, sans-serif" font-weight="700" fill="currentColor">PROTEIN</text>
+<path d="M24 40h16M26 45h12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+</svg>

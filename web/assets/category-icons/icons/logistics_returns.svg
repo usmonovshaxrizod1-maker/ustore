@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M12 24l20-10 20 10v22L32 56 12 46V24z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
+<path d="M32 34v22M18 17H8v10" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M8 27c3-8 9-12 18-12" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" />
+<text x="42" y="43" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">RET</text>
+</svg>

@@ -1,1 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM240 80a32 32 0 1 1 0 64 32 32 0 1 1 0-64zM208 208a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm-64-64a32 32 0 1 1 0 64 32 32 0 1 1 0-64z" fill="currentColor"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<circle cx="28" cy="34" r="20" fill="none" stroke="currentColor" stroke-width="6" />
+<circle cx="21" cy="25" r="3" fill="currentColor" /><circle cx="31" cy="22" r="3" fill="currentColor" /><circle cx="35" cy="31" r="3" fill="currentColor" />
+<path d="M49 8l5 14-5 34h-8l-5-34 5-14h8z" fill="currentColor" />
+</svg>

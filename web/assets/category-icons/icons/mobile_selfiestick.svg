@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="36" y="8" width="17" height="27" rx="4" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M39 35L19 55M15 55h8M22 51l4 4" stroke="currentColor" stroke-width="5" stroke-linecap="round" />
+<text x="26" y="22" text-anchor="middle" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">SELFIE</text>
+</svg>

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M10 20h44v12H10z" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M14 32l4 24M50 32l-4 24M20 32l12 12 12-12" fill="none" stroke="currentColor" stroke-width="4" />
+<text x="32" y="17" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">TABLE</text>
+</svg>

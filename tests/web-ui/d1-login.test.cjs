@@ -56,6 +56,6 @@ test('D1 login UI declares autocomplete, show/hide and separate Telegram/passwor
   assert.match(source, /autocomplete:\s*'username'/);
   assert.match(source, /autocomplete:\s*'current-password'/);
   assert.match(source, /passwordVisible \? 'text' : 'password'/);
-  assert.match(source, /\['telegram', tr\('Telegram orqali', 'Через Telegram'\)\]/);
-  assert.match(source, /\['password', tr\('Login va parol', 'Логин и пароль'\)\]/);
+  assert.match(source, /\['telegram', tr\('Telegram orqali kirish', 'Войти через Telegram'\)/);
+  assert.match(source, /\['password', tr\('Login va parol bilan kirish', 'Войти по логину и паролю'\)/);
 });

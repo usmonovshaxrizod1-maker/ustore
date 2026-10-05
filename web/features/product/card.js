@@ -36,6 +36,14 @@ function button(doc, label, className, onClick) {
   if (onClick) item.addEventListener('click', onClick);
   return item;
 }
+function setSvgIcon(el, name, active = false) {
+  const paths = {
+    pin: '<path d="M12 17v5"/><path d="M5 17h14v-2a2 2 0 0 0-1.1-1.8l-1.8-.9A2 2 0 0 1 15 10.5V6a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1v4.5a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15v2Z"/>',
+    eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/>',
+    heart: active ? '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z" fill="currentColor"/>' : '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/>'
+  };
+  el.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || ''}</svg>`;
+}
 
 export function createProductCard(product, {
   index = 0, onOpen, onAdd, onFavorite, isFavorite = false,
@@ -82,12 +90,12 @@ export function createProductCard(product, {
         const result = await onPin(product, next);
         if (result?.ok !== false) { product.is_featured = next; pin.dataset.active = next ? 'true' : 'false'; pin.setAttribute('aria-label', next ? 'Pinni olib tashlash' : 'Pin qilish'); }
       } finally { pin.disabled = false; }
-    }); pin.dataset.active = product.is_featured ? 'true' : 'false'; pin.textContent = '📌'; controls.append(pin); }
+    }); pin.dataset.active = product.is_featured ? 'true' : 'false'; setSvgIcon(pin, 'pin'); controls.append(pin); }
     if (onVisibility) { const eye = button(doc, 'Ko‘rinishni almashtirish', 'uw-store-product-card__icon', async () => {
       eye.disabled = true;
       try { const result = await onVisibility(product, false); if (result?.ok !== false) card.remove?.(); }
       finally { eye.disabled = false; }
-    }); eye.textContent = '◉'; controls.append(eye); }
+    }); setSvgIcon(eye, 'eye'); controls.append(eye); }
     if (onEdit) {
       const more = button(doc, 'Qo‘shimcha amallar', 'uw-store-product-card__icon', () => { menu.hidden = !menu.hidden; });
       more.textContent = '⋮'; controls.append(more);
@@ -109,13 +117,13 @@ export function createProductCard(product, {
         const result = await onFavorite(product, !isFavorite);
         if (result?.ok !== false) {
           isFavorite = !isFavorite;
-          favorite.textContent = isFavorite ? '♥' : '♡';
+          setSvgIcon(favorite, 'heart', isFavorite);
           favorite.setAttribute('aria-label', isFavorite ? 'Sevimlilardan olish' : 'Sevimlilarga qo‘shish');
           favorite.dataset.active = isFavorite ? 'true' : 'false';
         }
       } finally { favorite.disabled = false; }
     });
-    favorite.textContent = isFavorite ? '♥' : '♡';
+    setSvgIcon(favorite, 'heart', isFavorite);
     favorite.dataset.active = isFavorite ? 'true' : 'false';
     media.append(favorite);
   }

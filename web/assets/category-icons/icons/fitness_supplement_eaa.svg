@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M18 16h28l3 8-2 29H17l-2-29 3-8z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round" />
+<path d="M22 16V9h20v7M18 26h28" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="32" y="37" text-anchor="middle" font-size="8" font-family="Arial, sans-serif" font-weight="700" fill="currentColor">EAA</text>
+</svg>

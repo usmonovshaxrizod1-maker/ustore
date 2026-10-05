@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M20 12h24l5 11v31H15V23l5-11z" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M25 12V6h14v6M20 25h24" fill="none" stroke="currentColor" stroke-width="3" />
+<text x="32" y="35" text-anchor="middle" font-size="6.2" font-family="Arial, sans-serif" font-weight="700" fill="currentColor">GLUTA</text>
+</svg>

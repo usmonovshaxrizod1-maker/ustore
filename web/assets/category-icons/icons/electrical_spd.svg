@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="16" y="8" width="32" height="48" rx="4" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M33 15l-8 16h7l-3 16 10-19h-7l1-13z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round" />
+<text x="32" y="54" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">SPD</text>
+</svg>

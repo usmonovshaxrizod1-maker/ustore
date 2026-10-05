@@ -71,7 +71,7 @@ test('customer card adds simple product and admin controls require explicit capa
   assert.equal(added, 1);
   assert.equal(flatten(customer).some((node) => node.textContent === '📌'), false);
   const admin = createProductCard(product, { canManage: true, onPin: async () => { pinned++; return { ok: true }; }, onEdit: () => {} }, new FakeDocument());
-  const pin = flatten(admin).find((node) => node.textContent === '📌');
+  const pin = flatten(admin).find((node) => node.attributes['aria-label'] === 'Pin qilish');
   await pin.listeners.click();
   assert.equal(pinned, 1);
   assert.equal(product.is_featured, true);

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M20 13h24l4 9v32H16V22l4-9z" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M24 13V7h16v6M18 25h28" stroke="currentColor" stroke-width="3" />
+<text x="32" y="38" text-anchor="middle" font-size="10" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">O3</text>
+</svg>

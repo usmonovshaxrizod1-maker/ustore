@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M11 26h42l5 14c2 7-6 12-11 7l-7-7H24l-7 7c-5 5-13 0-11-7l5-14z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
+<path d="M20 30v10M15 35h10M44 32h1M49 38h1" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="20" text-anchor="middle" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">MOBILE</text>
+</svg>

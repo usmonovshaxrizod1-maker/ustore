@@ -858,8 +858,9 @@ test('the frontend TERMS_VERSION/PRIVACY_VERSION constants are kept manually in 
 test('statusLabel() and its matching status-pill CSS class cover the two new lifecycle statuses (FROZEN/TERMINATED), reusing the existing status-X pattern rather than inventing a new one', () => {
   const fnStart = platformApp.indexOf('function statusLabel');
   const fnBlock = platformApp.slice(fnStart, fnStart + 300);
-  assert.match(fnBlock, /if \(s === 'FROZEN'\) return '❄️ Muzlatilgan';/);
-  assert.match(fnBlock, /if \(s === 'TERMINATED'\) return "🔴 O'chirilgan";/);
+  assert.match(fnBlock, /if \(s === 'FROZEN'\) return 'Muzlatilgan';/);
+  assert.match(fnBlock, /if \(s === 'TERMINATED'\) return "O'chirilgan";/);
+  assert.match(platformApp, /if \(s === 'FROZEN'\) return pIcon\('snow', 13\);/);
   const css = fs.readFileSync(path.join(__dirname, '..', 'platform', 'platform.css'), 'utf8');
   assert.match(css, /\.status-FROZEN \{/);
   assert.match(css, /\.status-TERMINATED \{/);
@@ -925,16 +926,16 @@ test('the tariff card shows a real feature checklist and a real, separate "Tarif
   // with no features of their own (see the per-tariff-features test block
   // further down) — the primary source is t.features.
   // 2026-08-28 v15-sync: the fallback expression was hoisted into its own
-  // `const features = (...).slice(0, 6)` (caps card height at 6 items,
+  // `const features = (...).slice(0, 4)` (premium card keeps the comparison concise at 4 items,
   // each with a title= tooltip for the un-truncated text) before the .map()
   // — same fallback logic, just no longer inline in the template literal.
-  assert.match(fnBlock, /const features = \(Array\.isArray\(t\.features\) && t\.features\.length \? t\.features : TARIFF_FEATURE_LIST\)\.slice\(0, 6\);/, 'must render the real feature checklist, falling back to the shared default list');
-  assert.match(fnBlock, /features\.map\(\(f\) => `<li>\$\{pIcon\('check', 12\)\}<span title="\$\{escapeHtml\(f\)\}">\$\{escapeHtml\(f\)\}<\/span><\/li>`\)/);
+  assert.match(fnBlock, /const features = \(Array\.isArray\(t\.features\) && t\.features\.length \? t\.features : TARIFF_FEATURE_LIST\)\.slice\(0, 4\);/, 'must render the real feature checklist, falling back to the shared default list');
+  assert.match(fnBlock, /features\.map\(\(f\) => `<li>\$\{pIcon\('checkCircle', 14\)\}<span title="\$\{escapeHtml\(f\)\}">\$\{escapeHtml\(f\)\}<\/span><\/li>`\)/);
   // CTA onclick is assembled into a `selectJs` variable first (so a
   // '__TARIFF__' placeholder some callers pass via opts.onSelectJs can be
   // substituted with the real tariff id) rather than inlined directly.
   assert.match(fnBlock, /let selectJs = opts\.onSelectJs \|\| `selectTariffAndContinue\('\$\{t\.id\}'\)`;/);
-  assert.match(fnBlock, /onclick="\$\{selectJs\}">\$\{opts\.ctaLabel \|\| "Tarifni tanlash"\}<\/button>/);
+  assert.match(fnBlock, /onclick="\$\{selectJs\}">\$\{opts\.ctaLabel \|\| "Tarifni tanlash"\} \$\{pIcon\('arrowRight', 14\)\}<\/button>/);
   // 2026-08-29, 7-topshiriq round (task 4): the old compact-grid vs.
   // carousel split was unified — BOTH the full TARIFFS page and the
   // landing teaser now render the same infinite swipe carousel (only a
@@ -1368,7 +1369,7 @@ test('the admin Requests card exposes a "Chek so\'rash" button only when a reque
   assert.match(cardBlock, /\$\{r\.status === 'NEW' && r\.paymentClaimedAt && !r\.hasReceipt && !r\.receiptRequestedAt \? `<button onclick="requestReceiptForRequest\('\$\{r\.id\}'\)">Chek so'rash<\/button>` : ''\}/);
   // 2026-08-29 v058-sync: reformatted onto its own multi-line ternary branch
   // (whitespace-tolerant match) — same distinct, separately-worded notice.
-  assert.match(cardBlock, /: r\.receiptRequestedAt\s*\n\s*\? `<div class="notice">📎 Chek so'raldi/, 'must branch on receiptRequestedAt distinctly from the plain no-claim notice');
+  assert.match(cardBlock, /: r\.receiptRequestedAt\s*\n\s*\? `<div class="notice">\$\{pIcon\('paperclip',14\)\} Chek so'raldi/, 'must branch on receiptRequestedAt distinctly from the plain no-claim notice with an SVG icon');
 });
 
 // 2026-08-28 v15-sync FINDING (flagged, not silently fixed — the intent

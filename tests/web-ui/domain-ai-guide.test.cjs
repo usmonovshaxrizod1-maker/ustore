@@ -46,5 +46,8 @@ test('copied AI guide reflects the current public domain status and entered host
   await buttons(feature.element).find((button) => button.textContent === 'AI yo‘riqnomasini nusxalash').listeners.click();
   assert.equal(copied.length, 1);
   for (const phrase of ['demo.uz', 'www.demo.uz', 'customers.ustr.uz', 'PENDING_TLS', 'ROUTING_DNS_PENDING', 'Har javobda faqat BITTA', 'www.domen.uz va domen.uz ikkita alohida']) assert.match(copied[0], new RegExp(phrase));
+  assert.match(copied[0], /sotuvchini UStorE’ning Custom Hostnames sahifasiga kiritma/);
+  assert.match(copied[0], /Bir xil _acme-challenge nomi ostida bir nechta alohida TXT qiymat/);
+  assert.match(copied[0], /“Tekshirish” ilovadagi joriy holatni yangilaydi, lekin sertifikat chiqarishni qayta ishga tushirmaydi/);
   assert.doesNotMatch(copied[0], /MUST_NOT_COPY/);
 });

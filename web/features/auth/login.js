@@ -111,24 +111,55 @@ export function createLoginView({ controller, state = controller?.getState?.() |
   root.className = 'uw-auth';
   root.dataset.feature = 'login';
 
+  const authIcon = (name) => {
+    const icons = {
+      user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+      telegram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+      key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 8.8-8.8"/><path d="m15 8 2 2"/><path d="m17 6 2 2"/></svg>',
+      chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>',
+    };
+    return icons[name] || '';
+  };
+
+  // Task 16: mirror the Shop App guest-profile login visual language on ustr.uz.
   const heading = doc.createElement('div');
-  heading.className = 'uw-auth__heading';
-  const brand = doc.createElement('div'); brand.className = 'uw-auth__brand';
-  const mark = doc.createElement('span'); mark.textContent = 'U';
-  const name = doc.createElement('strong'); name.textContent = 'USTORE';
-  brand.append(mark, name); heading.append(brand);
-  const title = doc.createElement('h1'); title.textContent = tr('UStorE’ga kirish', 'Вход в UStorE');
-  const subtitle = doc.createElement('p'); subtitle.textContent = tr('Do‘koningiz yoki xarid profilingizga xavfsiz kiring.', 'Безопасно войдите в магазин или профиль покупателя.');
-  heading.append(title, subtitle);
+  heading.className = 'uw-auth__heading uw-auth-profile-card';
+  const avatar = doc.createElement('span');
+  avatar.className = 'uw-auth-profile-card__avatar';
+  avatar.innerHTML = authIcon('user');
+  const headingCopy = doc.createElement('div');
+  headingCopy.className = 'uw-auth-profile-card__copy';
+  const eyebrow = doc.createElement('div');
+  eyebrow.className = 'uw-auth-profile-card__eyebrow';
+  eyebrow.textContent = tr('Profil', 'Профиль');
+  const title = doc.createElement('h1');
+  title.textContent = tr('Profilga kirish', 'Войти в профиль');
+  const subtitle = doc.createElement('p');
+  subtitle.textContent = tr('Buyurtmalar, sevimlilar va shaxsiy ma’lumotlaringiz uchun tizimga kiring.', 'Войдите, чтобы открыть заказы, избранное и личные данные.');
+  headingCopy.append(eyebrow, title, subtitle);
+  heading.append(avatar, headingCopy);
 
   const tabs = doc.createElement('div');
-  tabs.className = 'uw-auth-tabs';
+  tabs.className = 'uw-auth-tabs uw-auth-profile-menu';
   tabs.setAttribute('role', 'tablist');
-  for (const [id, label] of [['telegram', tr('Telegram orqali', 'Через Telegram')], ['password', tr('Login va parol', 'Логин и пароль')]]) {
-    const button = createButton({ label, variant: state.tab === id ? 'primary' : 'secondary', onClick: () => controller.setTab(id) }, doc);
+  for (const [id, label, iconName, hint] of [
+    ['telegram', tr('Telegram orqali kirish', 'Войти через Telegram'), 'telegram', tr('Telegram profilingiz bilan davom eting', 'Продолжить с профилем Telegram')],
+    ['password', tr('Login va parol bilan kirish', 'Войти по логину и паролю'), 'key', tr('Mini App’dan olingan ma’lumotlar bilan', 'С данными, полученными в Mini App')],
+  ]) {
+    const button = doc.createElement('button');
+    button.type = 'button';
+    button.className = `uw-auth-profile-menu__row${state.tab === id ? ' is-active' : ''}`;
     button.setAttribute('role', 'tab');
     button.setAttribute('aria-selected', state.tab === id ? 'true' : 'false');
     button.dataset.authTab = id;
+    button.addEventListener('click', () => controller.setTab(id));
+    const icon = doc.createElement('span'); icon.className = 'uw-auth-profile-menu__icon'; icon.innerHTML = authIcon(iconName);
+    const copy = doc.createElement('span'); copy.className = 'uw-auth-profile-menu__copy';
+    const rowTitle = doc.createElement('strong'); rowTitle.textContent = label;
+    const rowHint = doc.createElement('small'); rowHint.textContent = hint;
+    copy.append(rowTitle, rowHint);
+    const chevron = doc.createElement('span'); chevron.className = 'uw-auth-profile-menu__chevron'; chevron.innerHTML = authIcon('chevron');
+    button.append(icon, copy, chevron);
     tabs.append(button);
   }
 
@@ -147,11 +178,12 @@ export function createLoginView({ controller, state = controller?.getState?.() |
     telegramBody.append(createButton({ label: state.busyAction === 'telegram' ? tr('Telegram ochilmoqda…', 'Открывается Telegram…') : tr('Telegram’da davom etish', 'Продолжить через Telegram'), busy: state.busyAction === 'telegram', onClick: () => controller.signInTelegram() }, doc));
     const telegramError = inlineError(); if (telegramError) telegramBody.append(telegramError);
     const telegram = createCard({ title: tr('Telegram orqali kirish', 'Вход через Telegram'), description: tr('Telegram profilingiz bilan tasdiqlang. Tasdiqdan keyin saytga avtomatik qaytasiz.', 'Подтвердите вход в Telegram. Затем вы автоматически вернётесь на сайт.'), body: telegramBody }, doc);
+    telegram.classList.add('uw-auth-profile-panel');
     telegram.dataset.authPanel = 'telegram';
     body.append(telegram);
   } else {
     const form = doc.createElement('form');
-    form.className = 'uw-auth-form';
+    form.className = 'uw-auth-form uw-auth-profile-panel';
     form.dataset.authPanel = 'password';
     const loginField = createTextField({ label: tr('Login', 'Логин'), name: 'login', value: controller.getDraft?.().login || initialLogin, autocomplete: 'username', required: true, error: state.error?.fieldErrors?.login || '' }, doc);
     const passwordField = createTextField({ label: tr('Parol', 'Пароль'), name: 'password', type: state.passwordVisible ? 'text' : 'password', value: controller.getDraft?.().password || '', autocomplete: 'current-password', required: true, error: state.error?.fieldErrors?.password || '' }, doc);

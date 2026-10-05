@@ -1,0 +1,57 @@
+UStorE CATEGORY ICON LIBRARY — FINAL AUDIT
+==========================================
+Total icons: 1045
+Total groups: 35
+Cleaned original IDs: 270 / 270
+Original category expansion icons: 500 (3 historical Food ID collisions replaced with new unique concepts)
+New top-level categories: 11 × 25 = 275
+
+PASS — duplicate IDs: 0
+PASS — exact normalized SVG geometry duplicates: 0
+PASS — viewBox: all 0 0 64 64
+PASS — fill/stroke colors: currentColor or none only
+PASS — all icons have UZ/RU/EN labels
+
+Historical corrections applied:
+- food_rice expansion collision -> food_cereal
+- food_icecream expansion collision -> food_yogurt
+- food_fish expansion collision -> food_kebab
+- electronics_lighting exact duplicate of build_lighting -> redesigned as smart-light variant
+- hardcoded white details in legacy cleanup/expansion SVGs -> converted to color-safe outline details
+
+Group counts:
+- accessories: 30
+- apparel: 45
+- automotive: 35
+- bags: 20
+- beauty: 30
+- beverages: 25
+- books_stationery: 35
+- care: 30
+- computer_gaming: 25
+- construction: 35
+- digital_products: 25
+- electrical_lighting: 25
+- electronics: 45
+- fitness: 40
+- food: 40
+- furniture: 25
+- garden: 30
+- gifts_party: 30
+- health: 30
+- hobby: 35
+- home: 45
+- home_appliances: 25
+- jewelry: 25
+- kids: 45
+- mobile_accessories: 25
+- packaging_logistics: 25
+- party_decor: 25
+- pets: 30
+- plumbing: 25
+- security_surveillance: 25
+- shoes: 25
+- supplements: 25
+- travel_tourism: 25
+- underwear: 20
+- universal: 20

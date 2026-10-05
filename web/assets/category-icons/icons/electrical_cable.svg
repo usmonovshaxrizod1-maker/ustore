@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M10 20c13 0 13 24 26 24s13-24 18-24" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" />
+<path d="M10 20h-5M54 20h5" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="58" text-anchor="middle" font-size="7" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">CABLE</text>
+</svg>

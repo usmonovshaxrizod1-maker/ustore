@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M22 9h20l5 11v35H17V20l5-11z" fill="none" stroke="currentColor" stroke-width="4" />
+<path d="M26 9V5h12v4M20 23h24" stroke="currentColor" stroke-width="3" />
+<text x="32" y="39" text-anchor="middle" font-size="10" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">Zn</text>
+</svg>

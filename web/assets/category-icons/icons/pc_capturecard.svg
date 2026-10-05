@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<rect x="10" y="16" width="44" height="32" rx="5" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M16 25h10M16 34h10M38 23h10M38 34h10" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="44" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">CAP</text>
+</svg>

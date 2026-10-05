@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+<path d="M12 18h40l-6 28H18l-6-28z" fill="none" stroke="currentColor" stroke-width="5" />
+<path d="M20 28h24M24 36h16" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+<text x="32" y="54" text-anchor="middle" font-size="6" font-family="Arial,sans-serif" font-weight="700" fill="currentColor">NAME</text>
+</svg>

@@ -800,6 +800,16 @@ test('ROUND 11: Ombor Qoldiq renders the category hierarchy inline and opens pro
   assert.match(app, /children\.map\(child=>renderWarehouseTreeCategoryHtml/);
 });
 
+test('TASK 5: desktop/tablet warehouse category tree starts collapsed and top-level categories toggle their whole branch without changing Mini App/mobile behavior', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
+  assert.match(app, /let warehouseTreeExpandedCategoryIds = new Set\(\)/);
+  assert.match(app, /function warehouseTreeDesktopMode\(\)[\s\S]*browserBridge[\s\S]*min-width: 768px/);
+  assert.match(app, /if \(warehouseSubTab === 'QOLDIQ' && previous !== 'QOLDIQ'\) \{ warehouseBrowseCategoryId = null; warehouseTreeExpandedCategoryIds\.clear\(\); \}/);
+  assert.match(app, /if\(warehouseTreeIsExpanded\(nextId\)\)\{ warehouseTreeCollapseBranch\(nextId\); \}/);
+  assert.match(app, /\$\{expanded \? `<div class=\"fc-stock-tree-children\">/);
+  assert.match(app, /if\(!warehouseTreeDesktopMode\(\)\)\{ warehouseBrowseCategoryId=String\(warehouseBrowseCategoryId\|\|''\)===String\(id\|\|''\)\?null:\(id\|\|null\); render\(\); return; \}/);
+});
+
 test('4.3: contrast is checked against WCAG AA (4.5:1) for text vs page/card background, and buttons get an auto-computed readable text color', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
   assert.match(app, /const WCAG_AA_RATIO = 4\.5/);
@@ -945,11 +955,12 @@ test('5.5/5.6: admin types only an Instagram/Telegram nickname (no full URL), an
   assert.match(block, /\['Telegram', contact\.telegram, 'https:\/\/t\.me\//);
 });
 
-test('5.7: footer only displays configured shop information and maps address', () => {
+test('5.7/task13: footer only displays configured shop information and exposes the map chooser action', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
   const block = app.slice(app.indexOf('function storefrontFooterHtml()'), app.indexOf('function openStorefrontLegalDocument'));
   assert.match(block, /contact\.workHours &&/);
-  assert.match(block, /address && mapLink/);
+  assert.match(block, /locationAvailable/);
+  assert.match(block, /openStorefrontMap\(\)/);
   assert.match(block, /data-lucide="map-pin"/);
   assert.match(block, /const social =/);
   assert.doesNotMatch(block, />-<|>—<|: '-'|: '—'/);
@@ -1059,7 +1070,7 @@ test('5.4: the "Rasmsiz" queue counter has a single source of truth (getMissingI
 test('5.6/2-band: checkout has a SINGLE unified district selector (no separate POST-only field) sourced from real delivery_branches data, and the delivery provider is never auto-selected', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
   assert.doesNotMatch(app, /id="chk-post-district"/, '2-band: the separate POST-only district field must be removed — #chk-district is now the single source of truth');
-  assert.match(app, /id="chk-district"/);
+  assert.match(app, /renderCheckoutSelectControl\('chk-district','navigation'/, 'the shared district source of truth must be rendered through the branded checkout selector');
   assert.ok(app.includes("callApi('get_delivery_districts', { regionKey })"), 'district options must be fetched from the server (real branch data), not only a hardcoded list');
   const renderStart = app.indexOf('function renderCheckoutOptions');
   const renderEnd = app.indexOf('const notice = document.getElementById', renderStart);
@@ -1157,7 +1168,8 @@ test('5.11: the language toggle stays in the header and shows the TARGET languag
   const nextFnStart = app.indexOf('\n    function ', chromeStart + 10);
   const chromeBlock = app.slice(chromeStart, nextFnStart > chromeStart ? nextFnStart : chromeStart + 1800);
   assert.ok(chromeBlock.includes("document.getElementById('lang-flag-btn')"), 'the flag icon must still be looked up by id, not by DOM position');
-  assert.ok(chromeBlock.includes("uiLang === 'uz' ? '🇷🇺' : '🇺🇿'"), 'UZ active must offer RU flag; RU active must offer UZ flag');
+  assert.ok(chromeBlock.includes("const targetLang = uiLang === 'uz' ? 'ru' : 'uz'"), 'UZ active must target RU; RU active must target UZ');
+  assert.ok(chromeBlock.includes('flagBtn.innerHTML = desktopFlagSvg(targetLang)'), 'target language must render as an SVG flag');
   assert.ok(app.includes('document.documentElement.lang = uiLang;'), '<html lang> must follow the selected UI language');
 });
 
@@ -1698,8 +1710,9 @@ test('11-band/2-band: checkout has no separate POST-only district field to condi
 
 test('14/15-band: order status enum gains a display-only REJECTED pseudo-status without touching orders.status transitions', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  assert.match(app, /REJECTED:\s*"❌ Rad etildi"/, 'uz label for the rejected-receipt pseudo-status must exist');
-  assert.match(app, /REJECTED:\s*"❌ Отклонён"/, 'ru label for the rejected-receipt pseudo-status must exist');
+  assert.match(app, /REJECTED:\s*"Rad etildi"/, 'uz label for the rejected-receipt pseudo-status must exist');
+  assert.match(app, /REJECTED:\s*"Отклонён"/, 'ru label for the rejected-receipt pseudo-status must exist');
+  assert.doesNotMatch(app, /REJECTED:\s*"❌/u, 'status label must not depend on a system emoji');
   assert.match(app, /function orderDisplayStatus\(o\)/, 'a display-only status resolver must exist so orders.status itself is never overwritten to a new enum value');
 });
 
@@ -2640,3 +2653,43 @@ test('header action button IDs (#header-cart-btn etc.) never fight the .hidden u
   }
 });
 
+
+test('TASK 6: warehouse movements uses the Orders-style calendar range everywhere and defaults to the last 7 calendar days', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
+  assert.match(app, /const warehouseMovementsDefaultRange = \(\(\) => \{[\s\S]*to\.getDate\(\) - 6/);
+  const renderStart = app.indexOf('function renderWarehouseHarakatlarHtml');
+  const renderEnd = app.indexOf('function renderWarehouseHarakatlarResultsHtml', renderStart);
+  const renderBlock = app.slice(renderStart, renderEnd);
+  assert.match(renderBlock, /openWarehouseMovementsCalendarModal\(event\)/);
+  assert.match(renderBlock, /fc-orders-calendar-trigger is-active/);
+  assert.doesNotMatch(renderBlock, /Bugun|7 kun|30 kun|setWarehouseMovementsDateRange/);
+  assert.match(app, /activePopupModal = 'WAREHOUSE_MOVEMENTS_CALENDAR'/);
+  assert.match(app, /function renderWarehouseMovementsCalendarBodyHtml\(\)/);
+  assert.match(app, /function applyWarehouseMovementsCalendarSelection\(\)[\s\S]*warehouseMovementsDateFrom = warehouseMovementsCalendarDraftFrom;[\s\S]*warehouseMovementsDateTo = warehouseMovementsCalendarDraftTo;[\s\S]*loadWarehouseMovements\(true\)/);
+  assert.match(app, /function warehouseMovementsDateBounds\(\)[\s\S]*T00:00:00[\s\S]*T23:59:59\.999/);
+});
+
+test('TASK 7: desktop/tablet admin product detail matches the customer two-column page while retaining admin controls and mobile sheet behavior', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'ustore.css'), 'utf8');
+  const start = app.indexOf('// PRODUCT DETAILS MODAL');
+  const end = app.indexOf('// 14-band: chekni rad etish', start);
+  const block = app.slice(start, end);
+  assert.match(block, /fc-product-detail-admin-shell fixed inset-0 bg-black\/50/);
+  assert.match(block, /fc-product-detail-admin-layout bg-white rounded-t-3xl/);
+  assert.match(block, /fc-product-detail-admin-back/);
+  assert.match(block, /fc-product-detail-media/);
+  assert.match(block, /fc-product-admin-description/);
+  // Admin capabilities remain in the same detail renderer.
+  assert.match(block, /duplicateProduct\('\$\{p\.id\}'\)/);
+  assert.match(block, /deleteProduct\('\$\{p\.id\}'\)/);
+  assert.match(block, /openEditFieldModal\('\$\{p\.id\}', 'stock'\)/);
+  assert.match(block, /openEditFieldModal\('\$\{p\.id\}', 'variants'\)/);
+  assert.match(block, /openMoveProductModal\('\$\{p\.id\}'\)/);
+  assert.match(block, /openProductBadgePicker\('\$\{p\.id\}'\)/);
+  // Browser-only desktop/tablet CSS changes the admin modal into the same page composition.
+  assert.match(css, /@media \(min-width:768px\)[\s\S]*body\.ustore-browser-mode #modal-container > \.fc-product-detail-admin-shell/);
+  assert.match(css, /\.fc-product-detail-admin-layout[\s\S]*grid-template-columns:minmax\(0,38%\) minmax\(0,1fr\)/);
+  assert.match(css, /body\.ustore-browser-mode \.fc-product-detail-layout[\s\S]*grid-template-columns:minmax\(0,38%\) minmax\(0,1fr\)/);
+  assert.match(css, /\.fc-product-detail-layout \.fc-product-gallery[\s\S]*max-height:500px/);
+});
