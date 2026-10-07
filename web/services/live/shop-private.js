@@ -1,4 +1,5 @@
 import { fail, ok, STABLE_ERROR_CODES } from '../ports/result.js';
+import { secureUuidV4 } from '../../shared/browser-id.js';
 
 const ERROR_SET = new Set(STABLE_ERROR_CODES);
 function safeEndpoint(value) {
@@ -67,7 +68,7 @@ export function createLiveShopPrivateAdapters({ endpoint, botId, fetchImpl = glo
   const uncertain=new Map();
   async function mutateCart(operation,line={}) {
     const signature=JSON.stringify({operation,line});
-    const mutationId=uncertain.get(signature)||globalThis.crypto.randomUUID();
+    const mutationId=uncertain.get(signature)||secureUuidV4();
     uncertain.set(signature,mutationId);
     const result=await request('web_cart_mutate',{operation,line,mutationId});
     if(result.ok||result.error?.code!=='NETWORK_ERROR')uncertain.delete(signature);

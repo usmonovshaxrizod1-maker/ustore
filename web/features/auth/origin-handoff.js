@@ -168,17 +168,34 @@ export function createCustomDomainSignInView({ controller, state = controller?.g
   if (!doc?.createElement || !controller) throw new TypeError('DOM document va controller kerak');
   const root = doc.createElement('section'); root.className = 'uw-auth uw-origin-signin'; root.dataset.feature = 'origin-signin';
   const tr = (uz, ru) => locale === 'ru' ? ru : uz;
-  const brand = doc.createElement('div'); brand.className = 'uw-origin-signin__brand';
-  const logo = /^https:\/\//i.test(String(logoUrl || '')) ? doc.createElement('img') : doc.createElement('span');
-  if (logo.tagName.toLowerCase() === 'img') { logo.src = logoUrl; logo.alt = ''; } else logo.textContent = String(shopName || 'S').slice(0, 1).toUpperCase();
-  const brandName = doc.createElement('strong'); brandName.textContent = String(shopName || 'UStorE do‘koni');
-  brand.append(logo, brandName); root.append(brand);
-  const title = doc.createElement('h1'); title.textContent = tr('Do‘konga kirish', 'Вход в магазин'); root.append(title);
-  const copy = doc.createElement('p'); copy.textContent = tr('Telegram hisobingiz yoki Mini App profilingizdagi login va parol bilan kiring.', 'Войдите через Telegram или с логином и паролем из профиля Mini App.'); root.append(copy);
+  const icons = {
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+    telegram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+    key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 8.8-8.8"/><path d="m15 8 2 2"/><path d="m17 6 2 2"/></svg>',
+    chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>',
+  };
+  const intro = doc.createElement('div'); intro.className = 'uw-auth-profile-card';
+  const avatar = doc.createElement('span'); avatar.className = 'uw-auth-profile-card__avatar'; avatar.innerHTML = icons.user;
+  const introCopy = doc.createElement('div'); introCopy.className = 'uw-auth-profile-card__copy';
+  const eyebrow = doc.createElement('div'); eyebrow.className = 'uw-auth-profile-card__eyebrow'; eyebrow.textContent = tr('Profil', 'Профиль');
+  const title = doc.createElement('h1'); title.textContent = tr('Profilga kirish', 'Войти в профиль');
+  const copy = doc.createElement('p'); copy.textContent = tr('Buyurtmalar, sevimlilar va shaxsiy ma’lumotlaringiz uchun tizimga kiring.', 'Войдите, чтобы открыть заказы, избранное и личные данные.');
+  introCopy.append(eyebrow, title, copy); intro.append(avatar, introCopy); root.append(intro);
   if (state.error) root.append(createStatePanel({ kind: 'error', title: 'Kirishni boshlab bo‘lmadi', message: state.error.message || 'Qayta urinib ko‘ring.' }, doc));
-  const actions = doc.createElement('div'); actions.className = 'uw-origin-signin__actions';
-  actions.append(createButton({ label: state.busyAction === 'telegram' ? tr('Telegram ochilmoqda…', 'Открывается Telegram…') : tr('Telegram orqali kirish', 'Войти через Telegram'), busy: state.busyAction === 'telegram', onClick: () => controller.begin('telegram') }, doc));
-  actions.append(createButton({ label: state.busyAction === 'password' ? tr('Kirish ochilmoqda…', 'Открывается вход…') : tr('Login va parol bilan kirish', 'Войти с логином и паролем'), variant: 'secondary', busy: state.busyAction === 'password', onClick: () => controller.begin('password') }, doc));
+  const actions = doc.createElement('div'); actions.className = 'uw-auth-profile-menu';
+  for (const [method, label, iconName] of [
+    ['telegram', tr('Telegram orqali kirish', 'Войти через Telegram'), 'telegram'],
+    ['password', tr('Login va parol bilan kirish', 'Войти по логину и паролю'), 'key'],
+  ]) {
+    const button = doc.createElement('button'); button.type = 'button'; button.className = 'uw-auth-profile-menu__row';
+    button.disabled = state.busy; button.addEventListener('click', () => controller.begin(method));
+    const icon = doc.createElement('span'); icon.className = 'uw-auth-profile-menu__icon'; icon.innerHTML = icons[iconName];
+    const buttonCopy = doc.createElement('span'); buttonCopy.className = 'uw-auth-profile-menu__copy';
+    const strong = doc.createElement('strong'); strong.textContent = state.busyAction === method ? tr('Kirish ochilmoqda…', 'Открывается вход…') : label;
+    buttonCopy.append(strong);
+    const chevron = doc.createElement('span'); chevron.className = 'uw-auth-profile-menu__chevron'; chevron.innerHTML = icons.chevron;
+    button.append(icon, buttonCopy, chevron); actions.append(button);
+  }
   root.append(actions);
   const bot = String(botUsername || '').replace(/^@/, '');
   if (/^[A-Za-z0-9_]{5,32}$/.test(bot)) {

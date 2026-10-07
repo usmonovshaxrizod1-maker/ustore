@@ -1,5 +1,6 @@
 // The browser owns tenant routing and the session. The Mini App owns the UI.
 // Session tokens never cross into the GitHub Pages frame.
+import { secureFrameNonce } from './browser-id.js';
 const BRIDGE = 'ustore-miniapp-v1';
 const MINI_APP_ORIGIN = 'https://usmonovshaxrizod1-maker.github.io';
 const PUBLIC_SHOP_ACTIONS = new Set(['boot', 'get_catalog', 'get_web_bundles', 'get_web_promotions', 'get_web_promotion']);
@@ -17,7 +18,7 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   const botId = kind === 'shop' ? String(tenant?.botId || '') : '';
   if (kind === 'shop' && !/^\d+$/.test(botId)) throw new TypeError('Do‘kon bot identifikatori noto‘g‘ri.');
   if (!/^[0-9a-f-]{36}$/i.test(String(viewerKey || ''))) throw new TypeError('Browser saqlash kaliti noto‘g‘ri.');
-  const nonce = crypto.randomUUID() + crypto.randomUUID();
+  const nonce = secureFrameNonce();
   const frame = document.createElement('iframe');
   const wrapper = document.createElement('main');
   wrapper.id = 'uw-main-content';

@@ -476,7 +476,7 @@
   }
   window.USTORE_APPLY_WEB_ROUTE = (route) => {
     if (!browserBridge || loading) return;
-    const path = String(route || '/').split('?')[0];
+    const [path, query = ''] = String(route || '/').split('?');
     applyingWebRoute = true;
     try {
       if (path.startsWith('/platform/admin')) {
@@ -494,6 +494,15 @@
         const segments = path.split('/');
         const section = segments[2] || '';
         switchTab(({ shops: 'shops', subscriptions: 'subscription', support: 'help', profile: 'profile' })[section] || 'home');
+        if (section === 'subscriptions') {
+          const params = new URLSearchParams(query);
+          if (params.get('new') === '1') {
+            tariffBillingPeriod = params.get('period') === 'annual' ? 'annual' : 'monthly';
+            const planId = params.get('plan') || '';
+            if (planId && tariffs.some((tariff) => String(tariff.id) === planId)) startNewShopWithTariff(planId);
+            else startNewShopFlow();
+          }
+        }
         if (section === 'shops' && segments[3]) openMyShopManage(segments[3]);
         else if (section === 'requests') {
           openMyRequests();

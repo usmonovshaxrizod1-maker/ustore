@@ -5,7 +5,7 @@
   gap: var(--uw-space-6);
   padding-block: var(--uw-space-8);
 }
-.uw-auth[data-feature="login"] {
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) {
   padding: clamp(1.15rem, 3vw, 1.8rem);
   border: 1px solid var(--uw-color-border);
   border-radius: 1.35rem;
@@ -14,30 +14,30 @@
   font-family: var(--uw-font-sans);
   gap: clamp(1rem, 2.5vw, 1.4rem);
 }
-.uw-auth[data-feature="login"] .uw-auth__heading h1 {
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth__heading h1 {
   font-size: clamp(1.55rem, 4vw, 2rem);
   line-height: 1.12;
   letter-spacing: -.025em;
 }
-.uw-auth[data-feature="login"] .uw-auth__heading p {
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth__heading p {
   max-width: 31rem;
   font-size: .92rem;
   line-height: 1.55;
 }
-.uw-auth[data-feature="login"] .uw-auth-tabs .uw-button {
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-tabs .uw-button {
   min-height: 2.85rem;
   border-radius: .9rem;
   font-weight: 750;
 }
-.uw-auth[data-feature="login"] .uw-card {
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-card {
   border-radius: 1rem;
   box-shadow: none;
 }
-.uw-auth[data-feature="login"] .uw-field__control {
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-field__control {
   min-height: 3rem;
   border-radius: .85rem;
 }
-.uw-auth[data-feature="login"] .uw-auth-form > .uw-button[type="submit"] {
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-form > .uw-button[type="submit"] {
   min-height: 3.1rem;
   border-radius: .9rem;
   font-weight: 800;
@@ -696,6 +696,21 @@
 @media(max-width:63.999rem){.uw-platform-hero__inner{grid-template-columns:1fr;gap:2rem}.uw-platform-hero__copy{max-width:48rem}.uw-platform-hero h1{max-width:15ch}.uw-platform-visual{min-height:20rem}.uw-platform-benefit-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:47.999rem){.uw-platform-header__inner{grid-template-columns:1fr auto}.uw-platform-nav{display:none}.uw-platform-container{width:min(calc(100% - 1.25rem),76rem)}.uw-platform-hero{padding-top:3rem}.uw-platform-hero h1{font-size:clamp(2.35rem,12vw,3.7rem)}.uw-platform-hero__actions{display:grid}.uw-platform-hero__actions .uw-button{width:100%}.uw-platform-visual{min-height:18rem}.uw-platform-benefit-grid{grid-template-columns:1fr}.uw-platform-final-cta__inner,.uw-platform-footer__inner{align-items:stretch;flex-direction:column}.uw-platform-final-cta .uw-button{width:100%}}
 
+/* Public ustr.uz landing: the same eight product stories and tariff periods as the Mini App. */
+.uw-platform-hero h1{max-width:16ch}.uw-platform-visual{min-width:0}
+.uw-platform-showcase{position:relative;width:100%;min-width:0;overflow:hidden;border:1px solid #cbdaf4;border-radius:1.55rem;background:linear-gradient(145deg,#eff6ff,#fff 58%,#eef2ff);box-shadow:0 28px 70px rgb(30 58 138 / 15%)}
+.uw-platform-showcase__viewport{overflow:hidden}.uw-platform-showcase__track{display:flex;transition:transform .62s cubic-bezier(.22,.8,.25,1);will-change:transform}.uw-platform-showcase__slide{flex:0 0 100%;min-width:0;display:grid;grid-template-rows:auto 1fr;gap:1.1rem;padding:1.4rem 1.4rem .5rem}
+.uw-platform-showcase__caption{display:grid;align-content:start;gap:.32rem;min-height:7.3rem}.uw-platform-showcase__caption>span{color:#1d4ed8;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.uw-platform-showcase__caption>strong{font-size:clamp(1.05rem,2vw,1.5rem);line-height:1.15;letter-spacing:-.03em}.uw-platform-showcase__caption>p{max-width:37ch;margin:0;color:#5b6982;font-size:.83rem;line-height:1.5}
+.uw-platform-showcase__scene{display:grid;grid-template-columns:minmax(0,1fr) 31%;align-items:end;gap:.65rem;min-height:12.2rem}.uw-platform-showcase__panel,.uw-platform-showcase__side{min-width:0;border:1px solid #dbe5f5;background:#fff;box-shadow:0 12px 30px rgb(30 58 138 / 9%)}.uw-platform-showcase__panel{min-height:11.5rem;border-radius:1rem 1rem .55rem .55rem;padding:.75rem;transform:rotate(-2deg)}.uw-platform-showcase__panel-head{display:flex;align-items:center;gap:.5rem;padding-bottom:.65rem;border-bottom:1px solid #e8eef8;font-size:.75rem}.uw-platform-showcase__window-dots{width:1.4rem;height:.35rem;background:radial-gradient(circle at 15% 50%,#93c5fd 0 .14rem,transparent .15rem),radial-gradient(circle at 50% 50%,#cbd5e1 0 .14rem,transparent .15rem),radial-gradient(circle at 85% 50%,#cbd5e1 0 .14rem,transparent .15rem)}.uw-platform-showcase__rows{display:grid;gap:.4rem;padding-top:.65rem}.uw-platform-showcase__row{display:flex;align-items:center;gap:.45rem;padding:.42rem .5rem;border:1px solid #edf2f9;border-radius:.5rem;color:#334155;font-size:.67rem;font-weight:650}.uw-platform-showcase__row i{width:1.2rem;height:1.2rem;flex:none;border-radius:.36rem;background:#dbeafe}.uw-platform-showcase__row em{width:24%;height:.28rem;margin-left:auto;border-radius:1rem;background:#e2e8f0}.uw-platform-showcase__side{min-height:9.2rem;display:grid;align-content:center;justify-items:center;gap:.5rem;padding:.6rem;border-radius:1.2rem 1.2rem .6rem .6rem;text-align:center;transform:rotate(4deg)}.uw-platform-showcase__symbol{width:2.6rem;height:2.6rem;display:grid;place-items:center;border-radius:.85rem;background:#e0e7ff;color:#4338ca;font-size:1.2rem;font-weight:900}.uw-platform-showcase__side b{font-size:.65rem;line-height:1.25}.uw-platform-showcase__side-lines{width:70%;height:.85rem;background:linear-gradient(#e2e8f0,#e2e8f0) 0 0/100% .2rem no-repeat,linear-gradient(#e2e8f0,#e2e8f0) 50% 100%/65% .2rem no-repeat}
+.uw-platform-showcase__slide[data-story="marketing"] .uw-platform-showcase__symbol{background:#fef3c7;color:#b45309}.uw-platform-showcase__slide[data-story="orders"] .uw-platform-showcase__symbol,.uw-platform-showcase__slide[data-story="checkout"] .uw-platform-showcase__symbol{background:#dcfce7;color:#15803d}.uw-platform-showcase__slide[data-story="branding"] .uw-platform-showcase__symbol{background:#fce7f3;color:#be185d}
+.uw-platform-showcase__controls{display:flex;align-items:center;justify-content:space-between;gap:.45rem;padding:.55rem 1.15rem 1rem}.uw-platform-showcase__controls>button{width:2.15rem;height:2.15rem;flex:none;border:1px solid #dbe5f5;border-radius:.7rem;background:#fff;color:#1d4ed8;font-size:1.15rem;cursor:pointer}.uw-platform-showcase__controls>button:hover{background:#eff6ff}.uw-platform-showcase__dots{display:flex;align-items:center;justify-content:center;gap:.3rem}.uw-platform-showcase__dots button{width:.44rem;height:.44rem;padding:0;border:0;border-radius:999px;background:#cbd5e1;cursor:pointer;transition:width .25s,background .25s}.uw-platform-showcase__dots button.is-active{width:1.25rem;background:#2563eb}
+.uw-platform-billing{display:inline-flex;gap:.25rem;margin:0 0 1.4rem;padding:.3rem;border:1px solid #cbd5e1;border-radius:.85rem;background:#fff}.uw-platform-billing button{min-height:2.5rem;padding:.45rem 1rem;border:0;border-radius:.6rem;background:transparent;color:#64748b;font:inherit;font-size:.86rem;font-weight:750;cursor:pointer}.uw-platform-billing button[aria-pressed="true"]{background:#1d4ed8;color:#fff;box-shadow:0 3px 12px rgb(29 78 216 / 20%)}
+.uw-platform-plan{padding:1.35rem;gap:1.1rem}.uw-platform-plan__badge{top:.85rem;right:.85rem}.uw-platform-plan__heading h3{min-height:1.7rem}.uw-platform-plan__limit{display:grid;gap:.28rem;margin-top:1.15rem;padding:.95rem;border:1px solid #dbeafe;border-radius:.9rem;background:linear-gradient(135deg,#eff6ff,#f8fbff)}.uw-platform-plan__limit small{color:#64748b;font-size:.73rem;font-weight:650}.uw-platform-plan__limit strong{font-size:1.22rem;letter-spacing:-.03em;color:#1e40af}.uw-platform-plan__price{display:flex;flex-wrap:wrap;align-items:baseline;gap:.35rem}.uw-platform-plan__price s{width:100%;color:#94a3b8;font-size:.88rem}.uw-platform-plan__price small{width:100%;color:#15803d;font-size:.76rem;font-weight:800}
+@media(min-width:75rem){.uw-platform-plans{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:48rem) and (max-width:74.999rem){.uw-platform-plans{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:47.999rem){.uw-platform-visual{min-height:0}.uw-platform-showcase__slide{padding:1rem 1rem .4rem}.uw-platform-showcase__caption{min-height:7.7rem}.uw-platform-showcase__scene{min-height:10rem}.uw-platform-showcase__panel{min-height:9.5rem}.uw-platform-showcase__side{min-height:7.8rem}.uw-platform-plans{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:.6rem}.uw-platform-plan{flex:0 0 min(86vw,21rem);scroll-snap-align:start}.uw-platform-billing{display:flex;width:max-content;max-width:100%}}
+@media(prefers-reduced-motion:reduce){.uw-platform-showcase__track,.uw-platform-showcase__dots button{transition:none}}
+
 /* N2 — central UStorE platform portal. Kept separate from shop admin shell/state. */
 .uw-platform-portal{min-height:100dvh;background:var(--uw-color-canvas);color:var(--uw-color-text)}
 .uw-platform-portal__header{position:sticky;top:0;z-index:30;min-height:4.4rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.75rem clamp(1rem,3vw,2rem);border-bottom:1px solid var(--uw-color-border);background:color-mix(in srgb,var(--uw-color-surface) 92%,transparent);backdrop-filter:blur(16px)}
@@ -785,7 +800,7 @@
 
 
 /* Task 16 — ustr.uz login mirrors the Shop App guest profile card/menu system. */
-.uw-auth[data-feature="login"]{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]){
   width:min(100%,35rem);
   padding:0;
   border:0;
@@ -794,7 +809,7 @@
   box-shadow:none;
   gap:.75rem;
 }
-.uw-auth[data-feature="login"] .uw-auth-profile-card{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-card{
   display:grid;
   grid-template-columns:3.5rem minmax(0,1fr);
   gap:.85rem;
@@ -805,7 +820,7 @@
   background:#fff;
   box-shadow:0 4px 18px rgb(15 23 42 / 4.5%);
 }
-.uw-auth[data-feature="login"] .uw-auth-profile-card__avatar{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-card__avatar{
   width:3.5rem;
   height:3.5rem;
   display:grid;
@@ -815,9 +830,9 @@
   background:linear-gradient(145deg,#eff6ff,#f8fbff);
   color:#2563eb;
 }
-.uw-auth[data-feature="login"] .uw-auth-profile-card__avatar svg{width:1.65rem;height:1.65rem}
-.uw-auth[data-feature="login"] .uw-auth-profile-card__copy{min-width:0;display:grid;gap:.16rem}
-.uw-auth[data-feature="login"] .uw-auth-profile-card__eyebrow{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-card__avatar svg{width:1.65rem;height:1.65rem}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-card__copy{min-width:0;display:grid;gap:.16rem}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-card__eyebrow{
   color:#64748b;
   font-size:.68rem;
   line-height:1;
@@ -825,20 +840,20 @@
   letter-spacing:.08em;
   text-transform:uppercase;
 }
-.uw-auth[data-feature="login"] .uw-auth-profile-card h1{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-card h1{
   margin:0;
   font-size:clamp(1.05rem,3.5vw,1.3rem);
   line-height:1.2;
   letter-spacing:-.02em;
 }
-.uw-auth[data-feature="login"] .uw-auth-profile-card p{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-card p{
   margin:0;
   max-width:42rem;
   color:#64748b;
   font-size:.82rem;
   line-height:1.45;
 }
-.uw-auth[data-feature="login"] .uw-auth-profile-menu{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu{
   display:grid;
   grid-template-columns:1fr;
   gap:.5rem;
@@ -848,7 +863,7 @@
   background:#fff;
   box-shadow:0 4px 18px rgb(15 23 42 / 4%);
 }
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__row{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__row{
   width:100%;
   display:grid;
   grid-template-columns:2.35rem minmax(0,1fr) 1.25rem;
@@ -865,35 +880,35 @@
   cursor:pointer;
   transition:border-color .16s ease,background .16s ease,box-shadow .16s ease,transform .12s ease;
 }
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__row:hover{background:#fff;border-color:#bfdbfe;box-shadow:0 5px 16px rgb(37 99 235 / 7%)}
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__row:active{transform:scale(.995)}
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__row.is-active{border-color:#93c5fd;background:#eff6ff;box-shadow:0 0 0 2px rgb(59 130 246 / 7%)}
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__icon{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__row:hover{background:#fff;border-color:#bfdbfe;box-shadow:0 5px 16px rgb(37 99 235 / 7%)}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__row:active{transform:scale(.995)}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__row.is-active{border-color:#93c5fd;background:#eff6ff;box-shadow:0 0 0 2px rgb(59 130 246 / 7%)}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__icon{
   width:2.35rem;height:2.35rem;display:grid;place-items:center;border:1px solid #dbeafe;border-radius:.72rem;background:#fff;color:#2563eb;
 }
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__icon svg{width:1.15rem;height:1.15rem}
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__copy{min-width:0;display:grid;gap:.14rem}
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__copy strong{font-size:.86rem;line-height:1.25;font-weight:780}
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__copy small{color:#64748b;font-size:.72rem;line-height:1.3;white-space:normal}
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__chevron{display:grid;place-items:center;color:#94a3b8}
-.uw-auth[data-feature="login"] .uw-auth-profile-menu__chevron svg{width:1rem;height:1rem}
-.uw-auth[data-feature="login"] .uw-auth__body{gap:.65rem}
-.uw-auth[data-feature="login"] .uw-auth-profile-panel{
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__icon svg{width:1.15rem;height:1.15rem}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__copy{min-width:0;display:grid;gap:.14rem}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__copy strong{font-size:.86rem;line-height:1.25;font-weight:780}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__copy small{color:#64748b;font-size:.72rem;line-height:1.3;white-space:normal}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__chevron{display:grid;place-items:center;color:#94a3b8}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__chevron svg{width:1rem;height:1rem}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth__body{gap:.65rem}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-panel{
   padding:1rem;
   border:1px solid #e2e8f0;
   border-radius:1.05rem;
   background:#fff;
   box-shadow:0 4px 18px rgb(15 23 42 / 4%);
 }
-.uw-auth[data-feature="login"] .uw-card.uw-auth-profile-panel{box-shadow:0 4px 18px rgb(15 23 42 / 4%)}
-.uw-auth[data-feature="login"] .uw-auth-form.uw-auth-profile-panel{gap:.8rem}
-.uw-auth[data-feature="login"] .uw-field__control{background:#f8fafc;border-color:#dfe5ec}
-.uw-auth[data-feature="login"] .uw-auth-telegram-body>.uw-button,
-.uw-auth[data-feature="login"] .uw-auth-form>.uw-button[type="submit"]{min-height:3rem;border-radius:.85rem;font-weight:800}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-card.uw-auth-profile-panel{box-shadow:0 4px 18px rgb(15 23 42 / 4%)}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-form.uw-auth-profile-panel{gap:.8rem}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-field__control{background:#f8fafc;border-color:#dfe5ec}
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-telegram-body>.uw-button,
+.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-form>.uw-button[type="submit"]{min-height:3rem;border-radius:.85rem;font-weight:800}
 .uw-platform-auth-shell{
   background:radial-gradient(circle at 50% -8rem,rgb(219 234 254 / 75%),transparent 31rem),#f5f7fb;
 }
-.uw-platform-auth-shell>.uw-auth[data-feature="login"]{
+.uw-platform-auth-shell>.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]){
   width:min(100%,35rem);
   margin:clamp(2rem,8vh,5.5rem) auto 0;
   padding:0;
@@ -903,11 +918,11 @@
   box-shadow:none;
 }
 @media(max-width:640px){
-  .uw-platform-auth-shell>.uw-auth[data-feature="login"]{margin:1rem auto 0;padding:0;border-radius:0;box-shadow:none}
-  .uw-auth[data-feature="login"] .uw-auth-profile-card{grid-template-columns:3.25rem minmax(0,1fr);padding:.9rem}
-  .uw-auth[data-feature="login"] .uw-auth-profile-card__avatar{width:3.25rem;height:3.25rem}
-  .uw-auth[data-feature="login"] .uw-auth-profile-menu{padding:.45rem;gap:.42rem}
-  .uw-auth[data-feature="login"] .uw-auth-profile-menu__row{min-height:3.55rem;padding:.6rem .7rem}
-  .uw-auth[data-feature="login"] .uw-auth-profile-menu__copy small{font-size:.69rem}
-  .uw-auth[data-feature="login"] .uw-auth-profile-panel{padding:.85rem}
+  .uw-platform-auth-shell>.uw-auth:is([data-feature="login"],[data-feature="origin-signin"]){margin:1rem auto 0;padding:0;border-radius:0;box-shadow:none}
+  .uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-card{grid-template-columns:3.25rem minmax(0,1fr);padding:.9rem}
+  .uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-card__avatar{width:3.25rem;height:3.25rem}
+  .uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu{padding:.45rem;gap:.42rem}
+  .uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__row{min-height:3.55rem;padding:.6rem .7rem}
+  .uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__copy small{font-size:.69rem}
+  .uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-panel{padding:.85rem}
 }

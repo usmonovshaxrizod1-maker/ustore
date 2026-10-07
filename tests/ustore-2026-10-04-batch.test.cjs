@@ -23,8 +23,8 @@ test('batch task 2: Telegram uses one central callback and guest profile is expl
   assert.match(oidc, /\/auth\/telegram\/callback/);
   assert.match(read('web/navigation/routes.js'), /path: '\/auth\/telegram\/callback'/);
   assert.match(app, /fc-guest-profile-card/);
-  assert.match(app, /method=telegram/);
-  assert.match(app, /method=password/);
+  assert.match(app, /new URLSearchParams\(\{ next: guestAuthReturnTo, method: 'telegram' \}\)/);
+  assert.match(app, /new URLSearchParams\(\{ next: guestAuthReturnTo, method: 'password' \}\)/);
 });
 
 test('batch task 3: startup uses readiness skeletons instead of welcome pages', () => {
@@ -82,8 +82,8 @@ test('desktop-only filter becomes a multi-column dialog without changing mobile 
 test('auth polish: premium shared login and BFCache back keeps the live storefront', () => {
   const webApp = read('web/app.js');
   const features = read('web/styles/features.css');
-  assert.match(features, /\.uw-auth\[data-feature="login"\][\s\S]*box-shadow:\s*var\(--uw-shadow-md\)/);
-  assert.match(features, /\.uw-auth\[data-feature="login"\] \.uw-auth-tabs \.uw-button/);
+  assert.match(features, /\.uw-auth:is\(\[data-feature="login"\],\[data-feature="origin-signin"\]\)[\s\S]*box-shadow:\s*var\(--uw-shadow-md\)/);
+  assert.match(features, /\.uw-auth:is\(\[data-feature="login"\],\[data-feature="origin-signin"\]\) \.uw-auth-tabs \.uw-button/);
   assert.match(webApp, /if \(event\.persisted\) applyDocumentLocale\(uiLocale\)/);
   assert.doesNotMatch(webApp, /if \(event\.persisted && router\) router\.start\(\)/);
 });

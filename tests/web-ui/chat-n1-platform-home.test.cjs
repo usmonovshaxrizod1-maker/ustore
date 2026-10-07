@@ -46,7 +46,7 @@ test('N1 landing renders existing product explanation and tariff data without in
   const picked=[]; const logins=[];
   const view=createPlatformHomeView({controller,state:controller.getState(),onLogin:(m)=>logins.push(m||{}),onChoosePlan:(t)=>picked.push(t.id)},new Doc());
   const all=texts(view.element).join(' | ');
-  assert.match(all,/Telegram’da o‘z e-do‘koningizni oching/);
+  assert.match(all,/Bitta do‘kon\. Ikki kanal\./);
   assert.match(all,/199[\s\u00a0]?000 so‘m/);
   assert.match(all,/500 tagacha mahsulot/);
   assert.match(all,/Ommabop/);
@@ -54,6 +54,40 @@ test('N1 landing renders existing product explanation and tariff data without in
   const choose=buttons(view.element).filter(b=>buttonLabel(b)==='Kirish va tanlash');
   assert.equal(choose.length,2); await choose[1].listeners.click();
   assert.deepEqual(picked,['t-business']);
+});
+
+test('central landing shows all eight stories and manual carousel navigation',async()=>{
+  const {createPlatformHomeController,createPlatformHomeView}=await load('web/features/platform-home/platform-home.js');
+  const controller=createPlatformHomeController({platformPort:{invoke:async()=>({ok:true,data:{tariffs}})}});
+  await controller.load();
+  const view=createPlatformHomeView({controller,state:controller.getState()},new Doc());
+  const slides=flat(view.element).filter(n=>n.className==='uw-platform-showcase__slide');
+  assert.deepEqual(slides.map(n=>n.dataset.story),['channels','catalog','orders','inventory','marketing','checkout','analytics','branding']);
+  const next=buttons(view.element).find(n=>n.attributes['aria-label']==='Keyingi imkoniyat');
+  next.listeners.click();
+  assert.equal(slides[1].attributes['aria-hidden'],'false');
+  assert.equal(slides[0].attributes['aria-hidden'],'true');
+  view.destroy();
+});
+
+test('central landing annual tariff uses ten months and keeps original twelve-month price',async()=>{
+  const {createPlatformHomeController,createPlatformHomeView}=await load('web/features/platform-home/platform-home.js');
+  const controller=createPlatformHomeController({platformPort:{invoke:async()=>({ok:true,data:{tariffs}})}});
+  await controller.load();
+  const selections=[];
+  const view=createPlatformHomeView({controller,state:controller.getState(),onChoosePlan:(tariff,period)=>selections.push([tariff.id,period])},new Doc());
+  buttons(view.element).find(n=>n.textContent==='Yillik −17%').listeners.click();
+  const cards=flat(view.element).filter(n=>n.className==='uw-platform-plan');
+  const prices=flat(cards[0]).find(n=>n.className==='uw-platform-plan__price');
+  assert.equal(prices.children.find(n=>n.tagName==='S').textContent,'1 188 000 so‘m');
+  assert.equal(prices.children.find(n=>n.tagName==='STRONG').textContent,'990 000 so‘m');
+  assert.match(texts(cards[0]).join(' '),/2 oy bepul/);
+  buttons(cards[0]).find(n=>buttonLabel(n)==='Kirish va tanlash').listeners.click();
+  assert.deepEqual(selections,[['t-start','annual']]);
+  buttons(view.element).find(n=>n.textContent==='Oylik').listeners.click();
+  const monthly=flat(view.element).filter(n=>n.className==='uw-platform-plan')[0];
+  assert.equal(flat(monthly).find(n=>n.className==='uw-platform-plan__price').children.find(n=>n.tagName==='STRONG').textContent,'99 000 so‘m');
+  view.destroy();
 });
 
 test('N1 pricing has honest loading, error and empty states',async()=>{

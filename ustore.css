@@ -3001,6 +3001,9 @@ html{scroll-padding-top:calc(var(--ustore-header-height) + var(--ustore-home-sti
 .fc-product-pin-overlay,.fc-product-more-overlay,.fc-product-drag-image,.fc-product-visibility-overlay,.fc-banner-home-drag{z-index:var(--ustore-layer-inline-action)!important}
 .fc-banner-strip{margin-bottom:1.15rem!important}
 #products-grid{position:relative;z-index:var(--ustore-layer-content)}
+.fc-catalog-pending{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem;min-height:24rem}
+.fc-catalog-pending span{display:block;min-height:12rem;border:1px solid var(--ustore-border,#e2e8f0);border-radius:1rem;background:var(--ustore-card-bg,#fff);animation:fc-skeleton-pulse 1.15s ease-in-out infinite alternate}
+@media(min-width:768px){.fc-catalog-pending{grid-template-columns:repeat(4,minmax(0,1fr));min-height:13rem}}
 /* 15-band spec, 5-band: gorizontal katalog qatori (.fc-cat-nav-row, sticky
    bar ichida) va undan keyingi banner/mahsulotlar orasi juda yopishib
    qolgan edi — sticky bar pastki margin'i 0 edi (2589-qator), faqat

@@ -1451,7 +1451,7 @@ test('every bare function call anywhere in platform-app.js resolves to a real de
     'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'alert', 'confirm', 'prompt', 'fetch',
     'btoa', 'atob', 'escape', 'unescape', 'structuredClone', 'requestAnimationFrame', 'Symbol',
     'WeakMap', 'WeakSet', 'Proxy', 'Reflect', 'Error', 'TypeError', 'RangeError',
-    'AbortController', 'FileReader', 'URL', 'resolve', 'reject', // both are Promise-executor closure params, not globals
+    'AbortController', 'FileReader', 'URL', 'URLSearchParams', 'resolve', 'reject', // both are Promise-executor closure params, not globals
     'scopedKey', 'fcIcon', // comment-only false positives, see note above
   ]);
   const missing = [...calls].filter((c) => !defs.has(c) && !allowed.has(c));

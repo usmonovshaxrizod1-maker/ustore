@@ -1,5 +1,6 @@
 import { scrollElementIntoView } from '../../a11y/preferences.js';
 import { createButton, createStatePanel } from '../../components/ui.js';
+import { secureUuidV4 } from '../../shared/browser-id.js';
 
 function getDocument(documentRef) {
   const doc = documentRef || globalThis.document;
@@ -92,7 +93,7 @@ export function createPlatformPortalController({ platformPort, authPort = null, 
     store.set({checkoutStatus:'submitting',checkoutError:null});try{let receiptImageUpload; if(c.receiptFile)receiptImageUpload={base64:await fileToBase64(c.receiptFile),mimeType:c.receiptFile.type,fileName:c.receiptFile.name};const payload={kind:c.kind,shopId:c.shopId||undefined,tariffId:c.tariffId,requestId:c.kind==='NEW_SHOP'?(c.preparedRequestId||undefined):undefined,billingPeriod:c.billingPeriod,upgradeAction:c.upgradeAction||undefined,paymentMethod:c.paymentMethod,paymentMethodId:c.paymentMethodId||undefined,consentAccepted:true,shopName:c.kind==='NEW_SHOP'?String(c.shopName).trim():undefined,ownerTelegramId:c.kind==='NEW_SHOP'?String(c.ownerTelegramId):undefined,botName:c.kind==='NEW_SHOP'?(String(c.botName||'').trim()||undefined):undefined,botBio:c.kind==='NEW_SHOP'?(String(c.botBio||'').trim()||undefined):undefined,receiptImageUpload};const {receiptImageUpload:receipt,...submission}=payload;
       const storageKey=`ustore:subscription:${String(store.get().actor?.accountId||store.get().actor?.telegramId||store.get().actor?.id||'current')}:${JSON.stringify(submission)}`;
       let submissionKey=c.submissionKey;try{submissionKey=submissionKey||sessionStorage?.getItem(storageKey);}catch{}
-      submissionKey=submissionKey||globalThis.crypto.randomUUID();store.set({checkout:{...c,submissionKey}});try{sessionStorage?.setItem(storageKey,submissionKey);}catch{}
+      submissionKey=submissionKey||secureUuidV4();store.set({checkout:{...c,submissionKey}});try{sessionStorage?.setItem(storageKey,submissionKey);}catch{}
       const r=await invoke('platform_submit_subscription_request',{...submission,submissionKey});
       if(!r.ok){store.set({checkoutStatus:'error',checkoutError:r.error});return r;}
       const requestId=r.data?.requestId;if(!requestId){const error={code:'CONTRACT_MISMATCH',message:'Ariza ID qaytmadi.'};store.set({checkoutStatus:'error',checkoutError:error});return {ok:false,error};}

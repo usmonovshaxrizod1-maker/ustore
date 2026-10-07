@@ -25,13 +25,13 @@ test('O2 production runtime/auth features are deferred instead of being static i
   assert.doesNotMatch(app, /^import .*features\/auth\/(?:login|origin-handoff)\.js/m);
   assert.match(app, /import\('\.\/runtime\/production\.js(?:\?v=[^']+)?'\)/);
   assert.match(app, /import\('\.\/features\/auth\/login\.js(?:\?v=[^']+)?'\)/);
-  assert.match(app, /import\('\.\/features\/auth\/origin-handoff\.js'\)/);
+  assert.match(app, /import\('\.\/features\/auth\/origin-handoff\.js(?:\?v=[^']+)?'\)/);
 });
 
 test('O2 route modules remain lazy and platform routes get a delayed slow-network state', () => {
   const app = read('web/app.js');
   for (const feature of ['platform-home','home','catalog','product','cart','checkout','orders','profile','support']) {
-    assert.ok(app.includes(`import('./features/${feature}/index.js')`), feature);
+    assert.match(app, new RegExp(`import\\('\\./features/${feature}/index\\.js(?:\\?v=[^']+)?'\\)`), feature);
   }
   assert.match(app, /createMiniAppFrameHost/);
   assert.match(app, /runtime\.platform\.invoke\('platform_boot'/);

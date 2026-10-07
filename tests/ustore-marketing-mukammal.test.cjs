@@ -218,7 +218,7 @@ test('marketing UI has dark-theme tokens and a 360px overflow fallback', () => {
 
 test('marketing frontend cache version is bumped together', () => {
   // POLISH ROUND (7-topshiriq, 2026-08-30): v99->v100 for this round's changes.
-  assert.match(html, /ustore\.css\?v=319/);
-  assert.match(html, /ustore-shop-app\.js\?v=319/);
+  assert.match(html, /ustore\.css\?v=320/);
+  assert.match(html, /ustore-shop-app\.js\?v=320/);
 });
 

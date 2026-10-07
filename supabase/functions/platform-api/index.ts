@@ -1169,7 +1169,7 @@ Deno.serve(async (req: Request) => {
       try {
         await telegramApi(PLATFORM_BOT_TOKEN, "sendMessage", {
           chat_id: chatId,
-          text: "👋 <b>UStorE</b>\n\nBoshqaruv panelini ochish uchun pastdagi tugmani bosing. Telegram ID'ingizni bilish uchun /id yuborishingiz mumkin.",
+          text: "👋 <b>UStorE</b>\n\nWeb sayt va Telegram Mini App orqali savdo qiladigan do‘koningizni bitta joydan boshqaring. Boshlash uchun pastdagi tugmani bosing. Telegram ID'ingizni bilish uchun /id yuborishingiz mumkin.",
           parse_mode: "HTML",
           reply_markup: {
             inline_keyboard: [[{ text: "UStorE boshqaruv panelini ochish", web_app: { url: PLATFORM_MINI_APP_URL } }]],

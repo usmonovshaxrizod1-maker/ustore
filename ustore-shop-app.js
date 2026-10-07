@@ -7306,7 +7306,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           </div>
 
           ${renderBannerCarouselHtml()}
-          <div id="products-grid" class="grid grid-cols-2 gap-3"></div>
+          <div id="products-grid" class="grid grid-cols-2 gap-3" aria-live="polite"></div>
           ${renderFeaturedCategoryBlocksHtml()}
           ${storefrontFooterHtml()}
         </div>
@@ -7344,6 +7344,16 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       });
 
       if (filtered.length === 0) {
+        if (catalogLoading && !catalogLoadError) {
+          grid.style.display = '';
+          grid.innerHTML = '<div class="fc-catalog-pending" role="status" aria-busy="true"><span></span><span></span><span></span><span></span></div>';
+          return;
+        }
+        if (catalogLoadError && !products.length) {
+          grid.style.display = '';
+          grid.innerHTML = `<div class="fc-empty-state col-span-2"><p>${tr('Mahsulotlar yuklanmadi. Qayta urinib ko‘ring.', 'Товары не загрузились. Повторите попытку.')}</p><button type="button" class="fc-btn fc-btn-primary" onclick="retryCatalogLoad()">${tr('Qayta urinish', 'Повторить')}</button></div>`;
+          return;
+        }
         // Bosh sahifada pin qilingan mahsulot bo'lmasa blokning o'zi ham yo'q:
         // banner yoki katalog mavjud bo'lmaganidek, hech qanday bo'sh joy/empty
         // karta qoldirmaydi. Faqat foydalanuvchi qidirgan yoki filtr qo'llagan
@@ -15804,7 +15814,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function renderProfile(container) {
       if (browserBridge && !browserBridge.authenticated) {
-        container.innerHTML = `<div class="fc-guest-profile-shell space-y-4"><section class="fc-profile-card fc-guest-profile-card"><div class="fc-profile-avatar"><i data-lucide="user-round" class="w-7 h-7"></i></div><div class="fc-profile-copy"><div class="fc-profile-eyebrow">${tr('Profil','Профиль')}</div><h2>${tr('Profilga kirish','Войти в профиль')}</h2><p class="fc-profile-phone">${tr('Buyurtmalar, sevimlilar va shaxsiy ma’lumotlaringiz uchun tizimga kiring.','Войдите, чтобы открыть заказы, избранное и личные данные.')}</p></div></section><section class="fc-profile-menu fc-guest-auth-actions"><button type="button" onclick="browserBridge.navigate('/signin?next=/profile&method=telegram')" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="send"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Telegram orqali kirish','Войти через Telegram')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button><button type="button" onclick="browserBridge.navigate('/signin?next=/profile&method=password')" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="key-round"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Login va parol bilan kirish','Войти по логину и паролю')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button></section></div>`;
+        const telegramTarget = `/signin?${new URLSearchParams({ next: guestAuthReturnTo, method: 'telegram' })}`;
+        const passwordTarget = `/signin?${new URLSearchParams({ next: guestAuthReturnTo, method: 'password' })}`;
+        container.innerHTML = `<div class="fc-guest-profile-shell space-y-4"><section class="fc-profile-card fc-guest-profile-card"><div class="fc-profile-avatar"><i data-lucide="user-round" class="w-7 h-7"></i></div><div class="fc-profile-copy"><div class="fc-profile-eyebrow">${tr('Profil','Профиль')}</div><h2>${tr('Profilga kirish','Войти в профиль')}</h2><p class="fc-profile-phone">${tr('Buyurtmalar, sevimlilar va shaxsiy ma’lumotlaringiz uchun tizimga kiring.','Войдите, чтобы открыть заказы, избранное и личные данные.')}</p></div></section><section class="fc-profile-menu fc-guest-auth-actions"><button type="button" onclick="browserBridge.navigate('${escapeHtml(telegramTarget)}')" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="send"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Telegram orqali kirish','Войти через Telegram')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button><button type="button" onclick="browserBridge.navigate('${escapeHtml(passwordTarget)}')" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="key-round"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Login va parol bilan kirish','Войти по логину и паролю')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button></section></div>`;
         return;
       }
       const phones = [shopContact.phone, shopContact.phone2, shopContact.phone3].filter(Boolean);
@@ -21243,6 +21255,7 @@ if (activePopupModal === 'LOGO_CROP') {
         const cached = readStoredObject(CATALOG_CACHE_KEY, null);
         if (!cached || !Array.isArray(cached.products) || !Array.isArray(cached.categories)) return false;
         products = cached.products; categories = cached.categories;
+        lastCatalogCacheFingerprint = JSON.stringify({ products, categories });
         warmCatalogBranch();
         return true;
       } catch { return false; }
@@ -21280,10 +21293,11 @@ if (activePopupModal === 'LOGO_CROP') {
         products = (catalogRes.products || []).map(mapProductFromDB);
         categories = (catalogRes.categories || []).map(mapCategoryFromDB);
         warmCatalogBranch();
+        const previousFingerprint = lastCatalogCacheFingerprint;
         saveCatalogCache();
         const ms = Math.round(performance.now() - perfStarted);
         if (ms >= 500) console.info(`[USTORE perf] Catalog: ${ms}ms (${products.length} products, ${categories.length} categories)`);
-        return true;
+        return previousFingerprint !== lastCatalogCacheFingerprint;
       } catch (error) {
         catalogLoadError = error;
         throw error;
@@ -21374,13 +21388,17 @@ if (activePopupModal === 'LOGO_CROP') {
       // internet yo'q bo'lganda (ikkala so'rov ham bir vaqtda yiqilganda)
       // katalog xatosi bir muddat "ushlanmagan" bo'lib qolardi, boot'ning o'zi
       // yiqilsa esa (u `return` qiladi) .catch() UMUMAN ulanmasdi.
-      const catalogPromise = loadCatalog().then(() => {
+      let initialViewReady = false;
+      const catalogPromise = loadCatalog().then((changed) => {
         // 14-band: boot'ning stale-while-revalidate yangilanishi ham draft
         // yo'qolish bugiga hissa qo'shishi mumkin edi (juda kam uchraydigan
         // holat — admin modal ochishga ulgurgan bo'lsa) — shu poll bilan bir
         // xil himoya qo'yildi.
-        if (authReady && (currentTab === 'home' || currentTab === 'categories' || currentTab === 'warehouse') && !isCatalogEditorModalOpen()) render();
-      }).catch(e => { console.error('Katalogni yangilash xatosi:', e); if (authReady) render(); });
+        if (changed && initialViewReady && authReady && (currentTab === 'home' || currentTab === 'categories' || currentTab === 'warehouse') && !isCatalogEditorModalOpen()) render();
+      }).catch(e => {
+        console.error('Katalogni yangilash xatosi:', e);
+        if (initialViewReady && authReady && currentTab === 'home') render();
+      });
 
       try {
         // boot endi faqat auth + foydalanuvchi holati + shop settings. Orders/users/admins bu yerda yuklanmaydi.
@@ -21434,8 +21452,6 @@ if (activePopupModal === 'LOGO_CROP') {
           localStorage.setItem(scopedKey('registeredUser'), JSON.stringify(registeredUser));
         }
         authReady = true;
-        loadFavorites(); // 17-band: bir marta, fonda — heart iconlar to'g'ri holatda chiqishi uchun
-        loadRecentViews(); // 18-band: bir marta, fonda
       } catch (e) {
         // Shop takomillashtirish round, 1-band: raw texnik xato (masalan
         // "Cannot read properties of null...") oddiy foydalanuvchiga
@@ -21468,12 +21484,20 @@ if (activePopupModal === 'LOGO_CROP') {
         return;
       }
 
+      // Let fast catalogs finish before first paint. On a slow connection,
+      // show the reserved product cards instead of holding the entire shop.
+      if (!hadCache && (!browserBridge || /^\/(?:$|catalog|search)(?:\/|\?|$)/.test(String(browserBridge.initialRoute || '/')))) {
+        await Promise.race([catalogPromise, new Promise((resolve) => setTimeout(resolve, 1200))]);
+      }
       setupPolling();
       if (browserBridge) applyingWebRoute = true;
       switchTab('home');
       if (browserBridge) applyingWebRoute = false;
       if (browserBridge && /^\/(product|bundle|promotion)\//.test(String(browserBridge.initialRoute || ''))) await catalogPromise;
       if (browserBridge) window.USTORE_APPLY_WEB_ROUTE(browserBridge.initialRoute);
+      initialViewReady = true;
+      loadFavorites(); // Product cards are mounted; refresh hearts without an early empty render.
+      loadRecentViews();
       // (catalogPromise xatosi endi yuqorida, yaratilgan joyida ushlanadi.)
       void catalogPromise;
 
@@ -21494,10 +21518,15 @@ if (activePopupModal === 'LOGO_CROP') {
     // holder of Web auth and tenant authority.
     let applyingWebRoute = false;
     let currentWebRoute = '/';
+    let guestAuthReturnTo = '/profile';
     window.USTORE_APPLY_WEB_ROUTE = (route) => {
       if (!browserBridge || !authReady) return;
       const path = String(route || '/').split('?')[0];
       currentWebRoute = path || '/';
+      if (path === '/profile') {
+        const requested = new URLSearchParams(String(route || '').split('?')[1] || '').get('next') || '/profile';
+        guestAuthReturnTo = requested.startsWith('/') && !requested.startsWith('//') && !requested.includes('\\') && !requested.startsWith('/auth') && !requested.startsWith('/platform') ? requested : '/profile';
+      }
       applyingWebRoute = true;
       try {
         if (path.startsWith('/product/')) {

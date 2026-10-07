@@ -6,6 +6,8 @@ import { createTranslator, normalizeLocale } from './i18n/index.js';
 import { localizeCustomerDom } from './i18n/customer-copy.js';
 import { buildCanonicalUrl, createDocumentMetadataManager, sharePage } from './metadata/index.js';
 import { createMiniAppFrameHost } from './shared/frame-host.js';
+import { secureUuidV4 } from './shared/browser-id.js';
+import { shopAuthReturnTo } from './features/auth/return-target.js';
 
 const root = document.getElementById('ustore-web-app');
 if (!root) throw new Error('UStorE web root topilmadi.');
@@ -23,6 +25,7 @@ let renderEpoch = 0;
 let activeCleanup = [];
 let activeRouteReason = 'start';
 let sharedFrame = null;
+let frameSignInPending = false;
 let shopLaunchShown = globalThis.__USTORE_SHOP_LAUNCH_SKIP__ === true;
 const WEB_LOCALE_KEY = 'ustore.web.locale';
 const metadataManager = createDocumentMetadataManager({ documentRef: document });
@@ -100,10 +103,10 @@ function mountSharedFrame({ kind, routeState, runtime, tenant = null, viewerAcco
   try {
     viewerKey = sessionStorage.getItem(viewerStorageKey) || '';
     if (!/^[0-9a-f-]{36}$/i.test(viewerKey)) {
-      viewerKey = crypto.randomUUID();
+      viewerKey = secureUuidV4();
       sessionStorage.setItem(viewerStorageKey, viewerKey);
     }
-  } catch (_) { viewerKey = crypto.randomUUID(); }
+  } catch (_) { viewerKey = secureUuidV4(); }
   let guestViewerKey = '';
   if (kind === 'shop' && accountId) {
     try { guestViewerKey = sessionStorage.getItem(`ustore:web:viewer:v1:shop:${location.hostname}:guest`) || ''; } catch (_) {}
@@ -115,6 +118,12 @@ function mountSharedFrame({ kind, routeState, runtime, tenant = null, viewerAcco
       let nextRoute;
       try { nextRoute = matchWebRoute(target); } catch (_) { return; }
       if (!nextRoute.found) return;
+      if (kind === 'shop' && nextRoute.route?.id === 'signin') {
+        const method = new URLSearchParams(nextRoute.search || '').get('method');
+        if (method === 'telegram' || method === 'password') void beginFrameSignIn(nextRoute, runtime);
+        else go(target);
+        return;
+      }
       if (kind === 'shop' && !runtime.tokenStore.get() && /^\/(checkout|orders|profile|favorites|support|admin)(\/|$)/.test(target)) {
         go(target);
         return;
@@ -374,17 +383,36 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261004followup1');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261006reliability1');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
-  if (!authFeatureModulePromise) authFeatureModulePromise = import('./features/auth/origin-handoff.js');
+  if (!authFeatureModulePromise) authFeatureModulePromise = import('./features/auth/origin-handoff.js?v=20261006reliability1');
   return authFeatureModulePromise;
+}
+async function beginFrameSignIn(routeState, runtime) {
+  if (frameSignInPending) return;
+  frameSignInPending = true;
+  try {
+    const params = new URLSearchParams(routeState.search || '');
+    const returnTo = shopAuthReturnTo(routeState);
+    const { beginCustomDomainLogin } = await loadAuthFeatureModule();
+    const result = await beginCustomDomainLogin({
+      authPort: runtime.services.auth, returnTo, method: params.get('method'),
+      botUsername: runtime.tenant?.botUsername || '', locale: uiLocale,
+      onRedirect: (url) => location.assign(url),
+    });
+    if (!result?.ok) go(routeState.target);
+  } catch (_) {
+    go(routeState.target);
+  } finally {
+    frameSignInPending = false;
+  }
 }
 function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
-  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20261004followup1');
+  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20261006reliability1');
   return loginFeatureModulePromise;
 }
 function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.' } = {}) {
@@ -418,14 +446,7 @@ async function ensureShopRuntime() {
 async function renderShopSignIn(routeState, epoch) {
   const { createCustomDomainSignInController, createCustomDomainSignInView } = await loadAuthFeatureModule();
   if (epoch !== renderEpoch) return;
-  let returnTo = routeState.target || currentTarget();
-  const requestedNext = new URLSearchParams(routeState.search || '').get('next');
-  if (requestedNext) {
-    try {
-      const next = splitTarget(requestedNext);
-      if (!next.pathname.startsWith('/platform') && !next.pathname.startsWith('/auth')) returnTo = next.target;
-    } catch (_) {}
-  }
+  const returnTo = shopAuthReturnTo(routeState);
   const controller = createCustomDomainSignInController({
     authPort: shopRuntime.services.auth, returnTo, botUsername: shopRuntime.tenant?.botUsername || '', locale:uiLocale,
     onRedirect: (url) => location.assign(url),
@@ -446,9 +467,22 @@ async function renderCentralHandoff(routeState, epoch) {
   const authRuntime = runtimeModule.createProductionAuthRuntime();
   const handoffParams = new URLSearchParams(routeState.search);
   const state = handoffParams.get('state') || '';
+  const passwordMethod = handoffParams.get('method') === 'password';
+  const hadCentralSessionToken = Boolean(authRuntime.tokenStore?.get?.());
+  if (passwordMethod && !hadCentralSessionToken) {
+    // The password form is usable while the handoff metadata is fetched.
+    // Its server-side handoff authorization is still checked after sign-in.
+    const controller = loginFeature.createLoginController({
+      authPort: authRuntime.auth, returnTo: routeState.target, initialTab: 'password',
+      onSignedIn: () => renderRoute(routeState), onRedirect: (url) => location.assign(url),
+    });
+    const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz' }));
+    mount(view); remember(view.destroy);
+  }
   const [session, handoffInfo] = await Promise.all([authRuntime.auth.getSession(), authRuntime.auth.getOriginHandoff({ state })]);
   if (epoch !== renderEpoch) return;
   if (!session.ok) {
+    if (passwordMethod && !hadCentralSessionToken) return;
     const controller = loginFeature.createLoginController({
       authPort: authRuntime.auth,
       returnTo: routeState.target,
@@ -494,7 +528,7 @@ async function renderPlatformHome(routeState, epoch) {
     mountSharedFrame({ kind:'platform', routeState, runtime, viewerAccountId:session.data?.accountId });
     return;
   }
-  const mod = await import('./features/platform-home/index.js');
+  const mod = await import('./features/platform-home/index.js?v=20261006reliability1');
   if (epoch !== renderEpoch) return;
   const controller = mod.createPlatformHomeController({ platformPort: runtime.platform });
   const view = reactive(controller, (snapshot) => mod.createPlatformHomeView({
@@ -504,8 +538,8 @@ async function renderPlatformHome(routeState, epoch) {
       const next = meta?.intent === 'new-shop' ? '/platform/subscriptions?new=1' : '/platform/app';
       go(`${platformLoginTarget()}?${new URLSearchParams({ next }).toString()}`);
     },
-    onChoosePlan: (tariff) => {
-      const next = `/platform/subscriptions?new=1&plan=${encodeURIComponent(String(tariff?.id || ''))}`;
+    onChoosePlan: (tariff, billingPeriod = 'monthly') => {
+      const next = `/platform/subscriptions?${new URLSearchParams({ new: '1', plan: String(tariff?.id || ''), period: billingPeriod === 'annual' ? 'annual' : 'monthly' })}`;
       go(`${platformLoginTarget()}?${new URLSearchParams({ next }).toString()}`);
     },
   }));
@@ -999,7 +1033,7 @@ async function startWebApp() {
       (location.pathname === '/auth/telegram/callback' || location.pathname === '/' || !!previewBase())) {
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261004followup1'), import('./services/live/auth.js?v=20261004followup1'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261006reliability1'), import('./services/live/auth.js?v=20261006reliability1'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,

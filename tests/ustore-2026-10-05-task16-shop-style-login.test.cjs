@@ -25,7 +25,7 @@ test('task16: auth behavior remains controller-driven while visual tabs become p
 
 test('task16: profile menu is responsive and uses inline SVG icons instead of system emoji', () => {
   assert.match(login, /<svg viewBox=/);
-  assert.match(css, /\.uw-auth\[data-feature="login"\] \.uw-auth-profile-menu__row/);
-  assert.match(css, /\.uw-auth\[data-feature="login"\] \.uw-auth-profile-card/);
+  assert.match(css, /\.uw-auth:is\(\[data-feature="login"\],\[data-feature="origin-signin"\]\) \.uw-auth-profile-menu__row/);
+  assert.match(css, /\.uw-auth:is\(\[data-feature="login"\],\[data-feature="origin-signin"\]\) \.uw-auth-profile-card/);
   assert.match(css, /@media\(max-width:640px\)/);
 });

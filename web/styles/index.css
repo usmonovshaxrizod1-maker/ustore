@@ -4,7 +4,7 @@
 @import url('./components.css?v=20261004followup1');
 @import url('./shells.css?v=20261004followup1');
 
-@import url('./features.css?v=20261004followup1');
+@import url('./features.css?v=20261006reliability1');
 
 /* The Mini App itself renders every Shop/Platform screen in the browser. */
 .uw-miniapp-host { width: 100%; min-height: 100dvh; margin: 0; padding: 0; }

@@ -128,9 +128,9 @@ test('SIX-6 admin and user orders use one obvious compact status selector beside
 });
 
 test('SIX release cache versions are bumped after the modified Platform and Shop App assets', () => {
-  assert.match(shopHtml, /ustore\.css\?v=319/);
-  assert.match(shopHtml, /ustore-shop-app\.js\?v=319/);
+  assert.match(shopHtml, /ustore\.css\?v=320/);
+  assert.match(shopHtml, /ustore-shop-app\.js\?v=320/);
   assert.match(platformHtml, /platform\.css\?v=40/);
-  assert.match(platformHtml, /platform-app\.js\?v=61/);
+  assert.match(platformHtml, /platform-app\.js\?v=62/);
 });
 
