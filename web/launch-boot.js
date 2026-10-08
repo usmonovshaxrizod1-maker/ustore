@@ -22,7 +22,7 @@
   }
 
   try { document.documentElement.dataset.ustoreHost = isShop ? 'shop' : 'platform'; } catch (_) {}
-  const authEntry = /^\/(?:auth\/(?:handoff|callback)|profile(?:\/|$)|orders(?:\/|$)|signin(?:\/|$))/.test(globalThis.location?.pathname || '');
+  const authEntry = /^\/(?:auth(?:\/|$)|platform\/login(?:\/|$)|profile(?:\/|$)|orders(?:\/|$)|signin(?:\/|$))/.test(globalThis.location?.pathname || '');
   if (authEntry) {
     try { document.documentElement.dataset.ustoreAuthTransition = 'true'; } catch (_) {}
   }
@@ -39,7 +39,7 @@
       }
       if (authEntry) {
         const status = document.querySelector('.uw-auth-transition');
-        if (status) status.textContent = globalThis.location?.pathname?.startsWith('/auth/') ? 'Kirish yakunlanmoqda…' : 'Sahifa ochilmoqda…';
+        if (status) status.textContent = globalThis.location?.pathname?.startsWith('/auth/') ? 'Kirish yakunlanmoqda…' : globalThis.location?.pathname?.startsWith('/platform/login') ? 'Kirish sahifasi ochilmoqda…' : 'Sahifa ochilmoqda…';
       }
       if (!isShop) return;
 

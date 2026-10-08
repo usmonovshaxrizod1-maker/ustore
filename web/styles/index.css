@@ -1,7 +1,7 @@
 @import url('./tokens.css');
 @import url('./document.css');
 @import url('./base.css');
-@import url('./components.css?v=20261008noload1');
+@import url('./components.css?v=20261008auth2');
 @import url('./shells.css?v=20261004followup1');
 
 @import url('./features.css?v=20261006reliability1');
@@ -20,6 +20,7 @@
 html[data-ustore-host="shop"] .uw-launch--platform{display:none!important}
 html:not([data-ustore-host="shop"]) .uw-initial-shop-opening{display:none!important}
 .uw-auth-transition{display:none;min-height:100dvh;place-items:center;background:#f6f8fb;color:#475569;font-size:.9rem;font-weight:650}
+.uw-auth-transition--inline{display:grid}
 html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-launch,
 html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-initial-shop-opening{display:none!important}
 html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-auth-transition{display:grid}

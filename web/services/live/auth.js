@@ -40,6 +40,36 @@ export function createSessionStorageTokenStore(storage = globalThis.sessionStora
   });
 }
 
+// Keep only the opaque session token across browser restarts. Telegram OAuth
+// verifiers and one-time handoff state remain in sessionStorage.
+export function createPersistentTokenStore(storage = globalThis.localStorage, legacyStorage = globalThis.sessionStorage) {
+  if (!storage?.getItem || !storage?.setItem || !storage?.removeItem) return createSessionStorageTokenStore(legacyStorage);
+  return Object.freeze({
+    get() {
+      try {
+        const saved = String(storage.getItem(SESSION_TOKEN_KEY) || '');
+        if (saved) return saved;
+        const legacy = String(legacyStorage?.getItem?.(SESSION_TOKEN_KEY) || '');
+        if (legacy) {
+          storage.setItem(SESSION_TOKEN_KEY, legacy);
+          legacyStorage?.removeItem?.(SESSION_TOKEN_KEY);
+        }
+        return legacy;
+      } catch (_) { return ''; }
+    },
+    set(value) {
+      const token = String(value || '');
+      if (!token) { this.clear(); return; }
+      storage.setItem(SESSION_TOKEN_KEY, token);
+      try { legacyStorage?.removeItem?.(SESSION_TOKEN_KEY); } catch (_) {}
+    },
+    clear() {
+      try { storage.removeItem(SESSION_TOKEN_KEY); } catch (_) {}
+      try { legacyStorage?.removeItem?.(SESSION_TOKEN_KEY); } catch (_) {}
+    },
+  });
+}
+
 export function createSessionStorageChallengeStore(storage = globalThis.sessionStorage) {
   if (!storage?.getItem || !storage?.setItem || !storage?.removeItem) throw new TypeError('sessionStorage-compatible storage kerak');
   return Object.freeze({

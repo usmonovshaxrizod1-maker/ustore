@@ -25,7 +25,7 @@ test('Astra-5b private web branch requires a verified central session and freshl
   assert.match(segment, /resolveShopTenant\(db, req, body\)/);
   assert.match(segment, /resolveOptionalWebSession\(db, req\)/);
   assert.match(segment, /if \(!sessionResult\.session\) return json\(\{ error: "auth_required" \}, 401\)/);
-  assert.match(segment, /resolveWebShopPrincipal\(db, tenantResult\.tenant\.shopId, sessionResult\.session\.accountId\)/);
+  assert.match(segment, /resolveWebShopPrincipal\(db, tenantResult\.tenant\.shopId, sessionResult\.session\.accountId, PLATFORM_SUPER_ADMIN_ID\)/);
   assert.doesNotMatch(segment, /body\?\.shopId|payload\?\.shopId/);
 });
 

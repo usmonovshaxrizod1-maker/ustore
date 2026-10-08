@@ -33,14 +33,18 @@ test('Astra-6a web admin auth uses central session + fresh shop principal and ig
   assert.match(segment, /WEB_ADMIN_ACTIONS\.has/);
   assert.match(segment, /resolveShopTenant\(db, req, body\)/);
   assert.match(segment, /resolveOptionalWebSession\(db, req, false\)/);
-  assert.match(segment, /resolveWebShopPrincipal\(db, tenantResult\.tenant\.shopId, sessionResult\.session\.accountId\)/);
+  assert.match(segment, /resolveWebShopPrincipal\(db, tenantResult\.tenant\.shopId, sessionResult\.session\.accountId, PLATFORM_SUPER_ADMIN_ID\)/);
   assert.match(segment, /principal\.actor\.shopRole !== "OWNER" && principal\.actor\.shopRole !== "STAFF"/);
   assert.doesNotMatch(segment, /payload\?\.permissions|body\?\.role|payload\?\.role/);
 });
 
-test('Astra-6a does not infer platform super-admin authority from web Telegram identity', () => {
+test('web shop super-admin uses the verified central session Telegram identity, never a browser claim', () => {
   const api = read('supabase/functions/shop-api/index.ts');
-  assert.match(api, /const isPlatformSuperAdmin = !isWebAdminRequest && PLATFORM_SUPER_ADMIN_ID !== "" && tgId === PLATFORM_SUPER_ADMIN_ID/);
+  const principal = api.slice(api.indexOf('async function resolveWebShopPrincipal'), api.indexOf('function webOwnedFilter'));
+  assert.match(principal, /account_identities/);
+  assert.match(principal, /provider_subject/);
+  assert.match(principal, /superAdminTelegramId !== "" && tgId === superAdminTelegramId/);
+  assert.doesNotMatch(principal, /payload\?\.tgId|body\?\.tgId/);
 });
 
 test('Astra-6a live admin adapter blocks non-whitelisted actions before network and sends only locator + session', async () => {

@@ -11,7 +11,7 @@ test('shop opening is selected before body render without placeholder cards', ()
   const boot = read('web/launch-boot.js');
   const html = read('web/index.html');
   assert.match(boot, /document\.documentElement\.dataset\.ustoreHost = isShop \? 'shop' : 'platform'/);
-  assert.match(html, /<script src="\.\/launch-boot\.js\?v=20261008noload1"><\/script>[\s\S]*<script type="module" src="\.\/app\.js\?v=20261008noload1"><\/script>/);
+  assert.match(html, /<script src="\.\/launch-boot\.js\?v=20261008auth2"><\/script>[\s\S]*<script type="module" src="\.\/app\.js\?v=20261008auth2"><\/script>/);
   assert.match(html, /uw-shop-opening uw-initial-shop-opening/);
   assert.doesNotMatch(html, /uw-shop-first-paint|uw-initial-shop-skeleton/);
   assert.match(read('web/styles/index.css'), /html\[data-ustore-host="shop"\] \.uw-launch--platform\{display:none!important\}/);
@@ -63,7 +63,7 @@ test('shop and deep-link HTML load one coherent web release', () => {
   for (const entry of ['web/index.html', 'web/404.html']) {
     const html = read(entry);
     for (const asset of ['styles/index.css', 'app.js', 'launch-boot.js']) {
-      assert.match(html, new RegExp(`${asset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=20261008noload1`));
+      assert.match(html, new RegExp(`${asset.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?v=20261008auth2`));
     }
   }
 });

@@ -5,7 +5,7 @@ import { createButton, createStatePanel } from './components/ui.js';
 import { createTranslator, normalizeLocale } from './i18n/index.js';
 import { localizeCustomerDom } from './i18n/customer-copy.js';
 import { buildCanonicalUrl, createDocumentMetadataManager, sharePage } from './metadata/index.js';
-import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261008noload1';
+import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261008auth2';
 import { secureUuidV4 } from './shared/browser-id.js';
 import { shopAuthReturnTo } from './features/auth/return-target.js';
 
@@ -364,11 +364,11 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261008noload1');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261008auth2');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
-  if (!authFeatureModulePromise) authFeatureModulePromise = import('./features/auth/origin-handoff.js?v=20261008noload1');
+  if (!authFeatureModulePromise) authFeatureModulePromise = import('./features/auth/origin-handoff.js?v=20261008auth2');
   return authFeatureModulePromise;
 }
 async function beginFrameSignIn(routeState, runtime) {
@@ -393,13 +393,23 @@ async function beginFrameSignIn(routeState, runtime) {
 function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
-  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20261008noload1');
+  if (!loginFeatureModulePromise) {
+    loginFeatureModulePromise = import('./features/auth/login.js?v=20261008auth2')
+      .catch(() => import(`./features/auth/login.js?v=20261008auth2&retry=${Date.now()}`))
+      .catch((error) => { loginFeatureModulePromise = null; throw error; });
+  }
   return loginFeatureModulePromise;
 }
-function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.' } = {}) {
+function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.', auth = false } = {}) {
   const timer = globalThis.setTimeout?.(() => {
     if (epoch !== renderEpoch) return;
-    mount(launchView({ mode:'platform', message }));
+    if (auth) {
+      const status = document.createElement('section');
+      status.className = 'uw-auth-transition uw-auth-transition--inline';
+      status.setAttribute('role', 'status');
+      status.textContent = 'Kirish sahifasi ochilmoqda…';
+      mount(status);
+    } else mount(launchView({ mode:'platform', message }));
   }, delay);
   if (timer != null) remember(() => globalThis.clearTimeout?.(timer));
 }
@@ -511,7 +521,7 @@ async function renderPlatformHome(routeState, epoch) {
     mountSharedFrame({ kind:'platform', routeState, runtime, viewerAccountId:session.data?.accountId });
     return;
   }
-  const mod = await import('./features/platform-home/index.js?v=20261008noload1');
+  const mod = await import('./features/platform-home/index.js?v=20261008auth2');
   if (epoch !== renderEpoch) return;
   const controller = mod.createPlatformHomeController({ platformPort: runtime.platform });
   const view = reactive(controller, (snapshot) => mod.createPlatformHomeView({
@@ -947,7 +957,7 @@ async function renderRoute(routeState, reason = 'refresh') {
       await renderPlatformHome(routeState, epoch); return;
     }
     if (isExplicitPlatformRoute(routeState)) {
-      armSlowRouteState(epoch, { message:'Kerakli sahifa xavfsiz tarzda yuklanmoqda…' });
+      armSlowRouteState(epoch, { message:'Kerakli sahifa xavfsiz tarzda yuklanmoqda…', auth: routeState.route.id === 'platform-login' });
     }
     if (isExplicitPlatformRoute(routeState)) {
       if (!allowExplicitPlatformRoute()) { mount(createNotFoundView({locale:uiLocale,onHome:()=>go('/')})); return; }
@@ -1016,7 +1026,7 @@ async function startWebApp() {
       (location.pathname === '/auth/telegram/callback' || location.pathname === '/' || !!previewBase())) {
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261008noload1'), import('./services/live/auth.js?v=20261008noload1'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261008auth2'), import('./services/live/auth.js?v=20261008auth2'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,

@@ -1548,7 +1548,7 @@ async function publicWebBoot(db: any, shopId: string) {
 // ownership claim is trusted from a cached browser token. Telegram tg_id stays
 // as a compatibility key for the existing schema/RPCs, but account_id is the
 // web ownership key whenever the migrated column exists.
-async function resolveWebShopPrincipal(db: any, shopId: string, accountId: string) {
+async function resolveWebShopPrincipal(db: any, shopId: string, accountId: string, superAdminTelegramId: string) {
   const { data: account, error: accountError } = await db.from("accounts")
     .select("id,status,display_name").eq("id", accountId).maybeSingle();
   if (accountError) throw accountError;
@@ -1559,6 +1559,10 @@ async function resolveWebShopPrincipal(db: any, shopId: string, accountId: strin
   if (identityError) throw identityError;
   if (!identity?.provider_subject) return { ok: false as const, error: "telegram_identity_required", status: 409 };
   const tgId = String(identity.provider_subject);
+  // The same server-verified Telegram identity grants platform Super Admin
+  // access in platform-api and the Telegram Mini App. Keep web shop access in
+  // sync without trusting a browser-supplied role or creating a membership.
+  const isPlatformSuperAdmin = superAdminTelegramId !== "" && tgId === superAdminTelegramId;
 
   const { data: byAccount, error: accountUserError } = await db.from("app_users")
     .select("tg_id,account_id,first_name,last_name,username,profile_first_name,profile_last_name,phone,is_blocked,block_reason")
@@ -1650,11 +1654,12 @@ async function resolveWebShopPrincipal(db: any, shopId: string, accountId: strin
   return {
     ok: true as const,
     principal: {
-      accountId, tgId, appUser,
+      accountId, tgId, appUser, isPlatformSuperAdmin,
       actor: {
         accountId, displayName, telegramLinked: true,
-        shopRole: membership?.role === "OWNER" ? "OWNER" : membership?.role === "STAFF" ? "STAFF" : "CUSTOMER",
-        roleCodes, permissions,
+        shopRole: isPlatformSuperAdmin || membership?.role === "OWNER" ? "OWNER" : membership?.role === "STAFF" ? "STAFF" : "CUSTOMER",
+        roleCodes: isPlatformSuperAdmin ? ["SUPER_ADMIN", ...roleCodes] : roleCodes,
+        permissions: isPlatformSuperAdmin ? ["*"] : permissions,
       },
     },
   };
@@ -4019,7 +4024,7 @@ Deno.serve(async (req: Request) => {
       let webSession: any = null;
       let mayViewHiddenCatalog = false;
       if (sessionResult.session) {
-        const principalResult = await resolveWebShopPrincipal(db, tenantResult.tenant.shopId, sessionResult.session.accountId);
+        const principalResult = await resolveWebShopPrincipal(db, tenantResult.tenant.shopId, sessionResult.session.accountId, PLATFORM_SUPER_ADMIN_ID);
         if (!principalResult.ok) return json({ error: principalResult.error }, principalResult.status);
         webSession = {
           authenticated: true, accountId: sessionResult.session.accountId, sessionId: sessionResult.session.sessionId,
@@ -4065,7 +4070,7 @@ Deno.serve(async (req: Request) => {
       const sessionResult = await resolveOptionalWebSession(db, req);
       if (!sessionResult.ok) return json({ error: sessionResult.error }, sessionResult.status);
       if (!sessionResult.session) return json({ error: "auth_required" }, 401);
-      const principalResult = await resolveWebShopPrincipal(db, tenantResult.tenant.shopId, sessionResult.session.accountId);
+      const principalResult = await resolveWebShopPrincipal(db, tenantResult.tenant.shopId, sessionResult.session.accountId, PLATFORM_SUPER_ADMIN_ID);
       if (!principalResult.ok) return json({ error: principalResult.error }, principalResult.status);
       if (principalResult.principal.appUser?.is_blocked) return json({ error: "forbidden" }, 403);
       const result: any = await handleWebPrivateShopAction(db, tenantResult.tenant.shopId, principalResult.principal, String(action), payload || {}, tenantResult.tenant, BOT_TOKEN_MASTER_KEY);
@@ -4249,7 +4254,7 @@ Deno.serve(async (req: Request) => {
       const sessionResult = await resolveOptionalWebSession(db, req, false);
       if (!sessionResult.ok) return json({ error: sessionResult.error }, sessionResult.status);
       if (!sessionResult.session) return json({ error: "auth_required" }, 401);
-      const principalResult = await resolveWebShopPrincipal(db, tenantResult.tenant.shopId, sessionResult.session.accountId);
+      const principalResult = await resolveWebShopPrincipal(db, tenantResult.tenant.shopId, sessionResult.session.accountId, PLATFORM_SUPER_ADMIN_ID);
       if (!principalResult.ok) return json({ error: principalResult.error }, principalResult.status);
       const principal = principalResult.principal;
       if (principal.appUser?.is_blocked) return json({ error: "forbidden" }, 403);
@@ -4298,9 +4303,10 @@ Deno.serve(async (req: Request) => {
         credentialExists: !!credential, login: credential?.login_display ? String(credential.login_display) : null,
       };
     }
-    // Platform Super Admin web authority is deliberately NOT inferred from a
-    // Telegram id. Astra-6b owns central platform-web authorization.
-    const isPlatformSuperAdmin = !isWebAdminRequest && PLATFORM_SUPER_ADMIN_ID !== "" && tgId === PLATFORM_SUPER_ADMIN_ID;
+    // Browser sessions reach here only after resolveWebShopPrincipal verifies
+    // the account's Telegram identity server-side. Match the Mini App's
+    // platform Super Admin access for that same verified person.
+    const isPlatformSuperAdmin = PLATFORM_SUPER_ADMIN_ID !== "" && tgId === PLATFORM_SUPER_ADMIN_ID;
     // Platform super-admin can also be the real OWNER of a shop. Always read
     // the shop membership so the client receives that OWNER role and exposes
     // owner-only pages (for example Domains). Platform authority still stays

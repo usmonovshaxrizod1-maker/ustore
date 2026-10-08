@@ -2,7 +2,7 @@ import {createSignedStorageClient} from '../services/live/storage.js';
 import { createLiveServiceProvider } from '../services/core-provider.js';
 import {
   createLiveAuthAdapter,
-  createSessionStorageTokenStore,
+  createPersistentTokenStore,
   createSessionStorageChallengeStore,
   createSessionStorageOfficialTelegramStore,
   createLiveShopPublicAdapters,
@@ -11,7 +11,7 @@ import {
   createLivePlatformAdapter,
   createLiveDomainsAdapter,
   createLiveTenantResolver,
-} from '../services/live/index.js?v=20261008noload1';
+} from '../services/live/index.js?v=20261008auth2';
 
 function safeBaseUrl(value) {
   const url = new URL(String(value || ''));
@@ -33,10 +33,11 @@ export function createProductionAuthRuntime({
   config = globalThis.APP_CONFIG || {},
   fetchImpl = globalThis.fetch,
   sessionStorage = globalThis.sessionStorage,
+  localStorage = globalThis.localStorage,
   tokenStore = null,
 } = {}) {
   const endpoints = productionEndpoints(config);
-  const sessions = tokenStore || createSessionStorageTokenStore(sessionStorage);
+  const sessions = tokenStore || createPersistentTokenStore(localStorage, sessionStorage);
   const challengeStore = createSessionStorageChallengeStore(sessionStorage);
   const officialTelegramStore = createSessionStorageOfficialTelegramStore(sessionStorage);
   const auth = createLiveAuthAdapter({ endpoint: endpoints.auth, fetchImpl, tokenStore: sessions, challengeStore, officialTelegramStore });
@@ -47,9 +48,10 @@ export function createProductionPlatformRuntime({
   config = globalThis.APP_CONFIG || {},
   fetchImpl = globalThis.fetch,
   sessionStorage = globalThis.sessionStorage,
+  localStorage = globalThis.localStorage,
   tokenStore = null,
 } = {}) {
-  const authRuntime = createProductionAuthRuntime({ config, fetchImpl, sessionStorage, tokenStore });
+  const authRuntime = createProductionAuthRuntime({ config, fetchImpl, sessionStorage, localStorage, tokenStore });
   const platform = createLivePlatformAdapter({ endpoint: authRuntime.endpoints.platform, fetchImpl, tokenStore: authRuntime.tokenStore });
   return Object.freeze({ ...authRuntime, platform });
 }
@@ -59,11 +61,12 @@ export async function createProductionShopRuntime({
   fetchImpl = globalThis.fetch,
   locationRef = globalThis.location,
   sessionStorage = globalThis.sessionStorage,
+  localStorage = globalThis.localStorage,
   tokenStore = null,
   botId = null,
   storageClient = null,
 } = {}) {
-  const authRuntime = createProductionAuthRuntime({ config, fetchImpl, sessionStorage, tokenStore });
+  const authRuntime = createProductionAuthRuntime({ config, fetchImpl, sessionStorage, localStorage, tokenStore });
   const tenantResolver = createLiveTenantResolver({ endpoint: authRuntime.endpoints.shop, fetchImpl,
     botIdHosts: Array.isArray(config.USTORE_WEB_BOT_ID_HOSTNAMES) ? config.USTORE_WEB_BOT_ID_HOSTNAMES : [] });
   const tenantResult = await tenantResolver.resolve({ locationRef, botId });

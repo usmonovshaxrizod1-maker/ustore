@@ -12,17 +12,35 @@ function storage() {
   return { getItem:k=>map.has(k)?map.get(k):null, setItem:(k,v)=>map.set(k,String(v)), removeItem:k=>map.delete(k), map };
 }
 
-test('9a-b session token store is origin-session scoped storage, not URL/log state', async () => {
+test('web session survives a new tab and migrates an existing session token', async () => {
   const mod = await load('web/services/live/auth.js');
-  const s = storage();
-  const store = mod.createSessionStorageTokenStore(s);
+  const persistent = storage();
+  const legacy = storage();
+  const store = mod.createPersistentTokenStore(persistent, legacy);
   store.set('opaque-token-1');
   assert.equal(store.get(), 'opaque-token-1');
-  assert.equal([...s.map.values()].some(v => v.includes('opaque-token-1')), true);
+  assert.equal(mod.createPersistentTokenStore(persistent, storage()).get(), 'opaque-token-1');
   store.clear();
-  assert.equal(store.get(), '');
+  assert.equal(mod.createPersistentTokenStore(persistent, legacy).get(), '');
+  legacy.setItem('ustore:web:session-token:v1', 'older-token');
+  assert.equal(store.get(), 'older-token');
+  assert.equal(legacy.getItem('ustore:web:session-token:v1'), null);
+  assert.equal(persistent.getItem('ustore:web:session-token:v1'), 'older-token');
   const source = read('web/services/live/auth.js');
-  assert.doesNotMatch(source, /localStorage.*session-token|console\.(?:log|info|debug).*token/i);
+  assert.doesNotMatch(source, /console\.(?:log|info|debug).*token/i);
+});
+
+test('production auth logout clears a persisted browser session', async () => {
+  const mod = await load('web/runtime/production.js');
+  const persistent = storage();
+  const authRuntime = mod.createProductionAuthRuntime({
+    config:{SUPABASE_URL:'https://project.example'},
+    localStorage:persistent, sessionStorage:storage(),
+    fetchImpl:async()=>({ok:true,status:200,async json(){return {signedOut:true};}}),
+  });
+  authRuntime.tokenStore.set('opaque-token-2');
+  assert.equal((await authRuntime.auth.signOut()).ok, true);
+  assert.equal(mod.createProductionAuthRuntime({config:{SUPABASE_URL:'https://project.example'},localStorage:persistent,sessionStorage:storage()}).tokenStore.get(), '');
 });
 
 test('9a-b tenant resolver accepts bot_id without network only on configured shared host', async () => {
