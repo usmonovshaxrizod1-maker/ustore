@@ -27,7 +27,8 @@ test('first paint on managed subdomain is shop-branded before the module graph r
   assert.match(html,/launch-boot\.js\?v=[0-9a-z]+/);
   assert.ok(html.indexOf('launch-boot.js?v=') < html.indexOf('id="ustore-web-app"'));
   assert.ok(html.indexOf('launch-boot.js?v=') < html.indexOf('type="module" src="./app.js'));
-  assert.match(html,/uw-shop-first-paint uw-initial-shop-skeleton/);
+  assert.match(html,/uw-shop-opening uw-initial-shop-opening/);
+  assert.doesNotMatch(html,/uw-shop-first-paint|uw-initial-shop-skeleton/);
   assert.doesNotMatch(boot,/USTORE SHOP/);
   assert.doesNotMatch(boot,/Do‘kon tayyorlanmoqda/);
   assert.doesNotMatch(boot,/xush kelibsiz/);

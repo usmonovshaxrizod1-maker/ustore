@@ -58,11 +58,11 @@ test('desktop follow-up: category icons lose pasted-on white tile only in browse
   assert.match(css, /body\.ustore-browser-mode \.fc-category-responsive-grid \.fc-category-icon-frame\{background:transparent!important;border:0!important;box-shadow:none!important/);
 });
 
-test('desktop follow-up: shop host shows one skeleton until child APP_READY and no UStorE branded shop splash', () => {
-  assert.match(webApp, /function shopFirstPaintView/);
-  assert.doesNotMatch(webApp.match(/function shopFirstPaintView[\s\S]*?\n\}/)?.[0] || '', /USTORE|Kerakli sahifa xavfsiz/);
-  assert.match(host, /placeholder\.className = 'uw-shop-first-paint'/);
-  assert.match(read('web/index.html'), /uw-shop-first-paint uw-initial-shop-skeleton/);
+test('desktop follow-up: shop host keeps one branded opening until child APP_READY without skeleton cards', () => {
+  assert.match(webApp, /function shopOpeningView/);
+  assert.doesNotMatch(webApp.match(/function shopOpeningView[\s\S]*?\n\}/)?.[0] || '', /USTORE|__hero|__cards/);
+  assert.match(host, /placeholder\.className = 'uw-shop-opening'/);
+  assert.match(read('web/index.html'), /uw-shop-opening uw-initial-shop-opening/);
   assert.match(read('web/styles/index.css'), /html\[data-ustore-host="shop"\] \.uw-launch--platform\{display:none!important\}/);
   assert.match(host, /message\.type === 'APP_READY'/);
   assert.match(bridge, /type: 'APP_READY'/);

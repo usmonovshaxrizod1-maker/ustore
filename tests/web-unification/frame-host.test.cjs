@@ -13,7 +13,7 @@ function fakeBrowser() {
   const frameWindow = { postMessage(message, origin) { sent.push({ message, origin }); } };
   const create = (tag) => ({
     tagName: tag, children: [], attributes: {}, className: '', src: '', contentWindow: tag === 'iframe' ? frameWindow : null,
-    append(child) { this.children.push(child); }, setAttribute(name, value) { this.attributes[name] = value; },
+    append(...children) { this.children.push(...children); }, setAttribute(name, value) { this.attributes[name] = value; },
   });
   return {
     sent, frameWindow,
@@ -42,6 +42,10 @@ test('Shop browser frame uses the actual Mini App source and keeps auth in the h
       },
     });
     const frame = host.element.children[0];
+    const opening = host.element.children[1];
+    assert.equal(opening.className, 'uw-shop-opening');
+    assert.deepEqual(opening.children.map((child) => child.tagName), ['span', 'strong', 'p']);
+    assert.equal(opening.children[2].textContent, 'Kirish yakunlanmoqda…');
     assert.equal(new URL(frame.src).pathname, '/ustore/');
     assert.equal(new URL(frame.src).searchParams.get('bot_id'), '123456');
     assert.equal(new URL(frame.src).searchParams.get('viewer'), '123e4567-e89b-42d3-a456-426614174000');
@@ -72,7 +76,7 @@ test('Shop browser frame uses the actual Mini App source and keeps auth in the h
   }
 });
 
-test('private shop entry keeps one quiet transition until the frame is ready', async () => {
+test('private shop entry keeps the same skeleton-free opening until the frame is ready', async () => {
   const browser = fakeBrowser();
   const oldWindow = global.window;
   const oldDocument = global.document;
@@ -84,8 +88,9 @@ test('private shop entry keeps one quiet transition until the frame is ready', a
       kind: 'shop', route: '/profile', tenant: { botId: '123456' }, viewerKey: '123e4567-e89b-42d3-a456-426614174000',
       runtime: { endpoints: { shop: 'https://db.example/functions/v1/shop-api' }, tokenStore: { get: () => '' } },
     });
-    assert.equal(host.element.children[1].className, 'uw-auth-transition');
-    assert.equal(host.element.children[1].textContent, 'Sahifa ochilmoqda…');
+    assert.equal(host.element.children[1].className, 'uw-shop-opening');
+    assert.deepEqual(host.element.children[1].children.map((child) => child.tagName), ['span', 'strong', 'p']);
+    assert.equal(host.element.children[1].children[2].textContent, 'Do‘kon ochilmoqda…');
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'HELLO' });
     const { nonce } = browser.sent[0].message;
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'REQUEST', nonce, id: 'guest-orders', action: 'get_my_orders' });

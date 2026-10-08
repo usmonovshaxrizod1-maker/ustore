@@ -113,8 +113,8 @@ test('Admin visual polish uses neutral UStorE design and no-rainbow overrides fo
 });
 
 test('Final Shop App assets are cache-busted for the Shop App 2.0 release', () => {
-  assert.match(html, /ustore\.css\?v=321/);
-  assert.match(html, /ustore-shop-app\.js\?v=321/);
+  assert.match(html, /ustore\.css\?v=322/);
+  assert.match(html, /ustore-shop-app\.js\?v=322/);
   assert.match(html, /ustore-commerce\.js\?v=8/);
 });
 

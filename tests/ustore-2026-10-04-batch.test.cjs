@@ -27,10 +27,11 @@ test('batch task 2: Telegram uses one central callback and guest profile is expl
   assert.match(app, /new URLSearchParams\(\{ next: guestAuthReturnTo, method: 'password' \}\)/);
 });
 
-test('batch task 3: startup uses readiness skeletons instead of welcome pages', () => {
-  assert.match(app, /fc-boot-skeleton/);
+test('batch task 3: browser startup waits for readiness without storefront skeletons', () => {
+  assert.match(app, /if \(browserBridge\) \{\s*document\.getElementById\('app-content'\)\.replaceChildren\(\)/);
   assert.doesNotMatch(app, /do'koniga xush kelibsiz!/);
-  assert.match(read('web/index.html'), /uw-shop-first-paint uw-initial-shop-skeleton/);
+  assert.match(read('web/index.html'), /uw-shop-opening uw-initial-shop-opening/);
+  assert.doesNotMatch(read('web/index.html'), /uw-initial-shop-skeleton/);
   assert.match(read('web/launch-boot.js'), /dataset\.ustoreHost = isShop \? 'shop' : 'platform'/);
   assert.doesNotMatch(read('web/launch-boot.js'), /xush kelibsiz/);
 });

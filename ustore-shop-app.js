@@ -21375,7 +21375,7 @@ if (activePopupModal === 'LOGO_CROP') {
       // U timer bilan emas — boot/catalog readiness bilan avtomatik almashadi.
       const cachedBrand = readStoredObject(BOOT_BRAND_CACHE_KEY, null);
       const cachedShopName = String(cachedBrand?.name || tr("Do'kon", 'Магазин')).trim();
-      if (browserBridge && /^\/(?:profile|orders)(?:\/|\?|$)/.test(String(browserBridge.initialRoute || '/'))) {
+      if (browserBridge) {
         document.getElementById('app-content').replaceChildren();
       } else document.getElementById('app-content').innerHTML = `<div class="fc-boot-skeleton" role="status" aria-busy="true" aria-label="${tr('Do‘kon yuklanmoqda','Магазин загружается')}">
         <div class="fc-boot-skeleton-head">

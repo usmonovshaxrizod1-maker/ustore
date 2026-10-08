@@ -52,11 +52,11 @@
       try { cached = JSON.parse(globalThis.localStorage?.getItem(`ustore:shop:brand:${host}`) || 'null'); } catch (_) {}
       const name = String(cached?.name || '').trim() || rawSlug.split('-').filter(Boolean).map((part) => part ? part[0].toUpperCase() + part.slice(1) : '').join(' ') || 'Do‘kon';
 
-      const shell = document.querySelector('#ustore-web-app .uw-shop-first-paint');
+      const shell = document.querySelector('#ustore-web-app .uw-shop-opening');
       if (!shell) return;
       const title = shell.querySelector('strong');
       if (title) title.textContent = name;
-      const logoHost = shell.querySelector('.uw-shop-first-paint__logo');
+      const logoHost = shell.querySelector('.uw-shop-opening__logo');
       if (cached?.logoUrl && /^https:\/\//i.test(cached.logoUrl) && logoHost && !logoHost.querySelector('img')) {
         const img = document.createElement('img');
         img.src = cached.logoUrl;
