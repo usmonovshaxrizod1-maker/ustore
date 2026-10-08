@@ -15,7 +15,12 @@
 .uw-miniapp-host.is-loading .uw-miniapp-frame{opacity:0;pointer-events:none}
 .uw-miniapp-host.is-ready .uw-miniapp-frame{opacity:1;transition:opacity .12s ease}
 .uw-miniapp-host>.uw-shop-first-paint{position:absolute;inset:0;z-index:2;min-height:100dvh}
+.uw-miniapp-host>.uw-auth-transition{display:grid;position:absolute;inset:0;z-index:2}
 
 /* Host-specific first paint: shop domains never render the generic platform card. */
 html[data-ustore-host="shop"] .uw-launch--platform{display:none!important}
 html:not([data-ustore-host="shop"]) .uw-initial-shop-skeleton{display:none!important}
+.uw-auth-transition{display:none;min-height:100dvh;place-items:center;background:#f6f8fb;color:#475569;font-size:.9rem;font-weight:650}
+html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-launch,
+html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-initial-shop-skeleton{display:none!important}
+html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-auth-transition{display:grid}

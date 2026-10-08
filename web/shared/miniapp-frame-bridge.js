@@ -43,6 +43,7 @@
       initialRoute = String(message.route || '/');
       authenticated = message.authenticated === true;
       document.body.classList.add('ustore-browser-mode');
+      if (/^\/(?:profile|orders)(?:\/|\?|$)/.test(initialRoute)) document.body.dataset.authRoute = 'true';
       resolveReady();
       return;
     }

@@ -2513,6 +2513,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     // NAVIGATION — og'ir admin ma'lumotlari faqat kerak bo'lgan tab ochilganda yuklanadi.
     async function loadOrdersLazy(force = false) {
+      if (browserBridge && !browserBridge.authenticated) return;
       if (ordersLoading || (ordersLoaded && !force)) return;
       ordersLoading = true;
       if (currentTab === 'orders') render();
@@ -9600,6 +9601,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function renderOrders(container) {
+      if (browserBridge && !browserBridge.authenticated) {
+        container.innerHTML = `<div class="fc-guest-profile-shell space-y-4"><section class="fc-profile-card fc-guest-profile-card"><div class="fc-profile-avatar"><i data-lucide="package" class="w-7 h-7"></i></div><div class="fc-profile-copy"><div class="fc-profile-eyebrow">${tr('Buyurtmalarim','Мои заказы')}</div><h2>${tr('Buyurtmalarni ko‘rish uchun kiring','Войдите, чтобы увидеть заказы')}</h2><p class="fc-profile-phone">${tr('Buyurtmalaringiz va ularning holati profilingizda mavjud.','Ваши заказы и их статусы доступны в профиле.')}</p></div></section><section class="fc-profile-menu fc-guest-auth-actions"><button type="button" onclick="openGuestProfileFromOrders()" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="log-in"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Kirish','Войти')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button></section></div>`;
+        return;
+      }
       if (isAdminMode && isUserAnAdmin && !hasPermission('orders.view')) {
         container.innerHTML = `<div class="fc-empty-state"><i data-lucide="shield-alert" class="w-7 h-7"></i><p>${tr("Bu bo'lim sizning vazifangizga kirmaydi.",'Этот раздел не входит в ваши задачи.')}</p></div>`;
         return;
@@ -21370,7 +21375,9 @@ if (activePopupModal === 'LOGO_CROP') {
       // U timer bilan emas — boot/catalog readiness bilan avtomatik almashadi.
       const cachedBrand = readStoredObject(BOOT_BRAND_CACHE_KEY, null);
       const cachedShopName = String(cachedBrand?.name || tr("Do'kon", 'Магазин')).trim();
-      document.getElementById('app-content').innerHTML = `<div class="fc-boot-skeleton" role="status" aria-busy="true" aria-label="${tr('Do‘kon yuklanmoqda','Магазин загружается')}">
+      if (browserBridge && /^\/(?:profile|orders)(?:\/|\?|$)/.test(String(browserBridge.initialRoute || '/'))) {
+        document.getElementById('app-content').replaceChildren();
+      } else document.getElementById('app-content').innerHTML = `<div class="fc-boot-skeleton" role="status" aria-busy="true" aria-label="${tr('Do‘kon yuklanmoqda','Магазин загружается')}">
         <div class="fc-boot-skeleton-head">
           <span class="fc-boot-skeleton-logo">${cachedBrand?.logoUrl ? `<img src="${escapeHtml(cachedBrand.logoUrl)}" alt="">` : ''}</span>
           <strong>${escapeHtml(cachedShopName)}</strong>
@@ -21519,6 +21526,14 @@ if (activePopupModal === 'LOGO_CROP') {
     let applyingWebRoute = false;
     let currentWebRoute = '/';
     let guestAuthReturnTo = '/profile';
+    function openGuestProfileFromOrders() {
+      if (!browserBridge || browserBridge.authenticated) return;
+      const returnTo = currentWebRoute.startsWith('/orders/') ? currentWebRoute : '/orders';
+      const profileRoute = `/profile?${new URLSearchParams({ next: returnTo })}`;
+      window.USTORE_APPLY_WEB_ROUTE(profileRoute);
+      browserBridge.navigate(profileRoute);
+    }
+    window.openGuestProfileFromOrders = openGuestProfileFromOrders;
     window.USTORE_APPLY_WEB_ROUTE = (route) => {
       if (!browserBridge || !authReady) return;
       const path = String(route || '/').split('?')[0];

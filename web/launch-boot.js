@@ -8,7 +8,24 @@
   const isCentral = !!base && (host === base || host === `www.${base}`);
   const isShop = !isLocal && !isCentral && globalThis.location?.pathname !== '/auth/handoff';
 
+  // Start the API and Mini App connections while the entry module loads.
+  for (const endpoint of [globalThis.APP_CONFIG?.SUPABASE_URL, 'https://usmonovshaxrizod1-maker.github.io']) {
+    try {
+      const url = new URL(endpoint);
+      if (url.protocol !== 'https:') continue;
+      const link = document.createElement('link');
+      link.rel = 'preconnect';
+      link.href = url.origin;
+      link.crossOrigin = 'anonymous';
+      document.head.append(link);
+    } catch (_) {}
+  }
+
   try { document.documentElement.dataset.ustoreHost = isShop ? 'shop' : 'platform'; } catch (_) {}
+  const authEntry = /^\/(?:auth\/(?:handoff|callback)|profile(?:\/|$)|orders(?:\/|$)|signin(?:\/|$))/.test(globalThis.location?.pathname || '');
+  if (authEntry) {
+    try { document.documentElement.dataset.ustoreAuthTransition = 'true'; } catch (_) {}
+  }
 
   const hydrate = () => {
     try {
@@ -19,6 +36,10 @@
         if (message) message.textContent = 'Xavfsiz kirish tayyorlanmoqda…';
         document.querySelector('.uw-launch__foot')?.remove();
         return;
+      }
+      if (authEntry) {
+        const status = document.querySelector('.uw-auth-transition');
+        if (status) status.textContent = globalThis.location?.pathname?.startsWith('/auth/') ? 'Kirish yakunlanmoqda…' : 'Sahifa ochilmoqda…';
       }
       if (!isShop) return;
 

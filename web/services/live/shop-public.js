@@ -24,7 +24,7 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
   const locator = String(botId || '').trim();
   if (!/^\d+$/.test(locator)) throw new TypeError('botId raqam bo‘lishi kerak');
   if (typeof fetchImpl !== 'function') throw new TypeError('fetch kerak');
-  let guestBootCache = null;
+  let bootCache = null;
 
   async function request(action, payload = {}) {
     const headers = { 'content-type': 'application/json' };
@@ -65,20 +65,24 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
   }
 
   return Object.freeze({
+    takeBoot() {
+      const cached = bootCache;
+      bootCache = null;
+      return cached && cached.token === String(tokenStore?.get?.() || '') && Date.now() - cached.at < 30000 ? cached.data : null;
+    },
     takeGuestBoot() {
-      const cached = guestBootCache;
-      guestBootCache = null;
-      return !tokenStore?.get?.() && cached && Date.now() - cached.at < 30000 ? cached.data : null;
+      if (tokenStore?.get?.()) return null;
+      const cached = bootCache;
+      bootCache = null;
+      return cached && cached.token === '' && Date.now() - cached.at < 30000 ? cached.data : null;
     },
     context: {
       async resolve() {
         const result = await request('boot');
         if (!result.ok) return result;
         const body = result.data;
-        if (!tokenStore?.get?.() && body.webSession?.authenticated !== true) {
-          const { webSession, ...publicBoot } = body;
-          guestBootCache = { at: Date.now(), data: publicBoot };
-        }
+        const { webSession, ...frameBoot } = body;
+        bootCache = { at: Date.now(), token: String(tokenStore?.get?.() || ''), data: frameBoot };
         const context = {
           mode: 'web',
           shop: {

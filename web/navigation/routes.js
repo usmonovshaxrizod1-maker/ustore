@@ -33,8 +33,9 @@ export const CUSTOMER_ROUTES = Object.freeze([
   { id: 'cart', path: '/cart', navId: 'cart' },
   { id: 'checkout', path: '/checkout', navId: 'cart' },
   { id: 'signin', path: '/signin', navId: null, auth: true },
-  { id: 'orders', path: '/orders', navId: 'orders', auth: true },
-  { id: 'order', path: '/orders/:orderId', navId: 'orders', auth: true },
+  // Guests see the in-shop sign-in prompt; order data stays session-protected.
+  { id: 'orders', path: '/orders', navId: 'orders' },
+  { id: 'order', path: '/orders/:orderId', navId: 'orders' },
   { id: 'profile', path: '/profile', navId: 'profile' },
   { id: 'favorites', path: '/favorites', navId: 'profile', auth: true },
   { id: 'sessions', path: '/profile/sessions', navId: 'profile', auth: true },

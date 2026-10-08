@@ -78,7 +78,7 @@ test('boot exposes hasActivePromoCodes and the cart hides the promo section unti
 // ---- cache versions -------------------------------------------------------
 test('cache versions bumped for this batch (excel-import v12, shop-app v112, ustore.css v103)', () => {
   assert.match(app, /excel-import\.js\?v=16/);
-  assert.match(indexHtml, /ustore-shop-app\.js\?v=320/);
-  assert.match(indexHtml, /ustore\.css\?v=320/);
+  assert.match(indexHtml, /ustore-shop-app\.js\?v=321/);
+  assert.match(indexHtml, /ustore\.css\?v=321/);
 });
 

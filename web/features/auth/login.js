@@ -103,7 +103,7 @@ export function createLoginController({ authPort, returnTo = '/', initialTab = '
   };
 }
 
-export function createLoginView({ controller, state = controller?.getState?.() || {}, initialLogin = '', shopBotUsername = '', locale = 'uz' } = {}, documentRef) {
+export function createLoginView({ controller, state = controller?.getState?.() || {}, initialLogin = '', shopBotUsername = '', locale = 'uz', singleMethod = false } = {}, documentRef) {
   const doc = getDocument(documentRef);
   if (!controller) throw new TypeError('controller kerak');
   const tr = (uz, ru) => locale === 'ru' ? ru : uz;
@@ -235,6 +235,7 @@ export function createLoginView({ controller, state = controller?.getState?.() |
     body.append(form, help);
   }
 
-  root.append(heading, tabs, body);
+  if (singleMethod) root.append(heading, body);
+  else root.append(heading, tabs, body);
   return { element: root };
 }

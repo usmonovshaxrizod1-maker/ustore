@@ -34,7 +34,9 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   if (botId) src.searchParams.set('bot_id', botId);
   frame.src = src.href;
   let placeholder = null;
-  if (kind === 'shop') {
+  // Private routes already have their own stable content. Do not place a
+  // storefront-shaped skeleton in front of sign-in or the post-login return.
+  if (kind === 'shop' && /^\/(?:$|catalog(?:\/|$)|search(?:\/|$)|product\/|bundle\/|promotion\/|promotions(?:\/|$))/.test(safeRoute(route))) {
     wrapper.className = `${wrapper.className} is-loading`.trim();
     placeholder = document.createElement('section');
     placeholder.className = 'uw-shop-first-paint';
@@ -42,6 +44,13 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     placeholder.setAttribute('aria-busy', 'true');
     const logo = tenant?.logoUrl ? `<span class="uw-shop-first-paint__logo"><img src="${String(tenant.logoUrl).replace(/"/g, '&quot;')}" alt=""></span>` : '<span class="uw-shop-first-paint__logo"></span>';
     placeholder.innerHTML = `<div class="uw-shop-first-paint__header">${logo}<strong>${String(tenant?.shopName || 'Do‘kon').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</strong><span class="uw-shop-first-paint__search"></span></div><div class="uw-shop-first-paint__body"><span class="uw-shop-first-paint__hero"></span><div class="uw-shop-first-paint__cards"><span></span><span></span><span></span><span></span></div></div>`;
+  } else if (kind === 'shop') {
+    wrapper.className = `${wrapper.className} is-loading`.trim();
+    placeholder = document.createElement('section');
+    placeholder.className = 'uw-auth-transition';
+    placeholder.setAttribute('role', 'status');
+    placeholder.setAttribute('aria-busy', 'true');
+    placeholder.textContent = runtime.tokenStore.get() ? 'Kirish yakunlanmoqda…' : 'Sahifa ochilmoqda…';
   }
   wrapper.append(frame);
   if (placeholder) wrapper.append(placeholder);
@@ -59,8 +68,8 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
       if (!result?.ok) throw new Error(String(result?.error?.message || result?.error?.code || 'sign_out_failed'));
       return { signedOut: true };
     }
-    if (kind === 'shop' && action === 'boot' && !token) {
-      const cached = runtime.takeGuestBoot?.();
+    if (kind === 'shop' && action === 'boot') {
+      const cached = runtime.takeBoot?.() || (!token ? runtime.takeGuestBoot?.() : null);
       if (cached) return { ...cached, botUsername: cached.botUsername || String(tenant?.botUsername || '').replace(/^@/, '') || null };
     }
     // A visitor can browse public campaigns before signing in. These public

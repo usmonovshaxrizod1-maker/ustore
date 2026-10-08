@@ -383,11 +383,11 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261006reliability1');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261007auth1');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
-  if (!authFeatureModulePromise) authFeatureModulePromise = import('./features/auth/origin-handoff.js?v=20261006reliability1');
+  if (!authFeatureModulePromise) authFeatureModulePromise = import('./features/auth/origin-handoff.js?v=20261007auth1');
   return authFeatureModulePromise;
 }
 async function beginFrameSignIn(routeState, runtime) {
@@ -412,7 +412,7 @@ async function beginFrameSignIn(routeState, runtime) {
 function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
-  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20261006reliability1');
+  if (!loginFeatureModulePromise) loginFeatureModulePromise = import('./features/auth/login.js?v=20261007auth1');
   return loginFeatureModulePromise;
 }
 function armSlowRouteState(epoch, { delay = 320, title = 'Sahifa yuklanmoqda', message = 'Tarmoq sekin bo‘lsa, ma’lumotlar kelguncha shu holat ko‘rinadi.' } = {}) {
@@ -476,7 +476,7 @@ async function renderCentralHandoff(routeState, epoch) {
       authPort: authRuntime.auth, returnTo: routeState.target, initialTab: 'password',
       onSignedIn: () => renderRoute(routeState), onRedirect: (url) => location.assign(url),
     });
-    const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz' }));
+    const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz', singleMethod: true }));
     mount(view); remember(view.destroy);
   }
   const [session, handoffInfo] = await Promise.all([authRuntime.auth.getSession(), authRuntime.auth.getOriginHandoff({ state })]);
@@ -490,7 +490,7 @@ async function renderCentralHandoff(routeState, epoch) {
       onSignedIn: () => renderRoute(routeState),
       onRedirect: (url) => location.assign(url),
     });
-    const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, shopBotUsername: handoffInfo.ok ? handoffInfo.data?.botUsername || '' : '', locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz' }));
+    const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, shopBotUsername: handoffInfo.ok ? handoffInfo.data?.botUsername || '' : '', locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz', singleMethod: passwordMethod }));
     mount(view); remember(view.destroy);
     if (handoffParams.get('method') === 'telegram' && handoffInfo.ok &&
         String(handoffInfo.data?.status || '').toUpperCase() === 'PENDING') {
@@ -500,12 +500,14 @@ async function renderCentralHandoff(routeState, epoch) {
     return;
   }
   const controller = authFeature.createCentralOriginHandoffController({ authPort: authRuntime.auth, state, onRedirect:(url)=>location.assign(url) });
-  const view = reactive(controller, (snapshot) => authFeature.createCentralOriginHandoffView({ controller, state:snapshot }));
-  mount(view); remember(view.destroy);
   if (handoffInfo.ok && String(handoffInfo.data?.status || '').toUpperCase() === 'PENDING') {
     const authorized = await controller.authorize();
     if (epoch !== renderEpoch || authorized?.ok) return;
   }
+  // A valid central session authorizes automatically. Only show the manual
+  // handoff page when something needs the customer's attention.
+  const view = reactive(controller, (snapshot) => authFeature.createCentralOriginHandoffView({ controller, state:snapshot }));
+  mount(view); remember(view.destroy);
   if (!handoffInfo.ok || String(handoffInfo.data?.status || '').toUpperCase() !== 'PENDING') await controller.load();
 }
 async function renderOriginCallback(routeState, epoch) {
@@ -528,7 +530,7 @@ async function renderPlatformHome(routeState, epoch) {
     mountSharedFrame({ kind:'platform', routeState, runtime, viewerAccountId:session.data?.accountId });
     return;
   }
-  const mod = await import('./features/platform-home/index.js?v=20261006reliability1');
+  const mod = await import('./features/platform-home/index.js?v=20261007auth1');
   if (epoch !== renderEpoch) return;
   const controller = mod.createPlatformHomeController({ platformPort: runtime.platform });
   const view = reactive(controller, (snapshot) => mod.createPlatformHomeView({
@@ -1033,7 +1035,7 @@ async function startWebApp() {
       (location.pathname === '/auth/telegram/callback' || location.pathname === '/' || !!previewBase())) {
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261006reliability1'), import('./services/live/auth.js?v=20261006reliability1'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261007auth1'), import('./services/live/auth.js?v=20261007auth1'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,

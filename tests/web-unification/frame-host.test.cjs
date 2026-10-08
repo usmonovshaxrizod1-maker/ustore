@@ -72,6 +72,34 @@ test('Shop browser frame uses the actual Mini App source and keeps auth in the h
   }
 });
 
+test('private shop entry keeps one quiet transition until the frame is ready', async () => {
+  const browser = fakeBrowser();
+  const oldWindow = global.window;
+  const oldDocument = global.document;
+  global.window = browser.window;
+  global.document = browser.document;
+  try {
+    const { createMiniAppFrameHost } = await import(pathToFileURL(path.join(root, 'web/shared/frame-host.js')).href);
+    const host = createMiniAppFrameHost({
+      kind: 'shop', route: '/profile', tenant: { botId: '123456' }, viewerKey: '123e4567-e89b-42d3-a456-426614174000',
+      runtime: { endpoints: { shop: 'https://db.example/functions/v1/shop-api' }, tokenStore: { get: () => '' } },
+    });
+    assert.equal(host.element.children[1].className, 'uw-auth-transition');
+    assert.equal(host.element.children[1].textContent, 'Sahifa ochilmoqda…');
+    await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'HELLO' });
+    const { nonce } = browser.sent[0].message;
+    await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'REQUEST', nonce, id: 'guest-orders', action: 'get_my_orders' });
+    assert.deepEqual(browser.sent.at(-1).message.data, { orders: [] });
+    await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'APP_READY', nonce });
+    assert.match(host.element.className, /is-ready/);
+    assert.equal(host.element.children.length, 1);
+    host.destroy();
+  } finally {
+    global.window = oldWindow;
+    global.document = oldDocument;
+  }
+});
+
 test('both browser entries load the real Mini App scripts through one frame bridge', () => {
   const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
   assert.match(read('index.html'), /web\/shared\/miniapp-frame-bridge\.js/);

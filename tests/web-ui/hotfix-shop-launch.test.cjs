@@ -27,6 +27,29 @@ test('guest boot is handed to the Mini App once without web session data', async
   assert.equal(adapters.takeGuestBoot(), null);
 });
 
+test('signed-in boot is reused once only for the same session and never carries a token', async () => {
+  const { createLiveShopPublicAdapters } = await load('web/services/live/shop-public.js');
+  let token = 'session-one';
+  let requests = 0;
+  const adapters = createLiveShopPublicAdapters({
+    endpoint: 'https://api.example/shop-api', botId: '123', tokenStore: { get: () => token },
+    fetchImpl: async () => { requests++; return { ok: true, status: 200, json: async () => ({
+      shop: { id: 'shop-1', slug: 'fitcore', lifecycle: 'ACTIVE', currency: 'UZS' },
+      shopContact: { name: 'Fitcore' },
+      webSession: { authenticated: true, actor: { accountId: 'user-1', displayName: 'Mijoz', shopRole: 'CUSTOMER', roleCodes: [], permissions: [] }, replacementToken: 'must-not-cross-frame' },
+    }) }; },
+  });
+  assert.equal((await adapters.context.resolve()).ok, true);
+  assert.equal(requests, 1);
+  const boot = adapters.takeBoot();
+  assert.equal(boot.shopContact.name, 'Fitcore');
+  assert.equal(boot.webSession, undefined);
+  assert.equal(adapters.takeBoot(), null);
+  assert.equal((await adapters.context.resolve()).ok, true);
+  token = 'another-session';
+  assert.equal(adapters.takeBoot(), null);
+});
+
 test('nested production handoff route uses root assets while GitHub preview stays relative', async () => {
   const { productionWebEntry } = await load('scripts/web-entry-paths.mjs');
   const source = fs.readFileSync(path.join(root, 'web/index.html'), 'utf8');

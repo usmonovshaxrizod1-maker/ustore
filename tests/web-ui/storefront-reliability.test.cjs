@@ -54,6 +54,12 @@ test('protected shop routes keep the exact return route, unsafe next values do n
   assert.equal(shopAuthReturnTo({ pathname: '/signin', target: '/signin', search: '?next=%2Fauth%2Fhandoff' }), '/profile');
 });
 
+test('guest orders route stays in the shop shell while order data remains session-gated', async () => {
+  const { CUSTOMER_ROUTES } = await importFile('web/navigation/routes.js');
+  assert.equal(CUSTOMER_ROUTES.find((route) => route.id === 'orders')?.auth, undefined);
+  assert.equal(CUSTOMER_ROUTES.find((route) => route.id === 'order')?.auth, undefined);
+});
+
 test('all protected routes use the same profile-style sign-in actions', async () => {
   const { createCustomDomainSignInView } = await importFile('web/features/auth/origin-handoff.js');
   class Node {
