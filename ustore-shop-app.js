@@ -6311,7 +6311,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const entries = featuredCategories.map(e => ({ e, c: categories.find(c => c.id === e.categoryId) })).filter(x => x.c);
       if (!entries.length) return '';
       return `<div class="fc-cat-nav-row fc-home-default-block">
-        ${entries.map(({ c }) => `<button type="button" onclick="scrollToFeaturedCategoryBlock('${c.id}')" class="fc-cat-nav-pill"><span class="fc-featured-cat-icon">${categoryIconMarkup(c)}</span><span>${escapeHtml(categoryName(c))}</span></button>`).join('')}
+        ${entries.map(({ c }) => `<button type="button" onclick="scrollToFeaturedCategoryBlock('${c.id}')" class="fc-cat-nav-pill"><span class="fc-cat-nav-icon">${categoryIconMarkup(c)}</span><span>${escapeHtml(categoryName(c))}</span></button>`).join('')}
       </div>`;
     }
     function scrollToFeaturedCategoryBlock(catId) {

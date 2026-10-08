@@ -101,8 +101,8 @@ test('7–8 + 24h report cleanup from previous fixes are still present', () => {
 });
 
 test('cache versions are bumped for the changed Shop App and Platform assets', () => {
-  assert.match(indexHtml, /ustore\.css\?v=323/);
-  assert.match(indexHtml, /ustore-shop-app\.js\?v=322/);
+  assert.match(indexHtml, /ustore\.css\?v=324/);
+  assert.match(indexHtml, /ustore-shop-app\.js\?v=324/);
   assert.match(platformHtml, /platform\.css\?v=40/);
   assert.match(platformHtml, /platform-app\.js\?v=62/);
 });
