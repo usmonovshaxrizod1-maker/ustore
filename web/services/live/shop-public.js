@@ -24,7 +24,7 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
   const locator = String(botId || '').trim();
   if (!/^\d+$/.test(locator)) throw new TypeError('botId raqam bo‘lishi kerak');
   if (typeof fetchImpl !== 'function') throw new TypeError('fetch kerak');
-  let bootCache = null;
+  let guestBootCache = null;
 
   async function request(action, payload = {}) {
     const headers = { 'content-type': 'application/json' };
@@ -65,16 +65,11 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
   }
 
   return Object.freeze({
-    takeBoot() {
-      const cached = bootCache;
-      bootCache = null;
-      return cached && cached.token === String(tokenStore?.get?.() || '') && Date.now() - cached.at < 30000 ? cached.data : null;
-    },
     takeGuestBoot() {
       if (tokenStore?.get?.()) return null;
-      const cached = bootCache;
-      bootCache = null;
-      return cached && cached.token === '' && Date.now() - cached.at < 30000 ? cached.data : null;
+      const cached = guestBootCache;
+      guestBootCache = null;
+      return cached && Date.now() - cached.at < 30000 ? cached.data : null;
     },
     context: {
       async resolve() {
@@ -82,7 +77,10 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
         if (!result.ok) return result;
         const body = result.data;
         const { webSession, ...frameBoot } = body;
-        bootCache = { at: Date.now(), token: String(tokenStore?.get?.() || ''), data: frameBoot };
+        // The public web boot has no legacy Mini App admin fields. Only guests
+        // may reuse it; signed-in frames must request their authorized boot.
+        guestBootCache = !tokenStore?.get?.() && webSession?.authenticated !== true
+          ? { at: Date.now(), data: frameBoot } : null;
         const context = {
           mode: 'web',
           shop: {

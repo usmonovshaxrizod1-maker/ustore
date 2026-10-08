@@ -27,7 +27,7 @@ test('guest boot is handed to the Mini App once without web session data', async
   assert.equal(adapters.takeGuestBoot(), null);
 });
 
-test('signed-in boot is reused once only for the same session and never carries a token', async () => {
+test('signed-in public boot is never reused as the Mini App admin boot', async () => {
   const { createLiveShopPublicAdapters } = await load('web/services/live/shop-public.js');
   let token = 'session-one';
   let requests = 0;
@@ -41,13 +41,10 @@ test('signed-in boot is reused once only for the same session and never carries 
   });
   assert.equal((await adapters.context.resolve()).ok, true);
   assert.equal(requests, 1);
-  const boot = adapters.takeBoot();
-  assert.equal(boot.shopContact.name, 'Fitcore');
-  assert.equal(boot.webSession, undefined);
-  assert.equal(adapters.takeBoot(), null);
+  assert.equal(adapters.takeGuestBoot(), null);
   assert.equal((await adapters.context.resolve()).ok, true);
   token = 'another-session';
-  assert.equal(adapters.takeBoot(), null);
+  assert.equal(adapters.takeGuestBoot(), null);
 });
 
 test('nested production handoff route uses root assets while GitHub preview stays relative', async () => {

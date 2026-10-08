@@ -70,8 +70,8 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
       if (!result?.ok) throw new Error(String(result?.error?.message || result?.error?.code || 'sign_out_failed'));
       return { signedOut: true };
     }
-    if (kind === 'shop' && action === 'boot') {
-      const cached = runtime.takeBoot?.() || (!token ? runtime.takeGuestBoot?.() : null);
+    if (kind === 'shop' && action === 'boot' && !token) {
+      const cached = runtime.takeGuestBoot?.();
       if (cached) return { ...cached, botUsername: cached.botUsername || String(tenant?.botUsername || '').replace(/^@/, '') || null };
     }
     // A visitor can browse public campaigns before signing in. These public

@@ -5,7 +5,7 @@ import { createButton, createStatePanel } from './components/ui.js';
 import { createTranslator, normalizeLocale } from './i18n/index.js';
 import { localizeCustomerDom } from './i18n/customer-copy.js';
 import { buildCanonicalUrl, createDocumentMetadataManager, sharePage } from './metadata/index.js';
-import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261008auth2';
+import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261008admin1';
 import { secureUuidV4 } from './shared/browser-id.js';
 import { shopAuthReturnTo } from './features/auth/return-target.js';
 
@@ -364,11 +364,11 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261008auth2');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261008admin1');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
-  if (!authFeatureModulePromise) authFeatureModulePromise = import('./features/auth/origin-handoff.js?v=20261008auth2');
+  if (!authFeatureModulePromise) authFeatureModulePromise = import('./features/auth/origin-handoff.js?v=20261008admin1');
   return authFeatureModulePromise;
 }
 async function beginFrameSignIn(routeState, runtime) {
@@ -394,8 +394,8 @@ function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
   if (!loginFeatureModulePromise) {
-    loginFeatureModulePromise = import('./features/auth/login.js?v=20261008auth2')
-      .catch(() => import(`./features/auth/login.js?v=20261008auth2&retry=${Date.now()}`))
+    loginFeatureModulePromise = import('./features/auth/login.js?v=20261008admin1')
+      .catch(() => import(`./features/auth/login.js?v=20261008admin1&retry=${Date.now()}`))
       .catch((error) => { loginFeatureModulePromise = null; throw error; });
   }
   return loginFeatureModulePromise;
@@ -521,7 +521,7 @@ async function renderPlatformHome(routeState, epoch) {
     mountSharedFrame({ kind:'platform', routeState, runtime, viewerAccountId:session.data?.accountId });
     return;
   }
-  const mod = await import('./features/platform-home/index.js?v=20261008auth2');
+  const mod = await import('./features/platform-home/index.js?v=20261008admin1');
   if (epoch !== renderEpoch) return;
   const controller = mod.createPlatformHomeController({ platformPort: runtime.platform });
   const view = reactive(controller, (snapshot) => mod.createPlatformHomeView({
@@ -1026,7 +1026,7 @@ async function startWebApp() {
       (location.pathname === '/auth/telegram/callback' || location.pathname === '/' || !!previewBase())) {
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261008auth2'), import('./services/live/auth.js?v=20261008auth2'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261008admin1'), import('./services/live/auth.js?v=20261008admin1'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,
