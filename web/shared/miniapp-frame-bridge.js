@@ -5,7 +5,9 @@
   if (params.get('web_frame') !== '1' || window.Telegram?.WebApp?.initData) return;
   if (window.parent === window) return;
 
-  const kind = location.pathname.includes('/platform/') ? 'platform' : 'shop';
+  // Web hosts the platform frame at /platform-ui/; Telegram still uses
+  // /ustore/platform/. Both must announce the same kind to their parent.
+  const kind = /(?:^|\/)platform(?:-ui)?(?:\/|$)/.test(location.pathname) ? 'platform' : 'shop';
   const pending = new Map();
   let parentOrigin = '';
   let nonce = '';

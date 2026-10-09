@@ -34,6 +34,7 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   // PLATFORM UI is the app's own checked-in code on the same origin.
   frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
   const src = kind === 'shop' ? new URL('/ustore/', MINI_APP_ORIGIN) : platformFrameUrl();
+  if (kind === 'platform') src.searchParams.set('v', '20261009t8');
   src.searchParams.set('web_frame', '1');
   src.searchParams.set('viewer', viewerKey);
   if (guestViewerKey && /^[0-9a-f-]{36}$/i.test(guestViewerKey)) src.searchParams.set('guest_viewer', guestViewerKey);
