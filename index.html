@@ -17,10 +17,10 @@
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=324">
+  <link rel="stylesheet" href="./ustore.css?v=325">
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script defer src="https://unpkg.com/lucide@latest"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script async src="https://unpkg.com/lucide@latest" onload="window.safeCreateIcons?.()"></script>
+  <script id="ustore-storage-sdk" async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" onerror="this.dataset.failed='true'"></script>
   <!-- PERFORMANCE ROUND 1 (2026-09-03): Leaflet CSS/JS bu yerdan olib
        tashlandi — u faqat admin "Do'kon haqide -> Koordinata -> Xaritadan
        tanlash" tugmasini bosganda kerak, lekin oldin HAR safar ilova
@@ -36,8 +36,8 @@
   <script defer src="./ustore-image-io.js?v=3"></script>
   <script defer src="./ustore-commerce.js?v=8"></script>
   <script defer src="./config.public.js?v=4"></script>
-  <script defer src="./web/shared/miniapp-frame-bridge.js?v=4"></script>
-  <script defer src="./ustore-shop-app.js?v=324"></script>
+  <script defer src="./web/shared/miniapp-frame-bridge.js?v=5"></script>
+  <script defer src="./ustore-shop-app.js?v=325"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
 
@@ -153,8 +153,12 @@
         const root = document.getElementById('app-content');
         if (!root) return;
         root.innerHTML = '<div class="fc-boot-error"><strong>Ilovani ochib bo‘lmadi</strong><p>Internetni tekshiring va qayta urinib ko‘ring.</p><button type="button" onclick="location.reload()">Qayta urinish</button></div>';
+        window.USTORE_FRAME_BRIDGE?.appReady?.();
       };
-      window.addEventListener('error', () => setTimeout(showBootFailure, 0));
+      window.addEventListener('error', (event) => {
+        if (event.target?.id === 'ustore-storage-sdk' || String(event.target?.src || '').includes('unpkg.com/lucide')) return;
+        setTimeout(showBootFailure, 0);
+      });
       window.addEventListener('unhandledrejection', () => setTimeout(showBootFailure, 0));
       setTimeout(showBootFailure, 15000);
     })();

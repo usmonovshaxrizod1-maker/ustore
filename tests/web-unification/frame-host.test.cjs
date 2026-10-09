@@ -58,11 +58,12 @@ test('Shop browser frame uses the actual Mini App source and keeps auth in the h
     assert.equal(init.botId, '123456');
     assert.equal(JSON.stringify(init).includes('session-secret'), false);
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'REQUEST', nonce: 'bad', id: 'wrong', action: 'boot' });
-    assert.equal(requests.length, 0);
+    assert.equal(requests.length, 2); // boot and catalog start while iframe scripts load
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'REQUEST', nonce: init.nonce, id: 'valid', action: 'get_catalog', payload: { botId: '999999' } });
-    assert.equal(requests.length, 1);
-    assert.equal(requests[0].request.headers.authorization, 'UStoreSession session-secret');
-    const body = JSON.parse(requests[0].request.body);
+    assert.equal(requests.length, 3);
+    const catalogRequest = requests.find(({ request }) => JSON.parse(request.body).payload?.botId === '999999');
+    assert.equal(catalogRequest.request.headers.authorization, 'UStoreSession session-secret');
+    const body = JSON.parse(catalogRequest.request.body);
     assert.equal(body.botId, '123456');
     assert.equal(body.payload.botId, '999999');
     const result = browser.sent.at(-1).message;
@@ -129,9 +130,10 @@ test('signed-in Mini App boot reaches the authorized shop endpoint and retains a
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'HELLO' });
     const { nonce } = browser.sent[0].message;
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'REQUEST', nonce, id: 'admin-boot', action: 'boot' });
-    assert.equal(requests.length, 1);
-    assert.equal(requests[0].headers.authorization, 'UStoreSession session-secret');
-    assert.equal(JSON.parse(requests[0].body).uiMode, 'shared');
+    assert.equal(requests.length, 2);
+    const bootRequest = requests.find(request => JSON.parse(request.body).action === 'boot');
+    assert.equal(bootRequest.headers.authorization, 'UStoreSession session-secret');
+    assert.equal(JSON.parse(bootRequest.body).uiMode, 'shared');
     assert.equal(browser.sent.at(-1).message.data.isAdmin, true);
     assert.equal(browser.sent.at(-1).message.data.staffRole, 'OWNER');
     host.destroy();
@@ -178,7 +180,7 @@ test('guest campaign browsing uses public projections without a session', async 
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'HELLO' });
     const { nonce } = browser.sent[0].message;
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'REQUEST', nonce, id: 'campaigns', action: 'get_marketing_campaigns' });
-    assert.deepEqual(calls.sort(), ['get_web_bundles', 'get_web_promotions']);
+    assert.deepEqual(calls.filter(action => action.startsWith('get_web_')).sort(), ['get_web_bundles', 'get_web_promotions']);
     assert.deepEqual(browser.sent.at(-1).message.data.bundles.map((item) => item.id), ['bundle-1']);
     assert.deepEqual(browser.sent.at(-1).message.data.promotions.map((item) => item.id), ['promo-1']);
     host.destroy();

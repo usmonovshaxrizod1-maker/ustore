@@ -43,13 +43,13 @@ test('Supabase klienti fayl yuklanayotganda EMAS, faqat kerak bo'
   // shu qator BUTUN faylni to'xtatib qo'yardi — boot() umuman chaqirilmasdi.
   assert.doesNotMatch(app, /^\s*const sb = supabase\.createClient\(/m,
     'Supabase klienti hech qachon modul darajasida yaratilmasligi kerak');
-  assert.match(app, /function sbClient\(\) \{[\s\S]{0,400}?if \(!window\.supabase\?\.createClient\) throw new Error\('supabase_sdk_unavailable'\)/,
-    'sbClient() SDK yo\'qligini aniq tekshirib, tushunarli xato berishi kerak');
+  assert.match(app, /async function sbClient\(\) \{[\s\S]{0,1200}?if \(!window\.supabase\?\.createClient\)/,
+    'sbClient() kerak bo‘lganda SDK yuklanishini kutishi kerak');
   assert.match(app, /let _sbClient = null;/, 'klient bir marta yaratilib keshlanishi kerak');
   // Ikkala haqiqiy foydalanish nuqtasi ham lazy klientdan o'tishi shart.
   const rawUses = app.match(/(?<!function )\bsb\.storage\b/g) || [];
   assert.equal(rawUses.length, 0, 'hech qayerda eski global `sb` ishlatilmasligi kerak');
-  assert.equal((app.match(/sbClient\(\)\.storage/g) || []).length, 3,
+  assert.equal((app.match(/\(await sbClient\(\)\)\.storage/g) || []).length, 3,
     'Mahsulot, chek va support rasmi yuklashlari sbClient() orqali o\'tishi kerak');
 });
 
@@ -186,7 +186,7 @@ test('umumiy xato tarmog\'i: error va unhandledrejection ikkalasi ham ushlanadi,
   assert.doesNotMatch(body, /app-content|location\.reload\(\)/,
     'ishga tushmagan holatdagi ekranni index.html fail-safe boshqaradi, bu yerda takrorlanmasligi kerak');
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-  assert.match(html, /window\.addEventListener\('error', \(\) => setTimeout\(showBootFailure/,
+  assert.match(html, /window\.addEventListener\('error', \(event\) => \{[\s\S]*setTimeout\(showBootFailure, 0\)/,
     'index.html fail-safe hali ham mavjud bo\'lishi kerak (ikkalasi bir-birini to\'ldiradi)');
   assert.match(html, /setTimeout\(showBootFailure, 15000\)/,
     'boot hech qachon tugamasa ham 15 soniyadan keyin xabar chiqishi kerak');

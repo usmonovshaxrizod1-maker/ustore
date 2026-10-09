@@ -1,4 +1,5 @@
 import { fail, ok, STABLE_ERROR_CODES } from '../ports/result.js';
+import { fetchJsonWithTimeout } from '../../shared/fetch-json.js';
 
 const ERROR_SET = new Set(STABLE_ERROR_CODES);
 const CHALLENGE_KEY = 'ustore:web:telegram-challenge:v1';
@@ -129,14 +130,18 @@ export function createLiveAuthAdapter({ endpoint, fetchImpl = globalThis.fetch, 
       if (!token) return fail('AUTH_REQUIRED', 'Kirish talab qilinadi.');
       headers.authorization = `UStoreSession ${token}`;
     }
-    let response;
+    let response, body;
     try {
-      response = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify({ action, payload }), credentials: 'omit' });
+      const options = { method: 'POST', headers, body: JSON.stringify({ action, payload }), credentials: 'omit' };
+      if (['get_session', 'begin_origin_handoff', 'get_origin_handoff', 'authorize_origin_handoff', 'exchange_origin_handoff', 'begin_telegram_oidc', 'exchange_telegram_oidc'].includes(action)) {
+        ({ response, data: body } = await fetchJsonWithTimeout(fetchImpl, url, options, 30000));
+      } else {
+        response = await fetchImpl(url, options);
+        body = await response.json().catch(() => null);
+      }
     } catch (_) {
       return fail('NETWORK_ERROR', 'Auth serveriga ulanib bo‘lmadi.', { retryable: true });
     }
-    let body = null;
-    try { body = await response.json(); } catch (_) {}
     if ((auth && tokenStore.get() !== tokenAtStart) || ((producesSession || action === 'get_session') && generation !== signInGeneration)) return fail('CONFLICT', 'Kirish holati o‘zgardi. Qayta urinib ko‘ring.');
     if (!response.ok || body?.error) {
       if (auth && response.status === 401 && body?.error?.code !== 'INVALID_CREDENTIALS' && tokenStore.get() === tokenAtStart) tokenStore.clear();

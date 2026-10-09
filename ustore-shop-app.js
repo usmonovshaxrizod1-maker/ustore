@@ -360,9 +360,27 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // to'liq ishlaydi, faqat o'sha ikki yuklash amali xato beradi (ikkalasi ham
     // allaqachon try/catch bilan o'ralgan va o'z zaxira yo'liga ega).
     let _sbClient = null;
-    function sbClient() {
+    let sbClientPromise = null;
+    async function sbClient() {
       if (_sbClient) return _sbClient;
-      if (!window.supabase?.createClient) throw new Error('supabase_sdk_unavailable');
+      if (!window.supabase?.createClient) {
+        if (!sbClientPromise) sbClientPromise = new Promise((resolve, reject) => {
+          const script = document.getElementById('ustore-storage-sdk');
+          if (!script || script.dataset.failed === 'true') { reject(new Error('supabase_sdk_unavailable')); return; }
+          const finish = (error) => {
+            clearTimeout(timer);
+            script.removeEventListener('load', loaded);
+            script.removeEventListener('error', failed);
+            error ? reject(error) : resolve();
+          };
+          const loaded = () => finish(window.supabase?.createClient ? null : new Error('supabase_sdk_unavailable'));
+          const failed = () => finish(new Error('supabase_sdk_unavailable'));
+          const timer = setTimeout(failed, 15000);
+          script.addEventListener('load', loaded, { once: true });
+          script.addEventListener('error', failed, { once: true });
+        }).catch(error => { sbClientPromise = null; throw error; });
+        await sbClientPromise;
+      }
       _sbClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
       return _sbClient;
     }
@@ -2717,7 +2735,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     async function uploadSupportAttachmentDraft(draft){
       if(!draft)return null;if(draft.uploaded)return draft.uploaded;
       const signed=await callApi('get_support_attachment_upload_url',{mimeType:draft.mimeType,size:draft.size,name:draft.name});
-      const {error}=await sbClient().storage.from('support-attachments').uploadToSignedUrl(signed.path,signed.token,draft.file,{contentType:draft.mimeType,upsert:false});
+      const {error}=await (await sbClient()).storage.from('support-attachments').uploadToSignedUrl(signed.path,signed.token,draft.file,{contentType:draft.mimeType,upsert:false});
       if(error)throw error;
       const finalized=await callApi('finalize_support_attachment_upload',{path:signed.path,mimeType:draft.mimeType,size:draft.size,name:draft.name});
       draft.uploaded=finalized.attachment;return draft.uploaded;
@@ -3902,7 +3920,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         const finalUrl = await retryAsync(async () => {
           const { path, token } = await callApi('get_upload_url', { ext, size: prepared.size, mimeType });
           const { error: upErr } = await withTimeout(
-            sbClient().storage.from(CONFIG.IMAGES_BUCKET).uploadToSignedUrl(path, token, prepared, { cacheControl: '31536000', contentType: mimeType, upsert: false }),
+            (await sbClient()).storage.from(CONFIG.IMAGES_BUCKET).uploadToSignedUrl(path, token, prepared, { cacheControl: '31536000', contentType: mimeType, upsert: false }),
             20000, 'signed_url_upload_timeout'
           );
           if (upErr) throw upErr;
@@ -9141,7 +9159,22 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         return showAppNotice(tr("Iltimos, QR to'lov provayderini tanlang.", 'Пожалуйста, выберите QR-провайдера оплаты.'));
       }
       if ((selectedPayment.id === 'CARD' && selectedPayment.receiptRequired || selectedPayment.id === 'QR') && !checkoutReceiptFile && !checkoutReceiptPreparing) {
-        return showAppNotice(tr("Buyurtmani yuborish uchun to'lov chekini yuklang.", 'Чтобы отправить заказ, загрузите чек оплаты.'));
+        const message = tr("Buyurtmani yuborish uchun to'lov chekini yoki skrinshotini yuklang.", 'Чтобы отправить заказ, загрузите чек или скриншот оплаты.');
+        const wrap = document.getElementById('chk-receipt-wrap');
+        if (wrap) {
+          let error = wrap.querySelector('[data-receipt-error]');
+          if (!error) {
+            error = document.createElement('p');
+            error.dataset.receiptError = 'true';
+            error.className = 'fc-checkout-receipt-error';
+            error.setAttribute('role', 'alert');
+            wrap.prepend(error);
+          }
+          error.textContent = message;
+          wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          wrap.querySelector('button')?.focus({ preventScroll: true });
+        }
+        return showAppNotice(message);
       }
 
       // Savatdagi har bir variant bo'yicha tezkor tekshiruv. Yakuniy atomik tekshiruv serverda.
@@ -19516,7 +19549,7 @@ if (activePopupModal === 'LOGO_CROP') {
           const extByMime = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
           const ext = extByMime[prepared.type];
           const { path, token } = await callApi('get_payment_receipt_upload_url', { orderId, mimeType: prepared.type, size: prepared.size });
-          const { error: upErr } = await sbClient().storage.from('payment-receipts').uploadToSignedUrl(path, token, prepared);
+          const { error: upErr } = await (await sbClient()).storage.from('payment-receipts').uploadToSignedUrl(path, token, prepared);
           if (upErr) throw upErr;
           await callApi('finalize_payment_receipt', { orderId, path });
           signedOk = true;
@@ -21481,6 +21514,7 @@ if (activePopupModal === 'LOGO_CROP') {
                 : tr("Bu do'kon endi mavjud emas.", 'Этого магазина больше не существует.')}
               ${isFrozen ? `<br><br><button type="button" onclick="boot()" class="fc-btn fc-btn-primary">${tr('Qayta urinish', 'Повторить')}</button>` : ''}
             </div>`;
+          browserBridge?.appReady?.();
           return;
         }
         document.getElementById('app-content').innerHTML = `
@@ -21488,6 +21522,7 @@ if (activePopupModal === 'LOGO_CROP') {
             ${ICON_ALERT} ${tr("Ma'lumotlarni yuklab bo'lmadi.", 'Не удалось загрузить данные.')}<br>${tr('Internetni tekshiring va qayta urinib ko‘ring.', 'Проверьте интернет и попробуйте снова.')}<br><br>
             <button type="button" onclick="boot()" class="fc-btn fc-btn-primary">${tr('Qayta urinish', 'Повторить')}</button>
           </div>`;
+        browserBridge?.appReady?.();
         return;
       }
 

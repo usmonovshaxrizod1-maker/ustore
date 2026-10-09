@@ -60,7 +60,8 @@
         task.reject(error);
       }
     } else if (message.type === 'ROUTE') {
-      applyRoute(String(message.route || '/'));
+      initialRoute = String(message.route || '/');
+      applyRoute(initialRoute);
     }
   });
 
@@ -74,6 +75,9 @@
   }
   function navigate(route) {
     if (!parentOrigin || !String(route || '').startsWith('/')) return;
+    // Boot must finish on the latest route if the host/user navigates while
+    // initial catalog or auth requests are still in flight.
+    initialRoute = String(route);
     window.parent.postMessage({ bridge: 'ustore-miniapp-v1', type: 'NAVIGATE', kind, nonce, route }, parentOrigin);
   }
   function appReady() {

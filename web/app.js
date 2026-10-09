@@ -5,7 +5,7 @@ import { createButton, createStatePanel } from './components/ui.js';
 import { createTranslator, normalizeLocale } from './i18n/index.js';
 import { localizeCustomerDom } from './i18n/customer-copy.js';
 import { buildCanonicalUrl, createDocumentMetadataManager, sharePage } from './metadata/index.js';
-import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261008admin1';
+import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261009flow1';
 import { secureUuidV4 } from './shared/browser-id.js';
 import { shopAuthReturnTo } from './features/auth/return-target.js';
 
@@ -22,6 +22,7 @@ let authFeatureModulePromise = null;
 let loginFeatureModulePromise = null;
 let context = null;
 let renderEpoch = 0;
+let centralSignInJustCompleted = false;
 let activeCleanup = [];
 let activeRouteReason = 'start';
 let sharedFrame = null;
@@ -93,7 +94,7 @@ function mount(value) {
 }
 function mountSharedFrame({ kind, routeState, runtime, tenant = null, viewerAccountId = '' }) {
   const next = routeState.target || '/';
-  if (sharedFrame && sharedFrame.kind === kind && sharedFrame.botId === String(tenant?.botId || '') && root.contains(sharedFrame.view.element)) {
+  if (sharedFrame && sharedFrame.kind === kind && sharedFrame.botId === String(tenant?.botId || '') && sharedFrame.sessionToken === (runtime.tokenStore.get() || '') && root.contains(sharedFrame.view.element)) {
     sharedFrame.view.route(next);
     return;
   }
@@ -124,7 +125,10 @@ function mountSharedFrame({ kind, routeState, runtime, tenant = null, viewerAcco
         else go(target);
         return;
       }
-      if (kind === 'shop' && !runtime.tokenStore.get() && /^\/(checkout|orders|profile|favorites|support|admin)(\/|$)/.test(target)) {
+      if (kind === 'shop') {
+        // Every frame navigation must invalidate older async route renders,
+        // including /profile?next=/orders. Updating history alone leaves the
+        // previous Orders request free to send a stale ROUTE back to the frame.
         go(target);
         return;
       }
@@ -150,7 +154,7 @@ function mountSharedFrame({ kind, routeState, runtime, tenant = null, viewerAcco
   // Route changes reuse the live frame. Registering its destroy with mount()
   // would tear down the message bridge at the start of every renderRoute().
   mount(view.element);
-  sharedFrame = { kind, botId: String(tenant?.botId || ''), view };
+  sharedFrame = { kind, botId: String(tenant?.botId || ''), sessionToken: runtime.tokenStore.get() || '', view };
 }
 function stateView(kind, title, message, actionLabel = '', onAction) {
   return createStatePanel({ kind, title, message, actionLabel, onAction });
@@ -364,7 +368,7 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261008admin1');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261009flow1');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
@@ -374,6 +378,16 @@ function loadAuthFeatureModule() {
 async function beginFrameSignIn(routeState, runtime) {
   if (frameSignInPending) return;
   frameSignInPending = true;
+  const epoch = ++renderEpoch;
+  const waiting = document.createElement('section');
+  waiting.className = 'uw-auth-transition uw-auth-transition--inline uw-auth-transition--overlay';
+  waiting.setAttribute('role', 'status');
+  waiting.setAttribute('aria-busy', 'true');
+  waiting.textContent = 'Kirish sahifasiga o‘tilmoqda…';
+  // Keep the live shop underneath so cancelling Telegram / browser Back can
+  // restore it instantly instead of rebuilding the iframe and session.
+  root.append(waiting);
+  remember(() => waiting.remove());
   try {
     const params = new URLSearchParams(routeState.search || '');
     const returnTo = shopAuthReturnTo(routeState);
@@ -381,11 +395,11 @@ async function beginFrameSignIn(routeState, runtime) {
     const result = await beginCustomDomainLogin({
       authPort: runtime.services.auth, returnTo, method: params.get('method'),
       botUsername: runtime.tenant?.botUsername || '', locale: uiLocale,
-      onRedirect: (url) => location.assign(url),
+      onRedirect: (url) => { if (epoch === renderEpoch) location.assign(url); },
     });
-    if (!result?.ok) go(routeState.target);
+    if (epoch === renderEpoch && !result?.ok) mount(stateView('error', 'Kirish boshlanmadi', result?.error?.message || 'Qayta urinib ko‘ring.', 'Qayta urinish', () => beginFrameSignIn(routeState, runtime)));
   } catch (_) {
-    go(routeState.target);
+    if (epoch === renderEpoch) mount(stateView('error', 'Kirish boshlanmadi', 'Internetni tekshirib qayta urinib ko‘ring.', 'Qayta urinish', () => beginFrameSignIn(routeState, runtime)));
   } finally {
     frameSignInPending = false;
   }
@@ -394,8 +408,8 @@ function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
   if (!loginFeatureModulePromise) {
-    loginFeatureModulePromise = import('./features/auth/login.js?v=20261008admin1')
-      .catch(() => import(`./features/auth/login.js?v=20261008admin1&retry=${Date.now()}`))
+    loginFeatureModulePromise = import('./features/auth/login.js?v=20261009flow1')
+      .catch(() => import(`./features/auth/login.js?v=20261009flow1&retry=${Date.now()}`))
       .catch((error) => { loginFeatureModulePromise = null; throw error; });
   }
   return loginFeatureModulePromise;
@@ -442,14 +456,14 @@ async function renderShopSignIn(routeState, epoch) {
     authPort: shopRuntime.services.auth, returnTo, botUsername: shopRuntime.tenant?.botUsername || '', locale:uiLocale,
     onRedirect: (url) => location.assign(url),
   });
-  const view = reactive(controller, (state) => createCustomDomainSignInView({ controller, state, botUsername: shopRuntime.tenant?.botUsername, shopName: shopRuntime.tenant?.shopName, logoUrl: shopRuntime.tenant?.logoUrl, locale: uiLocale }));
-  mountShell(routeState, view.element, 'Kirish');
-  remember(view.destroy);
   const requestedMethod = new URLSearchParams(routeState.search || '').get('method');
   if (requestedMethod === 'telegram' || requestedMethod === 'password') {
     const started = await controller.begin(requestedMethod);
     if (epoch !== renderEpoch || started?.ok) return;
   }
+  const view = reactive(controller, (state) => createCustomDomainSignInView({ controller, state, botUsername: shopRuntime.tenant?.botUsername, shopName: shopRuntime.tenant?.shopName, logoUrl: shopRuntime.tenant?.logoUrl, locale: uiLocale }));
+  mountShell(routeState, view.element, 'Kirish');
+  remember(view.destroy);
 }
 
 async function renderCentralHandoff(routeState, epoch) {
@@ -460,6 +474,21 @@ async function renderCentralHandoff(routeState, epoch) {
   const state = handoffParams.get('state') || '';
   const passwordMethod = handoffParams.get('method') === 'password';
   const hadCentralSessionToken = Boolean(authRuntime.tokenStore?.get?.());
+  if (hadCentralSessionToken && centralSignInJustCompleted) {
+    centralSignInJustCompleted = false;
+    // authorizeOriginHandoff already validates the session, state and target
+    // on the server. Avoid a second getSession/getOriginHandoff round trip on
+    // the immediate return from Telegram. Older sessions still go through
+    // getSession below so their normal token renewal is preserved.
+    const controller = authFeature.createCentralOriginHandoffController({ authPort: authRuntime.auth, state, onRedirect:(url)=>location.assign(url) });
+    const authorized = await controller.authorize();
+    if (epoch !== renderEpoch || authorized?.ok) return;
+    if (!['AUTH_REQUIRED', 'SESSION_EXPIRED'].includes(authorized?.error?.code)) {
+      const view = reactive(controller, snapshot => authFeature.createCentralOriginHandoffView({ controller, state:snapshot }));
+      mount(view); remember(view.destroy);
+      return;
+    }
+  }
   if (passwordMethod && !hadCentralSessionToken) {
     // The password form is usable while the handoff metadata is fetched.
     // Its server-side handoff authorization is still checked after sign-in.
@@ -481,13 +510,14 @@ async function renderCentralHandoff(routeState, epoch) {
       onSignedIn: () => renderRoute(routeState),
       onRedirect: (url) => location.assign(url),
     });
-    const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, shopBotUsername: handoffInfo.ok ? handoffInfo.data?.botUsername || '' : '', locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz', singleMethod: passwordMethod }));
-    mount(view); remember(view.destroy);
     if (handoffParams.get('method') === 'telegram' && handoffInfo.ok &&
         String(handoffInfo.data?.status || '').toUpperCase() === 'PENDING') {
       const started = await controller.signInTelegram();
       if (epoch !== renderEpoch || started?.ok) return;
     }
+    // The automatic Telegram path only needs a form if it actually fails.
+    const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state:snapshot, shopBotUsername: handoffInfo.ok ? handoffInfo.data?.botUsername || '' : '', locale:handoffParams.get('lang') === 'ru' ? 'ru' : 'uz', singleMethod: passwordMethod }));
+    mount(view); remember(view.destroy);
     return;
   }
   const controller = authFeature.createCentralOriginHandoffController({ authPort: authRuntime.auth, state, onRedirect:(url)=>location.assign(url) });
@@ -967,6 +997,14 @@ async function renderRoute(routeState, reason = 'refresh') {
       if (routeState.route.platformAuth) { await renderPlatformPortal(routeState, epoch); return; }
     }
     if (centralOrigin) { mount(createNotFoundView({locale:uiLocale,onHome:()=>go('/')})); return; }
+    // Public tabs inside a live shop do not need another boot/auth round trip.
+    // Protected routes still pass through the server-backed checks below.
+    if (sharedFrame?.kind === 'shop' && context && sharedFrame.sessionToken === (shopRuntime?.tokenStore.get() || '') && root.contains(sharedFrame.view.element) &&
+        !routeState.route.auth && !routeState.route.admin && routeState.route.id !== 'checkout') {
+      if (!await applySharedShopMetadata(routeState, epoch) || epoch !== renderEpoch) return;
+      sharedFrame.view.route(routeState.target);
+      return;
+    }
     const shopHint = shopNameHintFromHostname();
     if (!shopLaunchShown) {
       if (!root.querySelector('.uw-shop-opening')) mount(launchView({ mode:'shop', name:shopHint }));
@@ -1026,7 +1064,7 @@ async function startWebApp() {
       (location.pathname === '/auth/telegram/callback' || location.pathname === '/' || !!previewBase())) {
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261008admin1'), import('./services/live/auth.js?v=20261008admin1'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261009flow1'), import('./services/live/auth.js?v=20261009flow1'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,
@@ -1036,6 +1074,7 @@ async function startWebApp() {
       if (result?.ok && typeof result.data?.returnTo === 'string' &&
           (result.data.returnTo.startsWith('/platform/') || result.data.returnTo.startsWith('/auth/handoff?'))) {
         const path = result.data.returnTo;
+        centralSignInJustCompleted = path.startsWith('/auth/handoff?');
         history.replaceState(history.state, '', previewBase() ? `${previewBase()}#${path}` : path);
         router.start();
         return;
@@ -1058,6 +1097,10 @@ window.addEventListener('pageshow', (event) => {
   // When the browser restores this page from BFCache after an auth cancel/back,
   // keep the already-live storefront/frame intact. Re-starting the router here
   // destroys the restored iframe and turns an instant Back action into a cold boot.
-  if (event.persisted) applyDocumentLocale(uiLocale);
+  if (event.persisted) {
+    root.querySelector('.uw-auth-transition--overlay')?.remove();
+    frameSignInPending = false;
+    applyDocumentLocale(uiLocale);
+  }
 });
 void startWebApp();

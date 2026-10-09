@@ -85,7 +85,7 @@ test('auth polish: premium shared login and BFCache back keeps the live storefro
   const features = read('web/styles/features.css');
   assert.match(features, /\.uw-auth:is\(\[data-feature="login"\],\[data-feature="origin-signin"\]\)[\s\S]*box-shadow:\s*var\(--uw-shadow-md\)/);
   assert.match(features, /\.uw-auth:is\(\[data-feature="login"\],\[data-feature="origin-signin"\]\) \.uw-auth-tabs \.uw-button/);
-  assert.match(webApp, /if \(event\.persisted\) applyDocumentLocale\(uiLocale\)/);
+  assert.match(webApp, /if \(event\.persisted\) \{[\s\S]*applyDocumentLocale\(uiLocale\)/);
   assert.doesNotMatch(webApp, /if \(event\.persisted && router\) router\.start\(\)/);
 });
 

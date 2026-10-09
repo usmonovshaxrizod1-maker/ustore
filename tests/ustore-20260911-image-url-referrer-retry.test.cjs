@@ -63,6 +63,6 @@ test('QR-code reading (payment merchant QR) is unaffected — it decodes an uplo
 
 test('cache version bumped for this fix', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.match(html, /ustore-shop-app\.js\?v=324/);
+  assert.match(html, /ustore-shop-app\.js\?v=325/);
 });
 

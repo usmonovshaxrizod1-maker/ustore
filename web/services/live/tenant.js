@@ -1,4 +1,5 @@
 import { fail, ok } from '../ports/result.js';
+import { fetchJsonWithTimeout } from '../../shared/fetch-json.js';
 
 function safeEndpoint(value) {
   const url = new URL(String(value || ''));
@@ -32,18 +33,16 @@ export function createLiveTenantResolver({ endpoint, fetchImpl = globalThis.fetc
       const sharedHost = ['localhost','127.0.0.1','[::1]',...botIdHosts].includes(hostname);
       if (explicit && sharedHost) return ok({ botId: explicit, source: 'BOT_ID' });
       if (!hostname) return fail('VALIDATION_ERROR', 'Do‘kon manzili aniqlanmadi.');
-      let response;
+      let response, body;
       try {
-        response = await fetchImpl(url, {
+        ({ response, data: body } = await fetchJsonWithTimeout(fetchImpl, url, {
           method: 'POST', credentials: 'omit',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ action: 'resolve_web_tenant', clientMode: 'web', payload: { hostname } }),
-        });
+        }));
       } catch (_) {
         return fail('NETWORK_ERROR', 'Do‘kon manzilini tekshirib bo‘lmadi.', { retryable: true });
       }
-      let body = null;
-      try { body = await response.json(); } catch (_) {}
       if (!response.ok || body?.error) {
         const code = response.status === 404 ? 'SHOP_UNAVAILABLE'
           : response.status === 400 ? 'VALIDATION_ERROR'

@@ -1,6 +1,7 @@
 import { fail, ok, STABLE_ERROR_CODES } from '../ports/result.js';
 import { validateContext } from '../ports/context.js';
 import { toPage } from '../ports/catalog.js';
+import { fetchJsonWithTimeout } from '../../shared/fetch-json.js';
 
 const ERROR_SET = new Set(STABLE_ERROR_CODES);
 function safeEndpoint(value) {
@@ -30,14 +31,12 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
     const headers = { 'content-type': 'application/json' };
     const token = tokenStore?.get?.();
     if (token) headers.authorization = `UStoreSession ${token}`;
-    let response;
+    let response, body;
     try {
-      response = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify({ action, payload, clientMode: 'web', botId: locator }), credentials: 'omit' });
+      ({ response, data: body } = await fetchJsonWithTimeout(fetchImpl, url, { method: 'POST', headers, body: JSON.stringify({ action, payload, clientMode: 'web', botId: locator }), credentials: 'omit' }));
     } catch (_) {
       return fail('NETWORK_ERROR', 'Shop serveriga ulanib bo‘lmadi.', { retryable: true });
     }
-    let body = null;
-    try { body = await response.json(); } catch (_) {}
     if (!response.ok || body?.error) return normalizedError(body, response.status);
     if (body?.webSession?.replacementToken && tokenStore?.set) tokenStore.set(body.webSession.replacementToken);
     return ok(body || {});

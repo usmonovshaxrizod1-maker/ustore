@@ -1,6 +1,7 @@
 // The browser owns tenant routing and the session. The Mini App owns the UI.
 // Session tokens never cross into the GitHub Pages frame.
 import { secureFrameNonce } from './browser-id.js';
+import { fetchJsonWithTimeout } from './fetch-json.js';
 const BRIDGE = 'ustore-miniapp-v1';
 const MINI_APP_ORIGIN = 'https://usmonovshaxrizod1-maker.github.io';
 const PUBLIC_SHOP_ACTIONS = new Set(['boot', 'get_catalog', 'get_web_bundles', 'get_web_promotions', 'get_web_promotion']);
@@ -59,6 +60,17 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   let alive = true;
   let ready = false;
   let lastRoute = safeRoute(route);
+  const loadingTimer = kind === 'shop' ? setTimeout(() => {
+    if (!alive || !placeholder) return;
+    const message = placeholder.querySelector('p');
+    if (message) message.textContent = 'Ulanish cho‘zildi. Internetni tekshiring yoki qayta urinib ko‘ring.';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.className = 'uw-btn uw-btn--secondary';
+    retry.textContent = 'Qayta urinish';
+    retry.addEventListener('click', () => window.location.reload());
+    placeholder.append(retry);
+  }, 15000) : null;
   const send = (message) => {
     if (alive && frame.contentWindow) frame.contentWindow.postMessage({ bridge: BRIDGE, kind, nonce, ...message }, MINI_APP_ORIGIN);
   };
@@ -109,12 +121,19 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
       : { action, payload: payload || {}, clientMode: 'web' };
     // Catalog stays on the public Web projection, including its admin-aware
     // visibility. Guest boot stays public; authenticated boot is the full UI.
-    const response = await fetchImpl(endpoint, {
+    const options = {
       method: 'POST', credentials: 'omit',
       headers: { 'content-type': 'application/json', ...(token ? { authorization: `UStoreSession ${token}` } : {}) },
       body: JSON.stringify(body),
-    });
-    const data = await response.json().catch(() => ({}));
+    };
+    let response, data;
+    if (action === 'boot' || action === 'get_catalog') {
+      ({ response, data } = await fetchJsonWithTimeout(fetchImpl, endpoint, options));
+    } else {
+      response = await fetchImpl(endpoint, options);
+      data = await response.json().catch(() => ({}));
+    }
+    if (!alive) throw new Error('frame_closed');
     if (token && runtime.tokenStore.get() !== token) throw new Error('session_changed');
     if (!response.ok || data?.error) {
       if (response.status === 401 || data?.error === 'auth_required' || data?.error === 'session_expired') onAuthRequired(lastRoute);
@@ -127,6 +146,18 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     }
     return data;
   };
+  // Fetch while the iframe downloads its scripts, instead of waiting for its
+  // HELLO and boot. Only the existing server-authorized boot is reused.
+  const startup = new Map();
+  if (kind === 'shop') {
+    for (const action of ['boot', 'get_catalog']) {
+      const entry = { token: runtime.tokenStore.get() || '', at: Date.now(), promise: null };
+      entry.promise = invoke(action, {}).then(
+        data => ({ ok: true, data }), error => ({ ok: false, error }),
+      );
+      startup.set(action, entry);
+    }
+  }
   const onMessage = async (event) => {
     if (!alive || event.origin !== MINI_APP_ORIGIN || event.source !== frame.contentWindow) return;
     const message = event.data;
@@ -138,6 +169,7 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     }
     if (!ready || message.nonce !== nonce) return;
     if (message.type === 'APP_READY') {
+      clearTimeout(loadingTimer);
       wrapper.className = `${String(wrapper.className || '').replace(/\bis-loading\b/g, '').replace(/\bis-ready\b/g, '').trim()} is-ready`.trim();
       if (typeof placeholder?.remove === 'function') placeholder.remove();
       else if (placeholder && Array.isArray(wrapper.children)) wrapper.children = wrapper.children.filter((child) => child !== placeholder);
@@ -152,7 +184,14 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     }
     if (message.type !== 'REQUEST' || typeof message.id !== 'string' || message.id.length > 100) return;
     try {
-      const data = await invoke(message.action, message.payload);
+      const cached = startup.get(message.action);
+      startup.delete(message.action);
+      let data;
+      if (cached && cached.token === (runtime.tokenStore.get() || '') && Date.now() - cached.at < 30000 && !Object.keys(message.payload || {}).length) {
+        const result = await cached.promise;
+        if (!result.ok) throw result.error;
+        data = result.data;
+      } else data = await invoke(message.action, message.payload);
       send({ type: 'RESULT', id: message.id, ok: true, data });
       if (message.action === 'web_sign_out') setTimeout(() => onSignedOut(), 0);
     } catch (error) {
@@ -163,6 +202,6 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   return Object.freeze({
     element: wrapper,
     route(next) { lastRoute = safeRoute(next); if (ready) send({ type: 'ROUTE', route: lastRoute }); },
-    destroy() { alive = false; window.removeEventListener('message', onMessage); frame.src = 'about:blank'; },
+    destroy() { alive = false; clearTimeout(loadingTimer); startup.clear(); window.removeEventListener('message', onMessage); frame.src = 'about:blank'; },
   });
 }

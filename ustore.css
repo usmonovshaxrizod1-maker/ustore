@@ -2964,7 +2964,7 @@ html.ustore-dark-theme .fc-stat-icon.is-green{background:rgba(16,185,129,.14)}
   --ustore-layer-inline-action:12;
   --ustore-layer-sticky:30;
   --ustore-layer-overlay:50;
-  --ustore-layer-toast:60;
+  --ustore-layer-toast:1200;
 }
 html{scroll-padding-top:calc(var(--ustore-header-height) + var(--ustore-home-sticky-height) + .75rem)}
 /* 2026-08-27: bu yerda ATAYLAB EMAS z-index:40 yozilgan edi — bu YUQORIDA
@@ -3018,6 +3018,7 @@ button:disabled,input:disabled,select:disabled,textarea:disabled{opacity:.5;curs
 .ustore-bottom-nav{padding-bottom:max(.5rem,env(safe-area-inset-bottom));border-top:1px solid var(--ustore-border)}
 .fc-sheet-overlay,#modal-container>.fixed{z-index:var(--ustore-layer-overlay)!important}
 #action-toast{z-index:var(--ustore-layer-toast)!important}
+.fc-checkout-receipt-error{padding:.75rem;margin:0 0 .75rem;border:1px solid #fca5a5;border-radius:.75rem;background:#fef2f2;color:#991b1b;font-size:.85rem;font-weight:700}
 .fc-picker-sheet-actions{display:grid;gap:.55rem}.fc-picker-sheet-actions>button{min-height:3.25rem;display:flex;align-items:center;gap:.7rem;padding:.7rem .8rem;border:1px solid var(--ustore-border);border-radius:.9rem;background:var(--ustore-panel-bg);color:var(--ustore-text);text-align:left}
 .fc-boot-error{max-width:22rem;margin:3rem auto;padding:1.1rem;border:1px solid color-mix(in srgb,var(--ustore-danger) 45%,var(--ustore-border));border-radius:1rem;background:color-mix(in srgb,var(--ustore-danger) 8%,var(--ustore-card-bg));color:var(--ustore-text);text-align:center}.fc-boot-error strong{display:block;font-size:.9rem}.fc-boot-error p{margin:.35rem 0 .85rem;color:var(--ustore-secondary-text);font-size:.72rem}.fc-boot-error button{min-height:2.65rem;padding:.55rem 1rem;border-radius:.75rem;background:var(--ustore-button);color:var(--ustore-button-text);font-size:.72rem;font-weight:850}
 

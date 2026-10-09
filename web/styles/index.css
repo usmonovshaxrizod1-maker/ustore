@@ -21,6 +21,11 @@ html[data-ustore-host="shop"] .uw-launch--platform{display:none!important}
 html:not([data-ustore-host="shop"]) .uw-initial-shop-opening{display:none!important}
 .uw-auth-transition{display:none;min-height:100dvh;place-items:center;background:#f6f8fb;color:#475569;font-size:.9rem;font-weight:650}
 .uw-auth-transition--inline{display:grid}
+.uw-auth-transition--overlay{position:fixed;inset:0;z-index:10}
+.uw-auth-transition{align-content:center;justify-items:center;gap:1rem}
+.uw-shop-opening::after,.uw-auth-transition::before{content:"";display:block;width:1.75rem;height:1.75rem;border:3px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:uw-wait-spin .8s linear infinite}
+@keyframes uw-wait-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.uw-shop-opening::after,.uw-auth-transition::before{animation-duration:2s}}
 html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-launch,
 html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-initial-shop-opening{display:none!important}
 html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-auth-transition{display:grid}

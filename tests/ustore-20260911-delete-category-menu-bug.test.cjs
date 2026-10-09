@@ -39,6 +39,6 @@ test('deleteCategory() no longer shows a "Tekshirilmoqda..." toast before the co
 
 test('cache version bumped for this fix', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.match(html, /ustore-shop-app\.js\?v=324/);
+  assert.match(html, /ustore-shop-app\.js\?v=325/);
 });
 
