@@ -25,7 +25,7 @@ export function mapAuthError(error) {
 export function createLoginController({ authPort, returnTo = '/', initialTab = 'telegram', onSignedIn, onRedirect } = {}) {
   if (!authPort) throw new TypeError('authPort kerak');
   let draft = { login: '', password: '' };
-  let state = { tab: initialTab === 'password' ? 'password' : 'telegram', busy: false, busyAction: null, passwordVisible: false, error: null, telegramPhase: 'idle', telegramAccount: null };
+  let state = { tab: initialTab === 'password' ? 'password' : 'telegram', panelOpen: initialTab !== 'chooser', busy: false, busyAction: null, passwordVisible: false, error: null, telegramPhase: 'idle', telegramAccount: null };
   const listeners = new Set();
   const emit = () => listeners.forEach((listener) => listener({ ...state }));
   const set = (patch) => { state = { ...state, ...patch }; emit(); return state; };
@@ -35,7 +35,7 @@ export function createLoginController({ authPort, returnTo = '/', initialTab = '
     getDraft: () => ({ ...draft }),
     updateDraft(patch) { draft = { ...draft, ...patch }; },
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
-    setTab(tab) { if (!['telegram', 'password'].includes(tab)) throw new Error('Unknown auth tab'); return set({ tab, error: null }); },
+    setTab(tab) { if (!['telegram', 'password'].includes(tab)) throw new Error('Unknown auth tab'); return set({ tab, panelOpen: true, error: null }); },
     togglePassword() { return set({ passwordVisible: !state.passwordVisible }); },
     async loadSession() {
       if (state.busy) return null;
@@ -103,13 +103,14 @@ export function createLoginController({ authPort, returnTo = '/', initialTab = '
   };
 }
 
-export function createLoginView({ controller, state = controller?.getState?.() || {}, initialLogin = '', shopBotUsername = '', locale = 'uz', singleMethod = false } = {}, documentRef) {
+export function createLoginView({ controller, state = controller?.getState?.() || {}, initialLogin = '', shopBotUsername = '', locale = 'uz', singleMethod = false, platformStyle = false } = {}, documentRef) {
   const doc = getDocument(documentRef);
   if (!controller) throw new TypeError('controller kerak');
   const tr = (uz, ru) => locale === 'ru' ? ru : uz;
   const root = doc.createElement('section');
   root.className = 'uw-auth';
   root.dataset.feature = 'login';
+  if (platformStyle) root.classList.add('uw-auth--platform-style');
 
   const authIcon = (name) => {
     const icons = {
@@ -136,6 +137,7 @@ export function createLoginView({ controller, state = controller?.getState?.() |
   title.textContent = tr('Profilga kirish', 'Войти в профиль');
   const subtitle = doc.createElement('p');
   subtitle.textContent = tr('Buyurtmalar, sevimlilar va shaxsiy ma’lumotlaringiz uchun tizimga kiring.', 'Войдите, чтобы открыть заказы, избранное и личные данные.');
+  if (platformStyle) subtitle.textContent = tr('Do‘konlaringiz, to‘lovlar va shaxsiy ma’lumotlaringiz uchun tizimga kiring.', 'Войдите для доступа к вашим магазинам, платежам и личным данным.');
   headingCopy.append(eyebrow, title, subtitle);
   heading.append(avatar, headingCopy);
 
@@ -148,9 +150,9 @@ export function createLoginView({ controller, state = controller?.getState?.() |
   ]) {
     const button = doc.createElement('button');
     button.type = 'button';
-    button.className = `uw-auth-profile-menu__row${state.tab === id ? ' is-active' : ''}`;
+    button.className = `uw-auth-profile-menu__row${state.tab === id && state.panelOpen ? ' is-active' : ''}`;
     button.setAttribute('role', 'tab');
-    button.setAttribute('aria-selected', state.tab === id ? 'true' : 'false');
+    button.setAttribute('aria-selected', state.tab === id && state.panelOpen ? 'true' : 'false');
     button.dataset.authTab = id;
     button.addEventListener('click', () => controller.setTab(id));
     const icon = doc.createElement('span'); icon.className = 'uw-auth-profile-menu__icon'; icon.innerHTML = authIcon(iconName);
@@ -236,6 +238,6 @@ export function createLoginView({ controller, state = controller?.getState?.() |
   }
 
   if (singleMethod) root.append(heading, body);
-  else root.append(heading, tabs, body);
+  else { root.append(heading, tabs); if (!platformStyle || state.panelOpen) root.append(body); }
   return { element: root };
 }

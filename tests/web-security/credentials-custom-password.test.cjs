@@ -8,8 +8,7 @@ test('Mini Apps auto-issue first credentials and expose verified custom password
   const platform=fs.readFileSync('supabase/functions/platform-api/index.ts','utf8');
   const shopUi=fs.readFileSync('ustore-shop-app.js','utf8');
   const platformUi=fs.readFileSync('platform/platform-app.js','utf8');
-  assert.match(helper,/Array\.from\(password\)\.length >= 8 && bytes <= 72/);
-  assert.match(helper,/\\p\{L\}/u); assert.match(helper,/\\p\{N\}/u);
+  assert.match(helper,/Array\.from\(password\)\.length >= 6 && bytes <= 72/);
   assert.match(helper,/setCredentialsPasswordForTelegram/);
   assert.match(helper,/insertError\?\.code[\s\S]*?23505[\s\S]*?account_id[\s\S]*?maybeSingle/);
   assert.match(shop,/case "shop_web_credentials_open"[\s\S]*?issueInitialCredentials/);
@@ -19,7 +18,7 @@ test('Mini Apps auto-issue first credentials and expose verified custom password
   assert.match(platform,/case "platform_set_web_password"[\s\S]*?claimCredentialEntry[\s\S]*?setCredentialsPasswordForTelegram/);
   for(const ui of [shopUi,platformUi]) {
     assert.match(ui,/autocomplete="new-password"/);
-    assert.match(ui,/minlength="8"/);
+    assert.match(ui,/minlength="6"/);
     assert.match(ui,/Parolni (?:almashtirish|saqlash)/);
   }
 });

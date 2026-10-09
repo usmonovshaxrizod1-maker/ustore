@@ -7,11 +7,11 @@ const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..', '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
-test('local migration inventory is exactly sequential 001-118 with no duplicates', () => {
+test('local migration inventory is exactly sequential 001-121 with no duplicates', () => {
   const names = fs.readdirSync(path.join(root, 'supabase', 'migrations')).filter((n) => /^\d{3}_.+\.sql$/.test(n)).sort();
-  assert.equal(names.length, 118);
+  assert.equal(names.length, 121);
   const nums = names.map((n) => Number(n.slice(0, 3)));
-  assert.deepEqual(nums, Array.from({ length: 118 }, (_, i) => i + 1));
+  assert.deepEqual(nums, Array.from({ length: 121 }, (_, i) => i + 1));
 });
 
 test('10a documents current domain/auth runtime names without embedding their values', () => {

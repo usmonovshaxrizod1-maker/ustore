@@ -9,17 +9,6 @@ const BENEFITS = Object.freeze([
   ['Yetkazib berish', 'Yetkazib berish usullari, hududlar va shartlarni boshqaring.'],
 ]);
 
-const SHOWCASE = Object.freeze([
-  { key: 'channels', eyebrow: 'Web + Telegram Mini App', title: 'Bitta do‘kon. Ikki kanal.', text: 'Mijozlar web saytdan ham, Telegram Mini App ichidan ham bir xil do‘konga kiradi.', panel: 'Web do‘kon', rows: ['Katalog', 'Mahsulotlar', 'Buyurtmalar'], aside: 'Telegram Mini App' },
-  { key: 'catalog', eyebrow: 'Mahsulot va katalog', title: 'Katalogni bir joydan boshqaring', text: 'Kategoriya, narx, variant va qoldiq ikkala kanalda ham yangilanadi.', panel: 'Mahsulotlar', rows: ['Kategoriyalar', 'Variantlar', 'Narx va qoldiq'], aside: 'Yagona katalog' },
-  { key: 'orders', eyebrow: 'Buyurtmalar', title: 'Buyurtmalar bitta oqimda', text: 'Web va Telegram’dan kelgan buyurtmalarni bitta panelda kuzating.', panel: 'Buyurtmalar', rows: ['Yangi buyurtma', 'Jarayonda', 'Yetkazildi'], aside: 'Bitta boshqaruv' },
-  { key: 'inventory', eyebrow: 'Ombor va qoldiq', title: 'Qoldiq doim nazoratda', text: 'Kirim-chiqim va kam qolgan mahsulotlarni bir joydan kuzating.', panel: 'Ombor', rows: ['Kirim va chiqim', 'Mahsulot qoldig‘i', 'Variantlar'], aside: 'Qoldiq nazorati' },
-  { key: 'marketing', eyebrow: 'Marketing', title: 'Aksiya va bannerlar bilan soting', text: 'Banner, promo va tavsiyalar web hamda Mini App’da bir xil ko‘rinadi.', panel: 'Marketing', rows: ['Bannerlar', 'Promo-kodlar', 'Tavsiya mahsulotlar'], aside: 'Ikkala kanalda' },
-  { key: 'checkout', eyebrow: 'Checkout va to‘lov', title: 'Buyurtmadan to‘lovgacha sodda', text: 'Ma’lumot, yetkazib berish va to‘lov tushunarli oqimda bajariladi.', panel: 'Buyurtma berish', rows: ['Ma’lumot va yetkazish', 'To‘lov', 'Tasdiqlash'], aside: 'Qulay xarid' },
-  { key: 'analytics', eyebrow: 'Analitika', title: 'Biznesingizni raqamlar bilan ko‘ring', text: 'Savdo va buyurtmalar holatini boshqaruv panelida kuzating.', panel: 'Hisobotlar', rows: ['Savdo', 'Buyurtmalar', 'Mahsulotlar'], aside: 'Aniq tahlil' },
-  { key: 'branding', eyebrow: 'Brending va domen', title: 'O‘z nomingiz bilan ishlang', text: 'Logo, rang, domen va Telegram botni bir markazdan boshqaring.', panel: 'Do‘kon brendi', rows: ['Logo va ranglar', 'Shaxsiy domen', 'Telegram bot'], aside: 'Sizning brendingiz' },
-]);
-
 function getDocument(documentRef) {
   const doc = documentRef ?? globalThis.document;
   if (!doc?.createElement) throw new Error('Platform home UI uchun DOM document kerak.');
@@ -55,7 +44,7 @@ function normalizeTariff(raw) {
 
 export function createPlatformHomeController({ platformPort } = {}) {
   if (!platformPort?.invoke) throw new TypeError('platformPort.invoke kerak');
-  let state = { status: 'idle', tariffs: [], error: null };
+  let state = { status: 'idle', tariffs: [], landingSlides: [], error: null };
   const listeners = new Set();
   const emit = () => listeners.forEach((fn) => fn({ ...state, tariffs: [...state.tariffs] }));
   const set = (patch) => { state = { ...state, ...patch }; emit(); return state; };
@@ -71,7 +60,8 @@ export function createPlatformHomeController({ platformPort } = {}) {
         return result;
       }
       const tariffs = (Array.isArray(result.data?.tariffs) ? result.data.tariffs : []).map(normalizeTariff).filter(Boolean);
-      set({ status: 'ready', tariffs, error: null });
+      const landingSlides = (Array.isArray(result.data?.landingSlides) ? result.data.landingSlides : []).filter(slide => { try { return ['http:','https:'].includes(new URL(slide.imageUrl).protocol); } catch { return false; } }).slice(0,10);
+      set({ status: 'ready', tariffs, landingSlides, error: null });
       return result;
     },
   });
@@ -88,88 +78,34 @@ function makeBrand(doc) {
   return brand;
 }
 
-function makeShowcase(doc) {
-  const root = doc.createElement('div');
-  root.className = 'uw-platform-showcase';
-  root.setAttribute('role', 'region');
-  root.setAttribute('aria-label', 'UStorE imkoniyatlari');
-  root.setAttribute('aria-roledescription', 'carousel');
-  const viewport = doc.createElement('div'); viewport.className = 'uw-platform-showcase__viewport';
-  const track = doc.createElement('div'); track.className = 'uw-platform-showcase__track';
-  const slides = SHOWCASE.map((story, index) => {
-    const slide = doc.createElement('article'); slide.className = 'uw-platform-showcase__slide';
-    slide.dataset.story = story.key;
-    slide.setAttribute('aria-label', `${index + 1} / ${SHOWCASE.length}: ${story.eyebrow}`);
-    const caption = doc.createElement('div'); caption.className = 'uw-platform-showcase__caption';
-    const eyebrow = doc.createElement('span'); eyebrow.textContent = story.eyebrow;
-    const title = doc.createElement('strong'); title.textContent = story.title;
-    const text = doc.createElement('p'); text.textContent = story.text;
-    caption.append(eyebrow, title, text);
-    const scene = doc.createElement('div'); scene.className = 'uw-platform-showcase__scene';
-    const panel = doc.createElement('div'); panel.className = 'uw-platform-showcase__panel';
-    const panelHead = doc.createElement('div'); panelHead.className = 'uw-platform-showcase__panel-head';
-    const windowDots = doc.createElement('span'); windowDots.className = 'uw-platform-showcase__window-dots'; windowDots.setAttribute('aria-hidden', 'true');
-    const panelTitle = doc.createElement('b'); panelTitle.textContent = story.panel;
-    panelHead.append(windowDots, panelTitle);
-    const rows = doc.createElement('div'); rows.className = 'uw-platform-showcase__rows';
-    for (const label of story.rows) {
-      const row = doc.createElement('div'); row.className = 'uw-platform-showcase__row';
-      const marker = doc.createElement('i'); marker.setAttribute('aria-hidden', 'true');
-      const name = doc.createElement('span'); name.textContent = label;
-      const bar = doc.createElement('em'); bar.setAttribute('aria-hidden', 'true');
-      row.append(marker, name, bar); rows.append(row);
-    }
-    panel.append(panelHead, rows);
-    const side = doc.createElement('div'); side.className = 'uw-platform-showcase__side';
-    const symbol = doc.createElement('span'); symbol.className = 'uw-platform-showcase__symbol'; symbol.textContent = 'U'; symbol.setAttribute('aria-hidden', 'true');
-    const sideTitle = doc.createElement('b'); sideTitle.textContent = story.aside;
-    const sideLines = doc.createElement('span'); sideLines.className = 'uw-platform-showcase__side-lines'; sideLines.setAttribute('aria-hidden', 'true');
-    side.append(symbol, sideTitle, sideLines); scene.append(panel, side);
-    slide.append(caption, scene); track.append(slide);
-    return slide;
-  });
-  viewport.append(track);
-  const controls = doc.createElement('div'); controls.className = 'uw-platform-showcase__controls';
-  const previous = doc.createElement('button'); previous.type = 'button'; previous.textContent = '←'; previous.setAttribute('aria-label', 'Oldingi imkoniyat');
-  const next = doc.createElement('button'); next.type = 'button'; next.textContent = '→'; next.setAttribute('aria-label', 'Keyingi imkoniyat');
-  const dots = doc.createElement('div'); dots.className = 'uw-platform-showcase__dots'; dots.setAttribute('aria-label', 'Slaydlar');
-  const dotButtons = SHOWCASE.map((story, index) => {
-    const dot = doc.createElement('button'); dot.type = 'button'; dot.setAttribute('aria-label', `${index + 1}-slayd: ${story.eyebrow}`);
-    dots.append(dot); return dot;
-  });
-  controls.append(previous, dots, next); root.append(viewport, controls);
-  let current = 0; let timer = null; let touchStart = null;
-  const sync = () => {
-    track.style.transform = `translateX(-${current * 100}%)`;
-    slides.forEach((slide, index) => slide.setAttribute('aria-hidden', index === current ? 'false' : 'true'));
-    dotButtons.forEach((dot, index) => {
-      dot.className = index === current ? 'is-active' : '';
-      dot.setAttribute('aria-current', index === current ? 'true' : 'false');
-    });
-  };
-  const pause = () => { if (timer != null) clearInterval(timer); timer = null; };
-  const play = () => {
-    pause();
-    if (doc === globalThis.document && !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
-      timer = setInterval(() => { if (!doc.hidden) { current = (current + 1) % slides.length; sync(); } }, 3000);
-    }
-  };
-  // Manual navigation keeps the selected story in place while the visitor
-  // reads it. Autoplay resumes when pointer/focus leaves the carousel.
-  const go = (index) => { current = (index + slides.length) % slides.length; sync(); pause(); };
-  previous.addEventListener('click', () => go(current - 1));
-  next.addEventListener('click', () => go(current + 1));
-  dotButtons.forEach((dot, index) => dot.addEventListener('click', () => go(index)));
-  root.addEventListener('mouseenter', pause); root.addEventListener('mouseleave', play);
-  root.addEventListener('focusin', pause); root.addEventListener('focusout', (event) => { if (!root.contains?.(event.relatedTarget)) play(); });
-  root.addEventListener('touchstart', (event) => { touchStart = event.touches?.[0]?.clientX ?? null; pause(); }, { passive: true });
-  root.addEventListener('touchend', (event) => {
-    const delta = (event.changedTouches?.[0]?.clientX ?? touchStart) - touchStart;
-    if (touchStart != null && Math.abs(delta) >= 42) go(current + (delta < 0 ? 1 : -1)); else play();
-    touchStart = null;
-  }, { passive: true });
-  sync(); play();
-  return { element: root, destroy: pause };
+function makeShowcase(doc, items = []) {
+  const root = doc.createElement('div');root.className='uw-platform-showcase uw-platform-photo-showcase';
+  root.setAttribute('role','region');root.setAttribute('aria-label','UStorE reklama slayderi');root.setAttribute('aria-roledescription','carousel');
+  const slides = Array.isArray(items)?items.slice(0,10):[];
+  if (!slides.length) {root.className += ' is-empty';root.setAttribute('aria-label','Reklama slayderida hozircha rasm yo‘q');return {element:root,destroy:()=>{}};}
+  const viewport=doc.createElement('div');viewport.className='uw-platform-showcase__viewport';
+  const track=doc.createElement('div');track.className='uw-platform-showcase__track';
+  slides.forEach((item,i)=>{const slide=doc.createElement('div');slide.className='uw-platform-showcase__slide uw-platform-photo-slide';slide.setAttribute('aria-label',`${i+1}/${slides.length}`);const img=doc.createElement('img');img.src=item.imageUrl;img.alt=`UStorE reklama rasmi ${i+1}`;img.loading=i===0?'eager':'lazy';img.decoding='async';img.width=600;img.height=600;slide.append(img);track.append(slide);});
+  viewport.append(track);root.append(viewport);
+  let index=0,timer=null,touchX=null;
+  const controls=doc.createElement('div');controls.className='uw-platform-showcase__controls';
+  const dots=doc.createElement('div');dots.className='uw-platform-showcase__dots';
+  const dotButtons=[];
+  const sync=()=>{track.style.transform=`translateX(-${index*100}%)`;dotButtons.forEach((d,i)=>{d.className=i===index?'is-active':'';d.setAttribute('aria-current',i===index?'true':'false');});};
+  const pause=()=>{if(timer!=null)clearInterval(timer);timer=null;};
+  const play=()=>{pause();if(slides.length>1&&doc===globalThis.document&&!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)timer=setInterval(()=>{if(!doc.hidden){index=(index+1)%slides.length;sync();}},5000);};
+  const go=(n)=>{index=(n+slides.length)%slides.length;sync();play();};
+  if(slides.length>1){
+    const prev=doc.createElement('button');prev.type='button';prev.textContent='←';prev.setAttribute('aria-label','Oldingi rasm');prev.addEventListener('click',()=>go(index-1));
+    const next=doc.createElement('button');next.type='button';next.textContent='→';next.setAttribute('aria-label','Keyingi rasm');next.addEventListener('click',()=>go(index+1));
+    slides.forEach((_,i)=>{const button=doc.createElement('button');button.type='button';button.setAttribute('aria-label',`${i+1}-rasm`);button.addEventListener('click',()=>go(i));dotButtons.push(button);dots.append(button);});
+    controls.append(prev,dots,next);root.append(controls);
+    root.addEventListener('mouseenter',pause);root.addEventListener('mouseleave',play);
+    root.addEventListener('focusin',pause);root.addEventListener('focusout',e=>{if(!root.contains(e.relatedTarget))play();});
+    root.addEventListener('touchstart',e=>{touchX=e.touches?.[0]?.clientX??null;pause();},{passive:true});
+    root.addEventListener('touchend',e=>{const x=e.changedTouches?.[0]?.clientX??touchX;if(touchX!=null&&Math.abs(x-touchX)>40)go(index+(x<touchX?1:-1));else play();touchX=null;},{passive:true});
+  }
+  sync();play();return {element:root,destroy:pause};
 }
 
 function createTariffCard(tariff, { doc, onChoosePlan, billingPeriod = 'monthly' }) {
@@ -243,7 +179,7 @@ export function createPlatformHomeView({ controller, state = controller?.getStat
   heroCopy.append(eyebrow, h1, intro, heroActions);
 
   const visual = doc.createElement('div'); visual.className = 'uw-platform-visual';
-  const showcase = makeShowcase(doc); visual.append(showcase.element);
+  const showcase = makeShowcase(doc, state.landingSlides); visual.append(showcase.element);
   heroInner.append(heroCopy, visual); hero.append(heroInner); main.append(hero);
 
   const benefits = doc.createElement('section'); benefits.className = 'uw-platform-section'; benefits.id = 'platform-benefits';

@@ -16,7 +16,7 @@ export function validateLogin(login: string): boolean {
 
 export function validatePassword(password: string): boolean {
   const bytes = encoder.encode(password).byteLength;
-  return Array.from(password).length >= 8 && bytes <= 72 && /\p{L}/u.test(password) && /\p{N}/u.test(password);
+  return Array.from(password).length >= 6 && bytes <= 72;
 }
 
 export async function sha256Hex(value: string): Promise<string> {

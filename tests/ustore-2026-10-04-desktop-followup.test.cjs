@@ -60,8 +60,8 @@ test('desktop follow-up: category icons lose pasted-on white tile only in browse
 
 test('desktop follow-up: shop host keeps one branded opening until child APP_READY without skeleton cards', () => {
   assert.match(webApp, /function shopOpeningView/);
-  assert.doesNotMatch(webApp.match(/function shopOpeningView[\s\S]*?\n\}/)?.[0] || '', /USTORE|__hero|__cards/);
-  assert.match(host, /placeholder\.className = 'uw-shop-opening'/);
+  assert.doesNotMatch(webApp.match(/function shopOpeningView[\s\S]*?\n\}/)?.[0] || '', /__hero|__cards/);
+  assert.match(host, /USTORE_SHOP_WELCOME\.create/);
   assert.match(read('web/index.html'), /uw-shop-opening uw-initial-shop-opening/);
   assert.match(read('web/styles/index.css'), /html\[data-ustore-host="shop"\] \.uw-launch--platform\{display:none!important\}/);
   assert.match(host, /message\.type === 'APP_READY'/);

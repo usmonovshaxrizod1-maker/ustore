@@ -4,7 +4,7 @@
 @import url('./components.css?v=20261008admin1');
 @import url('./shells.css?v=20261004followup1');
 
-@import url('./features.css?v=20261006reliability1');
+@import url('./features.css?v=20261009landing2');
 
 /* The Mini App itself renders every Shop/Platform screen in the browser. */
 .uw-miniapp-host { width: 100%; min-height: 100dvh; margin: 0; padding: 0; }
@@ -13,7 +13,7 @@
 /* Keep the frame hidden until the real shop view is ready. */
 .uw-miniapp-host{position:relative;background:var(--uw-color-canvas,#f6f8fb)}
 .uw-miniapp-host.is-loading .uw-miniapp-frame{opacity:0;pointer-events:none}
-.uw-miniapp-host.is-ready .uw-miniapp-frame{opacity:1;transition:opacity .12s ease}
+.uw-miniapp-host.is-ready .uw-miniapp-frame{opacity:1;transition:opacity .32s ease}
 .uw-miniapp-host>.uw-shop-opening{position:absolute;inset:0;z-index:2;min-height:100dvh}
 
 /* Host-specific first paint: shop domains never render the generic platform card. */
@@ -23,9 +23,15 @@ html:not([data-ustore-host="shop"]) .uw-initial-shop-opening{display:none!import
 .uw-auth-transition--inline{display:grid}
 .uw-auth-transition--overlay{position:fixed;inset:0;z-index:10}
 .uw-auth-transition{align-content:center;justify-items:center;gap:1rem}
-.uw-shop-opening::after,.uw-auth-transition::before{content:"";display:block;width:1.75rem;height:1.75rem;border:3px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:uw-wait-spin .8s linear infinite}
+.uw-auth-transition::before{content:"";display:block;width:1.75rem;height:1.75rem;border:3px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:uw-wait-spin .8s linear infinite}
 @keyframes uw-wait-spin{to{transform:rotate(360deg)}}
-@media(prefers-reduced-motion:reduce){.uw-shop-opening::after,.uw-auth-transition::before{animation-duration:2s}}
+@media(prefers-reduced-motion:reduce){.uw-auth-transition::before{animation-duration:2s}}
 html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-launch,
 html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-initial-shop-opening{display:none!important}
 html[data-ustore-auth-transition="true"] #ustore-web-app>.uw-auth-transition{display:grid}
+
+/* Show an actionable failure if the trusted PLATFORM frame never initializes. */
+.uw-miniapp-failure{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1rem;text-align:center;padding:2rem;background:#f5f7fb;color:#1e293b}
+.uw-miniapp-failure h2{font-size:clamp(1.15rem,2.5vw,1.6rem);margin:0}
+.uw-miniapp-failure p{margin:0;max-width:28rem;line-height:1.6;color:#64748b}
+.uw-miniapp-failure button{cursor:pointer;border:0;border-radius:12px;background:#2563eb;color:#fff;font:inherit;font-weight:700;padding:12px 20px}

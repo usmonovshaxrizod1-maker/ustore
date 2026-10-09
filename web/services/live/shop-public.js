@@ -84,7 +84,7 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
           mode: 'web',
           shop: {
             id: String(body.shop?.id || ''), slug: String(body.shop?.slug || ''), name: String(body.shopContact?.name || 'UStorE'),
-            logoUrl: body.logoUrl || null, lifecycle: body.shop?.lifecycle || 'ACTIVE', currency: body.shop?.currency || 'UZS', canonicalWebUrl: body.shop?.canonicalWebUrl || null,
+            logoUrl: body.logoUrl || null, designSettings:body.designSettings || null, lifecycle: body.shop?.lifecycle || 'ACTIVE', currency: body.shop?.currency || 'UZS', canonicalWebUrl: body.shop?.canonicalWebUrl || null,
           },
           actor: body.webSession?.actor || null,
           marketing: {

@@ -28,6 +28,7 @@ import { buildPaymeCheckoutUrl } from "../_shared/payme-client.ts";
 import { uzumRegisterPayment, uzumVerifyCredentials } from "../_shared/uzum-client.ts";
 import { PERMISSIONS, STANDARD_ROLES, isValidPermission } from "../_shared/permissions.ts";
 import { CATEGORY_ICON_IDS, CATEGORY_ICON_COLORS } from "../_shared/category-icons.ts";
+import { OPTIONAL_LEGAL_TEMPLATES } from "../_shared/shop-legal-templates.ts";
 import { authenticateTelegramShopTenant, resolveOptionalWebSession, resolveShopTenant } from "../_shared/shop-context.ts";
 import type { Permission } from "../_shared/permissions.ts";
 import { handleShopDomainAction, requireDomainManager, resolveActiveDomainRoute } from "../_shared/shop-domains.ts";
@@ -167,6 +168,15 @@ function normalizeProductImageUrl(value: unknown): string | null {
   } catch {
     throw new Error("invalid_image_url");
   }
+}
+function categoryEmojiIsValid(value: unknown): boolean {
+  const raw = String(value ?? '').trim();
+  return Array.from(raw).length > 0 && Array.from(raw).length <= 16 && /\p{Extended_Pictographic}/u.test(raw) && !/[<>&\r\n]/.test(raw);
+}
+function categoryVisualKind(value: unknown): 'legacy' | 'emoji' | 'image' {
+  if (value === undefined || value === null) return 'legacy';
+  if (value === 'legacy' || value === 'emoji' || value === 'image') return value;
+  throw new Error('invalid_category_visual_type');
 }
 async function storeProductImage(db: any, shopId: string, upload: any): Promise<{ url: string; path: string }> {
   const mimeType = String(upload?.mimeType || "").toLowerCase();
@@ -755,11 +765,11 @@ type LegalDocType = "PRIVACY" | "TERMS" | "OFFER" | "RETURNS" | "DELIVERY" | "PA
 const LEGAL_CONSENT_TYPES = new Set<LegalDocType>(["PRIVACY", "TERMS"]);
 const LEGAL_DOC_TYPES: LegalDocType[] = ["PRIVACY", "TERMS", "OFFER", "RETURNS", "DELIVERY", "PAYMENT", "WARRANTY"];
 const LEGAL_DEFAULTS: Record<LegalDocType, { titleUz: string; titleRu: string; contentUz: string; contentRu: string }> = {
-  OFFER: { titleUz: "Ommaviy oferta", titleRu: "Публичная оферта", contentUz: "", contentRu: "" },
-  RETURNS: { titleUz: "Qaytarish va pulni qaytarish", titleRu: "Возврат товара и денег", contentUz: "", contentRu: "" },
-  DELIVERY: { titleUz: "Yetkazib berish shartlari", titleRu: "Условия доставки", contentUz: "", contentRu: "" },
-  PAYMENT: { titleUz: "To‘lov shartlari", titleRu: "Условия оплаты", contentUz: "", contentRu: "" },
-  WARRANTY: { titleUz: "Kafolat shartlari", titleRu: "Условия гарантии", contentUz: "", contentRu: "" },
+  OFFER: { titleUz: "Ommaviy oferta", titleRu: "Публичная оферта", ...OPTIONAL_LEGAL_TEMPLATES.OFFER },
+  RETURNS: { titleUz: "Qaytarish va pulni qaytarish", titleRu: "Возврат товара и денег", ...OPTIONAL_LEGAL_TEMPLATES.RETURNS },
+  DELIVERY: { titleUz: "Yetkazib berish shartlari", titleRu: "Условия доставки", ...OPTIONAL_LEGAL_TEMPLATES.DELIVERY },
+  PAYMENT: { titleUz: "To‘lov shartlari", titleRu: "Условия оплаты", ...OPTIONAL_LEGAL_TEMPLATES.PAYMENT },
+  WARRANTY: { titleUz: "Kafolat shartlari", titleRu: "Условия гарантии", ...OPTIONAL_LEGAL_TEMPLATES.WARRANTY },
   PRIVACY: {
     titleUz: "Maxfiylik siyosati",
     titleRu: "Политика конфиденциальности",
@@ -1435,7 +1445,7 @@ async function publicWebCatalog(db: any, shopId: string, includeHidden = false) 
   const [prodRes, catRes] = await Promise.all([
     db.from("products").select("id,sku,name,name_ru,price,old_price,stock,category_id,status,is_visible,img,thumb_img,description,description_ru,is_featured,sort_order,sizes,variants,badge,created_at,sold_count")
       .eq("shop_id", shopId).neq("status", "DELETED").order("sort_order", { ascending: true }),
-    db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,sort_order")
+    db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,icon_type,icon_emoji,sort_order")
       .eq("shop_id", shopId).is("deleted_at", null).order("sort_order", { ascending: true }),
   ]);
   if (prodRes.error) throw prodRes.error;
@@ -2886,7 +2896,7 @@ const DEFAULT_START_MESSAGE = [
 ].join("\n");
 
 async function fetchActiveCategories(db: any, shopId: string): Promise<any[]> {
-  const { data, error } = await db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,sort_order").eq("shop_id", shopId).is("deleted_at", null);
+  const { data, error } = await db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,icon_type,icon_emoji,sort_order").eq("shop_id", shopId).is("deleted_at", null);
   if (error) throw error;
   return data || [];
 }
@@ -4914,7 +4924,7 @@ Deno.serve(async (req: Request) => {
       case "get_catalog": {
         const [prodRes, catRes] = await Promise.all([
           db.from("products").select("id,sku,name,name_ru,price,old_price,stock,category_id,status,img,thumb_img,description,description_ru,is_featured,is_visible,sort_order,sizes,variants,sold_count,created_at,import_batch_id,badge").eq("shop_id", shopId).neq("status", "DELETED").order("sort_order", { ascending: true }),
-          db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,sort_order").eq("shop_id", shopId).is("deleted_at", null).order("sort_order", { ascending: true }),
+          db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,icon_type,icon_emoji,sort_order").eq("shop_id", shopId).is("deleted_at", null).order("sort_order", { ascending: true }),
         ]);
         if (prodRes.error) throw prodRes.error;
         if (catRes.error) throw catRes.error;
@@ -4966,7 +4976,7 @@ Deno.serve(async (req: Request) => {
 
         const [productResult, categoryResult] = await Promise.all([
           query,
-          db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,sort_order").eq("shop_id", shopId).is("deleted_at", null).order("sort_order", { ascending: true }),
+          db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,icon_type,icon_emoji,sort_order").eq("shop_id", shopId).is("deleted_at", null).order("sort_order", { ascending: true }),
         ]);
         if (productResult.error) throw productResult.error;
         if (categoryResult.error) throw categoryResult.error;
@@ -4987,7 +4997,7 @@ Deno.serve(async (req: Request) => {
         const [productResult, categoryResult] = await Promise.all([
           db.from("products").select("id,sku,name,name_ru,description,description_ru,price,old_price,stock,category_id,status,img,thumb_img,is_featured,is_visible,sort_order,sizes,variants,sold_count,created_at,import_batch_id,badge")
             .eq("shop_id", shopId).eq("id", productId).neq("status", "DELETED").maybeSingle(),
-          db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,sort_order").eq("shop_id", shopId).is("deleted_at", null).order("sort_order", { ascending: true }),
+          db.from("categories").select("id,name,name_ru,parent_id,img,icon_id,icon_color,icon_type,icon_emoji,sort_order").eq("shop_id", shopId).is("deleted_at", null).order("sort_order", { ascending: true }),
         ]);
         if (productResult.error) throw productResult.error;
         if (categoryResult.error) throw categoryResult.error;
@@ -6711,6 +6721,10 @@ Deno.serve(async (req: Request) => {
         if (!name) return json({ error: "invalid_category_name" }, 400);
         const iconId = payload.iconId === undefined ? 'stationery_folder' : String(payload.iconId || '');
         const iconColor = String(payload.iconColor || 'brand');
+        if (payload.iconType !== undefined && !['legacy','emoji','image'].includes(payload.iconType)) return json({ error:'invalid_category_visual_type' },400);
+        const iconType = categoryVisualKind(payload.iconType);
+        const iconEmoji = iconType === 'emoji' ? String(payload.iconEmoji || '').trim() : null;
+        if (iconType === 'emoji' && !categoryEmojiIsValid(iconEmoji)) return json({ error:'invalid_category_emoji' },400);
         if (!(await categoryIconIsAllowed(db, iconId)) || !CATEGORY_ICON_COLORS.has(iconColor)) return json({ error: 'invalid_category_icon' }, 400);
         const { data: maxRow } = await db.from("categories").select("sort_order")
           .eq("shop_id", shopId).order("sort_order", { ascending: false }).limit(1).maybeSingle();
@@ -6718,10 +6732,11 @@ Deno.serve(async (req: Request) => {
         let uploadedImage: { url: string; path: string } | null = null;
         try {
           if (payload.imageUpload) uploadedImage = await storeProductImage(db, shopId, payload.imageUpload);
-          const categoryImg = uploadedImage?.url || (payload.img ? normalizeProductImageUrl(payload.img) : (payload.parentId ? "📦" : "📁"));
+          const categoryImg = iconType === 'emoji' ? null : (uploadedImage?.url || (payload.img ? normalizeProductImageUrl(payload.img) : (payload.parentId ? "📦" : "📁")));
+          if (iconType === 'image' && (!categoryImg || !/^https:\/\//i.test(categoryImg))) return json({ error:'category_image_required' },400);
           const { data, error } = await db.from("categories").insert({
             shop_id: shopId, name, name_ru: null, parent_id: payload.parentId ?? null,
-            img: categoryImg, icon_id: iconId, icon_color: iconColor, sort_order: (maxRow?.sort_order || 0) + 1,
+            img: categoryImg, icon_id: iconId, icon_color: iconColor, icon_type: iconType, icon_emoji:iconEmoji, sort_order: (maxRow?.sort_order || 0) + 1,
             translation_status: "PENDING", translation_hash: null,
           }).select().single();
           if (error) throw error;
@@ -6843,10 +6858,20 @@ Deno.serve(async (req: Request) => {
 
       case "edit_category": {
         await requirePermission('catalog.manage');
-        const { data: currentCategory, error: currentCategoryErr } = await db.from("categories").select("img,translation_hash").eq("shop_id", shopId).eq("id", payload.categoryId).maybeSingle();
+        const { data: currentCategory, error: currentCategoryErr } = await db.from("categories").select("img,icon_type,translation_hash").eq("shop_id", shopId).eq("id", payload.categoryId).maybeSingle();
         if (currentCategoryErr) throw currentCategoryErr;
         if (!currentCategory) return json({ error: "category_not_found" }, 404);
         const dbUpdate: Record<string, unknown> = {};
+        if (payload.iconType !== undefined) {
+          if (!['legacy','emoji','image'].includes(payload.iconType)) return json({ error:'invalid_category_visual_type' },400);
+          const kind = categoryVisualKind(payload.iconType);
+          dbUpdate.icon_type = kind;
+          if (kind === 'emoji') {
+            if (!categoryEmojiIsValid(payload.iconEmoji)) return json({ error:'invalid_category_emoji' },400);
+            dbUpdate.icon_emoji = String(payload.iconEmoji).trim();
+            dbUpdate.img = null;
+          } else dbUpdate.icon_emoji = null;
+        }
         if (payload.iconId !== undefined) {
           const iconId = payload.iconId === null ? null : String(payload.iconId);
           if (iconId !== null && !(await categoryIconIsAllowed(db, iconId))) return json({ error: 'invalid_category_icon' }, 400);
@@ -6874,8 +6899,15 @@ Deno.serve(async (req: Request) => {
           if (payload.imageUpload) {
             uploadedImage = await storeProductImage(db, shopId, payload.imageUpload);
             dbUpdate.img = uploadedImage.url;
-          } else if (payload.img !== undefined) {
+          } else if (payload.img !== undefined && dbUpdate.icon_type !== 'emoji') {
             dbUpdate.img = payload.img ? normalizeProductImageUrl(payload.img) : null;
+          }
+          if (dbUpdate.icon_type === 'image') {
+            const effectiveImage = String(dbUpdate.img === undefined ? currentCategory.img || '' : dbUpdate.img || '');
+            if (!/^https:\/\//i.test(effectiveImage)) {
+              if (uploadedImage) await db.storage.from('images').remove([uploadedImage.path]).catch(() => {});
+              return json({ error:'category_image_required' },400);
+            }
           }
           let pendingCategoryTranslation: { name: string; hash: string } | null = null;
           if (payload.name !== undefined) {

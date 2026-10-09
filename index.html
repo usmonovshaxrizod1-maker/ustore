@@ -17,7 +17,9 @@
   <link rel="preconnect" href="https://telegram.org">
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <link rel="stylesheet" href="./ustore.css?v=325">
+  <link rel="stylesheet" href="./ustore.css?v=331">
+  <link rel="stylesheet" href="./shop-welcome.css?v=20261009t1">
+  <script src="./shop-welcome.js?v=20261009t1"></script>
   <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   <script async src="https://unpkg.com/lucide@latest" onload="window.safeCreateIcons?.()"></script>
   <script id="ustore-storage-sdk" async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" onerror="this.dataset.failed='true'"></script>
@@ -37,9 +39,19 @@
   <script defer src="./ustore-commerce.js?v=8"></script>
   <script defer src="./config.public.js?v=4"></script>
   <script defer src="./web/shared/miniapp-frame-bridge.js?v=5"></script>
-  <script defer src="./ustore-shop-app.js?v=325"></script>
+  <script defer src="./ustore-shop-app.js?v=333"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 pb-20 font-sans">
+  <!-- First paint: same shared welcome as Web; dismissed after storefront readiness. -->
+  <section id="ustore-shop-welcome" class="uw-shop-opening ustore-welcome" role="status" aria-busy="true">
+    <div class="ustore-welcome__art" aria-hidden="true"></div>
+    <div class="ustore-welcome__content">
+      <div class="ustore-welcome__glass"><span class="ustore-welcome__logo"><span class="ustore-welcome__monogram">U</span></span></div>
+      <h1 class="ustore-welcome__title"><span class="ustore-welcome__name">Do‘kon</span><span class="ustore-welcome__greeting">Xush kelibsiz</span></h1>
+      <div class="ustore-welcome__dots" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="ustore-welcome__error" hidden></div>
+    </div>
+  </section>
 
   <!-- HEADER -->
   <header class="ustore-topbar bg-white sticky top-0 z-40 px-4 py-3 flex items-center justify-between">
@@ -153,6 +165,7 @@
         const root = document.getElementById('app-content');
         if (!root) return;
         root.innerHTML = '<div class="fc-boot-error"><strong>Ilovani ochib bo‘lmadi</strong><p>Internetni tekshiring va qayta urinib ko‘ring.</p><button type="button" onclick="location.reload()">Qayta urinish</button></div>';
+        window.USTORE_SHOP_WELCOME?.dismiss?.(document.getElementById('ustore-shop-welcome'), { immediate:true });
         window.USTORE_FRAME_BRIDGE?.appReady?.();
       };
       window.addEventListener('error', (event) => {

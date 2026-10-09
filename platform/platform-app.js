@@ -236,6 +236,13 @@
   let isAdminMode = false;
   let myShops = [];
   let tariffs = [];
+  let landingSlides = [];
+  let adminLandingSlides = [];
+  let adminLandingUploadFile = null;
+  let adminLandingReplaceId = null;
+  let adminLandingCrop = 'center';
+  let adminLandingPreviewUrl = '';
+  let adminLandingBusy = false;
   // 2026-08-27, USER platform redesign: Oylik/Yillik — 4.2-band shared
   // component (Bosh sahifa/Tariflar/Obuna uchtasida bir xil holat), va
   // Dashboard'da bir nechta do'kon bo'lsa qaysi biri ko'rsatilayotgani.
@@ -243,6 +250,9 @@
   let dashboardShopId = null;
   let currentTab = 'home'; // user: home|shops|subscription|help|profile ; admin: dashboard|shops|requests|tariffs|profile
   let activePage = null;
+  let ownerNotifications = [];
+  let ownerNoticeLoading = false;
+  let markingOwnerNotification = false;
   let applyingWebRoute = false;
   // ASTRA-4c: protected central-Telegram credential screen. Passwords live
   // only in this in-memory state after an explicit issue/reset response; they
@@ -470,7 +480,7 @@
     currentTab = tab;
     render({ preserve: false, scrollTop: true });
     if (browserBridge && !applyingWebRoute) browserBridge.navigate((isAdminMode
-      ? { dashboard: '/platform/admin', shops: '/platform/admin/shops', requests: '/platform/admin/requests', support: '/platform/admin/support', settings: '/platform/admin/settings' }
+      ? { dashboard: '/platform/admin', shops: '/platform/admin/shops', requests: '/platform/admin/requests', support: '/platform/admin/support', settings: '/platform/admin/settings', landing: '/platform/admin/landing' }
       : { home: '/platform/app', shops: '/platform/shops', subscription: '/platform/subscriptions', help: '/platform/support', profile: '/platform/profile' })[tab] || '/platform/app');
     onTabEnter(tab);
   }
@@ -484,8 +494,9 @@
         isAdminMode = true;
         const segments = path.split('/');
         const section = segments[3] || '';
-        switchTab(({ shops: 'shops', requests: 'requests', support: 'support', settings: 'settings' })[section] || 'dashboard');
-        if (section === 'tariffs') openAdminTariffsPage();
+        switchTab(({ shops: 'shops', requests: 'requests', support: 'support', settings: 'settings', landing: 'settings' })[section] || 'dashboard');
+        if (section === 'landing') openAdminLandingSlidesPage();
+        else if (section === 'tariffs') openAdminTariffsPage();
         else if (section === 'shops' && segments[4]) openShopDetails(segments[4]);
         else if (section === 'requests' && segments[4]) openRequestDetails(segments[4]);
         else if (section === 'support' && segments[4]) void openAdminSupportThread(segments[4]);
@@ -494,6 +505,7 @@
         const segments = path.split('/');
         const section = segments[2] || '';
         switchTab(({ shops: 'shops', subscriptions: 'subscription', support: 'help', profile: 'profile' })[section] || 'home');
+        if (section === 'notifications') openOwnerNotifications(false);
         if (section === 'subscriptions') {
           const params = new URLSearchParams(query);
           if (params.get('new') === '1') {
@@ -614,7 +626,9 @@
       isSuperAdmin = data.isSuperAdmin === true;
       myShops = Array.isArray(data.myShops) ? data.myShops : [];
       myRequests = Array.isArray(data.myRequests) ? data.myRequests : [];
+      ownerNotifications = Array.isArray(data.ownerNotifications) ? data.ownerNotifications : [];
       tariffs = Array.isArray(data.tariffs) ? data.tariffs : [];
+      landingSlides = Array.isArray(data.landingSlides) ? data.landingSlides.slice(0,10) : [];
       if (data.lifecycleSettings && typeof data.lifecycleSettings === 'object') platformLifecycleSettings = { ...platformLifecycleSettings, ...data.lifecycleSettings };
       if (dashboardShopId && !myShops.some((shop) => shop.id === dashboardShopId)) dashboardShopId = null;
       currentTab = isAdminMode ? 'dashboard' : 'home';
@@ -693,7 +707,7 @@
     const showDashboard = !isAdminMode && currentTab === 'home' && myShops.length > 0;
     try {
       const baseBody = showLanding ? renderLandingHero() : showDashboard ? renderShopDashboard() : renderTabBody();
-      const body = !isAdminMode && currentTab === 'home' ? `${renderUserLifecycleAttention()}${renderUserRequestsHomeTop()}${baseBody}` : baseBody;
+      const body = !isAdminMode && currentTab === 'home' ? `${renderUserRequestsHomeTop()}${baseBody}` : baseBody;
       app.innerHTML = `${renderChrome(body)}`;
       if (showLanding) requestAnimationFrame(() => { syncLandingShowcaseDom(); startLandingShowcaseAutoplay(); });
       else stopLandingShowcaseAutoplay();
@@ -812,6 +826,7 @@
         <div class="plat-header-title">${isAdminMode ? 'UStorE Admin' : 'UStorE'}</div>
         ${browserBridge ? renderDesktopNav() : ''}
         <div class="plat-header-actions">
+          ${!isAdminMode ? `<button class="plat-header-btn plat-header-notice-btn" onclick="openOwnerNotifications()" aria-label="Bildirishnomalar" title="Bildirishnomalar">${pIcon('bell',18)}${ownerNotifications.filter((n)=>!n.readAt).length ? `<em>${Math.min(9,ownerNotifications.filter((n)=>!n.readAt).length)}${ownerNotifications.filter((n)=>!n.readAt).length>9?'+':''}</em>` : ''}</button>` : ''}
           ${!isAdminMode ? `<button class="plat-header-btn plat-header-request-btn" onclick="openMyRequests()" aria-label="Arizalarim">${pIcon('inbox',17)}${myRequests.filter((r)=>r.status==='NEW').length ? `<em>${Math.min(9,myRequests.filter((r)=>r.status==='NEW').length)}${myRequests.filter((r)=>r.status==='NEW').length>9?'+':''}</em>` : ''}</button>` : ''}
           <button id="plat-person-btn" class="plat-header-btn" onclick="togglePersonMenu(event)" aria-label="Profil">${!isAdminMode && tg?.initDataUnsafe?.user?.photo_url ? `<img src="${escapeHtml(tg.initDataUnsafe.user.photo_url)}" class="plat-header-avatar-img" alt="">` : pIcon('user', 17)}</button>
         </div>
@@ -879,6 +894,7 @@
 
   function renderActivePage() {
     const p = activePage;
+    if (p === 'OWNER_NOTIFICATIONS') return pageShell('Bildirishnomalar', renderOwnerNotificationsBody(), { onBack: 'goHomePage()' });
     if (p === 'WEB_CREDENTIALS') return pageShell('Web login va parol', renderWebCredentialsBody(), { onBack: 'closeWebCredentialFlow()' });
     if (p === 'TARIFFS') return pageShell('Tarifni tanlang', renderTariffListBody(), { onBack: tariffsBackAction() });
     if (p === 'SUBSCRIPTION_TARGET') return pageShell('Obunani rasmiylashtirish', renderSubscriptionTargetBody(), { onBack: "openPage('TARIFFS')" });
@@ -903,6 +919,7 @@
     if (p === 'MY_REQUESTS') return pageShell("Arizalarim", renderMyRequestsBody(), { onBack: "goHomePage()" });
     if (p === 'MY_REQUEST_DETAILS') return pageShell("Ariza holati", renderMyRequestDetailsBody(), { onBack: "openMyRequests()" });
     if (p === 'REQUEST_PROVISION') return pageShell("Do'kon qo'shish", renderRequestProvisioningBody(), { onBack: `openRequestDetails('${provisioningRequestId || selectedRequestId || ''}')` });
+    if (p === 'ADMIN_LANDING_SLIDES') return pageShell('Reklama slayderi', renderAdminLandingSlidesBody(), { onBack: "switchTab('settings')" });
     if (p === 'ADMIN_PAYMENT_SETTINGS') return pageShell("To'lov sozlamalari", renderAdminPaymentSettingsBody(), { onBack: "switchTab('settings')" });
     if (p === 'ADMIN_NOTIFICATION_SETTINGS') return pageShell("Avtomatik xabarlar", renderAdminNotificationSettingsBody(), { onBack: "switchTab('settings')" });
     if (p === 'ADMIN_NOTIFICATION_GROUP') return pageShell(notificationGroupTitle(), renderAdminNotificationGroupBody(), { onBack: "openPage('ADMIN_NOTIFICATION_SETTINGS')" });
@@ -966,8 +983,19 @@
 
   async function openWebCredentialsFromProfile() {
     if (browserBridge) {
-      const username = String(CONFIG.USTORE_PLATFORM_BOT_USERNAME || '').replace(/^@/, '');
-      if (/^[A-Za-z0-9_]{5,32}$/.test(username)) window.open(`https://t.me/${username}?start=credentials`, '_blank', 'noopener,noreferrer');
+      webCredentialFromProfile = true;
+      webCredentialState = { ...webCredentialState, loading: true, valid: false, editing: false, webMode: true, webPasswordChanged: false, credentialExists: false, issuedPassword: null, error: '', notice: '' };
+      openPage('WEB_CREDENTIALS');
+      try {
+        const result = await browserBridge.request('web_credentials_status', {});
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        webCredentialState = { ...webCredentialState, loading: false, valid: result.credentialExists === true, credentialExists: result.credentialExists === true, login: String(result.login || ''), error: '',
+          notice: result.credentialExists ? '' : 'Web login hali yo‘q. Uni avval Telegram Mini App profilida yarating.' };
+      } catch (error) {
+        if (activePage !== 'WEB_CREDENTIALS') return;
+        webCredentialState = { ...webCredentialState, loading: false, error: 'Web loginini tekshirib bo‘lmadi. Qayta urinib ko‘ring.' };
+      }
+      render();
       return;
     }
     webCredentialFromProfile = true;
@@ -999,22 +1027,33 @@
     const passwordBlock = s.issuedPassword ? `<div class="plat-credential-secret"><span>Yangi parol</span><div class="plat-credential-value"><input id="plat-issued-password" type="password" readonly value="${escapeHtml(s.issuedPassword)}" aria-label="Yangi parol"><button class="secondary" onclick="toggleWebCredentialPassword()">Ko‘rsatish</button><button class="secondary" onclick="copyWebCredentialPassword()">${pIcon('copy',15)} Nusxalash</button></div><small>Parol faqat shu javobda ko‘rsatiladi. Uni xavfsiz joyga saqlang.</small></div>` : '';
     const existingNote = s.credentialExists && !s.issuedPassword
       ? `<div class="plat-settings-note">${pIcon('info',17)}<span>Login mavjud. Xavfsizlik sabab eski parolni qayta ko‘rsatib bo‘lmaydi; parol kerak bo‘lsa aniq “Yangi parol yaratish” amalini tanlang.</span></div>` : '';
-    const actionArea = s.valid ? `<div class="plat-credential-actions">
-      ${!s.credentialExists ? `<button class="primary" ${s.busy?'disabled':''} onclick="issueWebCredentials()">Login va parolni olish</button>` : s.editing ? `<button class="secondary" ${s.busy?'disabled':''} onclick="resetWebCredentials()">Tasodifiy yangi parol yaratish</button>` : `<button class="primary" onclick="openWebCredentialEdit()">Login va parolni almashtirish</button>`}
+    const actionArea = s.valid && !s.webPasswordChanged ? `<div class="plat-credential-actions">
+      ${!s.credentialExists ? `${browserBridge ? '' : `<button class="primary" ${s.busy?'disabled':''} onclick="issueWebCredentials()">Login va parolni olish</button>`}` : s.editing ? `${browserBridge ? '' : `<button class="secondary" ${s.busy?'disabled':''} onclick="resetWebCredentials()">Tasodifiy yangi parol yaratish</button>`}` : `<button class="primary" onclick="openWebCredentialEdit()">Login va parolni almashtirish</button>`}
       ${s.credentialExists && s.editing ? `<div class="plat-credential-login-edit"><label><span>Yangi login</span><input id="web-credential-login" autocomplete="username" minlength="4" maxlength="40" value="${escapeHtml(s.login || '')}" placeholder="yangi.login"></label><button class="secondary" ${s.busy?'disabled':''} onclick="changeWebCredentialLogin()">Loginni saqlash</button></div>
-        <div class="plat-credential-password-edit"><label><span>Yangi parol</span><input id="web-credential-password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="Kamida 8 belgi"></label><label><span>Parolni takrorlang</span><input id="web-credential-password-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="72"></label><small>Kamida 8 belgi, kamida bitta harf va bitta raqam.</small><button class="primary" ${s.busy?'disabled':''} onclick="setWebCredentialPassword()">Parolni almashtirish</button></div>` : ''}
+        <div class="plat-credential-password-edit">${browserBridge ? `<label><span>Hozirgi parol</span><input id="web-credential-current-password" type="password" autocomplete="current-password"><button class="secondary" onclick="toggleCredentialInput('web-credential-current-password')">Ko‘rsatish / yashirish</button></label>` : ''}<label><span>Yangi parol</span><input id="web-credential-password" type="password" autocomplete="new-password" minlength="6" maxlength="72" placeholder="Kamida 6 belgi"><button class="secondary" onclick="toggleCredentialInput('web-credential-password')">Ko‘rsatish / yashirish</button></label><label><span>Parolni takrorlang</span><input id="web-credential-password-confirm" type="password" autocomplete="new-password" minlength="6" maxlength="72"><button class="secondary" onclick="toggleCredentialInput('web-credential-password-confirm')">Ko‘rsatish / yashirish</button></label><small>Kamida 6 belgi (72 baytdan oshmasin).${browserBridge ? ' Eski parol esdan chiqqan bo‘lsa, UStorE botiga /reset yuboring.' : ''}</small><button class="primary" ${s.busy?'disabled':''} onclick="setWebCredentialPassword()">Parolni almashtirish</button></div>` : ''}
     </div>` : '';
     return `<div class="plat-credential-card">
-      <span class="plat-admin-eyebrow">Markaziy Telegram tasdig‘i</span><h2>Web kirishini boshqarish</h2>
-      <p>Bu oyna faqat UStorE markaziy botining tekshirilgan Telegram sessiyasida ishlaydi. Parol bot chatiga yuborilmaydi.</p>
+      <span class="plat-admin-eyebrow">${browserBridge ? 'Web profil' : 'Markaziy Telegram tasdig‘i'}</span><h2>Web kirishini boshqarish</h2>
+      <p>${browserBridge ? 'Web orqali loginni ko‘rish va parolni almashtirish mumkin. Joriy parol talab qilinadi; oldingi parolni qayta ko‘rsatib bo‘lmaydi.' : 'Bu oyna UStorE markaziy botining tekshirilgan Telegram sessiyasida ishlaydi. Parol bot chatiga yuborilmaydi.'}</p>
       ${s.login && !s.editing ? `<div class="plat-credential-login"><span>Login</span><div class="plat-credential-value"><strong>${escapeHtml(s.login)}</strong><button class="secondary" onclick="copyWebCredentialLogin()">${pIcon('copy',15)} Nusxalash</button></div></div>` : ''}
       ${!s.editing ? `${existingNote}${passwordBlock}` : ''}${s.notice ? `<div class="notice success">${escapeHtml(s.notice)}</div>` : ''}${s.error ? `<div class="notice error">${escapeHtml(s.error)}</div>` : ''}
       ${actionArea}
+      ${s.webPasswordChanged ? `<button class="primary" onclick="finishPlatformWebPasswordChange()">Qayta kirish</button>` : ''}
       ${s.editing ? `<button class="secondary" onclick="closeWebCredentialEdit()">Orqaga</button>` : ''}
       <button class="secondary plat-credential-return" onclick="closeWebCredentialFlow()">${webCredentialFromProfile ? 'Profilga qaytish' : 'Yopish'}</button>
     </div>`;
   }
 
+  function toggleCredentialInput(id) {
+    const input = document.getElementById(id);
+    if (input && ['text', 'password'].includes(input.type)) input.type = input.type === 'password' ? 'text' : 'password';
+  }
+  async function finishPlatformWebPasswordChange() {
+    if (!browserBridge || !webCredentialState.webPasswordChanged) return;
+    webCredentialState.issuedPassword = null;
+    try { await browserBridge.request('web_credentials_finish_password_change', {}); }
+    catch (_) { window.location.reload(); }
+  }
   function openWebCredentialEdit() { webCredentialState.editing = true; webCredentialState.error = ''; render(); }
   function closeWebCredentialEdit() { webCredentialState.editing = false; webCredentialState.error = ''; render(); }
   function toggleWebCredentialPassword() {
@@ -1071,8 +1110,8 @@
     if (!login) return showToast('Login kiriting.', 'warning');
     webCredentialState = { ...webCredentialState, busy: true, error: '', notice: '' }; render();
     try {
-      const data = await callPlatformApi('platform_change_web_login', { login });
-      webCredentialState = { ...webCredentialState, busy: false, valid: false, editing: false, login: String(data.login || login), notice: 'Login almashtirildi. Yana amal qilish uchun profil bo‘limidan qayta oching.', error: '' };
+      const data = browserBridge ? await browserBridge.request('web_credentials_change_login', { login }) : await callPlatformApi('platform_change_web_login', { login });
+      webCredentialState = { ...webCredentialState, busy: false, valid: !!browserBridge, editing: false, login: String(data.login || login), notice: 'Login almashtirildi.', error: '' };
     } catch (e) { webCredentialState = { ...webCredentialState, busy: false, valid: false, error: e?.message || 'Loginni almashtirib bo‘lmadi.' }; }
     render();
   }
@@ -1091,14 +1130,20 @@
     const confirmation = String(document.getElementById('web-credential-password-confirm')?.value || '');
     if (password !== confirmation) return showToast('Parollar bir xil emas.', 'warning');
     const bytes = credentialPasswordByteLength(password);
-    if (Array.from(password).length < 8 || bytes > 72 || !/\p{L}/u.test(password) || !/\p{N}/u.test(password)) return showToast('Parol kamida 8 belgi, ko‘pi bilan 72 bayt bo‘lsin; harf va raqam qatnashsin.', 'warning');
-    webCredentialState = { ...webCredentialState, busy:true, error:'', notice:'', issuedPassword:null }; render();
+    if (Array.from(password).length < 6 || bytes > 72) return showToast('Parol kamida 6 belgi, ko‘pi bilan 72 bayt bo‘lsin.', 'warning');
+    const currentPassword = browserBridge ? String(document.getElementById('web-credential-current-password')?.value || '') : '';
+    if (browserBridge && !currentPassword) return showToast('Hozirgi parolni kiriting.', 'warning');
+    webCredentialState = { ...webCredentialState, busy:true, error:'', notice:'', issuedPassword:null }; if (!browserBridge) render();
     try {
-      const data = await callPlatformApi('platform_set_web_password', { password });
-      webCredentialState = { ...webCredentialState, busy:false, valid:false, editing:false, credentialExists:true,
-        login:String(data.login || webCredentialState.login || ''), issuedPassword:null,
-        notice:'Parol almashtirildi. Eski web sessiyalar bekor qilindi.', error:'' };
-    } catch (e) { webCredentialState = { ...webCredentialState, busy:false, valid:false, error:e?.message || 'Parolni almashtirib bo‘lmadi.' }; }
+      const data = browserBridge ? await browserBridge.request('web_credentials_change_password', { currentPassword, newPassword: password }) : await callPlatformApi('platform_set_web_password', { password });
+      webCredentialState = { ...webCredentialState, busy:false, valid:false, editing:false, credentialExists:true, webPasswordChanged:!!browserBridge,
+        login:String(data.login || webCredentialState.login || ''), issuedPassword:password,
+        notice:'Parol almashtirildi. Eski web sessiyalar bekor qilindi. Yangi parolni saqlab, qayta kiring.', error:'' };
+    } catch (e) {
+      const message = e?.message === 'INVALID_CREDENTIALS' ? 'Hozirgi parol noto‘g‘ri.' : 'Parolni almashtirib bo‘lmadi.';
+      webCredentialState = { ...webCredentialState, busy:false, valid:!!browserBridge, error:message };
+      if (browserBridge) { showToast(message, 'warning'); return; }
+    }
     render();
   }
 
@@ -1110,7 +1155,8 @@
   }
 
   function closeWebCredentialFlow() {
-    webCredentialState = { ...webCredentialState, issuedPassword: null };
+    if (browserBridge && webCredentialState.webPasswordChanged) { void finishPlatformWebPasswordChange(); return; }
+    webCredentialState = { ...webCredentialState, issuedPassword: null, webPasswordChanged: false };
     if (webCredentialFromProfile) { webCredentialFromProfile = false; closePage(); return; }
     try { if (tg?.close) { tg.close(); return; } } catch (_) {}
     if (window.history.length > 1) window.history.back(); else window.location.href = window.location.pathname;
@@ -1303,137 +1349,45 @@
     "Obunani qanday uzaytirish yoki o'zgartirish mumkin?",
   ];
 
-  // 2026-10-05 TASK 15 — landing hero is no longer a Mini-App-only phone mockup.
-  // It now explains BOTH UStorE channels (Telegram Mini App + Web storefront)
-  // through an 8-slide, 3-second carousel. The visuals are native SVG/CSS UI
-  // mockups so they stay sharp on every breakpoint and do not add image payload.
-  const LANDING_SHOWCASE_SLIDES = [
-    { key:'channels', icon:'globe', eyebrow:'Web + Telegram Mini App', title:'Bitta do‘kon. Ikki kanal.', text:'Mijoz web saytdan ham, Telegram Mini App ichidan ham bir xil do‘konga kiradi.' },
-    { key:'catalog', icon:'box', eyebrow:'Mahsulot va katalog', title:'Katalogni bir joydan boshqaring', text:'Kategoriya, narx, variant va qoldiqni boshqaring — ikkala kanalda ham yangilanadi.' },
-    { key:'orders', icon:'bag', eyebrow:'Buyurtmalar', title:'Buyurtmalar bitta oqimda', text:'Web va Telegram’dan kelgan buyurtmalarni bitta panelda qabul qiling va holatini kuzating.' },
-    { key:'inventory', icon:'dashboard', eyebrow:'Ombor va qoldiq', title:'Qoldiq doim nazoratda', text:'Kirim-chiqim, kam qolgan mahsulotlar va katalog daraxtini bir joydan kuzating.' },
-    { key:'marketing', icon:'bolt', eyebrow:'Marketing', title:'Aksiya va bannerlar bilan soting', text:'Banner, promo va tavsiya mahsulotlarini web hamda Mini App’da bir xil ko‘rsating.' },
-    { key:'checkout', icon:'card', eyebrow:'Checkout va to‘lov', title:'Buyurtmadan to‘lovgacha sodda', text:'Shaxsiy ma’lumot, yetkazib berish va to‘lov — tushunarli, ixcham oqimda.' },
-    { key:'analytics', icon:'chart', eyebrow:'Analitika', title:'Biznesingizni raqamlar bilan ko‘ring', text:'Savdo, buyurtma, qoldiq va asosiy ko‘rsatkichlarni dashboard orqali kuzating.' },
-    { key:'branding', icon:'diamond', eyebrow:'Brending va domen', title:'O‘z nomingiz bilan ishlang', text:'Logo, ranglar, domen va Telegram bot — bitta UStorE boshqaruv markazidan.' },
-  ];
+  // Task 2: both Mini App and Web use platform_landing_slides from platform-api.
   let landingShowcaseIndex = 0;
   let landingShowcaseTimer = null;
   let landingShowcaseTouchX = null;
-
-  function landingShowcaseScene(kind) {
-    if (kind === 'channels') return `
-      <div class="plat-showcase-device plat-showcase-desktop">
-        <div class="plat-showcase-browser"><i></i><i></i><i></i><span>fitcore.uz</span></div>
-        <div class="plat-showcase-web-head"><b>FITCORE</b><span>${pIcon('search',11)} Qidiruv</span></div>
-        <div class="plat-showcase-product-row"><i></i><i></i><i></i></div>
-      </div>
-      <div class="plat-showcase-device plat-showcase-phone">
-        <div class="plat-showcase-phone-notch"></div>
-        <div class="plat-showcase-telegram-head">${pIcon('send',12)} <b>Telegram</b></div>
-        <div class="plat-showcase-mini-shop"><b>FITCORE</b><small>Mini App</small><div><i></i><i></i></div></div>
-      </div>
-      <span class="plat-showcase-link-badge">${pIcon('swap',14)} Bitta katalog</span>`;
-    if (kind === 'catalog') return `
-      <div class="plat-showcase-panel is-catalog"><div class="plat-showcase-panel-head"><span>${pIcon('box',15)}</span><b>Mahsulotlar</b><em>128 ta</em></div><div class="plat-showcase-catalog-grid"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-      <div class="plat-showcase-side-card"><b>Kategoriyalar</b><span>Sport kiyimlari <em>48</em></span><span>Protein <em>35</em></span><span>Aksessuarlar <em>45</em></span></div>`;
-    if (kind === 'orders') return `
-      <div class="plat-showcase-panel is-orders"><div class="plat-showcase-panel-head"><span>${pIcon('bag',15)}</span><b>Buyurtmalar</b><em>Bugun</em></div>
-        <div class="plat-showcase-order"><i class="tone-blue"></i><span><b>#1048</b><small>Web sayt</small></span><em>Yangi</em></div>
-        <div class="plat-showcase-order"><i class="tone-violet"></i><span><b>#1047</b><small>Telegram Mini App</small></span><em class="is-progress">Jarayonda</em></div>
-        <div class="plat-showcase-order"><i class="tone-green"></i><span><b>#1046</b><small>Web sayt</small></span><em class="is-done">Yetkazildi</em></div>
-      </div>`;
-    if (kind === 'inventory') return `
-      <div class="plat-showcase-panel is-stock"><div class="plat-showcase-panel-head"><span>${pIcon('dashboard',15)}</span><b>Ombor</b><em>Qoldiq</em></div>
-        <div class="plat-showcase-stock"><span><b>Protein 1kg</b><small>64 dona</small></span><i><u style="width:78%"></u></i></div>
-        <div class="plat-showcase-stock"><span><b>Sport sumka</b><small>18 dona</small></span><i><u style="width:42%"></u></i></div>
-        <div class="plat-showcase-stock is-low"><span><b>Shaker</b><small>4 dona · kam qoldi</small></span><i><u style="width:16%"></u></i></div>
-      </div>`;
-    if (kind === 'marketing') return `
-      <div class="plat-showcase-marketing-banner"><span>-20%</span><div><small>Hafta aksiyasi</small><b>Sport tovarlariga chegirma</b></div>${pIcon('bolt',22)}</div>
-      <div class="plat-showcase-marketing-cards"><div>${pIcon('gift',16)}<b>Promo kod</b><small>FIT20</small></div><div>${pIcon('chart',16)}<b>Natija</b><small>+28% buyurtma</small></div></div>`;
-    if (kind === 'checkout') return `
-      <div class="plat-showcase-panel is-checkout"><div class="plat-showcase-steps"><span class="active">1 <b>Ma’lumot + yetkazish</b></span><span>2 <b>To‘lov</b></span></div>
-        <div class="plat-showcase-input"><i>${pIcon('user',12)}</i><span>Shaxrizod Usmonov</span></div><div class="plat-showcase-input"><i>${pIcon('truck',12)}</i><span>Toshkent · Yetkazib berish</span></div><button>${pIcon('arrowRight',13)} To‘lovga o‘tish</button>
-      </div>`;
-    if (kind === 'analytics') return `
-      <div class="plat-showcase-kpis"><div><small>Savdo</small><b>12.4 mln</b><em>+18%</em></div><div><small>Buyurtma</small><b>284</b><em>+12%</em></div></div>
-      <div class="plat-showcase-chart"><i style="height:32%"></i><i style="height:48%"></i><i style="height:42%"></i><i style="height:68%"></i><i style="height:58%"></i><i style="height:86%"></i><i style="height:74%"></i></div>`;
-    return `
-      <div class="plat-showcase-brand-card"><span class="plat-showcase-brand-logo">U</span><div><small>O‘z domeningiz</small><b>sizningdokon.uz</b><em>${pIcon('check',12)} Ulangan</em></div></div>
-      <div class="plat-showcase-brand-channels"><span>${pIcon('globe',15)} Web shop</span><span>${pIcon('send',15)} Telegram bot</span></div>
-      <div class="plat-showcase-brand-palette"><i></i><i></i><i></i><i></i></div>`;
-  }
-
   function renderLandingShowcase() {
-    return `
-      <div id="plat-showcase" class="plat-showcase" aria-label="UStorE imkoniyatlari" aria-roledescription="carousel" onmouseenter="pauseLandingShowcase()" onmouseleave="startLandingShowcaseAutoplay()" onfocusin="pauseLandingShowcase()" onfocusout="startLandingShowcaseAutoplay()" ontouchstart="landingShowcaseTouchStart(event)" ontouchend="landingShowcaseTouchEnd(event)">
-        <div class="plat-showcase-viewport">
-          <div id="plat-showcase-track" class="plat-showcase-track">
-            ${LANDING_SHOWCASE_SLIDES.map((slide, index) => `
-              <article class="plat-showcase-slide ${index === 0 ? 'active' : ''}" data-index="${index}" aria-hidden="${index === 0 ? 'false' : 'true'}">
-                <div class="plat-showcase-caption"><span>${pIcon(slide.icon, 14)} ${slide.eyebrow}</span><b>${slide.title}</b><small>${slide.text}</small></div>
-                <div class="plat-showcase-scene scene-${slide.key}">${landingShowcaseScene(slide.key)}</div>
-              </article>`).join('')}
-          </div>
-        </div>
-        <button class="plat-showcase-arrow is-prev" type="button" aria-label="Oldingi imkoniyat" onclick="event.stopPropagation(); landingShowcaseStep(-1)">${pIcon('back', 18)}</button>
-        <button class="plat-showcase-arrow is-next" type="button" aria-label="Keyingi imkoniyat" onclick="event.stopPropagation(); landingShowcaseStep(1)">${pIcon('arrowRight', 18)}</button>
-        <div class="plat-showcase-dots" role="tablist" aria-label="Slaydlar">
-          ${LANDING_SHOWCASE_SLIDES.map((slide,index)=>`<button type="button" class="plat-showcase-dot ${index === 0 ? 'active' : ''}" aria-label="${index+1}-slayd: ${escapeHtml(slide.eyebrow)}" aria-current="${index === 0 ? 'true' : 'false'}" onclick="landingShowcaseGo(${index})"></button>`).join('')}
-        </div>
-      </div>`;
+    const images = landingSlides.slice(0,10).filter(x=>/^https:\/\//i.test(String(x.imageUrl||'')));
+    return `<div id="plat-showcase" class="plat-showcase plat-photo-showcase ${images.length?'':'is-empty'}" role="region" aria-label="UStorE reklama slayderi" aria-roledescription="carousel" onmouseenter="pauseLandingShowcase()" onmouseleave="startLandingShowcaseAutoplay()" onfocusin="pauseLandingShowcase()" onfocusout="startLandingShowcaseAutoplay()" ontouchstart="landingShowcaseTouchStart(event)" ontouchend="landingShowcaseTouchEnd(event)">
+      <div class="plat-showcase-viewport"><div id="plat-showcase-track" class="plat-showcase-track">
+        ${images.map((slide,i)=>`<div class="plat-showcase-slide plat-photo-slide" aria-label="${i+1}/${images.length}"><img loading="${i?'lazy':'eager'}" decoding="async" width="600" height="600" alt="UStorE reklama rasmi ${i+1}" src="${escapeHtml(slide.imageUrl)}"></div>`).join('')}
+      </div></div>
+      ${images.length>1?`<button class="plat-showcase-arrow is-prev" type="button" aria-label="Oldingi rasm" onclick="event.stopPropagation();landingShowcaseStep(-1)">${pIcon('back',18)}</button>
+      <button class="plat-showcase-arrow is-next" type="button" aria-label="Keyingi rasm" onclick="event.stopPropagation();landingShowcaseStep(1)">${pIcon('arrowRight',18)}</button>
+      <div class="plat-showcase-dots" aria-label="Slaydlar">${images.map((_,i)=>`<button type="button" class="plat-showcase-dot" aria-label="${i+1}-rasm" onclick="landingShowcaseGo(${i})"></button>`).join('')}</div>`:''}
+    </div>`;
   }
-
-  function syncLandingShowcaseDom() {
-    const root = document.getElementById('plat-showcase');
-    const track = document.getElementById('plat-showcase-track');
-    if (!root || !track) return false;
-    const count = LANDING_SHOWCASE_SLIDES.length;
-    landingShowcaseIndex = ((landingShowcaseIndex % count) + count) % count;
-    track.style.setProperty('--plat-showcase-offset', `${-landingShowcaseIndex * 100}%`);
-    root.dataset.activeIndex = String(landingShowcaseIndex);
-    root.querySelectorAll('.plat-showcase-slide').forEach((el, index) => {
-      const active = index === landingShowcaseIndex;
-      el.classList.toggle('active', active);
-      el.setAttribute('aria-hidden', active ? 'false' : 'true');
-    });
-    root.querySelectorAll('.plat-showcase-dot').forEach((el, index) => {
-      const active = index === landingShowcaseIndex;
-      el.classList.toggle('active', active);
-      el.setAttribute('aria-current', active ? 'true' : 'false');
-    });
+  function syncLandingShowcaseDom(){
+    const root=document.getElementById('plat-showcase'),track=document.getElementById('plat-showcase-track');
+    if(!root||!track)return false;
+    const count=track.children.length;
+    if(!count)return false;
+    landingShowcaseIndex=((landingShowcaseIndex%count)+count)%count;
+    track.style.setProperty('--plat-showcase-offset',`${-landingShowcaseIndex*100}%`);
+    root.dataset.activeIndex=String(landingShowcaseIndex);
+    root.querySelectorAll('.plat-showcase-slide').forEach((el,i)=>{el.classList.toggle('active',i===landingShowcaseIndex);el.setAttribute('aria-hidden',i===landingShowcaseIndex?'false':'true');});
+    root.querySelectorAll('.plat-showcase-dot').forEach((el,i)=>{el.classList.toggle('active',i===landingShowcaseIndex);el.setAttribute('aria-current',i===landingShowcaseIndex?'true':'false');});
     return true;
   }
-  function stopLandingShowcaseAutoplay() {
-    if (landingShowcaseTimer) clearInterval(landingShowcaseTimer);
-    landingShowcaseTimer = null;
-  }
-  function startLandingShowcaseAutoplay() {
+  function stopLandingShowcaseAutoplay(){if(landingShowcaseTimer)clearInterval(landingShowcaseTimer);landingShowcaseTimer=null;}
+  function startLandingShowcaseAutoplay(){
     stopLandingShowcaseAutoplay();
-    if (!document.getElementById('plat-showcase')) return;
-    landingShowcaseTimer = setInterval(() => {
-      if (document.hidden) return;
-      if (!document.getElementById('plat-showcase')) { stopLandingShowcaseAutoplay(); return; }
-      landingShowcaseGo(landingShowcaseIndex + 1, false);
-    }, 3000);
+    const track=document.getElementById('plat-showcase-track');
+    if(!track||track.children.length<2||window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches)return;
+    landingShowcaseTimer=setInterval(()=>{if(!document.hidden&&document.getElementById('plat-showcase'))landingShowcaseGo(landingShowcaseIndex+1,false);else if(!document.getElementById('plat-showcase'))stopLandingShowcaseAutoplay();},5000);
   }
-  function landingShowcaseGo(index, restart = true) {
-    landingShowcaseIndex = Number(index) || 0;
-    syncLandingShowcaseDom();
-    if (restart) startLandingShowcaseAutoplay();
-  }
-  function landingShowcaseStep(delta) { landingShowcaseGo(landingShowcaseIndex + Number(delta || 0)); }
-  function pauseLandingShowcase() { stopLandingShowcaseAutoplay(); }
-  function landingShowcaseTouchStart(event) { landingShowcaseTouchX = Number(event?.changedTouches?.[0]?.clientX ?? event?.touches?.[0]?.clientX ?? 0); pauseLandingShowcase(); }
-  function landingShowcaseTouchEnd(event) {
-    const x = Number(event?.changedTouches?.[0]?.clientX ?? 0);
-    const delta = x - Number(landingShowcaseTouchX || 0);
-    landingShowcaseTouchX = null;
-    if (Math.abs(delta) >= 42) landingShowcaseStep(delta < 0 ? 1 : -1);
-    else startLandingShowcaseAutoplay();
-  }
-
+  function landingShowcaseGo(index,restart=true){landingShowcaseIndex=Number(index)||0;syncLandingShowcaseDom();if(restart)startLandingShowcaseAutoplay();}
+  function landingShowcaseStep(delta){landingShowcaseGo(landingShowcaseIndex+Number(delta||0));}
+  function pauseLandingShowcase(){stopLandingShowcaseAutoplay();}
+  function landingShowcaseTouchStart(event){landingShowcaseTouchX=Number(event?.touches?.[0]?.clientX??0);pauseLandingShowcase();}
+  function landingShowcaseTouchEnd(event){const x=Number(event?.changedTouches?.[0]?.clientX??0),delta=x-Number(landingShowcaseTouchX||0);landingShowcaseTouchX=null;if(Math.abs(delta)>=42)landingShowcaseStep(delta<0?1:-1);else startLandingShowcaseAutoplay();}
   function renderLandingHero() {
     return `
       <section class="plat-landing-hero">
@@ -1862,10 +1816,14 @@
     if (flowReturnPage === 'MY_REQUEST_DETAILS' && preparedNewShopRequestId) return `openMyRequestDetails('${preparedNewShopRequestId}')`;
     if (flowReturnPage === 'SUBSCRIPTION_TARGET') return `openPage('SUBSCRIPTION_TARGET')`;
     if (flowReturnPage === 'MY_SHOP_DETAILS' && flowShopId) return `openMyShopManage('${flowShopId}')`;
+    if (flowReturnPage === 'MY_SHOP_SUB_PAYMENTS') return `openPage('MY_SHOP_SUB_PAYMENTS')`;
+    if (flowReturnPage === 'PAYMENT_HISTORY') return `switchTab('subscription')`;
     return `openPage('TARIFFS')`;
   }
   function tariffsBackAction() {
     if (flowReturnPage === 'MY_SHOP_DETAILS' && flowShopId) return `openMyShopManage('${flowShopId}')`;
+    if (flowReturnPage === 'MY_SHOP_SUB_PAYMENTS') return `openPage('MY_SHOP_SUB_PAYMENTS')`;
+    if (flowReturnPage === 'PAYMENT_HISTORY') return `switchTab('subscription')`;
     if (flowEntry === 'NEW_SHOP' && flowOriginTab) return `switchTab('${flowOriginTab}')`;
     return `switchTab('subscription')`;
   }
@@ -2155,10 +2113,14 @@
       ${flowKind === 'NEW_SHOP' ? renderNewShopRequestIdentity() : ''}
       <section class="plat-payment-period is-compact"><div class="plat-payment-period-label"><b>Obuna davri</b><small>Oylik yoki yillik variant.</small></div>${renderBillingToggle()}</section>
 
-      <section class="plat-checkout-plan plat-tariff-tone-${tariffTone(tariff)}">
+      ${flowUpgradeAction === 'EXTEND' && shop ? `<section class="plat-renew-summary" aria-label="Obuna uzaytirish ma'lumotlari">
+        <div class="plat-renew-summary-head"><span>${pIcon('calendar',19)}</span><div><small>Uzaytirilayotgan do‘kon</small><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b></div></div>
+        <div class="plat-renew-facts"><div><small>Joriy tarif</small><b>${escapeHtml(tariff.name)}</b></div><div><small>Qolgan muddat</small><b>${shopLeft === null ? 'Aniqlanmagan' : shopLeft <= 0 ? 'Muddati tugagan' : shopLeft + ' kun'}</b></div><div><small>Qo‘shiladigan muddat</small><b>${isAnnual ? '12 oy' : '30 kun'}</b></div><div><small>To‘lov summasi</small><strong>${money(totalPrice)}</strong></div></div>
+        <p>${pIcon('check',15)} Qolgan kunlar saqlanadi. Tarif o‘zgarmaydi.</p>
+      </section>` : `<section class="plat-checkout-plan plat-tariff-tone-${tariffTone(tariff)}">
         <div class="plat-checkout-plan-top"><span class="plat-tariff-symbol">${pIcon(tariffTone(tariff) === 'premium' ? 'diamond' : tariffTone(tariff) === 'business' ? 'bag' : tariffTone(tariff) === 'standard' ? 'bolt' : 'shop',19)}</span><div><small>Tanlangan tarif</small><h2>${escapeHtml(tariff.name)}</h2><span class="plat-checkout-limit">${limitLabel(tariff.productLimit)}</span></div><strong>${money(totalPrice)}<small>/${isAnnual ? 'yil' : 'oy'}</small></strong></div>
         ${planContext}
-      </section>
+      </section>`}
 
       ${flowKind === 'UPGRADE' && flowUpgradeAction === 'CHANGE' && shop ? renderTariffChangePreview(shop, tariff, isAnnual) : ''}
 
@@ -2546,18 +2508,22 @@
     return `
       <div class="plat-tab-head plat-shops-head"><div><h1>Do'konlarim</h1><p>${myShops.length} ta ulangan do'kon</p></div><button class="primary plat-new-shop-main" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon</button></div>
       <div class="plat-summary-strip plat-shops-summary"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length}</b><small>Do'kon</small></div><div><span class="tone-blue">${pIcon('check',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-blue">${pIcon(noPlanCount > 0 ? 'diamond' : 'calendar',16)}</span><b>${thirdCount}</b><small>${thirdLabel}</small></div></div>
-      <div class="plat-shop-list-simple">${myShops.map((shop) => {
+      <div class="plat-shop-list-simple" aria-label="Mening do‘konlarim">${[...myShops].sort((a,b) => {
+        const rank = { ACTIVE: 0, PROVISIONING: 1, FROZEN: 2, TERMINATING: 3, TERMINATED: 4 };
+        return (rank[a.status] ?? 5) - (rank[b.status] ?? 5);
+      }).map((shop) => {
         const left = daysUntil(shop.subscriptionExpiresAt);
         const noPlan = !shop.tariffId || !shop.subscriptionExpiresAt;
         const warn = left !== null && left >= 0 && left <= 7;
         const expiry = noPlan ? 'Obuna yo‘q' : left === null ? 'Muddat noma’lum' : left <= 0 ? 'Obuna tugagan' : `${left} kun qoldi`;
-        return `<button class="plat-shop-list-card ${warn ? 'is-expiring' : ''}" onclick="openMyShopManage('${shop.id}')">
-          <span class="plat-shop-avatar plat-shop-avatar-lg ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span>
-          <div class="plat-shop-list-main"><div class="plat-shop-list-title"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><span class="status-pill status-${shop.status}">${statusIcon(shop.status)} ${statusLabel(shop.status)}</span></div>${shop.botUsername ? `<small>@${escapeHtml(shop.botUsername)}</small>` : ''}<div class="plat-shop-list-meta"><span>${pIcon('diamond',13)} ${escapeHtml(shop.tariffName || 'Tarifsiz')}</span><span class="${warn ? 'is-warn' : ''}">${pIcon('calendar',13)} ${expiry}</span></div></div>
-          <span class="plat-shop-list-chevron">›</span>
+        return `<button type="button" class="plat-shop-list-card ${warn ? 'is-expiring' : ''} ${shop.status === 'TERMINATED' ? 'is-inactive' : ''}" onclick="openMyShopManage('${shop.id}')" aria-label="${escapeHtml((shop.shopName || shop.botUsername || shop.publicCode) + ', ' + statusLabel(shop.status) + ', tafsilotlarni ochish')}">
+          <span class="plat-shop-list-top"><span class="plat-shop-avatar plat-shop-avatar-lg ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span><span class="plat-shop-list-identity"><strong>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</strong><small>${shop.botUsername ? '@' + escapeHtml(shop.botUsername) : 'Bot ulanmagan'}</small></span></span>
+          <span class="plat-shop-list-status"><span class="status-pill status-${shop.status}">${statusIcon(shop.status)} ${statusLabel(shop.status)}</span></span>
+          <span class="plat-shop-list-facts"><span><small>Tarif</small><b>${escapeHtml(shop.tariffName || 'Tarifsiz')}</b></span><span class="${warn ? 'is-warn' : ''}"><small>Obuna</small><b>${escapeHtml(expiry)}</b></span></span>
+          <span class="plat-shop-list-open">Boshqarish ${pIcon('arrowRight',15)}</span>
         </button>`;
       }).join('')}</div>
-      <div class="plat-shops-info">${pIcon('info',15)}<span>Do'kon kartasini bosing — barcha boshqaruv va obuna amallari detail sahifada.</span></div>
+      <div class="plat-shops-info">${pIcon('info',15)}<span>Faol do‘konlar birinchi ko‘rsatiladi. Tafsilotlar, obuna va do‘kon holatini ko‘rish uchun kartani bosing.</span></div>
     `;
   }
 
@@ -2685,7 +2651,9 @@
     return `
       ${opts.hideHeading ? '' : `<div class="plat-tab-head"><div><h1>To'lovlar</h1><p>Obuna to'lovlari tarixi va uzaytirish.</p></div></div>`}
       ${myShops.length > 1 && !opts.hideHeading ? `<div class="plat-payment-shop-switch">${myShops.map((s) => `<button class="${s.id === shop.id ? 'active' : ''}" onclick="setPaymentHistoryShop('${s.id}')">${escapeHtml(s.shopName || s.botUsername || s.publicCode)}</button>`).join('')}</div>` : ''}
-      <button class="primary" onclick="startExtendFor('${shop.id}')">${pIcon('calendar',16)} Obunani uzaytirish</button>
+      ${shop.tariffId && shop.subscriptionExpiresAt
+        ? `<button class="primary" onclick="startExtendFor('${shop.id}')">${pIcon('calendar',16)} Obunani uzaytirish</button>`
+        : `<button class="primary" onclick="startUpgradeFor('${shop.id}')">${pIcon('diamond',16)} Tarif tanlash</button>`}
       <h2 class="plat-section-title" style="margin-top:18px">To'lovlar tarixi</h2>
       ${rows === null ? `<div class="plat-admin-loading"><span class="spinner"></span></div>`
         : !rows.length ? `<div class="plat-empty-pro"><span>${pIcon('wallet',26)}</span><h2>Hali to'lov yo'q</h2><p>Birinchi obunangiz to'lovi shu yerda ko'rinadi.</p></div>`
@@ -2726,7 +2694,7 @@
     flowShopId = shopId;
     flowTariffId = shop.tariffId;
     flowUpgradeAction = 'EXTEND';
-    flowReturnPage = activePage === 'SUBSCRIPTION_TARGET' ? 'SUBSCRIPTION_TARGET' : 'MY_SHOP_DETAILS';
+    flowReturnPage = activePage === 'SUBSCRIPTION_TARGET' ? 'SUBSCRIPTION_TARGET' : activePage === 'MY_SHOP_SUB_PAYMENTS' ? 'MY_SHOP_SUB_PAYMENTS' : currentTab === 'subscription' && !activePage ? 'PAYMENT_HISTORY' : 'MY_SHOP_DETAILS';
     selectedPaymentMethodType = null;
     selectedPaymentMethodId = null;
     externalPaymentOpened = false;
@@ -2759,8 +2727,8 @@
     return `
       <div class="plat-help-head"><div><h1>Qanday yordam kerak?</h1><p>Savolingizga javob toping yoki to'g'ridan-to'g'ri jamoamizga yozing.</p></div><span>${pIcon('headset',26)}</span></div>
       <div class="plat-help-search">${pIcon('chat',17)}<input type="text" placeholder="Savolingizni yozing..." aria-label="Yordam qidiruvi" oninput="filterHelpItems(this.value)"></div>
-      <div class="plat-help-primary-actions"><button class="plat-help-primary-card support" onclick="openSupportPage()"><span>${pIcon('headset',22)}</span><div><b>Qo'llab-quvvatlashga yozish</b><small>Jamoamiz bilan chat orqali bog'laning.</small></div><em>›</em></button><button class="plat-help-primary-card bug" onclick="openPage('BUG_REPORT')"><span>${pIcon('mail',22)}</span><div><b>Muammo haqida xabar berish</b><small>Xatolik yoki muammoni batafsil yuboring.</small></div><em>›</em></button></div>
-      <button class="plat-my-tickets-link" onclick="openSupportPage()">${pIcon('inbox',17)}<span><b>Mening murojaatlarim</b><small>${mySupportTickets.length ? mySupportTickets.length + ' ta murojaat' : 'Murojaatlaringiz holatini kuzating'}</small></span><em>›</em></button>
+      <div class="plat-help-primary-actions"><button class="plat-help-primary-card support" onclick="openSupportPage('new')"><span>${pIcon('headset',22)}</span><div><b>Yangi savol yuborish</b><small>Support bilan yangi suhbat boshlang.</small></div><em>${pIcon('arrowRight',16)}</em></button><button class="plat-help-primary-card bug" onclick="openPage('BUG_REPORT')"><span>${pIcon('mail',22)}</span><div><b>Xatolik haqida xabar</b><small>Texnik nosozlikni tavsiflab yuboring.</small></div><em>${pIcon('arrowRight',16)}</em></button></div>
+      <button class="plat-my-tickets-link" onclick="openSupportPage('history')">${pIcon('inbox',17)}<span><b>Murojaatlar tarixi</b><small>${mySupportTickets.length ? mySupportTickets.length + ' ta murojaat · javoblarni tekshirish' : 'Oldingi suhbatlar va javoblar'}</small></span><em>${pIcon('arrowRight',16)}</em></button>
       <div class="plat-section-heading"><div><h2>Ko'p so'raladigan savollar</h2><p>Eng ko'p uchraydigan savollarga tez javob.</p></div><button class="plat-link-btn" onclick="openPage('FAQ_FULL')">Barchasi</button></div>
       <div class="card plat-faq-preview">${FAQ_PREVIEW_ITEMS.map((q)=>`<button class="plat-faq-preview-row" onclick="openPage('FAQ_FULL')"><span class="plat-faq-preview-icon">?</span><span>${q}</span><span class="plat-faq-preview-chevron">›</span></button>`).join('')}</div>
     `;
@@ -2842,7 +2810,18 @@
       <button class="secondary" onclick="openSupportPage()">${pIcon('headset',16)} Do'kon sozlash bo'yicha yordam</button>
     `;
   }
-  function openSupportPage() { openPage('SUPPORT'); loadMySupportTickets(); }
+  // New message and ticket history are two distinct user journeys.
+  // They share the same existing support API, without duplicating tickets.
+  let supportUserView = 'new';
+  function openSupportPage(view = 'new') {
+    supportUserView = view === 'history' ? 'history' : 'new';
+    openPage('SUPPORT');
+    loadMySupportTickets();
+  }
+  function switchSupportUserView(view) {
+    supportUserView = view === 'history' ? 'history' : 'new';
+    rerenderActivePage();
+  }
   async function loadMySupportTickets() {
     mySupportTicketsLoading = true; render();
     try { mySupportTickets = (await callPlatformApi('platform_get_my_support_tickets', { type: 'SUPPORT' })).tickets || []; }
@@ -2856,12 +2835,20 @@
     }
   }
   function renderSupportBody() {
+    const viewHistory = supportUserView === 'history';
+    const ticketsHtml = mySupportTicketsLoading
+      ? `<div class="plat-support-loading" role="status">Murojaatlar yuklanmoqda...</div>`
+      : mySupportTickets.length ? `<div class="plat-ticket-list">${mySupportTickets.map((t) => `<button type="button" onclick="openSupportThread(${t.id})"><span class="plat-ticket-icon">${pIcon('chat',16)}</span><span class="plat-ticket-copy"><b>${t.subject ? escapeHtml(t.subject) : `Murojaat #${escapeHtml(String(t.id))}`}</b><small>#${escapeHtml(String(t.id))} · ${formatDate(t.createdAt)}</small></span><span class="status-pill status-${t.status==='ANSWERED'?'ACTIVE':t.status==='CLOSED'?'DISABLED':'PROVISIONING'}">${supportStatusLabel(t.status)}</span>${pIcon('arrowRight',15)}</button>`).join('')}</div>`
+      : `<div class="plat-empty-inline">${pIcon('inbox',22)}<p>Hozircha murojaatingiz yo‘q.</p><button type="button" class="secondary" onclick="switchSupportUserView('new')">Birinchi savolni yuborish</button></div>`;
     return `
-      <div class="plat-support-hero"><span>${pIcon('headset',30)}</span><div><h2>Qo'llab-quvvatlash</h2><p>Savolingizni yuboring, jamoamiz javob beradi.</p></div></div>
-      <div class="plat-support-meta"><span>${pIcon('chat',15)} UStorE Support</span><span>${pIcon('bell',15)} Javob Telegram orqali ham keladi</span></div>
-      <div class="plat-support-compose"><textarea id="plat-support-new-msg" rows="3" placeholder="Savolingizni yozing..."></textarea><button class="primary" onclick="submitNewSupportMessage()">${pIcon('chat',15)} Yuborish</button></div>
-      <div class="plat-section-heading"><div><h2>Mening murojaatlarim</h2><p>Yangi, javob berilgan va tugallangan murojaatlar.</p></div></div>
-      ${mySupportTicketsLoading ? `<div class="plat-support-loading">Yuklanmoqda...</div>` : mySupportTickets.length ? `<div class="plat-ticket-list">${mySupportTickets.map((t)=>`<button onclick="openSupportThread(${t.id})"><span class="plat-ticket-icon">${pIcon('inbox',16)}</span><div><b>#${t.id}${t.subject?' · '+escapeHtml(t.subject):''}</b><small>${formatDate(t.createdAt)}</small></div><span class="status-pill status-${t.status==='ANSWERED'?'ACTIVE':t.status==='CLOSED'?'DISABLED':'PROVISIONING'}">${supportStatusLabel(t.status)}</span><em>›</em></button>`).join('')}</div>` : `<div class="plat-empty-inline">Hozircha murojaat yo'q.</div>`}
+      <div class="plat-support-hero"><span>${pIcon('headset',26)}</span><div><h2>UStorE yordam markazi</h2><p>Yangi savol yuboring yoki oldingi murojaatlaringizni kuzating.</p></div></div>
+      <div class="plat-support-view-tabs" role="group" aria-label="Murojaat turi">
+        <button type="button" class="${!viewHistory ? 'active' : ''}" aria-pressed="${!viewHistory}" onclick="switchSupportUserView('new')">${pIcon('chat',16)} Yangi murojaat</button>
+        <button type="button" class="${viewHistory ? 'active' : ''}" aria-pressed="${viewHistory}" onclick="switchSupportUserView('history')">${pIcon('inbox',16)} Murojaatlarim${mySupportTickets.length ? ` (${mySupportTickets.length})` : ''}</button>
+      </div>
+      ${!viewHistory ? `<div class="plat-support-compose"><h3>Jamoamizga savol yuborish</h3><p>Savolingizni bitta xabarda tushunarli yozing. Javobni «Murojaatlarim» bo‘limida kuzatasiz.</p><label for="plat-support-new-msg">Xabaringiz</label><textarea id="plat-support-new-msg" rows="4" maxlength="5000" placeholder="Masalan: do‘konim obunasini qanday yangilayman?"></textarea><button class="primary" onclick="submitNewSupportMessage()">${pIcon('chat',16)} Xabarni yuborish</button></div>` : `
+      <div class="plat-support-history-title"><div><h3>Oldingi murojaatlar</h3><p>Holat va javoblarni ko‘rish uchun murojaatni tanlang.</p></div></div>
+      ${ticketsHtml}`}
     `;
   }
   async function submitNewSupportMessage() {
@@ -2873,6 +2860,7 @@
       const result = await callPlatformApi('platform_create_support_ticket', { type: 'SUPPORT', message });
       el.value = '';
       await loadMySupportTickets();
+      supportUserView = 'history';
       openSupportThread(result.ticketId);
     } catch (e) {
       showToast("Yuborilmadi: " + (e.message || e), 'error');
@@ -3055,7 +3043,8 @@
       <div class="plat-profile-stats"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length} ta</b><small>do'kon ulangan</small></div><div><span class="tone-blue">${pIcon('check',16)}</span><b>${activeSubs} ta</b><small>faol obuna</small></div><div><span class="tone-blue">${pIcon('calendar',16)}</span><b>${nearest===null?'—':nearest+' kun'}</b><small>eng yaqin tugash</small></div></div>
       <h2 class="plat-profile-section-title">Hisob</h2><div class="plat-profile-list"><button onclick="switchTab('shops')"><span class="tone-blue">${pIcon('shop',17)}</span><b>Do'konlarim</b><em>${myShops.length} ta ›</em></button><button onclick="switchTab('subscription')"><span class="tone-blue">${pIcon('diamond',17)}</span><b>Obunalarim</b><em>${nearest!==null&&nearest<=7?'Tez orada tugaydi ›':'Ko‘rish ›'}</em></button><button onclick="openWebCredentialsFromProfile()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Web login va parol</b><em>Olish ›</em></button></div>
       <h2 class="plat-profile-section-title">UStorE</h2><div class="plat-profile-list"><button onclick="openPage('GUIDES')"><span class="tone-blue">${pIcon('book',17)}</span><b>Qo'llanmalar</b><em>3 ta ›</em></button><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-blue">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
-      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Telegram va web kirish bir akkaunt</b><small>${browserBridge ? 'Login va parolni UStorE botidan olishingiz mumkin.' : 'Web uchun login-parolni shu profildan olishingiz mumkin.'}</small></div>${pIcon('check',18)}</div>
+      ${browserBridge?`<button class="plat-web-logout" onclick="logoutPlatformWeb()">${pIcon('lock',17)} Akkauntdan chiqish</button>`:''}
+      <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Telegram va web kirish bir akkaunt</b><small>${browserBridge ? 'Loginni ko‘rish va parolni o‘zgartirish shu profilda.' : 'Web uchun login-parolni shu profildan olishingiz mumkin.'}</small></div>${pIcon('check',18)}</div>
       ${isSuperAdmin?`<button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('lock',22)}</span><div><b>Admin rejimi</b><small>Platformani boshqarish</small></div><em>O'tish →</em></button>`:''}
       <div class="plat-version">UStorE · 2026</div>
     `;
@@ -3084,6 +3073,7 @@
       <div class="plat-admin-settings-intro"><div><span class="plat-admin-eyebrow">Boshqaruv markazi</span><h2>Platforma</h2></div><span>${pIcon('gear',19)}</span></div>
       <div class="plat-admin-settings-list">
         <button onclick="openAdminTariffsPage()"><span class="is-blue">${pIcon('diamond',19)}</span><div><b>Tariflar</b><small>Narx, limit va imkoniyatlar</small></div><em>${adminTariffs.length} ta ${pIcon('arrowRight',16)}</em></button>
+        <button onclick="openAdminLandingSlidesPage()"><span class="is-blue">${pIcon('layers',19)}</span><div><b>Reklama slayderi</b><small>Web va Mini App uchun 10 tagacha kvadrat rasm</small></div><em>${pIcon('arrowRight',16)}</em></button>
         <button onclick="openAdminCategoryIconsPage()"><span class="is-blue">${pIcon('layers',19)}</span><div><b>Kategoriya SVG ikonlari</b><small>Bazaviy kutubxona va yangi SVGlar</small></div><em>${adminCategoryIconPackagedCount + adminCategoryIcons.filter((x)=>x.isActive).length} ta ${pIcon('arrowRight',16)}</em></button>
         <button onclick="openAdminPaymentSettings()"><span class="is-blue">${pIcon('wallet',19)}</span><div><b>To'lov sozlamalari</b><small>Karta, Click, Payme va Paynet</small></div><em>${activeMethods} faol ${pIcon('arrowRight',16)}</em></button>
         <button onclick="openAdminNotificationSettings()"><span class="is-blue">${pIcon('bell',19)}</span><div><b>Avtomatik xabarlar</b><small>Obuna va onboarding eslatmalari</small></div><em>${activeTemplates} faol ${pIcon('arrowRight',16)}</em></button>
@@ -3092,6 +3082,7 @@
       </div>
       <h2 class="plat-profile-section-title">UStorE</h2>
       <div class="plat-profile-list"><button onclick="openWebCredentialsFromProfile()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Web login va parol</b><em>Olish ›</em></button><button onclick="openPage('ABOUT')"><span class="tone-blue">${pIcon('info',17)}</span><b>UStorE haqida</b><em>›</em></button><button onclick="openPrivacyPage()"><span class="tone-blue">${pIcon('lock',17)}</span><b>Maxfiylik siyosati</b><em>›</em></button><button onclick="openTermsPage()"><span class="tone-blue">${pIcon('book',17)}</span><b>Foydalanish shartlari</b><em>›</em></button></div>
+      ${browserBridge?`<button class="plat-web-logout" onclick="logoutPlatformWeb()">${pIcon('lock',17)} Akkauntdan chiqish</button>`:''}
       <div class="plat-telegram-security">${pIcon('lock',19)}<div><b>Telegram va web kirish bir akkaunt</b><small>Web uchun login-parolni shu profildan olishingiz mumkin.</small></div>${pIcon('check',18)}</div>
       <button class="plat-admin-switch" onclick="toggleAdminRole()"><span>${pIcon('user',22)}</span><div><b>Foydalanuvchi rejimi</b><small>Platformaning foydalanuvchi qismiga qaytish</small></div><em>O'tish →</em></button>
       <div class="plat-version">UStorE Admin · 2026</div>`;
@@ -4459,6 +4450,70 @@
     }
     switchTab('help');
   }
+  // A single server-backed notification feed for both the Web iframe and Telegram.
+  // It remains available even after a shop is permanently purged.
+  function renderOwnerNotificationsBody() {
+    if (!ownerNotifications.length) return `<section class="plat-owner-inbox-empty">${pIcon('bell',28)}<h3>Hozircha bildirishnoma yo‘q</h3><p>Do‘kon holati haqida yangi xabarlar shu yerda paydo bo‘ladi.</p></section>`;
+    return `<div class="plat-owner-inbox" role="list">${ownerNotifications.map((n)=>{
+      const title = n.kind === 'TERMINATED' ? "Do'koningiz o'chirildi" : n.kind === 'FROZEN' ? "Do'koningiz muzlatildi" : "Do'koningiz qayta faollashtirildi";
+      const eyebrow = n.kind === 'TERMINATED' ? "Do'kon o'chirilgan" : n.kind === 'FROZEN' ? "Do'kon muzlatilgan" : "Do'kon faollashtirilgan";
+      const unread = !n.readAt;
+      return `<article class="plat-owner-inbox-item ${unread?'is-unread':''}" role="listitem">
+        <div class="plat-owner-inbox-icon">${pIcon(n.kind==='FROZEN'?'lock':n.kind==='TERMINATED'?'info':'checkCircle',20)}</div>
+        <div class="plat-owner-inbox-copy"><span class="plat-admin-eyebrow">${eyebrow}</span><h3>${title}</h3><b>${escapeHtml(n.shopName || "Do'kon")}</b>
+        ${n.reason?`<p>Sabab: ${escapeHtml(n.reason)}</p>`:''}
+        <small>${escapeHtml(formatDateTime(n.happenedAt))}</small>
+        <div class="plat-owner-inbox-actions">${n.kind === 'FROZEN' ? `<button class="secondary" onclick="switchTab('subscription')">Obunani ko'rish</button>` : ''}
+        ${n.kind !== 'REACTIVATED' ? `<button class="primary" onclick="openLifecycleSupport()">${escapeHtml(platformLifecycleSettings.supportLabel || "Admin bilan bog'lanish")}</button>` : ''}
+        ${unread?`<button class="secondary" onclick="markOwnerNotificationRead('${n.id}')">O‘qildi deb belgilash</button>`:''}</div></div>
+      </article>`;
+    }).join('')}</div>`;
+  }
+  async function loadOwnerNotifications() {
+    if (loading || bootError || accessDenied || ownerNoticeLoading || document.hidden || isAdminMode) return;
+    ownerNoticeLoading = true;
+    try {
+      const data = await callPlatformApi('platform_list_owner_notifications', {});
+      const next = Array.isArray(data.notifications) ? data.notifications : [];
+      if (JSON.stringify(next) !== JSON.stringify(ownerNotifications)) {
+        ownerNotifications = next;
+        if (activePage === 'OWNER_NOTIFICATIONS' || currentTab === 'home') render();
+        else render(); // header badge remains accurate on any user page
+      }
+    } catch (error) { console.error('notification load failed', error); }
+    finally { ownerNoticeLoading = false; }
+  }
+  // A new lifecycle event also appears without a full page reload. Keep
+  // network traffic low; avoid polling while the tab is hidden.
+  setInterval(() => { void loadOwnerNotifications(); }, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) void loadOwnerNotifications();
+  });
+  function openOwnerNotifications(pushRoute = true) {
+    if (isAdminMode) return;
+    openPage('OWNER_NOTIFICATIONS');
+    if (browserBridge && pushRoute && !applyingWebRoute) browserBridge.navigate('/platform/notifications');
+    void loadOwnerNotifications();
+  }
+  async function markOwnerNotificationRead(id) {
+    if (markingOwnerNotification || !ownerNotifications.some((n)=>n.id===id && !n.readAt)) return;
+    markingOwnerNotification = true;
+    try {
+      await callPlatformApi('platform_mark_owner_notification_read', { id });
+      ownerNotifications = ownerNotifications.map((n)=>n.id===id?{...n,readAt:new Date().toISOString()}:n);
+      render();
+    } catch (e) { showToast('Bildirishnoma holatini saqlab bo‘lmadi. Qayta urinib ko‘ring.', 'error'); }
+    finally { markingOwnerNotification = false; }
+  }
+  async function logoutPlatformWeb() {
+    if (!browserBridge) return; // Telegram Mini App session is not a browser login.
+    try {
+      await callPlatformApi('web_sign_out', {});
+      // The embedding Web app securely revokes the token and navigates to
+      // the signed-out landing. Do not touch Telegram's own auth state.
+    } catch (e) { showToast('Chiqish amalga oshmadi. Qayta urinib ko‘ring.', 'error'); }
+  }
+
   function renderUserLifecycleAttention() {
     if (isAdminMode) return '';
     const affected = myShops.filter((s) => s.status === 'FROZEN' || s.status === 'TERMINATED');
@@ -4769,6 +4824,50 @@
   // ======================================================================
   // ADMIN: Tariflar CRUD (+ to'lov karta ma'lumoti shu yerda)
   // ======================================================================
+  // One source of truth for Admin media on Telegram Mini App and Web.
+  function openAdminLandingSlidesPage(){if(!isSuperAdmin)return;openPage('ADMIN_LANDING_SLIDES');loadAdminLandingSlides();}
+  async function loadAdminLandingSlides(){
+    try {const result=await callPlatformApi('platform_admin_landing_list',{});adminLandingSlides=Array.isArray(result.slides)?result.slides:[];
+      if(activePage==='ADMIN_LANDING_SLIDES')render();
+    }catch(e){showToast(e.message||'Rasmlarni yuklab bo‘lmadi.','error');}
+  }
+  function renderAdminLandingSlidesBody(){
+    const count=adminLandingSlides.length;
+    return `<div class="plat-settings-page-intro is-compact"><span class="plat-admin-eyebrow">Web + Telegram Mini App</span><h2>Reklama rasmlari</h2><p>${count}/10 ta rasm · PNG, JPG, WebP · 1:1</p></div>
+    <section class="plat-settings-section plat-landing-admin-upload"><h3>${adminLandingReplaceId?'Rasmni almashtirish':'Yangi rasm qo‘shish'}</h3>
+      <label class="plat-landing-file">Rasmni tanlang<input type="file" onchange="adminLandingPickFile(this.files)"></label>
+      ${adminLandingPreviewUrl?`<img class="plat-landing-upload-preview" src="${escapeHtml(adminLandingPreviewUrl)}" alt="Tanlangan rasm">`:''}
+      <label>Kvadratga kesish yo‘nalishi<select onchange="adminLandingSetCrop(this.value)">${[['center','Markaz'],['top','Yuqori'],['bottom','Pastki'],['left','Chap'],['right','O‘ng']].map(([v,t])=>`<option value="${v}" ${adminLandingCrop===v?'selected':''}>${t}</option>`).join('')}</select></label>
+      <p>Rasm kvadrat bo‘lmasa, kerakli qismini tanlang. Asl rasm avtomatik noto‘g‘ri kesilmaydi.</p>
+      <button class="primary" onclick="adminLandingSave()" ${!adminLandingUploadFile||adminLandingBusy?'disabled':''}>${adminLandingBusy?'Saqlanmoqda...':adminLandingReplaceId?'Almashtirishni saqlash':'Rasmni saqlash'}</button>
+      ${adminLandingReplaceId?'<button class="secondary" onclick="adminLandingCancelPick()">Bekor qilish</button>':''}
+    </section>
+    <div class="plat-landing-admin-grid">${count?adminLandingSlides.map((item,i)=>`
+      <article class="plat-landing-admin-item"><img src="${escapeHtml(item.imageUrl)}" alt="${i+1}-slayd" loading="lazy"><b>${i+1}-rasm</b>
+      <div class="plat-landing-admin-actions">
+        <button ${i===0?'disabled':''} onclick="adminLandingShift(${i},-1)">↑</button>
+        <button ${i===count-1?'disabled':''} onclick="adminLandingShift(${i},1)">↓</button>
+        <button onclick="adminLandingReplace('${item.id}')">Almashtirish</button>
+        <button class="is-delete" onclick="adminLandingDelete('${item.id}')">O‘chirish</button>
+      </div></article>`).join(''):'<p class="plat-landing-admin-empty">Rasm yo‘q. Landing sahifasida bo‘sh premium fon ko‘rinadi.</p>'}</div>`;
+  }
+  function adminLandingCancelPick(){adminLandingUploadFile=null;adminLandingReplaceId=null;adminLandingCrop='center';if(adminLandingPreviewUrl)URL.revokeObjectURL(adminLandingPreviewUrl);adminLandingPreviewUrl='';render();}
+  async function adminLandingPickFile(files){const file=files?.[0];if(!file)return;
+    try{const info=await window.USTORE_LANDING_IMAGE_TOOLS.inspectLandingImage(file);
+      adminLandingUploadFile=file;if(adminLandingPreviewUrl)URL.revokeObjectURL(adminLandingPreviewUrl);
+      adminLandingPreviewUrl=URL.createObjectURL(file);render();
+      if(!info.square)showToast(`${info.width}×${info.height}: kvadratga kesish yo‘nalishini tanlang.`,'info');
+    }catch(e){showToast(e.message||'Rasm noto‘g‘ri.','error');}}
+  function adminLandingSetCrop(value){adminLandingCrop=['center','top','bottom','left','right'].includes(value)?value:'center';}
+  function adminLandingReplace(id){adminLandingCancelPick();adminLandingReplaceId=id;render();}
+  async function adminLandingSave(){if(!adminLandingUploadFile||adminLandingBusy)return;if(!adminLandingReplaceId&&adminLandingSlides.length>=10){showToast('10 ta rasm chegarasiga yetildi.','error');return;}
+    adminLandingBusy=true;render();try{const image=await window.USTORE_LANDING_IMAGE_TOOLS.prepareLandingImage(adminLandingUploadFile,adminLandingCrop);
+      const result=await callPlatformApi('platform_admin_landing_upload',{...image,replaceId:adminLandingReplaceId||undefined});adminLandingSlides=result.slides||[];adminLandingCancelPick();showToast('Rasm saqlandi.','success');
+    }catch(e){showToast(e.message||'Saqlab bo‘lmadi.','error');}finally{adminLandingBusy=false;render();}}
+  async function adminLandingDelete(id){if(!(await showConfirm('Rasm o‘chirilsinmi?')))return;try{const data=await callPlatformApi('platform_admin_landing_delete',{id});adminLandingSlides=data.slides||[];render();}catch(e){showToast(e.message||'O‘chirilmadi.','error');}}
+  async function adminLandingShift(index,delta){const rows=[...adminLandingSlides],next=index+delta;if(next<0||next>=rows.length)return;
+    [rows[index],rows[next]]=[rows[next],rows[index]];
+    try{const data=await callPlatformApi('platform_admin_landing_reorder',{ids:rows.map(r=>r.id)});adminLandingSlides=data.slides||[];render();}catch(e){showToast(e.message||'Tartib saqlanmadi.','error');}}
   async function loadAdminSettings() {
     if (!isAdminMode) return;
     try {
@@ -5219,7 +5318,18 @@
   boot();
 
   // ---- Global handler eksporti (inline onclick uchun) -------------------
+  window.openAdminLandingSlidesPage = openAdminLandingSlidesPage;
+  window.adminLandingPickFile = adminLandingPickFile;
+  window.adminLandingSetCrop = adminLandingSetCrop;
+  window.adminLandingCancelPick = adminLandingCancelPick;
+  window.adminLandingReplace = adminLandingReplace;
+  window.adminLandingSave = adminLandingSave;
+  window.adminLandingDelete = adminLandingDelete;
+  window.adminLandingShift = adminLandingShift;
   window.openPage = openPage;
+  window.openOwnerNotifications = openOwnerNotifications;
+  window.markOwnerNotificationRead = markOwnerNotificationRead;
+  window.logoutPlatformWeb = logoutPlatformWeb;
   window.loadWebCredentialStatus = loadWebCredentialStatus;
   window.openWebCredentialsFromProfile = openWebCredentialsFromProfile;
   window.issueWebCredentials = issueWebCredentials;
@@ -5229,6 +5339,8 @@
   window.copyWebCredentialPassword = copyWebCredentialPassword;
   window.copyWebCredentialLogin = copyWebCredentialLogin;
   window.toggleWebCredentialPassword = toggleWebCredentialPassword;
+  window.toggleCredentialInput = toggleCredentialInput;
+  window.finishPlatformWebPasswordChange = finishPlatformWebPasswordChange;
   window.openWebCredentialEdit = openWebCredentialEdit;
   window.closeWebCredentialEdit = closeWebCredentialEdit;
   window.closeWebCredentialFlow = closeWebCredentialFlow;
@@ -5328,6 +5440,7 @@
   window.toggleUzumAccess = toggleUzumAccess;
   // 4.4/4.5-band: Yordam bo'limi
   window.openSupportPage = openSupportPage;
+  window.switchSupportUserView = switchSupportUserView;
   window.filterHelpItems = filterHelpItems;
   window.submitNewSupportMessage = submitNewSupportMessage;
   window.openSupportThread = openSupportThread;

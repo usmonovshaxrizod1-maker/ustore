@@ -1,4 +1,4 @@
-export { createLiveAuthAdapter, createMemoryTokenStore, createSessionStorageTokenStore, createPersistentTokenStore, createSessionStorageChallengeStore, createSessionStorageOfficialTelegramStore, createSessionStorageOriginHandoffStore } from './auth.js?v=20261009flow1';
+export { createLiveAuthAdapter, createMemoryTokenStore, createSessionStorageTokenStore, createPersistentTokenStore, createSessionStorageChallengeStore, createSessionStorageOfficialTelegramStore, createSessionStorageOriginHandoffStore } from './auth.js?v=20261009t7';
 export { createLiveShopPublicAdapters } from './shop-public.js?v=20261009flow1';
 export { createLiveShopPrivateAdapters } from './shop-private.js';
 export { createLiveAdminAdapter, LIVE_ADMIN_ACTIONS } from './admin.js?v=20261008admin1';

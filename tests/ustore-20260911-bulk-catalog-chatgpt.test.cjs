@@ -251,7 +251,7 @@ test('copying the prompt never touches #fc-bulkcat-root or bulkCatText, so the b
 
 // ---- 8. Cache versions ----
 test('cache versions bumped for the bulk-catalog + ChatGPT-prompt batch', () => {
-  assert.match(indexHtml, /ustore-shop-app\.js\?v=325/);
-  assert.match(indexHtml, /ustore\.css\?v=325/);
+  assert.match(indexHtml, /ustore-shop-app\.js\?v=333/);
+  assert.match(indexHtml, /ustore\.css\?v=331/);
 });
 

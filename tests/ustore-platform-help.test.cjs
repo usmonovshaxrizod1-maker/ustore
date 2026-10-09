@@ -124,7 +124,7 @@ test('storeSupportAttachment mirrors storeSubscriptionReceipt\'s exact validatio
 // ---------------------------------------------------------------------------
 
 test('4.4 user flow: "Support bilan yozish" always calls loadMySupportTickets() on open (openSupportPage), and starting a new message goes through platform_create_support_ticket with type SUPPORT explicitly (never left to default so a future default change can\'t silently misfile it as a bug report)', () => {
-  assert.match(platformApp, /function openSupportPage\(\) \{ openPage\('SUPPORT'\); loadMySupportTickets\(\); \}/);
+  assert.match(platformApp, /function openSupportPage\(view = 'new'\) \{[\s\S]*?openPage\('SUPPORT'\);[\s\S]*?loadMySupportTickets\(\);[\s\S]*?\}/);
   const start = platformApp.indexOf('async function submitNewSupportMessage');
   const end = platformApp.indexOf('function supportThreadTitle');
   const block = platformApp.slice(start, end);

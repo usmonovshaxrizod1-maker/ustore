@@ -6,15 +6,17 @@
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="UStorE — onlayn do‘koningiz uchun yagona savdo platformasi.">
   <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://usmonovshaxrizod1-maker.github.io; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://usmonovshaxrizod1-maker.github.io; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'self';">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>UStorE</title>
-  <link rel="stylesheet" href="./styles/index.css?v=20261009flow1">
+  <link rel="stylesheet" href="./styles/index.css?v=20261009t3">
+  <link rel="stylesheet" href="./shop-welcome.css?v=20261009t1">
+  <script src="./shop-welcome.js?v=20261009t1"></script>
   <script src="./config.public.js?v=20261009flow1"></script>
-  <script src="./launch-boot.js?v=20261009flow1"></script>
-  <script type="module" src="./app.js?v=20261009flow1"></script>
+  <script src="./launch-boot.js?v=20261009t1"></script>
+  <script type="module" src="./app.js?v=20261009t7"></script>
 </head>
 <body>
   <a class="uw-skip-link" href="#uw-main-content">Asosiy qismga o‘tish</a>
@@ -27,8 +29,14 @@
         <small class="uw-launch__foot">Xavfsiz ulanish va kerakli modullar yuklanmoqda</small>
       </div>
     </section>
-    <section class="uw-shop-opening uw-initial-shop-opening" role="status" aria-live="polite" aria-busy="true">
-      <span class="uw-shop-opening__logo"></span><strong>Do‘kon</strong><p>Do‘kon ochilmoqda…</p>
+    <section class="uw-shop-opening uw-initial-shop-opening ustore-welcome" role="status" aria-busy="true">
+      <div class="ustore-welcome__art" aria-hidden="true"></div>
+      <div class="ustore-welcome__content">
+        <div class="ustore-welcome__glass"><span class="ustore-welcome__logo"><span class="ustore-welcome__monogram">U</span></span></div>
+        <h1 class="ustore-welcome__title"><span class="ustore-welcome__name">Do‘kon</span><span class="ustore-welcome__greeting">Xush kelibsiz</span></h1>
+        <div class="ustore-welcome__dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="ustore-welcome__error" hidden></div>
+      </div>
     </section>
     <section class="uw-auth-transition" role="status" aria-live="polite" aria-busy="true">Kirish yakunlanmoqda…</section>
   </div>

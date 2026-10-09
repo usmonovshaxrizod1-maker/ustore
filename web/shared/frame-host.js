@@ -4,6 +4,9 @@ import { secureFrameNonce } from './browser-id.js';
 import { fetchJsonWithTimeout } from './fetch-json.js';
 const BRIDGE = 'ustore-miniapp-v1';
 const MINI_APP_ORIGIN = 'https://usmonovshaxrizod1-maker.github.io';
+// PLATFORM Web is self-hosted at ustr.uz. Only the Telegram Mini App and
+// Shop iframe remain on GitHub Pages; no cross-site PLATFORM frame needed.
+const platformFrameUrl = () => new URL(location.hostname === 'usmonovshaxrizod1-maker.github.io' ? '/ustore/web/platform-ui/' : '/platform-ui/', location.origin);
 const PUBLIC_SHOP_ACTIONS = new Set(['boot', 'get_catalog', 'get_web_bundles', 'get_web_promotions', 'get_web_promotion']);
 const GUEST_READ_ACTIONS = new Set(['get_favorites', 'get_recent_views', 'get_my_orders', 'get_my_support_tickets']);
 const BACKGROUND_GUEST_ACTIONS = new Set(['record_product_view', 'save_cart_snapshot']);
@@ -20,15 +23,17 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   if (kind === 'shop' && !/^\d+$/.test(botId)) throw new TypeError('Do‘kon bot identifikatori noto‘g‘ri.');
   if (!/^[0-9a-f-]{36}$/i.test(String(viewerKey || ''))) throw new TypeError('Browser saqlash kaliti noto‘g‘ri.');
   const nonce = secureFrameNonce();
+  const frameOrigin = kind === 'platform' ? location.origin : MINI_APP_ORIGIN;
   const frame = document.createElement('iframe');
   const wrapper = document.createElement('main');
   wrapper.id = 'uw-main-content';
   wrapper.className = 'uw-miniapp-host';
   frame.className = 'uw-miniapp-frame';
   frame.title = kind === 'shop' ? `${tenant?.shopName || 'Do‘kon'} ilovasi` : 'UStorE ilovasi';
-  frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation allow-downloads');
+  if (kind === 'shop') frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation allow-downloads');
+  // PLATFORM UI is the app's own checked-in code on the same origin.
   frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-  const src = new URL(kind === 'shop' ? '/ustore/' : '/ustore/platform/', MINI_APP_ORIGIN);
+  const src = kind === 'shop' ? new URL('/ustore/', MINI_APP_ORIGIN) : platformFrameUrl();
   src.searchParams.set('web_frame', '1');
   src.searchParams.set('viewer', viewerKey);
   if (guestViewerKey && /^[0-9a-f-]{36}$/i.test(guestViewerKey)) src.searchParams.set('guest_viewer', guestViewerKey);
@@ -37,48 +42,67 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   let placeholder = null;
   if (kind === 'shop') {
     wrapper.className = `${wrapper.className} is-loading`.trim();
-    placeholder = document.createElement('section');
-    placeholder.className = 'uw-shop-opening';
-    placeholder.setAttribute('role', 'status');
-    placeholder.setAttribute('aria-busy', 'true');
-    const logo = document.createElement('span');
-    logo.className = 'uw-shop-opening__logo';
-    if (tenant?.logoUrl) {
-      const image = document.createElement('img');
-      image.src = String(tenant.logoUrl);
-      image.alt = '';
-      logo.append(image);
-    }
-    const name = document.createElement('strong');
-    name.textContent = String(tenant?.shopName || 'Do‘kon');
-    const message = document.createElement('p');
-    message.textContent = runtime.tokenStore.get() ? 'Kirish yakunlanmoqda…' : 'Do‘kon ochilmoqda…';
-    placeholder.append(logo, name, message);
+    placeholder = globalThis.USTORE_SHOP_WELCOME.create({
+      name:tenant?.shopName || 'Do‘kon',logoUrl:tenant?.logoUrl || null,
+      theme:tenant?.designSettings || null,locale:document.documentElement.lang || 'uz',
+    });
   }
   wrapper.append(frame);
   if (placeholder) wrapper.append(placeholder);
   let alive = true;
+  let launchElement = placeholder;
   let ready = false;
   let lastRoute = safeRoute(route);
-  const loadingTimer = kind === 'shop' ? setTimeout(() => {
-    if (!alive || !placeholder) return;
-    const message = placeholder.querySelector('p');
-    if (message) message.textContent = 'Ulanish cho‘zildi. Internetni tekshiring yoki qayta urinib ko‘ring.';
+  // Native Web PLATFORM is served from this origin; if the iframe still
+  // fails to boot, surface an actionable retry instead of a crashed blank tab.
+  let platformAppReady = false;
+  const platformFailureTimer = kind === 'platform' ? setTimeout(() => {
+    if (!alive || platformAppReady) return;
+    const panel = document.createElement('section');
+    panel.className = 'uw-miniapp-failure';
+    panel.setAttribute('role', 'alert');
+    const title = document.createElement('h2');
+    title.textContent = 'Boshqaruv sahifasi ochilmadi';
+    const copy = document.createElement('p');
+    copy.textContent = 'Ulanish cho‘zildi. Internetni tekshiring va qayta urinib ko‘ring.';
     const retry = document.createElement('button');
     retry.type = 'button';
-    retry.className = 'uw-btn uw-btn--secondary';
     retry.textContent = 'Qayta urinish';
-    retry.addEventListener('click', () => window.location.reload());
-    placeholder.append(retry);
+    retry.addEventListener('click', () => location.reload());
+    panel.append(title, copy, retry);
+    wrapper.append(panel);
+  }, 18000) : null;
+  const loadingTimer = kind === 'shop' ? setTimeout(() => {
+    if (!alive || !placeholder) return;
+    globalThis.USTORE_SHOP_WELCOME.failure(placeholder, {
+      message:'Ulanish cho‘zildi. Internetni tekshiring yoki qayta urinib ko‘ring.',
+      locale:document.documentElement.lang,
+    });
   }, 15000) : null;
   const send = (message) => {
-    if (alive && frame.contentWindow) frame.contentWindow.postMessage({ bridge: BRIDGE, kind, nonce, ...message }, MINI_APP_ORIGIN);
+    if (alive && frame.contentWindow) frame.contentWindow.postMessage({ bridge: BRIDGE, kind, nonce, ...message }, frameOrigin);
   };
   const invoke = async (action, payload) => {
     if (!/^[a-z][a-z0-9_]{0,79}$/.test(String(action || ''))) throw new Error('invalid_action');
     const token = String(runtime.tokenStore.get() || '');
-    if (kind === 'shop' && action === 'web_sign_out') {
-      const result = await runtime.services?.auth?.signOut?.();
+    if (action === 'web_credentials_status' || action === 'web_credentials_change_login' || action === 'web_credentials_change_password' || action === 'web_credentials_finish_password_change') {
+      if (action === 'web_credentials_finish_password_change') {
+        if (token) throw new Error('password_change_not_finished');
+        setTimeout(() => onSignedOut(), 0);
+        return { signedOut: true };
+      }
+      if (!token) throw new Error('auth_required');
+      const request = action === 'web_credentials_status'
+        ? runtime.auth.getCredentialsStatus()
+        : action === 'web_credentials_change_login'
+          ? runtime.auth.changeLogin({ login: String(payload?.login || '') })
+          : runtime.auth.changePassword({ currentPassword: String(payload?.currentPassword || ''), newPassword: String(payload?.newPassword || '') });
+      const result = await request;
+      if (!result?.ok) throw new Error(String(result?.error?.code || result?.error?.message || 'credential_update_failed'));
+      return result.data || { ok: true };
+    }
+    if (action === 'web_sign_out') {
+      const result = kind === 'platform' ? await runtime.auth.signOut() : await runtime.services?.auth?.signOut?.();
       if (!result?.ok) throw new Error(String(result?.error?.message || result?.error?.code || 'sign_out_failed'));
       return { signedOut: true };
     }
@@ -159,7 +183,7 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     }
   }
   const onMessage = async (event) => {
-    if (!alive || event.origin !== MINI_APP_ORIGIN || event.source !== frame.contentWindow) return;
+    if (!alive || event.origin !== frameOrigin || event.source !== frame.contentWindow) return;
     const message = event.data;
     if (!message || message.bridge !== BRIDGE || message.kind !== kind) return;
     if (message.type === 'HELLO') {
@@ -169,10 +193,11 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     }
     if (!ready || message.nonce !== nonce) return;
     if (message.type === 'APP_READY') {
+      platformAppReady = true;
+      clearTimeout(platformFailureTimer);
       clearTimeout(loadingTimer);
       wrapper.className = `${String(wrapper.className || '').replace(/\bis-loading\b/g, '').replace(/\bis-ready\b/g, '').trim()} is-ready`.trim();
-      if (typeof placeholder?.remove === 'function') placeholder.remove();
-      else if (placeholder && Array.isArray(wrapper.children)) wrapper.children = wrapper.children.filter((child) => child !== placeholder);
+      globalThis.USTORE_SHOP_WELCOME.dismiss(placeholder);
       placeholder = null;
       return;
     }
@@ -202,6 +227,6 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   return Object.freeze({
     element: wrapper,
     route(next) { lastRoute = safeRoute(next); if (ready) send({ type: 'ROUTE', route: lastRoute }); },
-    destroy() { alive = false; clearTimeout(loadingTimer); startup.clear(); window.removeEventListener('message', onMessage); frame.src = 'about:blank'; },
+    destroy() { alive = false; clearTimeout(platformFailureTimer); clearTimeout(loadingTimer); startup.clear(); launchElement?.remove?.(); window.removeEventListener('message', onMessage); frame.src = 'about:blank'; },
   });
 }

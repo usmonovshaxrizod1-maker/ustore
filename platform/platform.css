@@ -2343,3 +2343,136 @@ html { overflow-anchor: none; }
 .plat-category-icon-drop{min-height:132px;border:1.5px dashed #93c5fd;border-radius:18px;background:var(--c-surface-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;color:var(--c-primary);cursor:pointer;padding:18px}.plat-category-icon-drop input{display:none}.plat-category-icon-drop b{font-size:14px}.plat-category-icon-drop small{font-size:11px;color:var(--c-text-secondary);font-weight:600}.plat-category-icon-file-list{display:flex;flex-wrap:wrap;gap:6px}.plat-category-icon-file-list span{display:inline-flex;align-items:center;gap:4px;background:var(--c-surface-soft);color:var(--c-primary);border:1px solid #dbeafe;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:800}
 .plat-category-icon-admin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:9px}.plat-category-icon-admin-card{display:grid;grid-template-columns:46px minmax(0,1fr) auto;align-items:center;gap:10px;min-height:70px;padding:10px;border:1px solid var(--border,#e2e8f0);border-radius:15px;background:var(--card,#fff)}.plat-category-icon-admin-card.is-disabled{opacity:.56}.plat-category-icon-preview{width:46px;height:46px;border-radius:13px;background:#f1f6ff;color:var(--c-primary);display:flex;align-items:center;justify-content:center}.plat-category-icon-svg{width:30px;height:30px;display:block;color:currentColor}.plat-category-icon-admin-card>div{min-width:0;display:flex;flex-direction:column;gap:3px}.plat-category-icon-admin-card b{font-size:12px;color:var(--text,#172033);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.plat-category-icon-admin-card small{font-size:10px;color:var(--muted,#7b8797);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:720px){.plat-category-icon-stats{grid-template-columns:repeat(3,1fr);gap:7px}.plat-category-icon-stats>div{padding:11px 9px}.plat-category-icon-stats b{font-size:17px}.plat-category-icon-stats small{font-size:9px}.plat-category-icon-admin-grid{grid-template-columns:1fr}.plat-category-icon-drop{min-height:116px}}
+/* Task 2: same PLATFORM landing 1:1 photos and admin controls in Mini App. */
+.plat-photo-showcase{width:100%;max-width:550px;min-height:0!important;aspect-ratio:1;overflow:hidden;background:linear-gradient(140deg,#edf5ff,#fff 58%,#edf1fc);border-radius:22px}
+.plat-photo-showcase .plat-showcase-viewport,.plat-photo-showcase .plat-showcase-track,.plat-photo-showcase .plat-photo-slide{height:100%;min-height:0;width:100%}
+.plat-photo-showcase .plat-photo-slide{padding:0!important;display:block;flex:0 0 100%}
+.plat-photo-showcase .plat-photo-slide img{display:block;width:100%;height:100%;object-fit:contain}
+.plat-photo-showcase .plat-showcase-arrow{z-index:2;top:auto;bottom:9px;transform:none}
+.plat-photo-showcase .plat-showcase-arrow.is-prev{left:10px}.plat-photo-showcase .plat-showcase-arrow.is-next{right:10px}
+.plat-photo-showcase .plat-showcase-dots{z-index:2;bottom:14px}
+.plat-landing-admin-upload{display:grid;gap:12px}.plat-landing-admin-upload>h3{margin:0}
+.plat-landing-admin-upload label{display:grid;gap:6px;color:#40516c;font-size:12px;font-weight:650}
+.plat-landing-admin-upload input,.plat-landing-admin-upload select{max-width:100%;padding:10px;border:1px solid #d6e2f2;border-radius:10px;background:#fff}
+.plat-landing-upload-preview{width:min(100%,180px);aspect-ratio:1;object-fit:contain;border-radius:14px;border:1px solid #dbe5f3}
+.plat-landing-admin-upload button{min-height:40px}
+.plat-landing-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+.plat-landing-admin-item{min-width:0;padding:10px;border:1px solid #dce6f4;border-radius:14px;background:#fff;display:grid;gap:8px}
+.plat-landing-admin-item img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:9px;background:#f3f7ff}
+.plat-landing-admin-actions{display:flex;flex-wrap:wrap;gap:5px}.plat-landing-admin-actions button{border:1px solid #dce6f4;background:#f9fbff;border-radius:8px;padding:6px 9px;font-size:11px}
+.plat-landing-admin-actions .is-delete{color:#b91c1c}.plat-landing-admin-empty{grid-column:1/-1}
+@media(max-width:767px){.plat-photo-showcase{max-width:100%;aspect-ratio:1;min-height:0!important}}
+
+/* Task 2 / part 2 — persistent owner notification inbox and Web logout. */
+.plat-owner-inbox{display:grid;gap:13px;max-width:840px;margin:0 auto;padding:12px 0 40px}
+.plat-owner-inbox-item{display:flex;align-items:flex-start;gap:14px;padding:19px;border:1px solid var(--border,#e2e8f0);background:#fff;border-radius:22px;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.plat-owner-inbox-item.is-unread{border-color:#bfdbfe;background:linear-gradient(125deg,#f8fbff,#fff)}
+.plat-owner-inbox-icon{flex:none;display:grid;place-items:center;width:46px;height:46px;background:var(--c-info-bg);color:var(--c-primary);border-radius:14px}
+.plat-owner-inbox-copy{flex:1;min-width:0;display:grid;gap:7px}
+.plat-owner-inbox-copy h3{font-size:1.06rem;margin:0;color:var(--c-heading)}
+.plat-owner-inbox-copy b{font-size:.96rem;color:var(--c-text-secondary)}
+.plat-owner-inbox-copy p{margin:0;color:#64748b;overflow-wrap:anywhere;line-height:1.55}
+.plat-owner-inbox-copy small{color:#94a3b8}
+.plat-owner-inbox-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.plat-owner-inbox-actions button{width:auto!important;min-height:38px;padding:9px 14px!important;font-size:.83rem}
+.plat-owner-inbox-empty{text-align:center;display:grid;justify-items:center;gap:11px;background:#fff;padding:46px 20px;border-radius:22px;border:1px solid #e2e8f0;margin:18px auto;max-width:550px;color:#64748b}
+.plat-owner-inbox-empty h3{margin:0;color:var(--c-heading)}.plat-owner-inbox-empty p{margin:0}
+.plat-web-logout{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:15px 18px;margin:15px 0;border:1px solid #fecaca;background:#fff5f5;color:#b91c1c;border-radius:16px;font:inherit;font-weight:700;cursor:pointer}
+.plat-web-logout:hover{background:#fee2e2}
+@media(min-width:768px){.plat-owner-inbox{padding-top:20px}.plat-owner-inbox-item{padding:23px}.plat-owner-inbox-copy h3{font-size:1.18rem}}
+
+.plat-header-notice-btn{position:relative}
+.plat-header-notice-btn>em{position:absolute;right:-4px;top:-5px;min-width:17px;height:17px;padding:0 4px;border:2px solid #fff;border-radius:999px;background:var(--c-danger-text);color:#fff;font-size:11px;font-style:normal;font-weight:800;line-height:13px;text-align:center}
+
+
+/* TASK 6 — Platform USER: do'konlar, yordam va obuna uzaytirish.
+   Shared Mini App/Web components; mobile, tablet and desktop layouts. */
+.plat-user-mode .plat-shop-list-simple{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch}
+.plat-user-mode .plat-shop-list-card{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto auto;gap:12px 8px;align-items:start;min-width:0;min-height:174px;padding:16px;border-radius:20px;transition:border-color .18s,box-shadow .18s;background:var(--c-surface,#fff)}
+.plat-user-mode .plat-shop-list-card:hover{border-color:var(--c-primary-border,#bfdbfe);box-shadow:0 9px 25px rgba(30,64,125,.09)}
+.plat-user-mode .plat-shop-list-card:focus-visible{outline:3px solid var(--c-primary,#2684ff);outline-offset:2px}
+.plat-user-mode .plat-shop-list-card.is-inactive{background:color-mix(in srgb,var(--c-surface,#fff) 92%,#f5f7fb 8%)}
+.plat-user-mode .plat-shop-list-top{grid-column:1;grid-row:1;display:flex;align-items:center;gap:12px;min-width:0}
+.plat-user-mode .plat-shop-list-top .plat-shop-avatar{flex:none}
+.plat-user-mode .plat-shop-list-identity{display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden}
+.plat-user-mode .plat-shop-list-identity strong{font-size:16px;line-height:1.3;color:var(--u-text);overflow-wrap:anywhere}
+.plat-user-mode .plat-shop-list-identity small{font-size:12px;color:var(--u-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.plat-user-mode .plat-shop-list-status{grid-column:2;grid-row:1;display:flex;align-self:center;justify-content:flex-end}
+.plat-user-mode .plat-shop-list-status .status-pill{max-width:100%;min-height:26px;white-space:normal;text-align:center;font-size:11px}
+.plat-user-mode .plat-shop-list-facts{grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+.plat-user-mode .plat-shop-list-facts>span{display:flex;flex-direction:column;gap:4px;min-width:0;padding:10px 11px;border:1px solid var(--u-border);border-radius:12px;background:var(--c-surface-soft,#f8fafc);text-align:left}
+.plat-user-mode .plat-shop-list-facts small{font-size:11px;line-height:1.25;color:var(--u-muted)}
+.plat-user-mode .plat-shop-list-facts b{font-size:12px;line-height:1.35;color:var(--u-text);overflow-wrap:anywhere}
+.plat-user-mode .plat-shop-list-facts .is-warn b{color:var(--u-amber)}
+.plat-user-mode .plat-shop-list-open{grid-column:1/-1;grid-row:3;display:flex;align-items:center;justify-content:flex-end;gap:7px;font-size:12px;font-weight:800;color:var(--u-blue)}
+.plat-user-mode .plat-help-primary-actions{gap:12px}
+.plat-user-mode .plat-help-primary-card{min-width:0;min-height:118px;align-items:center;gap:12px;padding:16px;border-radius:18px;box-shadow:var(--sh-card)}
+.plat-user-mode .plat-help-primary-card>span{width:44px;height:44px;border-radius:14px}
+.plat-user-mode .plat-help-primary-card b{display:block;font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.plat-user-mode .plat-help-primary-card small{font-size:12px;line-height:1.5}
+.plat-user-mode .plat-help-primary-card em{display:flex;align-items:center;justify-content:center;flex:none}
+.plat-user-mode .plat-my-tickets-link{min-height:76px;margin-top:12px;gap:12px;padding:16px;border-radius:17px}
+.plat-user-mode .plat-my-tickets-link b{font-size:14px}
+.plat-user-mode .plat-my-tickets-link small{font-size:12px}
+.plat-user-mode .plat-support-hero{border-radius:20px;gap:12px}
+.plat-user-mode .plat-support-view-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:5px;margin:14px 0;border:1px solid var(--u-border);border-radius:15px;background:var(--c-surface-soft,#f8fafc)}
+.plat-user-mode .plat-support-view-tabs button{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:44px;padding:8px;border:0;border-radius:11px;background:transparent;color:var(--u-muted);font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.plat-user-mode .plat-support-view-tabs button.active{background:var(--c-surface,#fff);color:var(--u-blue);box-shadow:0 2px 9px rgba(16,40,80,.1)}
+.plat-user-mode .plat-support-view-tabs button:focus-visible{outline:2px solid var(--u-blue);outline-offset:2px}
+.plat-user-mode .plat-support-compose{padding:18px;border-radius:18px}
+.plat-user-mode .plat-support-compose h3,.plat-user-mode .plat-support-history-title h3{margin:0;font-size:17px;color:var(--u-text)}
+.plat-user-mode .plat-support-compose p,.plat-user-mode .plat-support-history-title p{margin:6px 0 14px;font-size:12px;line-height:1.5;color:var(--u-muted)}
+.plat-user-mode .plat-support-compose label{display:block;margin-bottom:7px;font-size:12px;font-weight:800;color:var(--u-text)}
+.plat-user-mode .plat-support-compose textarea{min-height:110px;font-size:14px;line-height:1.5}
+.plat-user-mode .plat-support-compose button{min-height:46px;margin-top:12px}
+.plat-user-mode .plat-support-history-title{margin:16px 0 12px}
+.plat-user-mode .plat-ticket-list{border-radius:18px}
+.plat-user-mode .plat-ticket-list button{gap:10px;min-height:72px;padding:12px 14px}
+.plat-user-mode .plat-ticket-copy{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1;text-align:left}
+.plat-user-mode .plat-ticket-list .plat-ticket-copy b{font-size:13px;white-space:normal;overflow-wrap:anywhere;line-height:1.3}
+.plat-user-mode .plat-ticket-list .plat-ticket-copy small{font-size:11px}
+.plat-user-mode .plat-ticket-list .status-pill{flex-shrink:0;font-size:10px}
+.plat-user-mode .plat-renew-summary{padding:16px;margin:0 0 14px;border:1px solid var(--u-border);border-radius:18px;background:var(--c-surface,#fff);box-shadow:var(--sh-card)}
+.plat-user-mode .plat-renew-summary-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.plat-user-mode .plat-renew-summary-head>span{width:40px;height:40px;display:grid;place-items:center;flex:none;border-radius:12px;background:var(--u-blue-soft);color:var(--u-blue)}
+.plat-user-mode .plat-renew-summary-head small,.plat-user-mode .plat-renew-facts small{display:block;font-size:11px;color:var(--u-muted)}
+.plat-user-mode .plat-renew-summary-head b{display:block;margin-top:3px;font-size:16px;color:var(--u-text);overflow-wrap:anywhere}
+.plat-user-mode .plat-renew-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.plat-user-mode .plat-renew-facts>div{min-width:0;padding:11px;border:1px solid var(--u-border);border-radius:12px;background:var(--c-surface-soft,#f8fafc)}
+.plat-user-mode .plat-renew-facts b,.plat-user-mode .plat-renew-facts strong{display:block;margin-top:5px;font-size:14px;line-height:1.4;color:var(--u-text);overflow-wrap:anywhere}
+.plat-user-mode .plat-renew-facts strong{color:var(--u-blue)}
+.plat-user-mode .plat-renew-summary>p{display:flex;align-items:center;gap:7px;margin:12px 0 0;font-size:12px;line-height:1.45;color:var(--u-green)}
+@media(max-width:399px){
+  .plat-user-mode .plat-shop-list-card{grid-template-columns:minmax(0,1fr);gap:10px}
+  .plat-user-mode .plat-shop-list-status{grid-column:1;grid-row:2;justify-content:flex-start}
+  .plat-user-mode .plat-shop-list-facts{grid-row:3}
+  .plat-user-mode .plat-shop-list-open{grid-row:4}
+  .plat-user-mode .plat-help-primary-actions{grid-template-columns:minmax(0,1fr)}
+}
+@media(min-width:700px){
+  .plat-user-mode .plat-shop-list-simple{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .plat-user-mode .plat-shop-list-card{min-height:230px}
+  .plat-user-mode .plat-help-primary-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .plat-user-mode .plat-support-compose{padding:22px}
+  .plat-user-mode .plat-support-compose button{width:auto;min-width:190px}
+  .plat-user-mode .plat-renew-summary{padding:20px}
+  .plat-user-mode .plat-renew-facts{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(min-width:1180px){
+  .plat-user-mode .plat-shop-list-simple{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .plat-user-mode .plat-shop-list-card{min-height:238px}
+  .plat-user-mode .plat-help-primary-actions{max-width:940px}
+  .plat-user-mode .plat-renew-summary{max-width:960px}
+}
+@media(max-width:699px){
+  .plat-user-mode .plat-help-primary-card{padding:12px;gap:10px;min-height:106px}
+  .plat-user-mode .plat-help-primary-card>span{width:40px;height:40px}
+  .plat-user-mode .plat-help-primary-card b{font-size:12px}
+  .plat-user-mode .plat-help-primary-card small{font-size:11px}
+}
+
+@media(max-width:599px){
+  /* Mobile: two text-heavy support buttons side by side became unreadable. */
+  .plat-user-mode .plat-help-primary-actions{grid-template-columns:minmax(0,1fr)}
+  .plat-user-mode .plat-help-primary-card{min-height:86px}
+}

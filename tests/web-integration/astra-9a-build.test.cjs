@@ -97,7 +97,7 @@ test('ASTRA-9a UI state contract accepts production warning/success/loading stat
 
 test('ASTRA-9a build manifest fingerprints both legacy and premium-web roots', () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(DIST, 'BUILD_MANIFEST.json'), 'utf8'));
-  assert.deepEqual(manifest.roots, { miniApp: '.', premiumWeb: 'web', platform: 'platform' });
+  assert.deepEqual(manifest.roots, { miniApp: '.', premiumWeb: 'web', platform: 'platform', webPlatformFrame: 'web/platform-ui' });
   for (const required of ['index.html', 'ustore-shop-app.js', 'platform/platform-app.js', 'web/index.html', 'web/app.js', 'web/runtime/production.js']) {
     assert.match(manifest.files[required] || '', /^[a-f0-9]{64}$/, `missing fingerprint: ${required}`);
   }

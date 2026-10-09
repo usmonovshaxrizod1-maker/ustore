@@ -13,12 +13,25 @@ function fakeBrowser() {
   const frameWindow = { postMessage(message, origin) { sent.push({ message, origin }); } };
   const create = (tag) => ({
     tagName: tag, children: [], attributes: {}, className: '', src: '', contentWindow: tag === 'iframe' ? frameWindow : null,
-    append(...children) { this.children.push(...children); }, setAttribute(name, value) { this.attributes[name] = value; },
+    append(...children) { for (const child of children) { this.children.push(child); child.parent = this; } }, remove() { if (this.parent) this.parent.children = this.parent.children.filter((child)=>child!==this); }, setAttribute(name, value) { this.attributes[name] = value; },
   });
+  // Production HTML loads the shared welcome helper before the frame host module.
+  // Minimal test adapter keeps assertions focused on the bridge and new UI contract.
+  global.USTORE_SHOP_WELCOME = {
+    create({name='Do‘kon',logoUrl=null,locale='uz'}={}) {
+      const section=create('section'); section.className='ustore-welcome uw-shop-opening';
+      const art=create('div'), content=create('div');
+      const title=create('h1'); title.textContent=`${name} / ${locale==='ru'?'Добро пожаловать':'Xush kelibsiz'}`;
+      const glass=create('div'); glass.logoUrl=logoUrl; const dots=create('div'); dots.className='ustore-welcome__dots';
+      content.append(glass,title,dots); section.append(art,content); return section;
+    },
+    dismiss(node) { node?.remove(); },
+    failure(node) { node.failed=true; },
+  };
   return {
     sent, frameWindow,
     window: { addEventListener(name, fn) { listeners.set(name, fn); }, removeEventListener(name) { listeners.delete(name); } },
-    document: { createElement: create },
+    document: { createElement: create, documentElement: {lang:'uz'} },
     message(origin, data, source = frameWindow) { return listeners.get('message')?.({ origin, data, source }); },
   };
 }
@@ -43,9 +56,9 @@ test('Shop browser frame uses the actual Mini App source and keeps auth in the h
     });
     const frame = host.element.children[0];
     const opening = host.element.children[1];
-    assert.equal(opening.className, 'uw-shop-opening');
-    assert.deepEqual(opening.children.map((child) => child.tagName), ['span', 'strong', 'p']);
-    assert.equal(opening.children[2].textContent, 'Kirish yakunlanmoqda…');
+    assert.match(opening.className, /ustore-welcome/);
+    assert.deepEqual(opening.children.map((child) => child.tagName), ['div', 'div']);
+    assert.match(opening.children[1].children[1].textContent, /Fitcore \/ Xush kelibsiz/);
     assert.equal(new URL(frame.src).pathname, '/ustore/');
     assert.equal(new URL(frame.src).searchParams.get('bot_id'), '123456');
     assert.equal(new URL(frame.src).searchParams.get('viewer'), '123e4567-e89b-42d3-a456-426614174000');
@@ -89,9 +102,9 @@ test('private shop entry keeps the same skeleton-free opening until the frame is
       kind: 'shop', route: '/profile', tenant: { botId: '123456' }, viewerKey: '123e4567-e89b-42d3-a456-426614174000',
       runtime: { endpoints: { shop: 'https://db.example/functions/v1/shop-api' }, tokenStore: { get: () => '' } },
     });
-    assert.equal(host.element.children[1].className, 'uw-shop-opening');
-    assert.deepEqual(host.element.children[1].children.map((child) => child.tagName), ['span', 'strong', 'p']);
-    assert.equal(host.element.children[1].children[2].textContent, 'Do‘kon ochilmoqda…');
+    assert.match(host.element.children[1].className, /ustore-welcome/);
+    assert.deepEqual(host.element.children[1].children.map((child) => child.tagName), ['div', 'div']);
+    assert.equal(host.element.children[1].children[1].children[1].textContent, 'Do‘kon / Xush kelibsiz');
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'HELLO' });
     const { nonce } = browser.sent[0].message;
     await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'REQUEST', nonce, id: 'guest-orders', action: 'get_my_orders' });
@@ -150,7 +163,7 @@ test('both browser entries load the real Mini App scripts through one frame brid
   assert.match(read('platform/index.html'), /web\/shared\/miniapp-frame-bridge\.js/);
   assert.match(read('platform/index.html'), /platform-app\.js/);
   assert.match(read('web/app.js'), /createMiniAppFrameHost/);
-  assert.match(read('web/_headers'), /frame-src https:\/\/usmonovshaxrizod1-maker\.github\.io/);
+  assert.match(read('web/_headers'), /frame-src 'self' https:\/\/usmonovshaxrizod1-maker\.github\.io/);
   assert.match(read('web/_headers'), /script-src 'self'/);
   const host = read('web/app.js');
   assert.match(host, /mount\(view\.element\);\s*sharedFrame =/);

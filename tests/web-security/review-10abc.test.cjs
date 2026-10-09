@@ -16,7 +16,7 @@ test('release rejects tampered artifacts, stale migration ledger and mismatched 
   cp.execFileSync(process.execPath,['scripts/measure-production.mjs'],{cwd:dir});
   cp.execFileSync(process.execPath,['scripts/release-10a-audit.mjs'],{cwd:dir});
   const identity=inspectRelease(dir);
-  assert.equal(identity.maxMigration,118);
+  assert.equal(identity.maxMigration,121);
   assert.equal(evidenceMatches({target:'staging',candidate:identity},identity),true);
   assert.equal(evidenceMatches({target:'staging',candidate:{...identity,sourceSha256:'old'}},identity),false);
   cp.execFileSync(process.execPath,['scripts/release-10b-audit.mjs'],{cwd:dir});

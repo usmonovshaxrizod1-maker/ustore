@@ -6553,3 +6553,287 @@ body.ustore-browser-mode .fc-initial-loader{display:none}
 
 /* Task 17 — packaged + platform-managed category SVGs share one visual contract. */
 .fc-category-svg{display:block;width:100%;height:100%;max-width:100%;max-height:100%;color:currentColor}
+
+/* 2026-10-09 — SHOP APP / browser / tablet+desktop / admin MARKETING only.
+   Legacy .fc-mkt-pro sheets deliberately render as 30rem full-height mobile
+   pages. These overrides are deliberately gated: never affect Telegram Mini
+   App, mobile Web, public marketing pages or other admin dialogs. */
+@media (min-width:768px){
+  /* Marketing pages should use the same usable width as other admin menus.
+     renderPageShell normally applies max-w-md; override only marked marketing
+     bodies, including standalone featured-category and settings pages. */
+  body.ustore-browser-mode.fc-admin-mode #page-container > .max-w-md:has(> :is(.fc-mkt-pro,.fc-marketing-featured-page,.fc-marketing-settings-page)),
+  body.ustore-browser-mode.fc-admin-mode #app-content .fc-page-header + .max-w-md:has(> :is(.fc-mkt-pro,.fc-marketing-featured-page,.fc-marketing-settings-page)){
+    width:100%!important;max-width:1280px!important;min-width:0!important;
+    padding:0 0 48px!important;margin-inline:auto!important;
+  }
+  /* Root menu: 3 independent cards, not seven phone-sized rows. */
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-hub .fc-marketing-hub-grid{
+    display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    flex-direction:initial!important;gap:14px!important;align-items:stretch;
+  }
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-hub .fc-marketing-hub-grid > .fc-profile-menu-row{
+    display:grid!important;min-width:0!important;min-height:106px!important;
+    grid-template-columns:44px minmax(0,1fr) 18px!important;align-content:center;
+    gap:10px!important;padding:14px!important;border:1px solid var(--ustore-border)!important;
+    border-radius:14px!important;background:var(--ustore-card-bg)!important;
+    box-shadow:0 4px 14px rgba(16,24,40,.045)!important;
+  }
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-hub .fc-profile-menu-row .fc-profile-menu-icon{width:44px!important;height:44px!important;border-radius:12px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-hub .fc-profile-menu-copy{min-width:0!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-hub .fc-profile-menu-title{font-size:14px!important;white-space:normal!important;overflow-wrap:anywhere}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-hub .fc-profile-menu-subtitle{font-size:12px!important;line-height:1.45!important;white-space:normal!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-hub .fc-marketing-summary{padding:18px!important;min-height:88px}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-hub .fc-marketing-settings-sep{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding-top:16px!important;margin-top:16px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-hub .fc-marketing-settings-sep > .fc-profile-menu-row{min-width:0!important;min-height:102px!important;padding:14px!important;border:1px solid var(--ustore-border)!important;border-radius:14px!important;background:var(--ustore-card-bg)!important}
+  /* Inner management lists; summary, search, tabs and primary actions stay
+     above the grid. Empty/error/loading states take the full available row. */
+  body.ustore-browser-mode.fc-admin-mode :is(.fc-mkt-pro-banners > .fc-banner-list-stack,
+    .fc-mkt-pro-bundles > .fc-bundle-list-stack,
+    .fc-mkt-pro-promos > .space-y-2,
+    .fc-mkt-pro-tiers > .space-y-2,
+    .fc-mkt-pro-gifts > .space-y-2,
+    .fc-mkt-pro-personal > .space-y-2,
+    .fc-mkt-pro-promo-usage > .space-y-2,
+    .fc-mkt-pro-personal-detail > .space-y-2){
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:14px!important;align-items:start;min-width:0;
+  }
+  body.ustore-browser-mode.fc-admin-mode :is(.fc-mkt-pro-banners > .fc-banner-list-stack,
+    .fc-mkt-pro-bundles > .fc-bundle-list-stack,
+    .fc-mkt-pro-promos > .space-y-2,.fc-mkt-pro-tiers > .space-y-2,
+    .fc-mkt-pro-gifts > .space-y-2,.fc-mkt-pro-personal > .space-y-2,
+    .fc-mkt-pro-promo-usage > .space-y-2,
+    .fc-mkt-pro-personal-detail > .space-y-2) > *{min-width:0!important;margin-top:0!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro .fc-empty-state{grid-column:1/-1}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro :is(.fc-card,.fc-marketing-card,.fc-bundle-list-card,.fc-promo-list-card,.fc-tier-list-card,.fc-gift-list-card,.fc-personal-list-card){max-width:none;min-width:0}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro :is(.fc-banner-library-head,.fc-staff-intro){display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro :is(.fc-banner-library-head,.fc-staff-intro) > .fc-btn,
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro > .fc-btn.w-full{width:auto!important;min-width:170px;padding-inline:20px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro :is(.fc-promo-toolbar,.fc-filter-chip-row){max-width:none;flex-wrap:wrap;gap:10px}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro .fc-banner-slots-grid{max-width:840px!important;gap:12px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-marketing-featured-page .fc-featured-tree{max-width:1100px}
+  body.ustore-browser-mode.fc-admin-mode .fc-marketing-settings-page > .fc-card{max-width:880px}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro .fc-mkt-stats-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro .fc-mkt-stat{min-height:90px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro .fc-mkt-stat :is(p,b){font-size:13px!important;line-height:1.4!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro .fc-mkt-stat b{font-size:22px!important}
+
+  /* Marketing's body-mounted dialogs previously override the 640px desktop
+     breakpoint with full-viewport height/30rem. Restore a centered, bounded
+     desktop modal with a separately scrolling content region. */
+  body.ustore-browser-mode.fc-admin-mode :is(
+    #fc-banner-preview-root,#fc-banner-form-root,#fc-banner-slot-picker-root,
+    #fc-bundle-preview-root,#fc-bundle-form-root,#fc-marketing-picker-root,
+    #fc-promo-preview-root,#fc-promo-form-root,#fc-tier-form-root,
+    #fc-gift-type-root,#fc-coupon-preview-root,#fc-coupon-reward-root,
+    #fc-reward-rule-form-root,#fc-reward-preview-root,
+    #fc-personal-discount-form-root,#fc-personal-discount-picker-root
+  ) > .fc-sheet-overlay{
+    position:fixed!important;inset:0!important;display:flex!important;
+    align-items:center!important;justify-content:center!important;
+    padding:24px!important;background:rgba(15,23,42,.50)!important;
+    overflow:auto!important;overscroll-behavior:contain;
+  }
+  body.ustore-browser-mode.fc-admin-mode :is(
+    #fc-banner-preview-root,#fc-banner-form-root,#fc-banner-slot-picker-root,
+    #fc-bundle-preview-root,#fc-bundle-form-root,#fc-marketing-picker-root,
+    #fc-promo-preview-root,#fc-promo-form-root,#fc-tier-form-root,
+    #fc-gift-type-root,#fc-coupon-preview-root,#fc-coupon-reward-root,
+    #fc-reward-rule-form-root,#fc-reward-preview-root,
+    #fc-personal-discount-form-root,#fc-personal-discount-picker-root
+  ) > .fc-sheet-overlay > .fc-sheet{
+    flex:0 1 auto!important;display:flex!important;flex-direction:column!important;
+    width:min(100%,900px)!important;max-width:900px!important;
+    height:auto!important;min-height:0!important;
+    max-height:calc(100dvh - 48px)!important;
+    margin:auto!important;border:1px solid var(--ustore-border)!important;
+    border-radius:18px!important;background:var(--ustore-card-bg)!important;
+    box-shadow:0 24px 70px rgba(15,23,42,.19)!important;
+    overflow:hidden!important;
+  }
+  body.ustore-browser-mode.fc-admin-mode :is(
+    #fc-banner-preview-root,#fc-banner-form-root,#fc-banner-slot-picker-root,
+    #fc-bundle-preview-root,#fc-bundle-form-root,#fc-marketing-picker-root,
+    #fc-promo-preview-root,#fc-promo-form-root,#fc-tier-form-root,
+    #fc-gift-type-root,#fc-coupon-preview-root,#fc-coupon-reward-root,
+    #fc-reward-rule-form-root,#fc-reward-preview-root,
+    #fc-personal-discount-form-root,#fc-personal-discount-picker-root
+  ) .fc-sheet-body{
+    flex:1 1 auto!important;min-height:0!important;
+    max-height:none!important;overflow-y:auto!important;
+    overscroll-behavior:contain;padding:18px 22px 24px!important;
+  }
+  body.ustore-browser-mode.fc-admin-mode :is(
+    #fc-banner-preview-root,#fc-banner-form-root,#fc-banner-slot-picker-root,
+    #fc-bundle-preview-root,#fc-bundle-form-root,#fc-marketing-picker-root,
+    #fc-promo-preview-root,#fc-promo-form-root,#fc-tier-form-root,
+    #fc-gift-type-root,#fc-coupon-preview-root,#fc-coupon-reward-root,
+    #fc-reward-rule-form-root,#fc-reward-preview-root,
+    #fc-personal-discount-form-root,#fc-personal-discount-picker-root
+  ) .fc-sheet-header{
+    position:static!important;flex-shrink:0!important;min-height:64px!important;
+    padding:14px 22px!important;background:var(--ustore-card-bg)!important;
+  }
+  body.ustore-browser-mode.fc-admin-mode :is(
+    #fc-banner-preview-root,#fc-banner-form-root,#fc-banner-slot-picker-root,
+    #fc-bundle-preview-root,#fc-bundle-form-root,#fc-marketing-picker-root,
+    #fc-promo-preview-root,#fc-promo-form-root,#fc-tier-form-root,
+    #fc-gift-type-root,#fc-coupon-preview-root,#fc-coupon-reward-root,
+    #fc-reward-rule-form-root,#fc-reward-preview-root,
+    #fc-personal-discount-form-root,#fc-personal-discount-picker-root
+  ) .fc-sheet-footer{
+    position:static!important;flex-shrink:0!important;
+    padding:12px 22px!important;background:var(--ustore-card-bg)!important;
+  }
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-sheet .fc-sheet-title{font-size:18px!important;line-height:1.3!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form .fc-sheet-body{
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    align-content:start;align-items:start;gap:12px 16px!important;
+  }
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form .fc-sheet-body > :not(.fc-mini-field){grid-column:1/-1;min-width:0;margin-top:0!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form .fc-sheet-body > .fc-mini-field{min-width:0;margin:0!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form .fc-form-section-title{
+    font-size:13px!important;line-height:1.45!important;
+    margin:10px 0 0!important;padding:10px 12px!important;
+  }
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form .fc-mini-field{padding:11px 12px!important;gap:7px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form .fc-mini-field > span:first-child{font-size:12px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form :is(input,select,textarea){font-size:14px!important;line-height:1.45!important;min-height:42px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form :is(.fc-tab,.fc-selection-launch b,.fc-settings-toggle-row b){font-size:13px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form :is(.fc-selection-launch small,.fc-settings-toggle-row small){font-size:12px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form .fc-tabs{display:flex;flex-wrap:wrap!important;gap:8px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-form .fc-tab{flex:1 1 110px;min-height:42px!important;padding:8px!important}
+  body.ustore-browser-mode.fc-admin-mode .fc-mkt-pro-sheet :is(button,input,select,textarea){max-width:100%}
+  body.ustore-browser-mode.fc-admin-mode #fc-marketing-picker-root .fc-hier-picker-body,
+  body.ustore-browser-mode.fc-admin-mode #fc-personal-discount-picker-root .fc-personal-picker-body{min-height:0!important;overflow-y:auto!important}
+  body.ustore-browser-mode.fc-admin-mode #fc-banner-preview-root .fc-banner-detail-media img{max-height:300px;object-fit:contain}
+}
+@media (min-width:1200px){
+  body.ustore-browser-mode.fc-admin-mode :is(.fc-mkt-pro-banners > .fc-banner-list-stack,
+    .fc-mkt-pro-bundles > .fc-bundle-list-stack,.fc-mkt-pro-promos > .space-y-2,
+    .fc-mkt-pro-tiers > .space-y-2,.fc-mkt-pro-gifts > .space-y-2,
+    .fc-mkt-pro-personal > .space-y-2){grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+
+/* Category visual choices: true system emoji or alpha-preserving image, shared by Mini App and Web. */
+.fc-category-icon-frame:has(.fc-category-visual-image), .fc-category-icon-frame:has(.fc-category-native-emoji),
+.fc-featured-cat-icon:has(.fc-category-visual-image), .fc-featured-cat-icon:has(.fc-category-native-emoji) {background:transparent;border-color:transparent;box-shadow:none}
+.fc-category-visual-image{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;object-position:center;background:transparent!important;border:0;box-shadow:none;mix-blend-mode:normal}
+.fc-category-native-emoji{display:inline-flex;align-items:center;justify-content:center;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;font-size:clamp(22px,2.7rem,42px);line-height:1;white-space:nowrap;background:transparent}
+.fc-cat-nav-icon .fc-category-native-emoji{font-size:1.1rem}
+.fc-cat-nav-icon .fc-category-visual-image{width:1.25rem;height:1.25rem}
+.fc-featured-cat-icon .fc-category-native-emoji{font-size:1.65rem}
+.fc-category-image-empty{display:grid;place-items:center;color:var(--ustore-text-muted,#64748b)}
+.fc-category-visual-editor{display:grid;gap:10px;padding-top:8px}
+.fc-category-visual-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:3px;background:#f1f5f9;border-radius:12px}
+.fc-category-visual-switch button{min-height:39px;padding:6px;border-radius:9px;font-size:12px;font-weight:750;border:1px solid transparent;color:#475569}
+.fc-category-visual-switch button.is-selected{background:white;border-color:#cbd5e1;box-shadow:0 1px 5px #0f172a12;color:#0f172a}
+.fc-category-visual-preview-line{display:flex;align-items:center;gap:12px;min-width:0}
+.fc-category-visual-preview{width:72px;height:72px;display:grid;place-items:center;flex:none;border-radius:16px;border:1px dashed #cbd5e1;background:transparent;overflow:hidden}
+.fc-category-visual-preview .fc-category-native-emoji{font-size:44px}
+.fc-category-visual-preview-line small,.fc-category-image-hint{color:#64748b;font-size:11px;line-height:1.55}
+.fc-category-emoji-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;max-height:175px;overflow:auto;padding:3px}
+.fc-category-emoji-grid button{display:grid;place-items:center;min-height:37px;border:1px solid #e2e8f0;border-radius:9px;font-size:23px;line-height:1;background:white;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
+.fc-category-emoji-grid button.is-selected{border-color:var(--ustore-button);background:#eff6ff}
+.fc-category-image-actions{display:flex;align-items:center;gap:8px}
+@media(min-width:768px){.fc-category-visual-editor{max-width:560px}.fc-category-emoji-grid{grid-template-columns:repeat(9,minmax(0,1fr))}}
+/* The older featured-category rule uses object-fit:cover; override it for transparent visual cutouts. */
+.fc-featured-cat-icon img.fc-category-visual-image,
+.fc-category-icon-frame img.fc-category-visual-image,
+.fc-category-visual-preview img.fc-category-visual-image{object-fit:contain!important;background:transparent!important}
+
+/* TASK 5 — payment/delivery: payment-card editing is shared by Mini App & Web. */
+.fc-card-replacement{display:grid;gap:12px;min-width:0;padding:15px;border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 20%,var(--ustore-border,#e5e7eb));border-radius:15px;background:color-mix(in srgb,var(--ustore-primary,#2563eb) 4%,var(--ustore-card-bg,#fff))}
+.fc-card-replacement-summary{display:flex;align-items:center;gap:12px;min-width:0}
+.fc-card-replacement-summary>span{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;border-radius:13px;color:var(--ustore-primary,#2563eb);background:color-mix(in srgb,var(--ustore-primary,#2563eb) 10%,#fff)}
+.fc-card-replacement-summary>div,.fc-card-replacement-heading{min-width:0;display:flex;flex-direction:column;gap:4px}
+.fc-card-replacement-summary b{font-size:15px;color:var(--ustore-text,#172033);overflow-wrap:anywhere}
+.fc-card-replacement-summary small,.fc-card-replacement-heading small{font-size:12px;line-height:1.45;color:var(--ustore-secondary-text,#64748b)}
+.fc-card-replacement-heading b{font-size:15px;color:var(--ustore-text,#172033)}
+.fc-card-edit-button,.fc-card-save-button,.fc-card-cancel-button{min-height:44px;padding:10px 15px;border-radius:11px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:800;cursor:pointer}
+.fc-card-edit-button{width:100%;border:1px solid color-mix(in srgb,var(--ustore-primary,#2563eb) 38%,var(--ustore-border,#dbe4ef));color:var(--ustore-primary,#2563eb);background:var(--ustore-card-bg,#fff)}
+.fc-card-save-button{border:1px solid #b5eac5;color:#166534;background:#dcfce7}
+.fc-card-cancel-button{border:1px solid var(--ustore-border,#e5e7eb);color:var(--ustore-secondary-text,#475569);background:var(--ustore-card-bg,#fff)}
+.fc-card-save-button:disabled,.fc-card-cancel-button:disabled{opacity:.5;cursor:wait}
+.fc-card-replacement-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.fc-card-replacement-fields .fc-mini-field input{min-height:44px;font-size:14px}
+.fc-card-receipt{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:750;color:var(--ustore-text,#172033)}
+.fc-card-receipt input{width:17px;height:17px;accent-color:var(--ustore-primary,#2563eb)}
+.fc-card-security-note{font-size:11px;line-height:1.55;color:var(--ustore-secondary-text,#64748b)}
+.fc-card-replacement-actions{display:flex;gap:10px;flex-wrap:wrap}
+.fc-card-replacement-actions button{flex:1 1 125px}
+.fc-fulfillment-workspace,.fc-fulfillment-main{min-width:0}
+.fc-fulfillment-desktop-sidebar{display:none}
+.fc-payment-settings-panel,.fc-delivery-config-grid,.fc-post-provider-grid,.fc-qr-provider-grid{display:grid;gap:14px;min-width:0}
+.fc-payment-settings-primary,.fc-payment-settings-regions,.fc-delivery-general-column,.fc-delivery-regions-column{min-width:0}
+.fc-payment-settings-primary{display:grid;align-content:start;gap:14px}
+.fc-payment-settings-regions,.fc-delivery-regions-column{display:grid;align-content:start;gap:12px}
+.fc-fulfillment-subtitle{font-size:13px;font-weight:850;color:var(--ustore-text,#172033)}
+/* Save action bar has important display elsewhere; hidden needs to win. */
+.fc-icon-action-bar.hidden{display:none!important}
+
+/* The extended layout must ONLY affect Shop App / browser Admin on tablet & desktop.
+   Mobile Web and Telegram Mini App use the exact same functional markup in one column. */
+@media(min-width:768px){
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-workspace{max-width:1240px;margin-inline:auto}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-workspace.is-detail{display:grid;grid-template-columns:minmax(174px,23%) minmax(0,1fr);gap:16px;align-items:start}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-desktop-sidebar{display:grid;position:sticky;top:16px;gap:7px;padding:14px;background:var(--ustore-card-bg,#fff);border:1px solid var(--ustore-border,#e5e7eb);border-radius:16px;box-shadow:0 5px 20px rgba(15,23,42,.035)}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-side-heading{font-size:12px;font-weight:900;letter-spacing:.025em;color:var(--ustore-secondary-text,#64748b);padding:3px 7px 8px}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-side-link{min-width:0;display:flex;align-items:center;gap:10px;padding:12px 10px;text-align:left;border:1px solid transparent;border-radius:11px;background:transparent;color:var(--ustore-secondary-text,#475569)}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-side-link span{min-width:0;display:flex;flex-direction:column;gap:4px}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-side-link b{font-size:13px;line-height:1.2;color:var(--ustore-text,#172033)}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-side-link small{font-size:11px;line-height:1.3;color:var(--ustore-secondary-text,#64748b)}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-side-link svg{flex-shrink:0}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-side-link:hover,body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-side-link.is-active{background:color-mix(in srgb,var(--ustore-primary,#2563eb) 9%,var(--ustore-card-bg,#fff));border-color:color-mix(in srgb,var(--ustore-primary,#2563eb) 24%,var(--ustore-border,#e5e7eb));color:var(--ustore-primary,#2563eb)}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:stretch}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-choice-grid .fc-acquiring-integration-card{min-width:0;min-height:112px;border-radius:16px;box-shadow:0 4px 16px rgba(15,23,42,.05);padding:16px}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-choice-grid .fc-acquiring-integration-copy b{font-size:15px}
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-choice-grid .fc-acquiring-integration-copy small{font-size:12px}
+  body.ustore-browser-mode.fc-admin-mode .fc-payment-settings-panel,body.ustore-browser-mode.fc-admin-mode .fc-delivery-config-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+  body.ustore-browser-mode.fc-admin-mode .fc-payment-settings-primary,body.ustore-browser-mode.fc-admin-mode .fc-payment-settings-regions,body.ustore-browser-mode.fc-admin-mode .fc-delivery-regions-column{background:var(--ustore-card-bg,#fff);border:1px solid var(--ustore-border,#e5e7eb);border-radius:16px;padding:17px}
+  body.ustore-browser-mode.fc-admin-mode .fc-payment-settings-primary{align-self:start}
+  body.ustore-browser-mode.fc-admin-mode .fc-delivery-body-shell{padding:16px}
+  body.ustore-browser-mode.fc-admin-mode .fc-delivery-region-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+  body.ustore-browser-mode.fc-admin-mode .fc-delivery-region-card,body.ustore-browser-mode.fc-admin-mode .fc-delivery-provider-card{min-width:0}
+  body.ustore-browser-mode.fc-admin-mode .fc-delivery-general-card{padding:15px;gap:12px}
+  body.ustore-browser-mode.fc-admin-mode .fc-post-provider-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  body.ustore-browser-mode.fc-admin-mode .fc-qr-provider-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  body.ustore-browser-mode.fc-admin-mode .fc-card-replacement-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.ustore-browser-mode.fc-admin-mode .fc-payment-settings-panel .fc-mini-field input{font-size:14px}
+}
+@media(min-width:1150px){
+  body.ustore-browser-mode.fc-admin-mode .fc-fulfillment-choice-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  body.ustore-browser-mode.fc-admin-mode .fc-payment-settings-panel,body.ustore-browser-mode.fc-admin-mode .fc-delivery-config-grid{grid-template-columns:minmax(0,46%) minmax(0,1fr);align-items:start}
+  body.ustore-browser-mode.fc-admin-mode .fc-payment-settings-panel .fc-delivery-region-list,body.ustore-browser-mode.fc-admin-mode .fc-delivery-config-grid .fc-delivery-region-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  body.ustore-browser-mode.fc-admin-mode .fc-card-replacement-fields{grid-template-columns:minmax(0,1fr)}
+}
+
+/* TASK 6 — Category visuals, Android/WebView-safe: no opaque chip behind native emoji
+   or an alpha-channel PNG/WebP. No :has() dependency, so Telegram and Web match. */
+.fc-category-icon-frame.fc-category-visual-shell,
+.fc-featured-cat-icon.fc-category-visual-shell,
+.fc-cat-nav-icon.fc-category-visual-shell,
+.fc-category-visual-shell.fc-category-icon-frame,
+.fc-category-visual-shell.fc-featured-cat-icon{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+.fc-category-visual-shell .fc-category-native-emoji,
+.fc-category-visual-shell .fc-category-visual-image{
+  background:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+}
+.fc-featured-cat-icon.fc-category-visual-shell img,
+.fc-category-icon-frame.fc-category-visual-shell img{
+  object-fit:contain!important;
+}
+
+/* 9-topshiriq: Word kabi 50 ta haqiqiy shrift — qulay izlash va lazy font loading. */
+.fc-wordmark-style-search{position:sticky;top:-.28rem;z-index:2;width:100%;min-height:2.25rem;box-sizing:border-box;margin:0 0 .3rem;padding:.45rem .65rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.65rem;background:var(--ustore-card-bg,#fff);color:var(--ustore-text,#172033);font:inherit;font-size:.75rem;outline-offset:2px}
+.fc-wordmark-style-option[hidden]{display:none!important}
+.fc-wordmark-online-note{font-size:.62rem;color:var(--ustore-muted-text,#64748b);line-height:1.4}
+.fc-wordmark-style-option-preview .fc-wordmark-text{font-size:.87rem!important}
+@media(min-width:768px){.fc-wordmark-style-menu{max-height:min(20rem,53dvh)}}

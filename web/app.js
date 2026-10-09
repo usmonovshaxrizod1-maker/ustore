@@ -5,7 +5,7 @@ import { createButton, createStatePanel } from './components/ui.js';
 import { createTranslator, normalizeLocale } from './i18n/index.js';
 import { localizeCustomerDom } from './i18n/customer-copy.js';
 import { buildCanonicalUrl, createDocumentMetadataManager, sharePage } from './metadata/index.js';
-import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261009flow1';
+import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261009t7';
 import { secureUuidV4 } from './shared/browser-id.js';
 import { shopAuthReturnTo } from './features/auth/return-target.js';
 
@@ -50,6 +50,7 @@ function applyDocumentLocale(locale = uiLocale) {
 function setUiLocale(locale, { persist = true, rerender = true } = {}) {
   const next = applyDocumentLocale(locale);
   if (persist) { try { globalThis.localStorage?.setItem?.(WEB_LOCALE_KEY, next); } catch (_) {} }
+  globalThis.USTORE_SHOP_WELCOME?.update?.(root.querySelector('.ustore-welcome'), { locale:next });
   if (rerender && router) renderRoute(router.getCurrent(), 'locale');
   return next;
 }
@@ -144,7 +145,12 @@ function mountSharedFrame({ kind, routeState, runtime, tenant = null, viewerAcco
       else go(`/profile?${new URLSearchParams({ next: target || '/' }).toString()}`);
     },
     onSignedOut() {
-      if (kind !== 'shop') return;
+      if (kind === 'platform') {
+        platformRuntime = null;
+        if (sharedFrame) { try { sharedFrame.view.destroy(); } catch (_) {} sharedFrame = null; }
+        go('/platform/login', true);
+        return;
+      }
       shopRuntime = null;
       context = null;
       if (sharedFrame) { try { sharedFrame.view.destroy(); } catch (_) {} sharedFrame = null; }
@@ -167,14 +173,7 @@ function shopNameHintFromHostname(hostname = globalThis.location?.hostname) {
   return slug.split('-').filter(Boolean).map((part) => part ? part[0].toUpperCase() + part.slice(1) : '').join(' ') || 'Do‘kon';
 }
 function shopOpeningView({ name = '', logoUrl = null } = {}) {
-  const section = document.createElement('section');
-  section.className = 'uw-shop-opening';
-  section.setAttribute('role','status'); section.setAttribute('aria-busy','true');
-  const logo = document.createElement('span'); logo.className = 'uw-shop-opening__logo';
-  if (logoUrl) { const img=document.createElement('img'); img.src=String(logoUrl); img.alt=''; logo.append(img); }
-  const title=document.createElement('strong'); title.textContent=String(name || shopNameHintFromHostname() || 'Do‘kon');
-  const message=document.createElement('p'); message.textContent='Do‘kon ochilmoqda…';
-  section.append(logo,title,message); return section;
+  return globalThis.USTORE_SHOP_WELCOME.create({name:name || shopNameHintFromHostname(),logoUrl,locale:uiLocale});
 }
 function launchView({ mode = 'platform', name = '', logoUrl = null, message = '' } = {}) {
   const shop = mode === 'shop';
@@ -368,7 +367,7 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261009flow1');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261009t7');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
@@ -408,8 +407,8 @@ function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
   if (!loginFeatureModulePromise) {
-    loginFeatureModulePromise = import('./features/auth/login.js?v=20261009flow1')
-      .catch(() => import(`./features/auth/login.js?v=20261009flow1&retry=${Date.now()}`))
+    loginFeatureModulePromise = import('./features/auth/login.js?v=20261009t7')
+      .catch(() => import(`./features/auth/login.js?v=20261009t7&retry=${Date.now()}`))
       .catch((error) => { loginFeatureModulePromise = null; throw error; });
   }
   return loginFeatureModulePromise;
@@ -551,7 +550,7 @@ async function renderPlatformHome(routeState, epoch) {
     mountSharedFrame({ kind:'platform', routeState, runtime, viewerAccountId:session.data?.accountId });
     return;
   }
-  const mod = await import('./features/platform-home/index.js?v=20261008admin1');
+  const mod = await import('./features/platform-home/index.js?v=20261009landing2');
   if (epoch !== renderEpoch) return;
   const controller = mod.createPlatformHomeController({ platformPort: runtime.platform });
   const view = reactive(controller, (snapshot) => mod.createPlatformHomeView({
@@ -595,9 +594,14 @@ async function renderPlatformLogin(routeState, epoch) {
       returnTo = `/platform/subscriptions?${q}`;
     }
   }
+  // Validate existing session before showing a guest prompt. No new auth backend.
+  const existing = await runtime.auth.getSession();
+  if (epoch !== renderEpoch) return;
+  if (existing.ok) { go(returnTo, true); return; }
   const controller = loginFeature.createLoginController({
     authPort: runtime.auth,
     returnTo,
+    initialTab: 'chooser',
     onSignedIn: () => go(returnTo, true),
     onRedirect: (url) => location.assign(url),
   });
@@ -607,7 +611,7 @@ async function renderPlatformLogin(routeState, epoch) {
   const top = document.createElement('div'); top.className = 'uw-platform-auth-shell__top';
   const back = createButton({ label: '← Bosh sahifa', variant: 'ghost', onClick: () => go(home) });
   top.append(back);
-  const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state: snapshot, locale:uiLocale }));
+  const view = reactive(controller, (snapshot) => loginFeature.createLoginView({ controller, state: snapshot, locale:uiLocale, platformStyle: true }));
   shell.append(top, view.element);
   mount(shell); remember(view.destroy);
   // Official Telegram OAuth redirects back with code/state; no polling or
@@ -1013,28 +1017,24 @@ async function renderRoute(routeState, reason = 'refresh') {
     const runtimeResult=await ensureShopRuntime(); if(epoch!==renderEpoch)return;
     if(!runtimeResult.ok){mount(stateView('error','Do‘kon ochilmadi',runtimeResult.error?.message||'Do‘kon manzili aniqlanmadi.','Qayta urinish',()=>{shopRuntime=null;renderRoute(routeState);}));return;}
     const tenantBrand = runtimeResult.data?.tenant || {};
-    const waitingLaunch = root.querySelector('.uw-shop-opening');
-    if (waitingLaunch) {
-      const title = waitingLaunch.querySelector('strong');
-      if (title && tenantBrand.shopName) title.textContent = tenantBrand.shopName;
-      if (tenantBrand.logoUrl) {
-        const logoHost = waitingLaunch.querySelector('.uw-shop-opening__logo');
-        if (logoHost && !logoHost.querySelector('img')) {
-          const img = new Image(); img.alt = ''; img.src = String(tenantBrand.logoUrl); logoHost.replaceChildren(img);
-        }
-      }
-    }
+    const waitingLaunch = root.querySelector('.ustore-welcome');
+    if (waitingLaunch) globalThis.USTORE_SHOP_WELCOME.update(waitingLaunch, {
+      name:tenantBrand.shopName || shopHint, logoUrl:tenantBrand.logoUrl || null, locale:uiLocale,
+    });
     try {
       if (tenantBrand.shopName || tenantBrand.logoUrl) globalThis.localStorage?.setItem?.(`ustore:shop:brand:${location.hostname.toLowerCase()}`, JSON.stringify({ name:tenantBrand.shopName || shopHint, logoUrl:tenantBrand.logoUrl || null }));
     } catch (_) {}
     const contextResult=await refreshContext(epoch); if(epoch!==renderEpoch)return;
     if(!contextResult.ok){mount(stateView('error','Do‘kon ochilmadi',contextResult.error?.message||'Kontekst yuklanmadi.','Qayta urinish',()=>renderRoute(routeState)));return;}
+    const welcome = root.querySelector('.ustore-welcome');
+    if (welcome) globalThis.USTORE_SHOP_WELCOME.update(welcome, {name:context.shop.name,logoUrl:context.shop.logoUrl,theme:context.shop.designSettings,locale:uiLocale});
     try { globalThis.sessionStorage?.setItem?.(`ustore:shop:entered:${location.hostname.toLowerCase()}`, '1'); } catch (_) {}
+    try { globalThis.localStorage?.setItem?.(`ustore:shop:brand:${location.hostname.toLowerCase()}`, JSON.stringify({name:context.shop.name,logoUrl:context.shop.logoUrl,theme:context.shop.designSettings || null})); } catch (_) {}
     const protectedRoute=routeState.route.auth||routeState.route.admin||routeState.route.id==='checkout';
     if(protectedRoute&&!context.actor){await renderShopSignIn(routeState,epoch);return;}
     if(routeState.route.admin&&!actorIsAdmin(context.actor)){mountShell(routeState,stateView('permission','Ruxsat yo‘q','Bu admin sahifasi uchun do‘kon vakolati kerak.'),'Ruxsat yo‘q');return;}
     if (!await applySharedShopMetadata(routeState, epoch) || epoch !== renderEpoch) return;
-    mountSharedFrame({ kind:'shop', routeState, runtime:shopRuntime, tenant:shopRuntime.tenant });
+    mountSharedFrame({ kind:'shop', routeState, runtime:shopRuntime, tenant:{...shopRuntime.tenant,shopName:context.shop.name,logoUrl:context.shop.logoUrl,designSettings:context.shop.designSettings} });
     return;
     switch(routeState.route.id){
       case 'home': return renderHome(routeState,epoch);
@@ -1064,7 +1064,7 @@ async function startWebApp() {
       (location.pathname === '/auth/telegram/callback' || location.pathname === '/' || !!previewBase())) {
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261009flow1'), import('./services/live/auth.js?v=20261009flow1'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261009t7'), import('./services/live/auth.js?v=20261009t7'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,

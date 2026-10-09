@@ -54,16 +54,9 @@
 
       const shell = document.querySelector('#ustore-web-app .uw-shop-opening');
       if (!shell) return;
-      const title = shell.querySelector('strong');
-      if (title) title.textContent = name;
-      const logoHost = shell.querySelector('.uw-shop-opening__logo');
-      if (cached?.logoUrl && /^https:\/\//i.test(cached.logoUrl) && logoHost && !logoHost.querySelector('img')) {
-        const img = document.createElement('img');
-        img.src = cached.logoUrl;
-        img.alt = '';
-        img.addEventListener('error', () => img.remove(), { once: true });
-        logoHost.append(img);
-      }
+      let locale = 'uz';
+      try { locale = globalThis.localStorage?.getItem('ustore.web.locale') || 'uz'; } catch (_) {}
+      globalThis.USTORE_SHOP_WELCOME?.update?.(shell, {name,logoUrl:cached?.logoUrl || null,theme:cached?.theme,locale});
     } catch (_) {}
   };
 

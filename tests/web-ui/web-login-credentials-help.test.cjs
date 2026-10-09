@@ -57,7 +57,7 @@ test('all Mini App profiles offer own credentials and only a verified shop Teleg
   assert.match(shop, /const commonTailMenu = `[\s\S]*?Web login va parol[\s\S]*?openShopWebCredentials\(\)/);
   assert.match(shop, /callApi\('shop_web_credentials_open'/);
   assert.match(shop, /case 'WEB_CREDENTIALS': renderWebCredentialsPage\(container\)/);
-  assert.match(shop, /function closePage\(\) \{\s*forgetWebCredentialSecret\(\)/);
+  assert.match(shop, /function closePage\(\) \{[\s\S]*?forgetWebCredentialSecret\(\)/);
   const resetBody = shop.slice(shop.indexOf('async function resetShopWebCredentials()'), shop.indexOf('async function changeShopWebLogin()'));
   assert.doesNotMatch(resetBody, /await fcConfirm\(/);
   assert.match(platform, /async function openWebCredentialsFromProfile\(\)[\s\S]*?callPlatformApi\('platform_prepare_web_credentials'/);

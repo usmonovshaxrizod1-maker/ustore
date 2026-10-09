@@ -1,6 +1,6 @@
 /*
   Cache-Control: no-cache
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://usmonovshaxrizod1-maker.github.io; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'self' https://usmonovshaxrizod1-maker.github.io; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
@@ -42,7 +42,15 @@
   X-Robots-Tag: noindex, nofollow, noarchive
 /platform/profile*
   X-Robots-Tag: noindex, nofollow, noarchive
+/platform/notifications*
+  X-Robots-Tag: noindex, nofollow, noarchive
 /platform/admin
   X-Robots-Tag: noindex, nofollow, noarchive
 /platform/admin/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+# Trusted, same-origin Web PLATFORM miniapp (not the Telegram deployment).
+/platform-ui/*
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://telegram.org https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src 'none'; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; base-uri 'none'; frame-ancestors 'self'
   X-Robots-Tag: noindex, nofollow, noarchive

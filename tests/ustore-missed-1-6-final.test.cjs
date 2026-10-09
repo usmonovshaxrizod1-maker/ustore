@@ -34,15 +34,13 @@ test('2 — wordmark style chooser is Word-like, scrollable, and offers many del
   const presetStart = app.indexOf('const WORDMARK_PRESETS = [');
   const presetEnd = app.indexOf('];', presetStart);
   const presets = app.slice(presetStart, presetEnd);
-  assert.ok((presets.match(/\{ id:/g) || []).length >= 12, 'expected 12+ styles, not six near-duplicates');
-  for (const family of ['sans', 'serif', 'mono', 'condensed', 'wide', 'rounded', 'display']) {
-    assert.match(presets, new RegExp(`family: '${family}'`));
-  }
+  assert.equal((presets.match(/\{ id:/g) || []).length, 50, 'exactly 50 real font choices required');
+  assert.equal(new Set([...presets.matchAll(/font: '([^']+)'/g)].map(x=>x[1])).size,50,'each preset uses a unique genuine family');
   assert.match(app, /fc-wordmark-style-select/);
   assert.match(app, /fc-wordmark-style-menu/);
   assert.match(app, /fc-wordmark-style-option-preview/);
   assert.match(app, /function toggleWordmarkStyleMenu\(\)/);
-  assert.match(app, /wordmarkStyleMenuOpen = false;\s*renderModalContainer\(\);/);
+  assert.match(app, /wordmarkStyleMenuOpen = false;[\s\S]{0,160}renderModalContainer\(\);/);
   assert.match(css, /\.fc-wordmark-style-menu\{[^}]*max-height:min\(15rem,42dvh\);[^}]*overflow-y:auto/s);
 });
 
@@ -101,9 +99,9 @@ test('7–8 + 24h report cleanup from previous fixes are still present', () => {
 });
 
 test('cache versions are bumped for the changed Shop App and Platform assets', () => {
-  assert.match(indexHtml, /ustore\.css\?v=325/);
-  assert.match(indexHtml, /ustore-shop-app\.js\?v=325/);
-  assert.match(platformHtml, /platform\.css\?v=40/);
-  assert.match(platformHtml, /platform-app\.js\?v=62/);
+  assert.match(indexHtml, /ustore\.css\?v=331/);
+  assert.match(indexHtml, /ustore-shop-app\.js\?v=333/);
+  assert.match(platformHtml, /platform\.css\?v=43/);
+  assert.match(platformHtml, /platform-app\.js\?v=66/);
 });
 

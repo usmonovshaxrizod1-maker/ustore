@@ -56,17 +56,18 @@ test('N1 landing renders existing product explanation and tariff data without in
   assert.deepEqual(picked,['t-business']);
 });
 
-test('central landing shows all eight stories and manual carousel navigation',async()=>{
+test('central landing shows only saved images and manual carousel navigation',async()=>{
   const {createPlatformHomeController,createPlatformHomeView}=await load('web/features/platform-home/platform-home.js');
-  const controller=createPlatformHomeController({platformPort:{invoke:async()=>({ok:true,data:{tariffs}})}});
+  const landingSlides=[{id:'first',imageUrl:'https://example.com/first.webp'},{id:'second',imageUrl:'https://example.com/second.webp'}];
+  const controller=createPlatformHomeController({platformPort:{invoke:async()=>({ok:true,data:{tariffs,landingSlides}})}});
   await controller.load();
   const view=createPlatformHomeView({controller,state:controller.getState()},new Doc());
-  const slides=flat(view.element).filter(n=>n.className==='uw-platform-showcase__slide');
-  assert.deepEqual(slides.map(n=>n.dataset.story),['channels','catalog','orders','inventory','marketing','checkout','analytics','branding']);
-  const next=buttons(view.element).find(n=>n.attributes['aria-label']==='Keyingi imkoniyat');
+  const slides=flat(view.element).filter(n=>n.className.includes('uw-platform-showcase__slide'));
+  assert.deepEqual(slides.map(n=>n.children[0].src),landingSlides.map(s=>s.imageUrl));
+  const next=buttons(view.element).find(n=>n.attributes['aria-label']==='Keyingi rasm');
   next.listeners.click();
-  assert.equal(slides[1].attributes['aria-hidden'],'false');
-  assert.equal(slides[0].attributes['aria-hidden'],'true');
+  const track=flat(view.element).find(n=>n.className==='uw-platform-showcase__track');
+  assert.equal(track.style.transform,'translateX(-100%)');
   view.destroy();
 });
 

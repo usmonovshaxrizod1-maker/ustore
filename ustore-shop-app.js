@@ -1153,17 +1153,127 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
     function mapCategoryFromDB(r) {
       return { id: r.id, name: r.name, nameRu: r.name_ru || null, parentId: r.parent_id, img: r.img,
-        iconId: r.icon_id || null, iconColor: r.icon_color || 'brand', sortOrder: r.sort_order || 0 };
+        iconId: r.icon_id || null, iconColor: r.icon_color || 'brand', iconType: r.icon_type || 'legacy', iconEmoji: r.icon_emoji || null, sortOrder: r.sort_order || 0 };
     }
     const CATEGORY_ICON_SPRITE = './web/assets/category-icons/category-icons.svg';
     const CATEGORY_ICON_COLORS = ['brand','blue','green','rose','amber','slate'];
     let categoryIconDraft = { id:'stationery_folder', color:'brand' };
+    // Individual category visual: native emoji OR a transparent-capable uploaded image.
+    // 'legacy' is retained ONLY for categories using their earlier SVG icons.
+    let categoryVisualDraft = { type:'emoji', emoji:'📦', imageUrl:null, file:null, previewUrl:null };
+    const CATEGORY_EMOJI_OPTIONS = ['📦','🛍️','🛒','🍎','🥦','🍞','🥩','🥛','☕','🍰','🍕','🍔','🍫','🧃','🍵','🌸','💐','🧴','💄','💅','🧼','👗','👕','👖','👟','👠','👜','⌚','💍','🧢','🧣','🧸','🎁','🎉','📚','✏️','🎨','🖥️','💻','📱','🎧','📷','⌨️','🕹️','🔌','💡','🏠','🪑','🛏️','🧹','🧺','🚗','🚲','🏍️','🏀','⚽','🏋️','💪','🏕️','🧘','🎸','🎼','🐶','🐱','🌿','🌱','🌳','🪴','🔧','🛠️','⚙️','🧰','💊','🩺','🍼','👶','🕶️','🧳','🗂️'];
+    function categoryEmojiValid(value) {
+      const chars = Array.from(String(value || '').trim());
+      return chars.length > 0 && chars.length <= 16 && /\p{Extended_Pictographic}/u.test(chars.join('')) && !/[<>&\r\n]/.test(chars.join(''));
+    }
+    function releaseCategoryVisualPreview() {
+      if (categoryVisualDraft.previewUrl && categoryVisualDraft.previewUrl.startsWith('blob:')) {
+        try { URL.revokeObjectURL(categoryVisualDraft.previewUrl); } catch (_) {}
+      }
+      categoryVisualDraft.previewUrl = null;
+    }
+    function resetCategoryVisualDraft(category) {
+      releaseCategoryVisualPreview();
+      categoryVisualDraft = {
+        type: category ? (category.iconType || 'legacy') : 'emoji',
+        emoji: category?.iconEmoji || '📦',
+        imageUrl: category?.img && /^https:\/\//i.test(category.img) ? category.img : null,
+        file: null, previewUrl: null,
+      };
+    }
+    function categoryVisualPreviewMarkup() {
+      return categoryIconMarkup({
+        iconType:categoryVisualDraft.type,
+        iconEmoji:categoryVisualDraft.emoji,
+        img:categoryVisualDraft.previewUrl || categoryVisualDraft.imageUrl,
+        iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color,
+      });
+    }
+    function categoryVisualEditorHtml() {
+      const type = categoryVisualDraft.type;
+      return `<div class="fc-category-visual-editor" id="fc-category-visual-editor">
+        <div class="fc-category-visual-switch" role="group" aria-label="${tr('Katalog belgisi turi','Тип значка каталога')}">
+          <button type="button" class="${type==='emoji'?'is-selected':''}" aria-pressed="${type==='emoji'}" onclick="setCategoryVisualType('emoji')">${tr('Emoji','Эмодзи')}</button>
+          <button type="button" class="${type==='image'?'is-selected':''}" aria-pressed="${type==='image'}" onclick="setCategoryVisualType('image')">${tr('Rasm yuklash','Загрузить изображение')}</button>
+        </div>
+        <div class="fc-category-visual-preview-line"><span class="fc-category-visual-preview" data-category-visual-preview>${categoryVisualPreviewMarkup()}</span>
+        <small>${type==='image' ? tr('Shaffof PNG/WebP fonni saqlaydi. JPG faylidagi oq fon avtomatik o‘chirilmaydi.','Прозрачный фон PNG/WebP сохраняется. Белый фон JPG автоматически не удаляется.') : tr('Har bir kategoriya uchun alohida belgi.','Отдельный значок для каждой категории.')}</small></div>
+        ${type==='emoji' ? `<div class="fc-category-emoji-grid" role="group" aria-label="${tr('Emoji tanlash','Выбрать эмодзи')}">${CATEGORY_EMOJI_OPTIONS.map(emoji=>`<button type="button" class="${categoryVisualDraft.emoji===emoji?'is-selected':''}" aria-label="${escapeHtml(emoji)}" aria-pressed="${categoryVisualDraft.emoji===emoji}" onclick="chooseCategoryEmoji('${emoji}')">${emoji}</button>`).join('')}</div>
+          <label class="fc-shop-field"><span>${tr('Boshqa emoji','Другое эмодзи')}</span><input type="text" class="fc-shop-input" maxlength="32" value="${escapeHtml(categoryVisualDraft.emoji)}" placeholder="📦" onchange="chooseCategoryEmoji(this.value)"></label>` : ''}
+        ${type==='image' ? `<div class="fc-category-image-actions"><button type="button" class="fc-btn fc-btn-secondary" onclick="document.getElementById('category-visual-file')?.click()"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Rasm tanlash','Выбрать изображение')}</button><input id="category-visual-file" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="onCategoryVisualFilePicked(event)"></div><small class="fc-category-image-hint">${tr('PNG, JPG yoki WebP. 6 MB gacha. Rasm kesilmaydi yoki oq fon qo‘shilmaydi.','PNG, JPG или WebP. До 6 МБ. Изображение не обрезается и белый фон не добавляется.')}</small>` : ''}
+        ${type==='legacy' ? `<small>${tr('Oldingi belgi saqlangan. Uni yangilash uchun Emoji yoki Rasmni tanlang.','Старый значок сохранён. Выберите эмодзи или изображение для замены.')}</small>` : ''}
+      </div>`;
+    }
+    function refreshCategoryVisualEditor() {
+      const root = document.getElementById('fc-category-visual-editor');
+      if (root) { root.outerHTML = categoryVisualEditorHtml(); safeCreateIcons(); }
+    }
+    function setCategoryVisualType(type) {
+      if (type !== 'emoji' && type !== 'image') return;
+      categoryVisualDraft.type = type;
+      refreshCategoryVisualEditor();
+    }
+    function chooseCategoryEmoji(value) {
+      const emoji = String(value || '').trim();
+      if (!categoryEmojiValid(emoji)) {
+        showAppNotice(tr('Haqiqiy emoji tanlang.','Выберите настоящий эмодзи.'));
+        refreshCategoryVisualEditor(); return;
+      }
+      categoryVisualDraft.emoji = emoji;
+      refreshCategoryVisualEditor();
+    }
+    async function onCategoryVisualFilePicked(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!['image/png','image/jpeg','image/webp'].includes(file.type) || file.size > 6 * 1024 * 1024) {
+        showAppNotice(tr('6 MB gacha bo‘lgan PNG, JPG yoki WebP rasmni tanlang.','Выберите PNG, JPG или WebP до 6 МБ.')); return;
+      }
+      releaseCategoryVisualPreview();
+      categoryVisualDraft.file = file;
+      categoryVisualDraft.imageUrl = null;
+      try { categoryVisualDraft.previewUrl = URL.createObjectURL(file); } catch (_) {}
+      refreshCategoryVisualEditor();
+    }
+    async function categoryVisualSavePayload(existing) {
+      const kind = categoryVisualDraft.type;
+      if (kind === 'legacy') return { iconType:'legacy' };
+      if (kind === 'emoji') {
+        if (!categoryEmojiValid(categoryVisualDraft.emoji)) throw new Error(tr('To‘g‘ri emoji tanlang.','Выберите корректный эмодзи.'));
+        return { iconType:'emoji', iconEmoji:categoryVisualDraft.emoji, img:null };
+      }
+      const file = categoryVisualDraft.file;
+      if (!file && !categoryVisualDraft.imageUrl) throw new Error(tr('Kategoriya rasmini tanlang.','Выберите изображение категории.'));
+      if (!file) return { iconType:'image', iconEmoji:null };
+      const prepared = await compressImageToLimit(file, 900000, 720, 0.78);
+      // In some older WebViews a requested WebP compression can fall back to JPEG.
+      // Never let that silently turn a transparent PNG/WebP into an opaque rectangle.
+      const requiresAlphaSafeFormat = file.type === 'image/png' || file.type === 'image/webp';
+      const compressionKeepsAlpha = prepared && (prepared.type === 'image/png' || prepared.type === 'image/webp');
+      const safePrepared = requiresAlphaSafeFormat && !compressionKeepsAlpha ? file : (prepared || file);
+      const image = safePrepared.size <= 6 * 1024 * 1024 ? safePrepared : file;
+      if (image.size > 6 * 1024 * 1024) throw new Error(tr('Rasm juda katta.','Изображение слишком большое.'));
+      return { iconType:'image', iconEmoji:null, imageUpload:{ mimeType:image.type, base64:await fileToBase64(image) } };
+    }
     let categoryIconManifest = null;
     let customCategoryIconMap = new Map();
     let categoryIconPickerQuery = '';
     let categoryIconPickerGroup = 'all';
     let categoryIconPickerChoice = null;
+    function categoryVisualShellClass(category) {
+      return category?.iconType === 'emoji' || category?.iconType === 'image' ? ' fc-category-visual-shell' : '';
+    }
     function categoryIconMarkup(category) {
+      if (category?.iconType === 'emoji') {
+        const emoji = categoryEmojiValid(category?.iconEmoji) ? category.iconEmoji : '📦';
+        return `<span class="fc-category-native-emoji" role="img" aria-label="${escapeHtml(emoji)}">${escapeHtml(emoji)}</span>`;
+      }
+      if (category?.iconType === 'image') {
+        const source = String(category?.img || '');
+        if (/^(https:\/\/|blob:)/i.test(source)) {
+          return `<img class="fc-category-visual-image" src="${escapeHtml(source)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
+        }
+        return `<span class="fc-category-image-empty" aria-hidden="true"><i data-lucide="image" class="w-5 h-5"></i></span>`;
+      }
       const id = String(category?.iconId || 'stationery_folder');
       const color = CATEGORY_ICON_COLORS.includes(category?.iconColor) ? category.iconColor : 'brand';
       const custom = (typeof customCategoryIconMap !== 'undefined' && customCategoryIconMap?.get) ? customCategoryIconMap.get(id) : null;
@@ -1642,6 +1752,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // ACQUIRING_PAYME = shu providerning birlashtirilgan (ulash+sinov+
     // yoqish+hudud) sahifasi.
     let paymentsPageView = 'MENU';
+    let cardReplacementEditorOpen = false;
     // Yetkazib berish parametrlarida bir vaqtda faqat kerakli hudud kartasi ochiq turadi.
     let fulfillmentExpandedRegionKey = null;
     // ROUND14: tumanlar region kartasi ochilishi bilan birdan ko'rinmaydi — alohida tugma bilan ochiladi.
@@ -2136,6 +2247,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       uiLang = uiLang === 'uz' ? 'ru' : 'uz';
       localStorage.setItem('uiLang', uiLang);
       document.documentElement.lang = uiLang;
+      window.USTORE_SHOP_WELCOME?.update?.(document.getElementById('ustore-shop-welcome'), {locale:uiLang});
       render();
     }
     // Admin kiritgan tovar nomi/tavsifi — ruscha tarjimasi bo'lsa va til
@@ -4307,6 +4419,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       requestAnimationFrame(() => applyVisibleTextScale());
       lastRenderedUiKey = currentShopUiKey();
       if (preserveSnapshot && lastRenderedUiKey === uiKeyBeforeRender) restoreShopRenderState(preserveSnapshot);
+      if (authReady) {
+        const welcome = document.getElementById('ustore-shop-welcome');
+        if (browserBridge) window.USTORE_SHOP_WELCOME?.dismiss?.(welcome, {immediate:true});
+        else requestAnimationFrame(() => window.USTORE_SHOP_WELCOME?.dismiss?.(welcome));
+      }
     }
 
     // 38-band: yagona custom tasdiqlash dialogi —
@@ -4438,6 +4555,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function closePage() {
+      if (browserBridge && activePage === 'WEB_CREDENTIALS' && webCredentialState.webPasswordChanged) { void finishShopWebPasswordChange(); return; }
       forgetWebCredentialSecret();
       activePage = null;
       stopSupportThreadPoll(); // task 6: any open support thread's poll must not keep running off-screen
@@ -4448,6 +4566,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function goHomePage() {
+      if (browserBridge && activePage === 'WEB_CREDENTIALS' && webCredentialState.webPasswordChanged) { void finishShopWebPasswordChange(); return; }
       forgetWebCredentialSecret();
       activePage = null;
       currentTab = 'home';
@@ -5767,7 +5886,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const state = card.querySelector('.fc-legal-doc-state');
       if (state) {
         state.classList.toggle('is-on', doc.enabled);
-        state.innerHTML = `<i data-lucide="${doc.enabled ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>${doc.enabled ? tr('Ro‘yxatdan o‘tishda foydalanuvchiga ko‘rinadi va rozilik majburiy.','Показывается при регистрации, согласие обязательно.') : tr('O‘chirilgan — foydalanuvchiga ko‘rinmaydi.','Выключено — пользователю не показывается.')}`;
+        const consentDoc = doc.type === 'PRIVACY' || doc.type === 'TERMS';
+        const visibility = doc.enabled
+          ? (consentDoc ? tr('Ro‘yxatdan o‘tishda foydalanuvchiga ko‘rinadi va rozilik majburiy.','Показывается при регистрации, согласие обязательно.') : tr('Do‘konning hujjatlar bo‘limida ko‘rinadi; ro‘yxatdan o‘tishda alohida rozilik talab qilinmaydi.','Видно в документах магазина; отдельное согласие при регистрации не требуется.'))
+          : tr('O‘chirilgan — foydalanuvchiga ko‘rinmaydi.','Выключено — пользователю не показывается.');
+        state.innerHTML = `<i data-lucide="${doc.enabled ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>${visibility}`;
       }
       syncLegalActionVisibility();
       safeCreateIcons();
@@ -5780,13 +5903,17 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
     function legalDocumentCardHtml(doc) {
       const enabled = doc?.enabled === true;
+      const consentDoc = doc?.type === 'PRIVACY' || doc?.type === 'TERMS';
+      const legalVisibility = enabled
+        ? (consentDoc ? tr('Ro‘yxatdan o‘tishda foydalanuvchiga ko‘rinadi va rozilik majburiy.','Показывается при регистрации, согласие обязательно.') : tr('Do‘konning hujjatlar bo‘limida ko‘rinadi; ro‘yxatdan o‘tishda alohida rozilik talab qilinmaydi.','Видно в документах магазина; отдельное согласие при регистрации не требуется.'))
+        : tr('O‘chirilgan — foydalanuvchiga ko‘rinmaydi.','Выключено — пользователю не показывается.');
       return `<section class="fc-legal-doc-card ${enabled ? 'is-enabled' : ''}" data-legal-doc-type="${escapeHtml(doc.type)}">
         <div class="fc-legal-doc-head">
           <span class="fc-legal-doc-icon"><i data-lucide="${doc.type === 'PRIVACY' ? 'shield-check' : 'file-signature'}" class="w-5 h-5"></i></span>
           <div class="min-w-0"><b>${escapeHtml(legalDocTitle(doc))}</b><small>${tr(`Versiya ${Number(doc.version)||1}`, `Версия ${Number(doc.version)||1}`)}</small></div>
           <label class="fc-toggle"><input type="checkbox" ${enabled ? 'checked' : ''} onchange="setLegalDocumentEnabled('${doc.type}',this.checked)"><span class="fc-toggle-track"></span></label>
         </div>
-        <div class="fc-legal-doc-state ${enabled ? 'is-on' : ''}"><i data-lucide="${enabled ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>${enabled ? tr('Ro‘yxatdan o‘tishda foydalanuvchiga ko‘rinadi va rozilik majburiy.','Показывается при регистрации, согласие обязательно.') : tr('O‘chirilgan — foydalanuvchiga ko‘rinmaydi.','Выключено — пользователю не показывается.')}</div>
+        <div class="fc-legal-doc-state ${enabled ? 'is-on' : ''}"><i data-lucide="${enabled ? 'eye' : 'eye-off'}" class="w-3.5 h-3.5"></i>${legalVisibility}</div>
         <details class="fc-legal-editor" open>
           <summary>${tr('O‘zbekcha matnni tahrirlash','Редактировать узбекский текст')}<i data-lucide="chevron-down" class="w-4 h-4"></i></summary>
           <textarea oninput="setLegalDocumentContent('${doc.type}','uz',this.value)" spellcheck="false">${escapeHtml(doc.contentUz || '')}</textarea>
@@ -5803,7 +5930,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const body = `<div class="fc-legal-settings">
         <div class="fc-legal-template-warning">
           <span><i data-lucide="scale" class="w-5 h-5"></i></span>
-          <div><b>${tr('Umumiy huquqiy shablon','Общий юридический шаблон')}</b><p>${tr("UStorE amaldagi O‘zbekiston qonunchiligiga tayangan umumiy shablonni beradi. Xohlasangiz shu holicha yoqing, xohlasangiz do‘koningizga moslab tahrirlang. Bu individual yuridik xulosa emas; maxsus faoliyat yoki tovarlar bo‘lsa moslashtirish tavsiya etiladi.", "UStorE предоставляет общий шаблон на основе действующего законодательства Узбекистана. Можно включить его как есть или адаптировать под магазин. Это не индивидуальное юридическое заключение; для специальных видов деятельности рекомендуется адаптация.")}</p></div>
+          <div><b>${tr('Umumiy huquqiy shablon','Общий юридический шаблон')}</b><p>${tr("UStorE umumiy shablonlarni beradi. Hujjatni yoqishdan oldin sotuvchi rekvizitlari, haqiqiy to‘lov va yetkazish usullari, tovar turiga oid qoida hamda majburiy iste’molchi huquqlariga mosligini tekshiring. Bu individual yuridik xulosa emas.", "UStorE предоставляет общие шаблоны. Перед включением проверьте реквизиты продавца, реальные способы оплаты и доставки, правила для ваших товаров и обязательные права потребителей. Это не индивидуальное юридическое заключение.")}</p></div>
         </div>
         <div class="fc-legal-doc-list">${docs.map(legalDocumentCardHtml).join('')}</div>
         <div id="legal-dirty-actions" class="fc-legal-savebar fc-icon-action-bar ${legalDraftIsDirty() ? '' : 'hidden'}"><button type="button" onclick="saveLegalSettings()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-[18px] h-[18px]"></i></button><button type="button" onclick="cancelLegalDraftChanges()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-[18px] h-[18px]"></i></button></div>
@@ -6140,7 +6267,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function cancelDeliveryMethodDetail() { fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS); closeDeliveryMethodDetail(); }
     function renderDeliverySettingsMenuHtml() {
       const kinds = ['FREE','FIXED','TAXI','POST'];
-      return `<div class="fc-acquiring-integration-list fc-delivery-menu-list">${kinds.map(kind=>{const meta=DELIVERY_PAGE_META[kind]; return `<button type="button" onclick="setDeliveryPageView('${kind}')" class="fc-acquiring-integration-card"><span class="fc-acquiring-integration-icon"><i data-lucide="${meta.icon}" class="w-5 h-5"></i></span><span class="fc-acquiring-integration-copy"><b>${meta.title()}</b><small>${deliveryMethodStatus(kind)}</small></span><span class="fc-acquiring-integration-chevron">›</span></button>`}).join('')}</div>`;
+      return `<div class="fc-acquiring-integration-list fc-delivery-menu-list fc-fulfillment-choice-grid">${kinds.map(kind=>{const meta=DELIVERY_PAGE_META[kind]; return `<button type="button" onclick="setDeliveryPageView('${kind}')" class="fc-acquiring-integration-card"><span class="fc-acquiring-integration-icon"><i data-lucide="${meta.icon}" class="w-5 h-5"></i></span><span class="fc-acquiring-integration-copy"><b>${meta.title()}</b><small>${deliveryMethodStatus(kind)}</small></span><span class="fc-acquiring-integration-chevron">›</span></button>`}).join('')}</div>`;
     }
     function fulfillmentDraftDirty() {
       if (!fulfillmentDraft) return false;
@@ -6167,17 +6294,36 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       rerenderFulfillmentBody();
       syncFulfillmentActionVisibility();
     }
+    // Browser-only desktop/tablet sidebar. Mobile Web and Telegram Mini App retain their original flow.
+    function fulfillmentDesktopSidebar(kind) {
+      const items = kind === 'DELIVERY'
+        ? ['FREE','FIXED','TAXI','POST'].map(id => ({ id, label: DELIVERY_PAGE_META[id].title(), icon: DELIVERY_PAGE_META[id].icon, active: fulfillmentDeliveryPageView === id, action: `setDeliveryPageView('${id}')`, status: deliveryMethodStatus(id) }))
+        : [
+            { id:'CASH', label:tr('Naqd','Наличные'), icon:'banknote', active:paymentsPageView === 'CASH', action:"setPaymentsPageView('CASH')", status:paymentsMethodStatusHtml('CASH') },
+            { id:'CARD', label:tr('Karta','Карта'), icon:'credit-card', active:paymentsPageView === 'CARD', action:"setPaymentsPageView('CARD')", status:paymentsMethodStatusHtml('CARD') },
+            ...((clickAccessGranted || paymeAccessGranted) ? [{ id:'ACQUIRING', label:tr('Ekvayring','Эквайринг'), icon:'zap', active:paymentsPageView.startsWith('ACQUIRING'), action:"setPaymentsPageView('ACQUIRING_MENU')", status:acquiringMenuStatusHtml() }] : []),
+            { id:'QR', label:'QR', icon:'qr-code', active:paymentsPageView === 'QR', action:"setPaymentsPageView('QR')", status:paymentsMethodStatusHtml('QR') },
+          ];
+      return `<nav class="fc-fulfillment-desktop-sidebar" aria-label="${kind === 'DELIVERY' ? tr('Yetkazib berish usullari','Способы доставки') : tr('To‘lov usullari','Способы оплаты')}">
+        <b class="fc-fulfillment-side-heading">${kind === 'DELIVERY' ? tr('Yetkazib berish','Доставка') : tr('To‘lov usullari','Способы оплаты')}</b>
+        ${items.map(item => `<button type="button" class="fc-fulfillment-side-link ${item.active ? 'is-active' : ''}" onclick="${item.action}" ${item.active ? 'aria-current="page"' : ''}><i data-lucide="${item.icon}" class="w-4 h-4"></i><span><b>${item.label}</b><small>${item.status}</small></span></button>`).join('')}
+      </nav>`;
+    }
+    function fulfillmentDesktopWorkspace(kind, content, menuView) {
+      return `<div class="fc-fulfillment-workspace ${menuView ? 'is-menu' : 'is-detail'} ${kind === 'DELIVERY' ? 'is-delivery' : 'is-payments'}">${menuView ? '' : fulfillmentDesktopSidebar(kind)}<div class="fc-fulfillment-main">${content}</div></div>`;
+    }
+
     function renderDeliverySettingsPage(container) {
       if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
       fulfillmentSettingsSection = 'DELIVERY';
       const view = DELIVERY_PAGE_META[fulfillmentDeliveryPageView] ? fulfillmentDeliveryPageView : 'MENU';
       if (view === 'MENU') {
-        const body = `<div class="fc-settings-submenu-page"><p class="fc-settings-submenu-help">${tr('Yetkazib berish usulini tanlang va uning hudud/narx sozlamalarini alohida boshqaring.','Выберите способ доставки и настройте регионы/стоимость отдельно.')}</p>${renderDeliverySettingsMenuHtml()}</div>`;
+        const body = `<div class="fc-settings-submenu-page fc-fulfillment-menu"><p class="fc-settings-submenu-help">${tr('Yetkazib berish usulini tanlang va uning hudud/narx sozlamalarini alohida boshqaring.','Выберите способ доставки и настройте регионы/стоимость отдельно.')}</p>${renderDeliverySettingsMenuHtml()}</div>`;
         renderPageShell(container, tr("Yetkazib berish parametrlari", "Параметры доставки"), body, { onBack:'closeFulfillmentSettingsPage()' });
         return;
       }
       fulfillmentDeliveryKind = view;
-      const body = `<div class="space-y-3 text-xs"><div id="fulfillment-panel"><div id="fulfillment-body" class="fc-delivery-body-shell">${renderFulfillmentDeliveryBody()}</div></div>${fulfillmentDraftActionHtml('fc-delivery-footer')}</div>`;
+      const body = fulfillmentDesktopWorkspace('DELIVERY', `<div class="space-y-3 text-xs"><div id="fulfillment-panel"><div id="fulfillment-body" class="fc-delivery-body-shell">${renderFulfillmentDeliveryBody()}</div></div>${fulfillmentDraftActionHtml('fc-delivery-footer')}</div>`, false);
       renderPageShell(container, DELIVERY_PAGE_META[view].title(), body, { onBack:'closeDeliveryMethodDetail()' });
     }
 
@@ -6216,12 +6362,12 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function renderPaymentSettingsPage(container) {
       if (!fulfillmentDraft) fulfillmentDraft = commerce.normalizeConfig(cloneData(fulfillmentConfig), TOP_LEVEL_REGION_IDS);
       fulfillmentSettingsSection = 'PAYMENTS';
-      const body = `
+      const body = fulfillmentDesktopWorkspace('PAYMENTS', `
         <div class="space-y-3 text-xs">
           <div id="fulfillment-panel">${renderFulfillmentPaymentsPanel()}</div>
           ${paymentViewUsesFulfillmentDraftActions() ? fulfillmentDraftActionHtml('fc-settings-sticky-actions') : ''}
         </div>
-      `;
+      `, paymentsPageView === 'MENU');
       const view = PAYMENTS_PAGE_TITLES[paymentsPageView] ? paymentsPageView : 'MENU';
       renderPageShell(container, PAYMENTS_PAGE_TITLES[view](), body, { onBack: PAYMENTS_PAGE_BACK[view] });
     }
@@ -6239,7 +6385,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         (clickAccessGranted || paymeAccessGranted) ? { view: 'ACQUIRING_MENU', icon: ICON_BOLT, label: tr('Ekvayring orqali', 'Через эквайринг'), status: acquiringMenuStatusHtml() } : null,
         { view: 'QR', icon: ICON_QR, label: tr('QR orqali', 'По QR'), status: paymentsMethodStatusHtml('QR') },
       ].filter(Boolean);
-      return `<div class="fc-acquiring-integration-list">${rows.map((r) => `
+      return `<div class="fc-acquiring-integration-list fc-fulfillment-choice-grid">${rows.map((r) => `
         <button type="button" onclick="setPaymentsPageView('${r.view}')" class="fc-acquiring-integration-card">
           <span class="fc-acquiring-integration-icon">${r.icon}</span>
           <span class="fc-acquiring-integration-copy"><b>${r.label}</b><small>${r.status}</small></span>
@@ -6329,7 +6475,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const entries = featuredCategories.map(e => ({ e, c: categories.find(c => c.id === e.categoryId) })).filter(x => x.c);
       if (!entries.length) return '';
       return `<div class="fc-cat-nav-row fc-home-default-block">
-        ${entries.map(({ c }) => `<button type="button" onclick="scrollToFeaturedCategoryBlock('${c.id}')" class="fc-cat-nav-pill"><span class="fc-cat-nav-icon">${categoryIconMarkup(c)}</span><span>${escapeHtml(categoryName(c))}</span></button>`).join('')}
+        ${entries.map(({ c }) => `<button type="button" onclick="scrollToFeaturedCategoryBlock('${c.id}')" class="fc-cat-nav-pill"><span class="fc-cat-nav-icon${categoryVisualShellClass(c)}">${categoryIconMarkup(c)}</span><span>${escapeHtml(categoryName(c))}</span></button>`).join('')}
       </div>`;
     }
     function scrollToFeaturedCategoryBlock(catId) {
@@ -7285,7 +7431,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         <div class="fc-storefront-footer-grid">
           <section class="fc-store-info-card fc-store-info-about"><h3>${tr('Do‘kon haqida','О магазине')}</h3><div class="fc-store-info-brand"><div><b>${escapeHtml(shopDisplayName())}</b>${contact.about?`<p>${escapeHtml(contact.about)}</p>`:''}</div></div><div class="fc-store-info-facts fc-footer-contact">${address?`<p><i data-lucide="map-pin"></i><span>${escapeHtml(address)}</span></p>`:''}${workHoursHtml || ''}${phones.length?`<p><i data-lucide="phone"></i><span>${phones.map(escapeHtml).join(' · ')}</span></p>`:''}</div><div class="fc-store-info-actions">${mapAction}${phoneLinks}<span class="fc-footer-socials">${social}</span></div></section>
           <section class="fc-store-info-card"><h3>${tr('Ma’lumotlar','Информация')}</h3><button onclick="openStorefrontInfoPage('delivery')"><i data-lucide="truck"></i><span>${tr('Yetkazib berish va to‘lov','Доставка и оплата')}</span><i data-lucide="chevron-right"></i></button><button onclick="openStorefrontInfoPage('returns')"><i data-lucide="rotate-ccw"></i><span>${tr('Qaytarish va almashtirish','Возврат и обмен')}</span><i data-lucide="chevron-right"></i></button></section>
-          <section class="fc-store-info-card"><h3>${tr('Hujjatlar va sotuvchi','Документы и продавец')}</h3><button onclick="openStorefrontInfoPage('terms')"><i data-lucide="file-text"></i><span>${tr('Foydalanish shartlari','Условия использования')}</span><i data-lucide="chevron-right"></i></button><button onclick="openStorefrontInfoPage('privacy')"><i data-lucide="shield"></i><span>${tr('Maxfiylik siyosati','Политика конфиденциальности')}</span><i data-lucide="chevron-right"></i></button><button onclick="openStorefrontInfoPage('seller')"><i data-lucide="store"></i><span>${tr('Sotuvchi haqida','О продавце')}</span><i data-lucide="chevron-right"></i></button></section>
+          <section class="fc-store-info-card"><h3>${tr('Hujjatlar va sotuvchi','Документы и продавец')}</h3><button onclick="openStorefrontInfoPage('terms')"><i data-lucide="file-text"></i><span>${tr('Foydalanish shartlari','Условия использования')}</span><i data-lucide="chevron-right"></i></button><button onclick="openStorefrontInfoPage('privacy')"><i data-lucide="shield"></i><span>${tr('Maxfiylik siyosati','Политика конфиденциальности')}</span><i data-lucide="chevron-right"></i></button>${['OFFER','DELIVERY','PAYMENT','WARRANTY'].map(type => {
+            const legal = storefrontLegalDocByType(type);
+            return legal ? `<button type="button" onclick="openStorefrontLegalDocument('${type}')"><i data-lucide="file-text"></i><span>${escapeHtml(legalDocTitle(legal))}</span><i data-lucide="chevron-right"></i></button>` : '';
+          }).join('')}<button onclick="openStorefrontInfoPage('seller')"><i data-lucide="store"></i><span>${tr('Sotuvchi haqida','О продавце')}</span><i data-lucide="chevron-right"></i></button></section>
         </div>
         <div class="fc-storefront-footer-attribution"><b>© ${new Date().getFullYear()} ${escapeHtml(shopDisplayName())}</b><span><button onclick="openStorefrontInfoPage('terms')">${tr('Shartlar','Условия')}</button><span>·</span><button onclick="openStorefrontInfoPage('privacy')">${tr('Maxfiylik','Конфиденциальность')}</button></span><a href="https://ustr.uz" target="_blank" rel="noopener noreferrer">${tr('UStorE platformasida ishlaydi','Работает на платформе UStorE')}</a></div>
       </footer>`;
@@ -7295,7 +7444,6 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (type === 'TERMS') return openStorefrontInfoPage('terms');
       if (type === 'PRIVACY') return openStorefrontInfoPage('privacy');
       if (type === 'RETURNS') return openStorefrontInfoPage('returns');
-      if (type === 'DELIVERY' || type === 'PAYMENT') return openStorefrontInfoPage('delivery');
       const doc=(legalDocuments||[]).find(d=>d.type===type&&d.enabled);
       if (!doc) return;
       document.getElementById('fc-storefront-legal-dialog')?.remove();
@@ -7737,7 +7885,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
             ${subCats.map((sub, subIdx) => `
               <div data-category-row-id="${sub.id}" onclick="handleCategoryRowClick('${sub.id}', event)" onpointerdown="startCategoryLongPress('${sub.id}', event)" onpointerup="cancelCatalogLongPress()" onpointercancel="cancelCatalogLongPress()" onpointerleave="cancelCatalogLongPress()" class="ustore-cat-row fc-image-card p-3.5 rounded-2xl border ${bulkCategorySelectMode && bulkSelectedCategoryIds.has(String(sub.id)) ? 'ustore-selected-card border-blue-500' : 'border-gray-100'} flex items-center justify-between shadow-sm cursor-pointer">
                 <div class="flex items-center space-x-3">
-                  <span class="fc-category-icon-frame">${categoryIconMarkup(sub)}</span>
+                  <span class="fc-category-icon-frame${categoryVisualShellClass(sub)}">${categoryIconMarkup(sub)}</span>
                   <div>
                     <h5 class="font-bold text-sm text-gray-800">${escapeHtml(categoryName(sub))}</h5>
                     <p class="text-[10px] text-gray-400">${categories.filter(c => c.parentId === sub.id).length} ${tr('katalog','кат.')} | ${recursiveProductCounts.get(String(sub.id)) || 0} ${tr('tovar','тов.')}</p>
@@ -11103,6 +11251,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       root.setProperty('--ustore-success', c.success);
       root.setProperty('--ustore-warning', c.warning);
       root.setProperty('--ustore-danger', c.danger);
+      window.USTORE_SHOP_WELCOME?.setTheme?.(document.getElementById('ustore-shop-welcome'), { colors:c });
       const dark = (relLuminance(c.pageBg) ?? 1) < 0.18;
       document.documentElement.classList.toggle('ustore-dark-theme', dark);
     }
@@ -11253,6 +11402,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       qrProviderNeedsTest.clear();
       fulfillmentSettingsSection = 'PAYMENTS';
       paymentsPageView = 'MENU';
+      cardReplacementEditorOpen = false;
       openPage('PAYMENT_SETTINGS');
     }
 
@@ -11265,7 +11415,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function closeFulfillmentSettingsPage() {
-      fulfillmentDraft = null; fulfillmentDeliveryPageView = 'MENU';
+      fulfillmentDraft = null; fulfillmentDeliveryPageView = 'MENU'; cardReplacementEditorOpen = false;
       openPage('SETTINGS', 'nav-profile');
     }
 
@@ -11856,12 +12006,61 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // lokalizatsiya bilan beradi: "Payme orqali (avtomatik)" va h.k.) — eski
     // qattiq ternary CLICK'dan boshqa hammasini QR deb noto'g'ri belgilardi
     // (11-band bug'i, Payme "QR orqali" nomi/ikonkasi bilan ko'rinardi).
+    function renderCardReplacementControls(method) {
+      const saved = fulfillmentConfig?.payments?.methods?.find(m => m.id === 'CARD');
+      const hasSavedCard = !!String(saved?.cardNumber || '').trim();
+      const editing = cardReplacementEditorOpen || !hasSavedCard;
+      const receipt = `<label class="fc-card-receipt"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label>`;
+      if (!editing) {
+        const lastFour = String(saved.cardNumber).replace(/\D/g,'').slice(-4);
+        return `<section class="fc-card-replacement"><div class="fc-card-replacement-summary"><span><i data-lucide="credit-card" class="w-5 h-5"></i></span><div><small>${tr('Joriy karta','Текущая карта')}</small><b>•••• •••• •••• ${escapeHtml(lastFour)}</b><small>${escapeHtml(saved.cardHolder || '')}</small></div></div><button type="button" class="fc-card-edit-button" onclick="beginCardReplacement()"><i data-lucide="pencil" class="w-4 h-4"></i>${tr('Kartani almashtirish','Заменить карту')}</button>${receipt}</section>`;
+      }
+      return `<section class="fc-card-replacement is-editing"><div class="fc-card-replacement-heading"><b>${hasSavedCard ? tr('Kartani almashtirish','Заменить карту') : tr('Karta qo‘shish','Добавить карту')}</b><small>${tr('Yangi rekvizitlar muvaffaqiyatli saqlangach mijozlarga ko‘rsatiladi.','Новые реквизиты появятся покупателям только после сохранения.')}</small></div>
+        <div class="fc-card-replacement-fields"><label class="fc-mini-field"><span>${tr('Karta raqami','Номер карты')}</span><input type="text" inputmode="numeric" autocomplete="off" maxlength="32" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000"></label><label class="fc-mini-field"><span>${tr('Karta egasi','Владелец карты')}</span><input type="text" autocomplete="off" maxlength="120" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Ism Familiya','Имя Фамилия')}"></label></div>
+        ${receipt}<p class="fc-card-security-note">${tr('Faqat karta raqami va egasi saqlanadi. CVV, PIN va SMS-kodni kiritmang.','Сохраняются только номер и владелец. Не вводите CVV, PIN или SMS-код.')}</p>
+        <div class="fc-card-replacement-actions"><button type="button" class="fc-card-save-button" onclick="saveCardReplacement()" ${fulfillmentSavePending ? 'disabled' : ''}><i data-lucide="check" class="w-4 h-4"></i>${tr('Saqlash','Сохранить')}</button>${hasSavedCard ? `<button type="button" class="fc-card-cancel-button" onclick="cancelCardReplacement()" ${fulfillmentSavePending ? 'disabled' : ''}>${tr('Bekor qilish','Отмена')}</button>` : ''}</div></section>`;
+    }
+    function beginCardReplacement() {
+      cardReplacementEditorOpen = true;
+      rerenderFulfillmentBody();
+    }
+    function cancelCardReplacement() {
+      if (fulfillmentSavePending) return;
+      const original = fulfillmentConfig?.payments?.methods?.find(m => m.id === 'CARD');
+      const card = paymentMethodConfig('CARD');
+      if (original && card) {
+        card.cardNumber = original.cardNumber;
+        card.cardHolder = original.cardHolder;
+        card.receiptRequired = original.receiptRequired;
+      }
+      cardReplacementEditorOpen = false;
+      rerenderFulfillmentBody();
+    }
+    async function saveCardReplacement() {
+      if (fulfillmentSavePending) return;
+      const card = paymentMethodConfig('CARD');
+      if (!card) return;
+      const digits = String(card.cardNumber || '').replace(/\D/g, '');
+      if (!/^\d{12,19}$/.test(digits) || !String(card.cardHolder || '').trim()) {
+        showAppNotice(tr('Karta raqamini (12–19 raqam) va egasini to‘g‘ri kiriting.','Укажите верный номер карты (12–19 цифр) и владельца.'));
+        return;
+      }
+      card.cardNumber = digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+      card.cardHolder = String(card.cardHolder).trim();
+      const ok = await saveFulfillmentSettings();
+      if (ok) {
+        cardReplacementEditorOpen = false;
+        rerenderFulfillmentBody();
+      }
+    }
+
     function renderPaymentMethodSettings(method) {
       const icon = method.id === 'CASH' ? ICON_CASH : method.id === 'CARD' ? ICON_CARD : method.id === 'QR' ? ICON_QR : ICON_BOLT;
       const label = method.name;
-      return `<div class="border rounded-2xl p-3 space-y-3">
-        <label class="flex items-center justify-between font-black"><span class="flex items-center gap-1.5">${icon} ${escapeHtml(label)}</span><span class="fc-toggle"><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setPaymentMethodEnabled('${method.id}',this.checked)"><span class="fc-toggle-track"></span></span></label>
-        ${method.enabled ? `${method.id === 'CARD' ? `<div class="bg-blue-50 border border-blue-200 p-3 rounded-xl space-y-2"><input type="text" value="${escapeHtml(method.cardNumber || '')}" oninput="setCardSetting('cardNumber',this.value)" placeholder="8600 0000 0000 0000" class="w-full p-2 border rounded-xl font-mono"><input type="text" value="${escapeHtml(method.cardHolder || '')}" oninput="setCardSetting('cardHolder',this.value)" placeholder="${tr('Karta egasi','Владелец карты')}" class="w-full p-2 border rounded-xl"><label class="flex items-center gap-2 font-bold"><input type="checkbox" ${method.receiptRequired ? 'checked' : ''} onchange="setCardSetting('receiptRequired',this.checked)">${tr('Chek yuklash majburiy','Загрузка чека обязательна')}</label><p class="text-[10px] text-blue-700">${tr('Faqat xaridorga ko‘rsatiladigan karta raqami va egasi. CVV/PIN/SMS saqlanmaydi.','Только номер и владелец карты для показа покупателю. CVV/PIN/SMS не сохраняются.')}</p></div>` : ''}${method.id === 'QR' ? `<div class="space-y-2">${(method.providers || []).map(renderQrProviderSettings).join('')}</div>` : ''}${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}${renderPaymentRegionRows(method)}` : ''}
+      return `<div class="fc-payment-settings-panel">
+        <div class="fc-payment-settings-primary"><label class="fc-delivery-master-toggle"><div><b>${icon} ${escapeHtml(label)}</b><small>${method.enabled ? tr('Faol to‘lov usuli','Активный способ оплаты') : tr('To‘lov usulini yoqish','Включить способ оплаты')}</small></div><span class="fc-toggle"><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setPaymentMethodEnabled('${method.id}',this.checked)"><span class="fc-toggle-track"></span></span></label>
+        ${method.enabled ? (method.id === 'CARD' ? renderCardReplacementControls(method) : method.id === 'QR' ? `<div class="fc-qr-provider-grid">${(method.providers || []).map(renderQrProviderSettings).join('')}</div>` : '') : ''}</div>
+        ${method.enabled ? `<div class="fc-payment-settings-regions"><b class="fc-fulfillment-subtitle">${tr('Hududlar','Регионы')}</b>${settingsBulkButtons(`bulkPaymentRegions('${method.id}',true)`, `bulkPaymentRegions('${method.id}',false)`)}${renderPaymentRegionRows(method)}</div>` : ''}
       </div>`;
     }
 
@@ -11870,7 +12069,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (kind === 'POST') {
         return `<div class="space-y-3">
           <div class="fc-delivery-master-toggle"><div><b>${tr('Pochta orqali yetkazib berish','Доставка почтой')}</b><small>${tr('BTS, EMU va boshqa pochta xizmatlari','BTS, EMU и другие почтовые службы')}</small></div><label class="fc-toggle"><input type="checkbox" ${fulfillmentDraft.delivery.post.enabled ? 'checked' : ''} onchange="setPostEnabled(this.checked)"><span class="fc-toggle-track"></span></label></div>
-          ${fulfillmentDraft.delivery.post.enabled ? fulfillmentDraft.delivery.post.providers.map(renderPostProviderSettings).join('') : `<div class="fc-empty-state compact"><p>${tr('Pochta usuli o‘chirilgan.','Почтовая доставка выключена.')}</p></div>`}
+          ${fulfillmentDraft.delivery.post.enabled ? `<div class="fc-post-provider-grid">${fulfillmentDraft.delivery.post.providers.map(renderPostProviderSettings).join('')}</div>` : `<div class="fc-empty-state compact"><p>${tr('Pochta usuli o‘chirilgan.','Почтовая доставка выключена.')}</p></div>`}
         </div>`;
       }
       const key = DELIVERY_CONFIG_KEYS[kind], method = fulfillmentDraft.delivery[key];
@@ -11882,7 +12081,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const generalHtml = renderDeliveryGeneralCard(kind, method.general);
       return `<div class="space-y-3">
         <div class="fc-delivery-master-toggle"><div><b>${tr('Usulni yoqish','Включить способ')}</b><small>${descriptions[kind]}</small></div><label class="fc-toggle"><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setDeliveryMethodEnabled('${kind}',this.checked)"><span class="fc-toggle-track"></span></label></div>
-        ${method.enabled ? `${generalHtml}<div class="fc-delivery-bulk-tools">${settingsBulkButtons(`bulkDeliveryRegions('${kind}',true)`, `bulkDeliveryRegions('${kind}',false)`)}</div>${renderDeliveryRegionRows(kind)}` : `<div class="fc-empty-state compact"><p>${tr('Bu yetkazib berish usuli o‘chirilgan.','Этот способ доставки выключен.')}</p></div>`}
+        ${method.enabled ? `<div class="fc-delivery-config-grid"><div class="fc-delivery-general-column">${generalHtml}</div><div class="fc-delivery-regions-column"><b class="fc-fulfillment-subtitle">${tr('Hududlar','Регионы')}</b><div class="fc-delivery-bulk-tools">${settingsBulkButtons(`bulkDeliveryRegions('${kind}',true)`, `bulkDeliveryRegions('${kind}',false)`)}</div>${renderDeliveryRegionRows(kind)}</div></div>` : `<div class="fc-empty-state compact"><p>${tr('Bu yetkazib berish usuli o‘chirilgan.','Этот способ доставки выключен.')}</p></div>`}
       </div>`;
     }
     // "Umumiy qiymat" kartasi — FREE/FIXED/TAXI uchun bitta umumiy render
@@ -11997,10 +12196,12 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         syncFulfillmentActionVisibility();
         const sectionLabel = fulfillmentSettingsSection === 'DELIVERY' ? tr('Yetkazib berish sozlamalari saqlandi','Настройки доставки сохранены') : tr("To'lov sozlamalari saqlandi",'Настройки оплаты сохранены');
         showActionToast(sectionLabel, 'success', 3000);
+        return true;
       } catch (e) {
         console.error('[fulfillment-save]', e);
         // Draft stays intact so the admin can retry; saved baseline is untouched.
         showActionToast(tr('Saqlab bo‘lmadi. Qayta urinib ko‘ring.','Не удалось сохранить. Попробуйте ещё раз.'), 'error', 4000);
+        return false;
       } finally {
         fulfillmentSavePending = false;
         syncFulfillmentActionVisibility();
@@ -12027,12 +12228,19 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     async function openShopWebCredentials() {
       if (browserBridge) {
-        const username = String(botUsername || '').replace(/^@/, '');
-        if (!/^[A-Za-z0-9_]{5,32}$/.test(username)) {
-          showAppNotice(tr('Do‘kon boti manzili topilmadi.', 'Адрес бота магазина не найден.'));
-          return;
+        if (activePage === 'WEB_CREDENTIALS' && (webCredentialState.loading || webCredentialState.busy)) return;
+        webCredentialState = { loading: true, busy: false, valid: false, credentialExists: false, login: '', issuedPassword: null, error: '', notice: '', editing: false, webMode: true };
+        openPage('WEB_CREDENTIALS', 'nav-profile');
+        try {
+          const status = await browserBridge.request('web_credentials_status', {});
+          if (activePage !== 'WEB_CREDENTIALS') return;
+          webCredentialState = { ...webCredentialState, loading: false, valid: status.credentialExists === true, credentialExists: status.credentialExists === true, login: String(status.login || ''),
+            notice: status.credentialExists ? '' : tr('Login va dastlabki parolni Telegram Mini App profilida yarating.', 'Создайте логин и первый пароль в профиле Telegram Mini App.') };
+        } catch (error) {
+          if (activePage !== 'WEB_CREDENTIALS') return;
+          webCredentialState = { ...webCredentialState, loading: false, error: tr('Web hisobini tekshirib bo‘lmadi. Qayta urinib ko‘ring.', 'Не удалось проверить веб-аккаунт. Попробуйте ещё раз.') };
         }
-        window.open(`https://t.me/${username}?start=credentials`, '_blank', 'noopener,noreferrer');
+        render();
         return;
       }
       if (activePage === 'WEB_CREDENTIALS' && (webCredentialState.loading || webCredentialState.busy)) return;
@@ -12055,30 +12263,43 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const s = webCredentialState;
       const editing = s.editing === true;
       const note = s.credentialExists && !s.issuedPassword
-        ? `<p class="fc-web-credential-note">${tr('Parol xavfsizlik sabab qayta ko‘rsatilmaydi. Yangisini shu yerda o‘rnata olasiz.', 'Пароль нельзя показать повторно. Здесь можно задать новый.')}</p>` : '';
+        ? `<p class="fc-web-credential-note">${tr('Eski parolni qayta ko‘rsatib bo‘lmaydi. Yangi parolni o‘rnatib, ko‘rishingiz va nusxalashingiz mumkin.', 'Старый пароль показать повторно нельзя. Новый пароль можно установить, показать и скопировать.')}</p>` : '';
       const secret = s.issuedPassword ? `<div class="fc-web-credential-secret"><span>${tr('Parol', 'Пароль')}</span><div class="fc-web-credential-value"><input id="fc-web-issued-password" type="password" readonly value="${escapeHtml(s.issuedPassword)}" aria-label="${tr('Yangi parol', 'Новый пароль')}"><button type="button" class="fc-credential-icon-btn" onclick="toggleShopWebIssuedPassword()" aria-label="${tr('Parolni ko‘rsatish','Показать пароль')}" title="${tr('Parolni ko‘rsatish','Показать пароль')}"><i data-lucide="eye"></i></button><button type="button" class="fc-credential-icon-btn" onclick="copyShopWebPassword()" aria-label="${tr('Parolni nusxalash','Скопировать пароль')}" title="${tr('Parolni nusxalash','Скопировать пароль')}"><i data-lucide="copy"></i></button></div><small>${tr('Parol faqat hozir ko‘rsatiladi. Xavfsiz joyga saqlang.', 'Пароль показан только сейчас. Сохраните его в надёжном месте.')}</small></div>` : '';
       const overview = `<p>${tr('Shu Telegram akkauntingizga bog‘langan. Login va parol faqat sizga tegishli.', 'Привязано к вашему Telegram-аккаунту. Эти данные доступны только вам.')}</p>
         ${s.login ? `<div class="fc-web-credential-login"><span>Login</span><div class="fc-web-credential-value"><strong>${escapeHtml(s.login)}</strong><button type="button" class="fc-credential-icon-btn" onclick="copyShopWebLogin()" aria-label="${tr('Loginni nusxalash','Скопировать логин')}" title="${tr('Loginni nusxalash','Скопировать логин')}"><i data-lucide="copy"></i></button></div></div>` : ''}
         ${secret || note}
-        ${s.valid ? (!s.credentialExists ? `<button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="issueShopWebCredentials()">${tr('Login va parolni olish', 'Получить логин и пароль')}</button>` : `<button type="button" class="fc-btn fc-btn-primary" onclick="openShopWebCredentialEdit()">${tr('Login va parolni almashtirish', 'Изменить логин и пароль')}</button>`) : ''}`;
+        ${s.valid && !s.webPasswordChanged ? (!s.credentialExists ? `<button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="issueShopWebCredentials()">${tr('Login va parolni olish', 'Получить логин и пароль')}</button>` : `<button type="button" class="fc-btn fc-btn-primary" onclick="openShopWebCredentialEdit()">${tr('Login va parolni almashtirish', 'Изменить логин и пароль')}</button>`) : ''}`;
       const edit = `<p>${tr('Login va parolni alohida o‘zgartirishingiz mumkin. Parol yangilansa, eski web sessiyalar yopiladi.', 'Логин и пароль можно менять отдельно. После смены пароля старые веб-сессии завершатся.')}</p>
         <label class="fc-web-credential-edit">${tr('Yangi login', 'Новый логин')}<input id="fc-web-credential-login" type="text" autocomplete="username" minlength="4" maxlength="40" value="${escapeHtml(s.login)}"></label>
         <button type="button" class="fc-btn fc-btn-secondary" ${s.busy ? 'disabled' : ''} onclick="changeShopWebLogin()">${tr('Loginni saqlash', 'Сохранить логин')}</button>
-        <label class="fc-web-credential-edit">${tr('Yangi parol', 'Новый пароль')}<input id="fc-web-credential-password" type="password" autocomplete="new-password" minlength="8" maxlength="72" placeholder="${tr('Kamida 8 belgi', 'Минимум 8 символов')}"></label>
-        <label class="fc-web-credential-edit">${tr('Parolni tasdiqlang', 'Повторите пароль')}<input id="fc-web-credential-password-confirm" type="password" autocomplete="new-password" minlength="8" maxlength="72"></label>
-        <p class="fc-web-credential-note">${tr('Kamida 8 belgi, harf va raqam.', 'Минимум 8 символов, буква и цифра.')}</p>
+        ${browserBridge ? `<label class="fc-web-credential-edit">${tr('Hozirgi parol', 'Текущий пароль')}<input id="fc-web-credential-current-password" type="password" autocomplete="current-password"><button type="button" class="fc-btn fc-btn-secondary" onclick="toggleShopWebFormPassword('fc-web-credential-current-password')">${tr('Ko‘rsatish / yashirish', 'Показать / скрыть')}</button></label>` : ''}
+        <label class="fc-web-credential-edit">${tr('Yangi parol', 'Новый пароль')}<input id="fc-web-credential-password" type="password" autocomplete="new-password" minlength="6" maxlength="72" placeholder="${tr('Kamida 6 belgi', 'Минимум 6 символов')}"><button type="button" class="fc-btn fc-btn-secondary" onclick="toggleShopWebFormPassword('fc-web-credential-password')">${tr('Ko‘rsatish / yashirish', 'Показать / скрыть')}</button></label>
+        <label class="fc-web-credential-edit">${tr('Parolni tasdiqlang', 'Повторите пароль')}<input id="fc-web-credential-password-confirm" type="password" autocomplete="new-password" minlength="6" maxlength="72"><button type="button" class="fc-btn fc-btn-secondary" onclick="toggleShopWebFormPassword('fc-web-credential-password-confirm')">${tr('Ko‘rsatish / yashirish', 'Показать / скрыть')}</button></label>
+        <p class="fc-web-credential-note">${tr('Kamida 6 belgi (72 baytdan oshmasin).', 'Минимум 6 символов (не более 72 байт).')}</p>
+        ${browserBridge ? `<p class="fc-web-credential-note">${tr('Hozirgi parol esdan chiqqan bo‘lsa, do‘kon botidagi /reset buyrug‘idan foydalaning.', 'Если забыли пароль, используйте /reset в боте магазина.')}</p>` : ''}
         <button type="button" class="fc-btn fc-btn-primary" ${s.busy ? 'disabled' : ''} onclick="setShopWebPassword()">${tr('Parolni saqlash', 'Сохранить пароль')}</button>
-        <button type="button" class="fc-btn fc-btn-secondary" ${s.busy ? 'disabled' : ''} onclick="resetShopWebCredentials()">${tr('Tasodifiy yangi parol yaratish', 'Создать случайный пароль')}</button>`;
+        ${browserBridge ? '' : `<button type="button" class="fc-btn fc-btn-secondary" ${s.busy ? 'disabled' : ''} onclick="resetShopWebCredentials()">${tr('Tasodifiy yangi parol yaratish', 'Создать случайный пароль')}</button>`}`;
       renderPageShell(container, tr('Web login va parol', 'Логин и пароль для сайта'), `
         <section class="fc-card fc-web-credential-card"><h2>${editing ? tr('Ma’lumotlarni almashtirish', 'Изменение данных') : tr('Saytga kirish ma’lumotlari', 'Данные для входа на сайт')}</h2>
           ${editing ? edit : overview}
-          ${s.error ? `<p class="fc-web-credential-error">${escapeHtml(s.error)}</p>` : ''}
+          ${s.webPasswordChanged ? `<button type="button" class="fc-btn fc-btn-primary" onclick="finishShopWebPasswordChange()">${tr('Qayta kirish', 'Войти снова')}</button>` : ''}
+        ${s.error ? `<p class="fc-web-credential-error">${escapeHtml(s.error)}</p>` : ''}
           ${s.notice ? `<p class="fc-web-credential-note">${escapeHtml(s.notice)}</p>` : ''}
           ${s.loading ? `<p>${tr('Tekshirilmoqda…', 'Проверка…')}</p>` : ''}
           ${!s.loading && !s.valid && !s.issuedPassword && !s.notice ? `<button type="button" class="fc-btn fc-btn-secondary" onclick="openShopWebCredentials()">${tr('Qayta urinish', 'Повторить')}</button>` : ''}
         </section>`, { onBack: editing ? 'closeShopWebCredentialEdit()' : 'closePage()' });
     }
 
+    function toggleShopWebFormPassword(id) {
+      const input = document.getElementById(id);
+      if (input && ['password', 'text'].includes(input.type)) input.type = input.type === 'password' ? 'text' : 'password';
+    }
+    async function finishShopWebPasswordChange() {
+      if (!browserBridge || !webCredentialState.webPasswordChanged) return;
+      forgetWebCredentialSecret();
+      try { await browserBridge.request('web_credentials_finish_password_change', {}); }
+      catch (_) { window.location.reload(); }
+    }
     function openShopWebCredentialEdit() { webCredentialState.editing = true; webCredentialState.error = ''; render(); }
     function closeShopWebCredentialEdit() { webCredentialState.editing = false; webCredentialState.error = ''; render(); }
     async function copyShopWebLogin() {
@@ -12127,7 +12348,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (!login) return showAppNotice(tr('Yangi loginni kiriting.', 'Введите новый логин.'));
       webCredentialState.busy = true; webCredentialState.error = ''; render();
       try {
-        const result = await callApi('shop_web_credentials_change_login', { login });
+        const result = browserBridge ? await browserBridge.request('web_credentials_change_login', { login }) : await callApi('shop_web_credentials_change_login', { login });
         if (activePage !== 'WEB_CREDENTIALS') return;
         webCredentialState = { ...webCredentialState, busy: false, valid: true, login: String(result.login || login), notice: tr('Login almashtirildi.', 'Логин изменён.') };
       } catch (error) {
@@ -12152,20 +12373,25 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const confirmation = String(document.getElementById('fc-web-credential-password-confirm')?.value || '');
       if (password !== confirmation) return showAppNotice(tr('Parollar bir xil emas.', 'Пароли не совпадают.'));
       const passwordBytes = credentialPasswordByteLength(password);
-      if (Array.from(password).length < 8 || passwordBytes > 72 || !/\p{L}/u.test(password) || !/\p{N}/u.test(password)) {
-        return showAppNotice(tr('Parol kamida 8 belgi, ko‘pi bilan 72 bayt bo‘lsin; harf va raqam qatnashsin.', 'Пароль: минимум 8 символов, максимум 72 байта, с буквой и цифрой.'));
+      if (Array.from(password).length < 6 || passwordBytes > 72) {
+        return showAppNotice(tr('Parol kamida 6 belgi, ko‘pi bilan 72 bayt bo‘lsin.', 'Пароль: минимум 6 символов, максимум 72 байта.'));
       }
-      webCredentialState.busy = true; webCredentialState.error = ''; forgetWebCredentialSecret(); render();
+      const currentPassword = browserBridge ? String(document.getElementById('fc-web-credential-current-password')?.value || '') : '';
+      if (browserBridge && !currentPassword) return showAppNotice(tr('Hozirgi parolni kiriting.', 'Введите текущий пароль.'));
+      webCredentialState.busy = true; webCredentialState.error = ''; forgetWebCredentialSecret(); if (!browserBridge) render();
       try {
-        const result = await callApi('shop_web_credentials_set_password', { password });
+        const result = browserBridge ? await browserBridge.request('web_credentials_change_password', { currentPassword, newPassword: password }) : await callApi('shop_web_credentials_set_password', { password });
         if (activePage !== 'WEB_CREDENTIALS') return;
-        webCredentialState = { ...webCredentialState, busy: false, valid: true, editing: false, login: String(result.login || webCredentialState.login || ''), issuedPassword: password,
-          notice: tr('Parol almashtirildi. Eski web sessiyalar bekor qilindi.', 'Пароль изменён. Старые веб-сессии отменены.') };
+        webCredentialState = { ...webCredentialState, busy: false, valid: !browserBridge, editing: false, webPasswordChanged: !!browserBridge, login: String(result.login || webCredentialState.login || ''), issuedPassword: password,
+          notice: tr('Parol almashtirildi. Eski web sessiyalar bekor qilindi. Parolni saqlab, qayta kiring.', 'Пароль изменён. Старые веб-сессии отменены. Сохраните пароль и войдите снова.') };
       } catch (error) {
         if (activePage !== 'WEB_CREDENTIALS') return;
-        webCredentialState = { ...webCredentialState, busy: false, valid: true, error: tr('Parolni almashtirib bo‘lmadi. Qayta urinib ko‘ring.', 'Не удалось изменить пароль. Повторите попытку.') };
+        webCredentialState = { ...webCredentialState, busy: false, valid: true, error: error?.message === 'INVALID_CREDENTIALS' ? tr('Hozirgi parol noto‘g‘ri.', 'Текущий пароль неверен.') : tr('Parolni almashtirib bo‘lmadi. Qayta urinib ko‘ring.', 'Не удалось изменить пароль. Повторите попытку.') };
       }
-      if (activePage === 'WEB_CREDENTIALS') render();
+      if (activePage === 'WEB_CREDENTIALS') {
+        if (browserBridge && webCredentialState.error) showAppNotice(webCredentialState.error);
+        else render();
+      }
     }
 
     async function copyShopWebPassword() {
@@ -12340,14 +12566,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         return `
           <div class="fc-card" style="margin-left:${c.depth * 14}px">
             <label class="flex items-center justify-between gap-2">
-              <span class="flex items-center gap-2 min-w-0"><span class="fc-featured-cat-icon" style="width:2.2rem;height:2.2rem">${categoryIconMarkup(c)}</span><b class="text-xs truncate">${escapeHtml(categoryName(c))}</b></span>
+              <span class="flex items-center gap-2 min-w-0"><span class="fc-featured-cat-icon${categoryVisualShellClass(c)}" style="width:2.2rem;height:2.2rem">${categoryIconMarkup(c)}</span><b class="text-xs truncate">${escapeHtml(categoryName(c))}</b></span>
               <span class="fc-toggle shrink-0"><input type="checkbox" ${entry ? 'checked' : ''} onchange="toggleFeaturedCategory('${c.id}')"><span class="fc-toggle-track"></span></span>
             </label>
             ${productPicker}
           </div>
         `;
       }).join('');
-      const body = `<div class="space-y-3">
+      const body = `<div class="space-y-3 fc-marketing-featured-page">
         <div class="fc-card"><p class="text-xs text-gray-600">${tr("Bosh sahifada ko'rinadigan kataloglarni va har biriga 6 tagacha mahsulot tanlang.", "Выберите каталоги для главной и до 6 товаров для каждого.")}</p><p class="text-[10px] text-gray-400 mt-1">${featuredCategories.length} / 8 ${tr('katalog tanlandi', 'каталогов выбрано')}</p></div>
         <div class="fc-featured-tree">${renderFeaturedTreeNodes() || `<div class="fc-empty-state"><p>${tr("Kataloglar topilmadi.", "Каталоги не найдены.")}</p></div>`}</div>
         
@@ -14569,7 +14795,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // (faqat eng foydali bittasi ishlaydi) o'zgarishsiz qoladi.
     function renderMarketingSettingsPage(container) {
       const body = `
-        <div class="space-y-2">
+        <div class="space-y-2 fc-marketing-settings-page">
           <div class="fc-card space-y-2">
             <label class="fc-settings-toggle-row"><span><b>${tr("Chegirmalarni birga ishlatish", "Совмещать скидки")}</b><small>${tr("Yoqilsa, mos kelgan promo-kod, bosqichli chegirma va mijozning shaxsiy chegirmasi BITTA buyurtmada birga qo'llanadi. O'chiq bo'lsa, faqat eng foydali bittasi ishlaydi (avvalgidek).", "Если включено, подходящий промокод, ступенчатая скидка и персональная скидка клиента применяются В ОДНОМ заказе вместе. Если выключено — работает только самая выгодная (как раньше).")}</small></span><span class="fc-toggle shrink-0"><input type="checkbox" ${allowDiscountCombining ? 'checked' : ''} onchange="saveMarketingSettings({allowDiscountCombining:this.checked})"><span class="fc-toggle-track"></span></span></label>
             ${allowDiscountCombining ? `
@@ -15898,7 +16124,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           ${canViewAuditLog ? profileAdminTileHtml({ icon:'clipboard-list', title:tr('Amallar jurnali','Журнал действий'), subtitle:tr('Xodimlar amallarini tekshirish','Проверка действий сотрудников'), onclick:'openAuditLogPage()' }) : ''}
           ${hasPermission('support.manage') ? profileAdminTileHtml({ icon:'messages-square', title:tr("Qo‘llab-quvvatlash",'Поддержка'), subtitle:tr('Murojaatlar va yozishmalar','Обращения и переписка'), onclick:'openAdminSupportOrUserSupport()', badge:supportBadge }) : ''}
           ${canManageDomainsPage() ? profileAdminTileHtml({ icon:'globe-2', title:tr('Domen va manzil','Домен и адрес'), subtitle:tr('Subdomen va shaxsiy domenni boshqarish','Управление доменами'), onclick:'openDomainsSettingsPage()' }) : ''}
-          ${profileAdminTileHtml({ icon:'key-round', title:tr('Web login va parol','Логин и пароль для сайта'), subtitle:browserBridge ? tr('Login va parolni do‘kon botidan oling','Получите данные в боте магазина') : tr('Shu yerda olish yoki yangilash','Получить или обновить здесь'), onclick:'openShopWebCredentials()' })}
+          ${profileAdminTileHtml({ icon:'key-round', title:tr('Web login va parol','Логин и пароль для сайта'), subtitle:tr('Loginni ko‘rish yoki parolni yangilash','Посмотреть логин или изменить пароль'), onclick:'openShopWebCredentials()' })}
         </div>
       </section>` : '';
 
@@ -15918,7 +16144,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const commonTailMenu = `
         <section class="fc-profile-menu ${isAdminMode && isUserAnAdmin ? 'fc-admin-tail-menu' : ''}">
           ${canManageDomainsPage() ? profileMenuRowHtml({ icon: 'globe-2', title: tr('Domen va manzil','Домен и адрес'), subtitle: tr('Subdomen va shaxsiy domenni boshqarish','Управление субдоменом и собственным доменом'), onclick: 'openDomainsSettingsPage()' }) : ''}
-          ${profileMenuRowHtml({ icon: 'key-round', title: tr('Web login va parol', 'Логин и пароль для сайта'), subtitle: browserBridge ? tr('Login va parolni do‘kon botidan oling', 'Получите логин и пароль в боте магазина') : tr('Shu yerda olish yoki yangilash', 'Получить или обновить здесь'), onclick: 'openShopWebCredentials()' })}
+          ${profileMenuRowHtml({ icon: 'key-round', title: tr('Web login va parol', 'Логин и пароль для сайта'), subtitle: tr('Loginni ko‘rish yoki parolni yangilash','Посмотреть логин или изменить пароль'), onclick: 'openShopWebCredentials()' })}
         </section>`;
 
       const profileActionMenus = (isAdminMode && isUserAnAdmin)
@@ -16518,12 +16744,66 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
     }
 
     // ============ "NOMDAN LOGO YARATISH" (WORDMARK) ============
-    // Word'dagi font menyusiga o'xshash tanlov uchun bir-biridan vizual aniq
-    // farqlanadigan professional yo'nalishlar. Tashqi font fayli ulanmaydi:
-    // browser/system font stacklari ishlatiladi, shuning uchun Telegram
-    // WebView'da tez va barqaror render bo'ladi.
+    // 50 ta HAQIQIY shrift oilasi. Oldingi IDlar mavjud logotiplar uchun
+    // saqlangan. Font fayllar ZIPga qo'shilmaydi: Google Fonts CSS2 orqali
+    // faqat kerak bo'lgan shrift on-demand yuklanadi.
     const WORDMARK_PRESETS = [
-      { id: 'geometric-bold', label: () => tr('Geometric Bold', 'Geometric Bold'), family: 'sans', weight: 900, spacing: '-0.035em', transform: 'uppercase', style: 'normal' },
+      { id: 'font-montserrat', label: () => 'Montserrat', font: 'Montserrat', weight: 900, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-roboto', label: () => 'Roboto', font: 'Roboto', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-playfair-display', label: () => 'Playfair Display', font: 'Playfair Display', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-prata', label: () => 'Prata', font: 'Prata', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-oswald', label: () => 'Oswald', font: 'Oswald', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-unbounded', label: () => 'Unbounded', font: 'Unbounded', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-ibm-plex-mono', label: () => 'IBM Plex Mono', font: 'IBM Plex Mono', weight: 400, fallback: 'monospace', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-pt-mono', label: () => 'PT Mono', font: 'PT Mono', weight: 400, fallback: 'monospace', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-lobster', label: () => 'Lobster', font: 'Lobster', weight: 400, fallback: 'cursive', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-comfortaa', label: () => 'Comfortaa', font: 'Comfortaa', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-cormorant-garamond', label: () => 'Cormorant Garamond', font: 'Cormorant Garamond', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-rubik-mono-one', label: () => 'Rubik Mono One', font: 'Rubik Mono One', weight: 400, fallback: 'monospace', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-golos-text', label: () => 'Golos Text', font: 'Golos Text', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-philosopher', label: () => 'Philosopher', font: 'Philosopher', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-inter', label: () => 'Inter', font: 'Inter', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-manrope', label: () => 'Manrope', font: 'Manrope', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-rubik', label: () => 'Rubik', font: 'Rubik', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-nunito', label: () => 'Nunito', font: 'Nunito', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-fira-sans', label: () => 'Fira Sans', font: 'Fira Sans', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-ubuntu', label: () => 'Ubuntu', font: 'Ubuntu', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-open-sans', label: () => 'Open Sans', font: 'Open Sans', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-lato', label: () => 'Lato', font: 'Lato', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-pt-sans', label: () => 'PT Sans', font: 'PT Sans', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-pt-serif', label: () => 'PT Serif', font: 'PT Serif', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-ibm-plex-sans', label: () => 'IBM Plex Sans', font: 'IBM Plex Sans', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-ibm-plex-serif', label: () => 'IBM Plex Serif', font: 'IBM Plex Serif', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-roboto-slab', label: () => 'Roboto Slab', font: 'Roboto Slab', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-roboto-condensed', label: () => 'Roboto Condensed', font: 'Roboto Condensed', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-merriweather', label: () => 'Merriweather', font: 'Merriweather', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-raleway', label: () => 'Raleway', font: 'Raleway', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-exo-2', label: () => 'Exo 2', font: 'Exo 2', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-jura', label: () => 'Jura', font: 'Jura', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-play', label: () => 'Play', font: 'Play', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-cuprum', label: () => 'Cuprum', font: 'Cuprum', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-arsenal', label: () => 'Arsenal', font: 'Arsenal', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-alice', label: () => 'Alice', font: 'Alice', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-yeseva-one', label: () => 'Yeseva One', font: 'Yeseva One', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-caveat', label: () => 'Caveat', font: 'Caveat', weight: 400, fallback: 'cursive', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-bad-script', label: () => 'Bad Script', font: 'Bad Script', weight: 400, fallback: 'cursive', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-marck-script', label: () => 'Marck Script', font: 'Marck Script', weight: 400, fallback: 'cursive', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-neucha', label: () => 'Neucha', font: 'Neucha', weight: 400, fallback: 'cursive', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-pangolin', label: () => 'Pangolin', font: 'Pangolin', weight: 400, fallback: 'cursive', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-pacifico', label: () => 'Pacifico', font: 'Pacifico', weight: 400, fallback: 'cursive', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-poiret-one', label: () => 'Poiret One', font: 'Poiret One', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-tenor-sans', label: () => 'Tenor Sans', font: 'Tenor Sans', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-scada', label: () => 'Scada', font: 'Scada', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-didact-gothic', label: () => 'Didact Gothic', font: 'Didact Gothic', weight: 400, fallback: 'sans-serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-forum', label: () => 'Forum', font: 'Forum', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-oranienbaum', label: () => 'Oranienbaum', font: 'Oranienbaum', weight: 400, fallback: 'serif', spacing: 'normal', transform: 'none', style: 'normal' },
+      { id: 'font-balsamiq-sans', label: () => 'Balsamiq Sans', font: 'Balsamiq Sans', weight: 400, fallback: 'cursive', spacing: 'normal', transform: 'none', style: 'normal' },
+    ];
+    // Eski 15 ta preset ID va ularning OLDINGI system-font rendering'i
+    // aynan saqlanadi. Oldin yaratilgan do'kon logolari deploy sabab
+    // o'zgarib ketmasin. Yangi menyu: 50 TA HAQIQIY FONT.
+    const WORDMARK_LEGACY_PRESETS = [
+{ id: 'geometric-bold', label: () => tr('Geometric Bold', 'Geometric Bold'), family: 'sans', weight: 900, spacing: '-0.035em', transform: 'uppercase', style: 'normal' },
       { id: 'corporate-clean', label: () => tr('Corporate Clean', 'Corporate Clean'), family: 'sans', weight: 700, spacing: '0.015em', transform: 'none', style: 'normal' },
       { id: 'elegant-serif', label: () => tr('Elegant Serif', 'Elegant Serif'), family: 'serif', weight: 700, spacing: '0.025em', transform: 'none', style: 'normal' },
       { id: 'luxury-serif', label: () => tr('Luxury', 'Luxury'), family: 'serif', weight: 500, spacing: '0.16em', transform: 'uppercase', style: 'normal' },
@@ -16546,8 +16826,14 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       { id: 'navy-soft', text: '#172033', bg: '#f8fafc' },
       { id: 'white-purple', text: '#ffffff', bg: '#7c3aed' },
     ];
-    function wordmarkPresetById(id) { return WORDMARK_PRESETS.find((p) => p.id === id) || WORDMARK_PRESETS[0]; }
-    function wordmarkFontFamily(family) {
+    function wordmarkPresetById(id) {
+      return WORDMARK_PRESETS.find((p) => p.id === id) || WORDMARK_LEGACY_PRESETS.find((p) => p.id === id) || WORDMARK_PRESETS[0];
+    }
+    const wordmarkRequestedFonts = new Map();
+    let wordmarkFontObserver = null;
+    function wordmarkFontFamily(preset) {
+      if (preset.font) return `"${preset.font}", ${preset.fallback}`;
+      // Eski logotiplar uchun original font stack'lar o'zgarmaydi.
       const stacks = {
         mono: 'var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)',
         serif: 'Georgia, Cambria, "Times New Roman", Times, serif',
@@ -16557,15 +16843,83 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
         display: 'Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif',
         sans: 'var(--default-font-family, ui-sans-serif, system-ui, sans-serif)',
       };
-      return stacks[family] || stacks.sans;
+      return stacks[preset.family] || stacks.sans;
+    }
+    // Font faqat ro'yxatda ko'ringan yoki tanlangan paytda yuklanadi.
+    // Browserning OS shriftlariga tayanmaymiz. Xatoda generic fallback qoladi.
+    function ensureWordmarkFont(presetId) {
+      const preset = wordmarkPresetById(presetId);
+      if (!preset.font) return Promise.resolve(true);
+      if (wordmarkRequestedFonts.has(preset.font)) return wordmarkRequestedFonts.get(preset.font);
+      const promise = new Promise((resolve) => {
+        const link = document.createElement('link');
+        let settled = false;
+        const finish = (ok) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (!ok && link.parentNode) link.remove();
+          resolve(ok);
+        };
+        // Tarmoq javob bermay qolsa Saqlash cheksiz kutib qolmasin.
+        const timeout = setTimeout(() => finish(false), 12000);
+        link.rel = 'stylesheet';
+        link.dataset.wordmarkFont = preset.font;
+        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(preset.font).replace(/%20/g, '+')}:wght@${preset.weight}&display=swap`;
+        link.onload = async () => {
+          try {
+            if (!document.fonts || !document.fonts.load) return finish(false);
+            const faces = await document.fonts.load(`${preset.weight} 16px "${preset.font}"`, 'FITCORE Фиткоре Oʻzbek');
+            finish(faces.length > 0 && faces.some((face) => face.status === 'loaded'));
+          } catch (_) { finish(false); }
+        };
+        link.onerror = () => finish(false);
+        (document.head || document.documentElement).appendChild(link);
+      });
+      const tracked = promise.then((ok) => {
+        // Offline bo'lganidan so'ng qayta ulangan foydalanuvchi yana urinishi mumkin.
+        if (!ok) wordmarkRequestedFonts.delete(preset.font);
+        return ok;
+      });
+      wordmarkRequestedFonts.set(preset.font, tracked);
+      return tracked;
+    }
+    function observeVisibleWordmarkFonts() {
+      if (wordmarkFontObserver) { wordmarkFontObserver.disconnect(); wordmarkFontObserver = null; }
+      const menu = document.getElementById('wordmark-style-menu');
+      if (!menu || menu.classList.contains('is-hidden')) return;
+      const rows = [...menu.querySelectorAll('.fc-wordmark-style-option[data-wordmark-font]')];
+      if (!('IntersectionObserver' in window)) {
+        rows.slice(0, 6).forEach((row) => ensureWordmarkFont(row.dataset.presetId));
+        return;
+      }
+      wordmarkFontObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) if (entry.isIntersecting) {
+          ensureWordmarkFont(entry.target.dataset.presetId);
+          wordmarkFontObserver?.unobserve(entry.target);
+        }
+      }, { root: menu, rootMargin: '80px 0px', threshold: 0 });
+      rows.forEach((row) => wordmarkFontObserver.observe(row));
+    }
+    function filterWordmarkStyles(query) {
+      const needle = String(query || '').trim().toLocaleLowerCase();
+      const menu = document.getElementById('wordmark-style-menu');
+      if (!menu) return;
+      menu.querySelectorAll('.fc-wordmark-style-option').forEach((row) => {
+        row.hidden = !String(row.dataset.fontName || '').toLocaleLowerCase().includes(needle);
+      });
+      menu.scrollTop = 0;
+      requestAnimationFrame(observeVisibleWordmarkFonts);
     }
     function renderWordmarkHtml(presetId, text, opts) {
       const p = wordmarkPresetById(presetId);
+      // Preview ro'yxatida 50 ta fontni birdan tarmoqdan yuklamaymiz.
+      if (p.font && !(opts && opts.deferFont)) void ensureWordmarkFont(p.id);
       const safeText = escapeHtml(text || '');
       const cls = (opts && opts.className) || '';
       const textColor = (opts && opts.textColor) || null;
       const bgColor = (opts && opts.bgColor) || null;
-      const textStyle = `font-family:${wordmarkFontFamily(p.family)};font-weight:${p.weight};letter-spacing:${p.spacing};text-transform:${p.transform};font-style:${p.style};${textColor ? `color:${escapeHtml(textColor)};` : ''}`;
+      const textStyle = `font-family:${wordmarkFontFamily(p)};font-weight:${p.weight};letter-spacing:${p.spacing};text-transform:${p.transform};font-style:${p.style};${textColor ? `color:${escapeHtml(textColor)};` : ''}`;
       if (p.monogram) {
         const initial = escapeHtml(String(text || '?').trim().charAt(0).toUpperCase() || '?');
         const badgeStyle = `${textColor ? `background:${escapeHtml(textColor)};` : ''}${bgColor ? `color:${escapeHtml(bgColor)};` : ''}`;
@@ -16601,7 +16955,7 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       if (activePopupModal === 'SHOP_INFO') shopInfoDraft = readShopContactFormValues();
       wordmarkDraftText = clampWordmarkText(shopLogoWordmark?.text || currentShopNameForWordmark());
       const storedPresetId = shopLogoWordmark?.presetId;
-      wordmarkDraftPresetId = WORDMARK_PRESETS.some((p) => p.id === storedPresetId) ? storedPresetId : WORDMARK_PRESETS[0].id;
+      wordmarkDraftPresetId = (WORDMARK_PRESETS.some((p) => p.id === storedPresetId) || WORDMARK_LEGACY_PRESETS.some((p) => p.id === storedPresetId)) ? storedPresetId : WORDMARK_PRESETS[0].id;
       wordmarkDraftTextColor = shopLogoWordmark?.textColor || '#ffffff';
       wordmarkDraftBgColor = shopLogoWordmark?.backgroundColor || '#0f172a';
       wordmarkStyleMenuOpen = false;
@@ -16636,7 +16990,7 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       wordmarkStyleMenuOpen = opening;
       trigger.classList.toggle('is-open', opening);
       trigger.setAttribute('aria-expanded', opening ? 'true' : 'false');
-      if (!opening) { menu.classList.add('is-hidden'); return; }
+      if (!opening) { menu.classList.add('is-hidden'); if (wordmarkFontObserver) wordmarkFontObserver.disconnect(); return; }
 
       // Word font menu kabi viewport ichida suzadi: joy pastda kam bo'lsa
       // avtomatik yuqoriga ochiladi. Ro'yxatning o'zi scroll bo'ladi.
@@ -16661,11 +17015,14 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
         menu.style.top = `${Math.min(vh - edge - available, rect.bottom + gap)}px`;
       }
       menu.classList.remove('is-hidden');
+      requestAnimationFrame(observeVisibleWordmarkFonts);
     }
     function selectWordmarkPreset(presetId) {
-      if (!WORDMARK_PRESETS.some((p) => p.id === presetId)) return;
+      if (!WORDMARK_PRESETS.some((p) => p.id === presetId) && !WORDMARK_LEGACY_PRESETS.some((p) => p.id === presetId)) return;
       wordmarkDraftPresetId = presetId;
       wordmarkStyleMenuOpen = false;
+      if (wordmarkFontObserver) wordmarkFontObserver.disconnect();
+      void ensureWordmarkFont(presetId);
       renderModalContainer();
     }
     function rerenderWordmarkPreview() {
@@ -16676,7 +17033,7 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       const selected = document.getElementById('wordmark-style-selected-preview');
       if (selected) selected.innerHTML = renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' });
       document.querySelectorAll('.fc-wordmark-style-option-preview').forEach((slot) => {
-        slot.innerHTML = renderWordmarkHtml(slot.dataset.presetSlot, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' });
+        slot.innerHTML = renderWordmarkHtml(slot.dataset.presetSlot, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview', deferFont: true });
       });
     }
     function isHexColor(value) { return /^#[0-9a-fA-F]{6}$/.test(String(value || '')); }
@@ -16724,6 +17081,11 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       if (!text) return showAppNotice(tr("Do'kon nomini kiriting.", "Введите название магазина."));
       if (wordmarkWordCount(text) > WORDMARK_MAX_WORDS) return showAppNotice(tr(`Qisqa nom ko'pi bilan ${WORDMARK_MAX_WORDS} so'zdan iborat bo'lishi kerak.`, `Короткое название должно быть не длиннее ${WORDMARK_MAX_WORDS} слов.`));
       if (wordmarkContrastRatio(wordmarkDraftTextColor, wordmarkDraftBgColor) < 3 && !(await appConfirm(tr('Yozuv va fon kontrasti past. Baribir saqlaysizmi?', 'Низкий контраст текста и фона. Всё равно сохранить?')))) return;
+      // Agar shrift tarmoq/CSP sabab yuklanmasa, fallbackni haqiqiy
+      // logo deb noto'g'ri saqlab qo'ymaymiz.
+      if (!(await ensureWordmarkFont(wordmarkDraftPresetId))) {
+        return showAppNotice(tr('Tanlangan shrift yuklanmadi. Internetni tekshirib, qayta urinib ko‘ring.', 'Не удалось загрузить шрифт. Проверьте интернет и попробуйте снова.'));
+      }
       try {
         const wordmark = { presetId: wordmarkDraftPresetId, text, textColor: wordmarkDraftTextColor, backgroundColor: wordmarkDraftBgColor };
         await callApi('set_shop_logo', { logoType: 'WORDMARK', wordmark });
@@ -17775,7 +18137,7 @@ function renderModalContainer() {
       if (activePopupModal === 'ADD_CAT') {
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[92vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${ICON_FOLDER} ${tr("Yangi katalog qo'shish", "Добавить новый каталог")}</h3>
               <div>
                 <label class="font-bold text-gray-600">${tr("Katalog nomi *", "Название каталога *")}</label>
@@ -17783,11 +18145,11 @@ function renderModalContainer() {
               </div>
               <div>
                 <label class="font-bold text-gray-600">${tr('Katalog ikonkasi','Иконка каталога')}</label>
-                <div class="fc-category-icon-select"><span data-category-icon-preview>${categoryIconMarkup({iconId:categoryIconDraft.id,iconColor:categoryIconDraft.color})}</span><button type="button" onclick="openCategoryIconPicker()" class="fc-btn fc-btn-secondary">${tr('Almashtirish','Изменить')}</button></div>
+                ${categoryVisualEditorHtml()}
               </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveCategoryFromModal()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
-                <button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button onclick="releaseCategoryVisualPreview();activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
               </div>
             </div>
           </div>
@@ -17799,7 +18161,7 @@ function renderModalContainer() {
         const c = selectedCategoryModal;
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs">
+            <div class="bg-white rounded-3xl p-5 max-w-sm w-full max-h-[92vh] overflow-y-auto space-y-3 shadow-2xl text-xs">
               <h3 class="font-bold text-sm text-gray-900 border-b pb-2 flex items-center gap-1.5">${ICON_EDIT} ${tr("Katalogni tahrirlash", "Редактировать каталог")}</h3>
               <div>
                 <label class="font-bold text-gray-600">${tr("Katalog nomi *", "Название каталога *")}</label>
@@ -17807,11 +18169,11 @@ function renderModalContainer() {
               </div>
               <div>
                 <label class="font-bold text-gray-600">${tr('Katalog ikonkasi','Иконка каталога')}</label>
-                <div class="fc-category-icon-select"><span data-category-icon-preview>${categoryIconMarkup({iconId:categoryIconDraft.id,iconColor:categoryIconDraft.color})}</span><button type="button" onclick="openCategoryIconPicker()" class="fc-btn fc-btn-secondary">${tr('Almashtirish','Изменить')}</button></div>
+                ${categoryVisualEditorHtml()}
               </div>
               <div class="flex space-x-2 pt-2">
                 <button onclick="saveCategoryEdit('${c.id}')" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button>
-                <button onclick="activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button onclick="releaseCategoryVisualPreview();activePopupModal=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Yopish','Закрыть')}" title="${tr('Yopish','Закрыть')}"><i data-lucide="x" class="w-5 h-5"></i></button>
               </div>
             </div>
           </div>
@@ -18337,14 +18699,17 @@ if (activePopupModal === 'LOGO_CROP') {
                   <span class="fc-wordmark-style-selected-label">${escapeHtml(wordmarkPresetById(wordmarkDraftPresetId).label())}</span>
                   <i data-lucide="chevron-down" class="w-4 h-4"></i>
                 </button>
-                <div id="wordmark-style-menu" class="fc-wordmark-style-menu is-hidden">
-                  ${WORDMARK_PRESETS.map((p) => `<button type="button" class="fc-wordmark-style-option ${p.id === wordmarkDraftPresetId ? 'is-selected' : ''}" onclick="selectWordmarkPreset('${p.id}')">
-                    <span class="fc-wordmark-style-option-preview" data-preset-slot="${p.id}">${renderWordmarkHtml(p.id, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview' })}</span>
+                <div id="wordmark-style-menu" class="fc-wordmark-style-menu is-hidden" role="listbox" aria-label="${tr('Shrift tanlash', 'Выбор шрифта')}">
+                  <input type="search" class="fc-wordmark-style-search" placeholder="${tr('50 ta shriftdan qidirish…', 'Поиск среди 50 шрифтов…')}" aria-label="${tr('Shriftni qidirish', 'Поиск шрифта')}" oninput="filterWordmarkStyles(this.value)" />
+                  ${WORDMARK_PRESETS.map((p) => `<button type="button" role="option" aria-selected="${p.id === wordmarkDraftPresetId}" data-preset-id="${p.id}" data-wordmark-font="${p.font}" data-font-name="${p.label()}" class="fc-wordmark-style-option ${p.id === wordmarkDraftPresetId ? 'is-selected' : ''}" onclick="selectWordmarkPreset('${p.id}')">
+                    <span class="fc-wordmark-style-option-preview" data-preset-slot="${p.id}">${renderWordmarkHtml(p.id, wordmarkDraftText || tr("Do'kon", "Магазин"), { className: 'is-preview', deferFont: true })}</span>
                     <small>${p.label()}</small>
                     ${p.id === wordmarkDraftPresetId ? '<i data-lucide="check" class="w-4 h-4"></i>' : '<span></span>'}
                   </button>`).join('')}
+                  ${WORDMARK_LEGACY_PRESETS.some((p) => p.id === wordmarkDraftPresetId) ? `<button type="button" class="fc-wordmark-style-option is-selected" data-font-name="${wordmarkPresetById(wordmarkDraftPresetId).label()}" onclick="selectWordmarkPreset('${wordmarkDraftPresetId}')"><span class="fc-wordmark-style-option-preview">${renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, { className: 'is-preview' })}</span><small>${wordmarkPresetById(wordmarkDraftPresetId).label()} (${tr('eski uslub', 'старый стиль')})</small></button>` : ''}
                 </div>
               </div>
+              <p class="fc-wordmark-online-note">${tr('Shriftlar internet orqali yuklanadi; avval yuklanmagan shrift qisqa vaqt ichida paydo bo‘ladi.', 'Шрифты загружаются через интернет; новый шрифт может появиться с небольшой задержкой.')}</p>
               <div class="fc-wordmark-color-presets">
                 ${WORDMARK_COLOR_PRESETS.map((c) => `<button type="button" onclick="applyWordmarkColorPreset('${c.id}')" aria-label="${tr('Rang kombinatsiyasi','Цветовая схема')}" style="background:${c.bg}"><span style="color:${c.text}">Aa</span></button>`).join('')}
               </div>
@@ -19701,12 +20066,16 @@ if (activePopupModal === 'LOGO_CROP') {
       const name = document.getElementById('m-cat-name').value.trim();
       if (!name) return showAppNotice(tr("Katalog nomini kiriting!", "Введите название каталога!"));
       const parentId = adminCatParentId;
+      let visualPayload;
+      try { visualPayload = await categoryVisualSavePayload(); }
+      catch (error) { showAppNotice(error?.message || error); return; }
       activePopupModal = null;
       render();
       showActionToast(tr("⏳ Katalog saqlanmoqda...", "⏳ Каталог сохраняется..."), 'saving');
       try {
         const result = await callApi('add_category', { name, parentId,
-          iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color });
+          iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color, ...visualPayload });
+        releaseCategoryVisualPreview();
         upsertLocalCategory(result.category);
         saveCatalogCache();
         showActionToast(tr("✅ Katalog yaratildi", "✅ Каталог создан"), 'success', 1200);
@@ -19925,6 +20294,7 @@ if (activePopupModal === 'LOGO_CROP') {
       if (!canManageCatalog()) return;
       clearTempImageSelection();
       categoryIconDraft = { id:'stationery_folder', color:'brand' };
+      resetCategoryVisualDraft(null);
       activePopupModal = 'ADD_CAT';
       render();
     }
@@ -20261,6 +20631,7 @@ if (activePopupModal === 'LOGO_CROP') {
       if (!c) return;
       selectedCategoryModal = c;
       categoryIconDraft = { id:c.iconId || 'stationery_folder', color:c.iconColor || 'brand' };
+      resetCategoryVisualDraft(c);
       clearTempImageSelection();
       activePopupModal = 'EDIT_CAT';
       render();
@@ -20273,6 +20644,9 @@ if (activePopupModal === 'LOGO_CROP') {
       const old = cloneData(c);
       const name = document.getElementById('ec-name').value.trim();
       if (!name) return showAppNotice(tr("Katalog nomini kiriting!", "Введите название каталога!"));
+      let visualPayload;
+      try { visualPayload = await categoryVisualSavePayload(c); }
+      catch (error) { showAppNotice(error?.message || error); return; }
       c.name = name;
       activePopupModal = null;
       render();
@@ -20280,7 +20654,8 @@ if (activePopupModal === 'LOGO_CROP') {
 
       try {
         const result = await callApi('edit_category', { categoryId: id, name,
-          iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color });
+          iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color, ...visualPayload });
+        releaseCategoryVisualPreview();
         const current = categories.find(cat => cat.id === id);
         if (current) Object.assign(current, mapCategoryFromDB(result.category));
         saveCatalogCache();
@@ -21353,6 +21728,7 @@ if (activePopupModal === 'LOGO_CROP') {
       // olish mumkin bo'lardi (avvalgi versiyadagi xavfsizlik teshigi).
       if (browserBridge) await browserBridge.ready;
       if (!browserBridge && (!tg || !tg.initData)) {
+        window.USTORE_SHOP_WELCOME?.dismiss?.(document.getElementById('ustore-shop-welcome'), {immediate:true});
         document.getElementById('app-content').innerHTML = `
           <div class="space-y-4 my-6">
             <div class="bg-slate-900 border border-slate-800 text-slate-100 p-5 rounded-2xl shadow-xl">
@@ -21395,6 +21771,7 @@ if (activePopupModal === 'LOGO_CROP') {
       // bo'lmasa server qaysi do'kon ekanini bila olmaydi (bu holat menu
       // button URL noto'g'ri sozlangan bo'lsa yuz berishi mumkin).
       if (!BOT_ID) {
+        window.USTORE_SHOP_WELCOME?.dismiss?.(document.getElementById('ustore-shop-welcome'), {immediate:true});
         document.getElementById('app-content').innerHTML = `
           <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-5 rounded-2xl mt-10 text-center space-y-2">
             <p class="font-bold text-sm">${ICON_ALERT} Do'kon aniqlanmadi (bot_id ko'rsatilmagan)</p>
@@ -21408,6 +21785,9 @@ if (activePopupModal === 'LOGO_CROP') {
       // U timer bilan emas — boot/catalog readiness bilan avtomatik almashadi.
       const cachedBrand = readStoredObject(BOOT_BRAND_CACHE_KEY, null);
       const cachedShopName = String(cachedBrand?.name || tr("Do'kon", 'Магазин')).trim();
+      window.USTORE_SHOP_WELCOME?.update?.(document.getElementById('ustore-shop-welcome'), {
+        name:cachedShopName,logoUrl:cachedBrand?.logoUrl || null,theme:cachedBrand?.theme || null,locale:uiLang,
+      });
       if (browserBridge) {
         document.getElementById('app-content').replaceChildren();
       } else document.getElementById('app-content').innerHTML = `<div class="fc-boot-skeleton" role="status" aria-busy="true" aria-label="${tr('Do‘kon yuklanmoqda','Магазин загружается')}">
@@ -21461,7 +21841,8 @@ if (activePopupModal === 'LOGO_CROP') {
         shopLogoWordmark = bootData.logoWordmark || null;
         botUsername = bootData.botUsername || null;
         shopContact = bootData.shopContact || { name: null, address: null, addressRu: null, coordinates: null, phone: null, phone2: null, phone3: null, instagram: null, telegram: null, facebook: null, about: null, email: null, youtube: null, tiktok: null, sellerLegalName: null, sellerTaxId: null, sellerRegistrationNumber: null, sellerLegalAddress: null, sellerBankDetails: null, startMessage: null, startImageUrl: null, workHours: null };
-        try { localStorage.setItem(BOOT_BRAND_CACHE_KEY, JSON.stringify({ name: shopContact.name || cachedShopName, logoUrl: bootData.logoUrl || null, logoType: shopLogoType, logoWordmark: shopLogoWordmark })); } catch (_) {}
+        try { localStorage.setItem(BOOT_BRAND_CACHE_KEY, JSON.stringify({ name: shopContact.name || cachedShopName, logoUrl: bootData.logoUrl || null, logoType: shopLogoType, logoWordmark: shopLogoWordmark, theme:bootData.designSettings || null })); } catch (_) {}
+        window.USTORE_SHOP_WELCOME?.update?.(document.getElementById('ustore-shop-welcome'), { name:shopContact.name || cachedShopName,logoUrl:bootData.logoUrl || null,theme:bootData.designSettings || null,locale:uiLang });
         shopLowStockThreshold = Number.isFinite(Number(bootData.lowStockThreshold)) ? Number(bootData.lowStockThreshold) : 5;
         billzAccessGranted = bootData.billzAccessGranted === true;
         clickAccessGranted = bootData.clickAccessGranted === true;
@@ -21514,6 +21895,7 @@ if (activePopupModal === 'LOGO_CROP') {
                 : tr("Bu do'kon endi mavjud emas.", 'Этого магазина больше не существует.')}
               ${isFrozen ? `<br><br><button type="button" onclick="boot()" class="fc-btn fc-btn-primary">${tr('Qayta urinish', 'Повторить')}</button>` : ''}
             </div>`;
+          window.USTORE_SHOP_WELCOME?.dismiss?.(document.getElementById('ustore-shop-welcome'), {immediate:!!browserBridge});
           browserBridge?.appReady?.();
           return;
         }
@@ -21522,14 +21904,16 @@ if (activePopupModal === 'LOGO_CROP') {
             ${ICON_ALERT} ${tr("Ma'lumotlarni yuklab bo'lmadi.", 'Не удалось загрузить данные.')}<br>${tr('Internetni tekshiring va qayta urinib ko‘ring.', 'Проверьте интернет и попробуйте снова.')}<br><br>
             <button type="button" onclick="boot()" class="fc-btn fc-btn-primary">${tr('Qayta urinish', 'Повторить')}</button>
           </div>`;
+        window.USTORE_SHOP_WELCOME?.dismiss?.(document.getElementById('ustore-shop-welcome'), {immediate:!!browserBridge});
         browserBridge?.appReady?.();
         return;
       }
 
-      // Let fast catalogs finish before first paint. On a slow connection,
-      // show the reserved product cards instead of holding the entire shop.
+      // The initial welcome covers the first catalogue fetch (not product images).
+      // With no cached catalogue, revealing at 1200ms would expose home skeletons.
+      // The settled promise also covers the existing network-error fallback.
       if (!hadCache && (!browserBridge || /^\/(?:$|catalog|search)(?:\/|\?|$)/.test(String(browserBridge.initialRoute || '/')))) {
-        await Promise.race([catalogPromise, new Promise((resolve) => setTimeout(resolve, 1200))]);
+        await catalogPromise;
       }
       setupPolling();
       if (browserBridge) applyingWebRoute = true;

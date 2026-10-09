@@ -289,6 +289,7 @@ export function createLiveAuthAdapter({ endpoint, fetchImpl = globalThis.fetch, 
       tokenStore.set(token);
       return ok({ accountId: result.data.accountId, session: result.data.session, returnTo: result.data.returnTo, shopId: result.data.shopId });
     },
+    async getCredentialsStatus() { return request('get_credentials_status', {}, { auth: true }); },
     async changeLogin(input) { return request('change_login', { login: input?.login || '' }, { auth: true }); },
     async changePassword(input) {
       const result = await request('change_password', input || {}, { auth: true });

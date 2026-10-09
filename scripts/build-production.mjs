@@ -37,7 +37,7 @@ ensureDir(dist);
 
 // Legacy Telegram Mini App remains the default root artifact. This mirrors the
 // old build copy-set but is deterministic and does not hand-edit dist.
-for (const name of ['index.html','ustore.css','excel-import.js','config.public.js','config.public.example.js']) {
+for (const name of ['index.html','ustore.css','shop-welcome.css','shop-welcome.js','shop-welcome-art.svg','excel-import.js','config.public.js','config.public.example.js']) {
   const src = path.join(root, name); if (fs.existsSync(src)) copyFile(src, path.join(dist, name));
 }
 for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
@@ -62,8 +62,15 @@ function webFilter(full, entry) {
 }
 copyTree(webSource, webDist, webFilter);
 // Lazy admin assets must also exist when dist/web is hosted as the origin root.
-for(const name of ['ustore-image-io.js','excel-import.js'])copyFile(path.join(root,name),path.join(webDist,name));
+for(const name of ['ustore-image-io.js','excel-import.js','shop-welcome.css','shop-welcome.js','shop-welcome-art.svg'])copyFile(path.join(root,name),path.join(webDist,name));
 copyTree(path.join(root,'vendor'),path.join(webDist,'vendor'));
+// Serve the PLATFORM UI from the same origin as the Web host to remove the
+// GitHub Pages /ustore/platform/ dependency from the login/dashboard path.
+copyTree(path.join(root,'platform'), path.join(webDist,'platform-ui'));
+const platformFrameEntry = path.join(webDist,'platform-ui','index.html');
+fs.writeFileSync(platformFrameEntry, fs.readFileSync(platformFrameEntry,'utf8')
+  .replaceAll('../web/shared/miniapp-frame-bridge.js','../shared/miniapp-frame-bridge.js')
+  .replaceAll('../web/shared/platform-landing-image.js','../shared/platform-landing-image.js'));
 
 copyFile(path.join(root, 'config.public.js'), path.join(webDist, 'config.public.js'));
 fs.writeFileSync(path.join(webDist, 'index.html'), productionWebEntry(fs.readFileSync(path.join(webSource, 'index.html'), 'utf8')));
@@ -108,7 +115,7 @@ const files = walk(dist).filter((f) => path.basename(f) !== 'BUILD_MANIFEST.json
 const manifest = {
   format: 1,
   source: 'ASTRA-9c',
-  roots: { miniApp: '.', premiumWeb: 'web', platform: 'platform' },
+  roots: { miniApp: '.', premiumWeb: 'web', platform: 'platform', webPlatformFrame: 'web/platform-ui' },
   files: Object.fromEntries(files.sort().map((f) => [path.relative(dist,f).split(path.sep).join('/'), sha256(fs.readFileSync(f))])),
 };
 const audit = {

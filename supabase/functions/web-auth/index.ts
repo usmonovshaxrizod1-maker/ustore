@@ -91,7 +91,7 @@ async function corsOriginFor(db: any, req: Request, action = ""): Promise<string
   const activeDomainActions = new Set([
     "begin_origin_handoff", "exchange_origin_handoff",
     "get_session", "sign_out", "list_sessions", "revoke_session", "revoke_all_sessions",
-    "change_login", "change_password",
+    "get_credentials_status", "change_login", "change_password",
   ]);
   if (activeDomainActions.has(action) || req.method === "OPTIONS") {
     const target = await resolveActiveReturnOrigin(db, origin).catch(() => null);
@@ -278,6 +278,12 @@ Deno.serve(async (req: Request) => {
     switch (action) {
       case "get_session":
         return respond({ ok: true, accountId: session.accountId, session: { id: session.sessionId, expiresAt: session.expiresAt }, replacementToken: session.replacementToken || null });
+      case "get_credentials_status": {
+        const { data: credentials, error } = await db.from("account_credentials")
+          .select("login_display").eq("account_id", session.accountId).maybeSingle();
+        if (error) throw error;
+        return respond({ ok: true, credentialExists: !!credentials, login: String(credentials?.login_display || "") });
+      }
       case "sign_out":
         await revokeSession(db, session.accountId, session.sessionId, "SIGN_OUT");
         return respond({ ok: true });

@@ -926,3 +926,34 @@
   .uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-menu__copy small{font-size:.69rem}
   .uw-auth:is([data-feature="login"],[data-feature="origin-signin"]) .uw-auth-profile-panel{padding:.85rem}
 }
+/* Task 2 — public PLATFORM landing images (the same 1:1 media as Telegram Mini App) */
+.uw-platform-photo-showcase{width:min(100%,29rem);aspect-ratio:1;border-radius:1.5rem;overflow:hidden;background:linear-gradient(145deg,#eef5ff,#fff 55%,#eef2ff);box-shadow:0 26px 65px rgb(30 58 138 / 14%)}
+.uw-platform-photo-showcase .uw-platform-showcase__viewport{height:100%;width:100%}
+.uw-platform-photo-showcase .uw-platform-showcase__track{height:100%}
+.uw-platform-photo-showcase .uw-platform-photo-slide{height:100%;width:100%;padding:0;display:block}
+.uw-platform-photo-showcase .uw-platform-photo-slide img{display:block;width:100%;height:100%;object-fit:contain}
+.uw-platform-photo-showcase .uw-platform-showcase__controls{position:absolute;left:.65rem;right:.65rem;bottom:.65rem;padding:.4rem;z-index:2;border-radius:.85rem;background:rgb(255 255 255 / 86%);backdrop-filter:blur(8px)}
+.uw-platform-landing-admin .uw-landing-admin-fields{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin:1rem 0}
+.uw-platform-landing-admin .uw-landing-admin-fields input{max-width:18rem;min-width:0}
+.uw-platform-landing-admin .uw-landing-admin-fields select{padding:.6rem;border:1px solid #ccd8e9;border-radius:.75rem;background:#fff}
+.uw-platform-landing-preview{width:9rem;height:9rem;object-fit:contain;border-radius:1rem;border:1px solid #dde7f4}
+.uw-landing-admin-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr));gap:.8rem}
+.uw-landing-admin-item{display:grid;gap:.6rem;min-width:0}
+.uw-landing-admin-photo{width:100%;aspect-ratio:1;object-fit:contain;border-radius:.85rem;background:#eff5ff}
+.uw-landing-admin-actions{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap}
+.uw-landing-admin-replace{position:relative;display:inline-grid;place-items:center;padding:.55rem .7rem;border-radius:.7rem;border:1px solid #dbe5f5;background:#f8fbff;font-size:.76rem;cursor:pointer}
+.uw-landing-admin-replace input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+@media(max-width:47.999rem){.uw-platform-photo-showcase{width:min(100%,24rem);margin-inline:auto}.uw-landing-admin-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* PLATFORM sign-in matches the Shop App guest card: two clean rows;
+   method-specific panel opens only after its row is selected. */
+.uw-platform-auth-shell .uw-auth--platform-style{width:min(100%,35rem);gap:1.15rem}
+.uw-platform-auth-shell .uw-auth--platform-style .uw-auth-profile-menu{padding:0;gap:0;overflow:hidden;border-radius:1.35rem}
+.uw-platform-auth-shell .uw-auth--platform-style .uw-auth-profile-menu__row{min-height:5.2rem;border:0;border-radius:0;background:#fff;padding:1rem 1.1rem}
+.uw-platform-auth-shell .uw-auth--platform-style .uw-auth-profile-menu__row+.uw-auth-profile-menu__row{border-top:1px solid #e5e7eb}
+.uw-platform-auth-shell .uw-auth--platform-style .uw-auth-profile-menu__row.is-active{background:#eff6ff;box-shadow:none}
+.uw-platform-auth-shell .uw-auth--platform-style .uw-auth-profile-menu__icon{width:2.9rem;height:2.9rem;border-radius:.9rem;background:#eff6ff}
+.uw-platform-auth-shell .uw-auth--platform-style .uw-auth-profile-menu__icon svg{width:1.4rem;height:1.4rem}
+.uw-platform-auth-shell .uw-auth--platform-style .uw-auth-profile-menu__copy strong{font-size:.95rem}
+.uw-platform-auth-shell .uw-auth--platform-style .uw-auth-profile-menu__copy small{font-size:.78rem}
+@media (min-width:768px){.uw-platform-auth-shell .uw-auth--platform-style .uw-auth-profile-menu__row{min-height:5.6rem}}

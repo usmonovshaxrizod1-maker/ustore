@@ -79,6 +79,49 @@ async function ensureShopSubdomain(db: any, shopId: string, name: string) {
   return { hostname: String(row.hostname), status: String(row.status) };
 }
 
+// PLATFORM landing slider is shared by the public Web page and Telegram Mini App.
+const LANDING_BUCKET = 'platform-landing';
+async function listLandingSlides(db: any) {
+  const { data, error } = await db.from('platform_landing_slides')
+    .select('id,storage_path,sort_order,created_at')
+    .order('sort_order', { ascending:true }).order('created_at', { ascending:true });
+  if (error) throw error;
+  return (data || []).map((r: any) => ({
+    id: String(r.id), sortOrder: Number(r.sort_order),
+    imageUrl: db.storage.from(LANDING_BUCKET).getPublicUrl(r.storage_path).data.publicUrl,
+  }));
+}
+function landingImageDimensions(bytes: Uint8Array, mime: string): [number, number] | null {
+  const u32be=(i:number)=>(bytes[i]*16777216+bytes[i+1]*65536+bytes[i+2]*256+bytes[i+3])>>>0;
+  const u16be=(i:number)=>bytes[i]*256+bytes[i+1];
+  if (mime==='image/png') {
+    if (bytes.length<24 || ![137,80,78,71,13,10,26,10].every((x,i)=>bytes[i]===x)) return null;
+    return [u32be(16),u32be(20)];
+  }
+  if (mime==='image/jpeg') {
+    if (bytes[0]!==255 || bytes[1]!==216) return null;
+    let i=2;
+    while (i+9<bytes.length) {
+      if (bytes[i]!==255) return null;
+      const marker=bytes[i+1];i+=2;
+      if (marker===217 || marker===218) break;
+      if (marker===255 || marker===1 || marker>=208&&marker<=215) continue;
+      if (i+2>bytes.length) return null;
+      const length=u16be(i);if(length<2||i+length>bytes.length)return null;
+      if ([192,193,194,195,198,199,201,202,203,205,206,207].includes(marker)) return [u16be(i+5),u16be(i+3)];
+      i+=length;
+    }
+    return null;
+  }
+  if (mime==='image/webp') {
+    if (bytes.length<30 || String.fromCharCode(...bytes.slice(0,4))!=='RIFF' || String.fromCharCode(...bytes.slice(8,12))!=='WEBP') return null;
+    const fourcc=String.fromCharCode(...bytes.slice(12,16));
+    if(fourcc==='VP8X') return [1+bytes[24]+(bytes[25]<<8)+(bytes[26]<<16),1+bytes[27]+(bytes[28]<<8)+(bytes[29]<<16)];
+    if(fourcc==='VP8L' && bytes[20]===47) return [1+bytes[21]+((bytes[22]&63)<<8),1+(bytes[22]>>6)+(bytes[23]<<2)+((bytes[24]&15)<<10)];
+    if(fourcc==='VP8 ' && bytes[23]===157 && bytes[24]===1 && bytes[25]===42) return [(bytes[26]+(bytes[27]<<8))&16383,(bytes[28]+(bytes[29]<<8))&16383];
+  }
+  return null;
+}
 // 11-band: universal shop Mini App base URL — the SAME url for every shop,
 // distinguished only by its ?bot_id= query param. Overridable via env in
 // case the GitHub Pages URL ever changes, without a code redeploy.
@@ -465,6 +508,39 @@ function mapPlatformTicket(t: any) {
 async function logPlatformAdminAction(db: any, adminTgId: string, shopId: string, action: string, details: Record<string, unknown>): Promise<void> {
   const { error } = await db.from("platform_admin_action_log").insert({ admin_tg_id: adminTgId, shop_id: shopId, action, details });
   if (error) console.error("logPlatformAdminAction error", error);
+}
+
+// Task 2 / part 2: one owner inbox in Telegram and in the Web host.
+// Do not FK to shops: TERMINATE permanently purges every shop row.
+async function ownerNotification(db: any, recipient: string | null, shopId: string,
+  shopName: string, kind: "FROZEN" | "TERMINATED" | "REACTIVATED", reason: string | null): Promise<void> {
+  if (!recipient) return;
+  try {
+    const { error } = await db.from("platform_owner_notifications").insert({
+      event_key: crypto.randomUUID(), recipient_telegram_id: recipient,
+      shop_id: shopId, shop_name: String(shopName || "Do'kon").slice(0, 200),
+      kind, reason: reason?.slice(0, 500) || null,
+    });
+    if (error) console.error("[PLATFORM_OWNER_NOTIFICATION_WRITE_FAILED]", error);
+  } catch (error) { console.error("[PLATFORM_OWNER_NOTIFICATION_WRITE_FAILED]", error); }
+}
+
+async function ownerIdForShop(db: any, shopId: string): Promise<string | null> {
+  const { data, error } = await db.from("shop_memberships")
+    .select("telegram_user_id").eq("shop_id", shopId).eq("role", "OWNER")
+    .eq("status", "ACTIVE").maybeSingle();
+  if (error) { console.error("[PLATFORM_OWNER_LOOKUP_FAILED]", error); return null; }
+  return data?.telegram_user_id == null ? null : String(data.telegram_user_id);
+}
+
+async function listOwnerNotifications(db: any, recipient: string): Promise<any[]> {
+  const { data, error } = await db.from("platform_owner_notifications")
+    .select("id,shop_name,kind,reason,happened_at,read_at")
+    .eq("recipient_telegram_id", recipient)
+    .order("happened_at", { ascending: false }).limit(100);
+  if (error) { console.error("[PLATFORM_OWNER_NOTIFICATIONS_READ_FAILED]", error); return []; }
+  return (data || []).map((n: any) => ({ id: n.id, shopName: n.shop_name,
+    kind: n.kind, reason: n.reason, happenedAt: n.happened_at, readAt: n.read_at }));
 }
 
 // shop-api'dagi storePaymentReceipt bilan AYNAN bir xil tekshiruv/hajm
@@ -1236,7 +1312,12 @@ Deno.serve(async (req: Request) => {
       console.error('[PLATFORM_PUBLIC_CATALOG_FAILED]', { code: 'DATABASE_ERROR' });
       return json({ error: 'NETWORK_ERROR' }, 503);
     }
+    // A missing/misconfigured media table must not block tariff pricing.
+    let landingSlides: any[] = [];
+    try { landingSlides = await listLandingSlides(db); }
+    catch (_) { console.error('[PLATFORM_LANDING_SLIDES_READ_FAILED]'); }
     return json({
+      landingSlides,
       tariffs: (tariffRows || []).map((t: any) => ({
         id: t.id,
         name: t.name,
@@ -1335,6 +1416,74 @@ Deno.serve(async (req: Request) => {
 
   try {
     switch (action) {
+      case 'platform_admin_landing_list': {
+        requirePlatformSuperAdmin();
+        return json({ slides: await listLandingSlides(db) });
+      }
+      case 'platform_admin_landing_upload': {
+        requirePlatformSuperAdmin();
+        const replaceId = String(payload?.replaceId || '').trim();
+        if (replaceId && !/^[0-9a-f-]{36}$/i.test(replaceId)) return json({error:'invalid_slide_id'},400);
+        const mime=String(payload?.mimeType||'').toLowerCase();
+        const ext=({ 'image/png':'png','image/jpeg':'jpg','image/webp':'webp' } as Record<string,string>)[mime];
+        const encoded=String(payload?.base64||'');
+        if (!ext || encoded.length<20 || encoded.length>2800000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return json({error:'invalid_landing_image'},400);
+        let binary: Uint8Array;
+        try { binary=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0)); }
+        catch (_) { return json({error:'invalid_landing_image'},400); }
+        if (!binary.length || binary.length>2097152) return json({error:'landing_image_too_large'},400);
+        const dims=landingImageDimensions(binary,mime);
+        if (!dims || dims[0]!==dims[1] || dims[0]<128 || dims[0]>4096) return json({error:'landing_image_must_be_square'},400);
+        const {data: before,error: beforeErr}=await db.from('platform_landing_slides').select('id,sort_order,storage_path').order('sort_order');
+        if(beforeErr) throw beforeErr;
+        const old=replaceId?(before||[]).find((r:any)=>r.id===replaceId):null;
+        if(replaceId&&!old)return json({error:'slide_not_found'},404);
+        if(!replaceId&&(before||[]).length>=10)return json({error:'landing_slides_limit_reached'},409);
+        const path=`slides/${crypto.randomUUID()}.${ext}`;
+        const uploaded=await db.storage.from(LANDING_BUCKET).upload(path,binary,{contentType:mime,cacheControl:'86400',upsert:false});
+        if(uploaded.error) throw uploaded.error;
+        const mutation=replaceId
+          ? await db.from('platform_landing_slides').update({storage_path:path,mime_type:mime,updated_at:new Date().toISOString()}).eq('id',replaceId).select('id').single()
+          : await db.from('platform_landing_slides').insert({storage_path:path,mime_type:mime,sort_order:(before||[]).length}).select('id').single();
+        if(mutation.error) {
+          await db.storage.from(LANDING_BUCKET).remove([path]);
+          if(String(mutation.error.message||'').includes('landing_slides_limit_reached'))return json({error:'landing_slides_limit_reached'},409);
+          throw mutation.error;
+        }
+        if(old) await db.storage.from(LANDING_BUCKET).remove([old.storage_path]);
+        return json({ok:true,slides:await listLandingSlides(db)});
+      }
+      case 'platform_admin_landing_delete': {
+        requirePlatformSuperAdmin();
+        const id=String(payload?.id||'');
+        if(!/^[0-9a-f-]{36}$/i.test(id))return json({error:'invalid_slide_id'},400);
+        const {data: old,error: lookupErr}=await db.from('platform_landing_slides').select('storage_path').eq('id',id).maybeSingle();
+        if(lookupErr)throw lookupErr;
+        if(!old)return json({error:'slide_not_found'},404);
+        const {error: delErr}=await db.from('platform_landing_slides').delete().eq('id',id);
+        if(delErr)throw delErr;
+        await db.storage.from(LANDING_BUCKET).remove([old.storage_path]);
+        const remainder=await db.from('platform_landing_slides').select('id').order('sort_order').order('created_at');
+        if(remainder.error)throw remainder.error;
+        for (const [i,row] of (remainder.data||[]).entries()){
+          const {error}=await db.from('platform_landing_slides').update({sort_order:i}).eq('id',row.id);
+          if(error)throw error;
+        }
+        return json({ok:true,slides:await listLandingSlides(db)});
+      }
+      case 'platform_admin_landing_reorder': {
+        requirePlatformSuperAdmin();
+        const ids=payload?.ids;
+        if(!Array.isArray(ids)||ids.length>10||new Set(ids).size!==ids.length||ids.some((id:any)=>typeof id!=='string'||!/^[0-9a-f-]{36}$/i.test(id)))return json({error:'invalid_slide_order'},400);
+        const existing=await db.from('platform_landing_slides').select('id');
+        if(existing.error)throw existing.error;
+        if(existing.data.length!==ids.length||existing.data.some((r:any)=>!ids.includes(r.id)))return json({error:'slide_order_conflict'},409);
+        for (const [i,id] of ids.entries()) {
+          const {error}=await db.from('platform_landing_slides').update({sort_order:i,updated_at:new Date().toISOString()}).eq('id',id);
+          if(error)throw error;
+        }
+        return json({ok:true,slides:await listLandingSlides(db)});
+      }
       case "platform_shop_domains": {
         requirePlatformSuperAdmin();
         const shopId = String(body?.shopId || "");
@@ -1852,7 +2001,14 @@ Deno.serve(async (req: Request) => {
           // sabab yaratilmaydi, ikkalasi ham bizga bir xil natija.
           EdgeRuntime.waitUntil(db.from("platform_visitor_tracking").insert({ telegram_user_id: tgId }));
         }
+        // Shared hero media is only needed for visitors without a shop.
+        let landingSlides: any[] = [];
+        if (!myShops.length) {
+          try { landingSlides = await listLandingSlides(db); }
+          catch (_) { console.error('[PLATFORM_LANDING_BOOT_READ_FAILED]'); }
+        }
         return json({
+          landingSlides,
           isSuperAdmin: isPlatformSuperAdmin,
           authMode,
           platformActor: {
@@ -1865,11 +2021,28 @@ Deno.serve(async (req: Request) => {
           myShops,
           myRequests,
           lifecycleSettings,
+          ownerNotifications: await listOwnerNotifications(db, tgId),
           tariffs: (tariffRows || []).map((t: any) => ({
             id: t.id, name: t.name, price: Number(t.price), productLimit: t.product_limit, isPopular: t.is_popular === true,
             features: Array.isArray(t.features) ? t.features : [],
           })),
         });
+      }
+
+      case "platform_list_owner_notifications": {
+        return json({ notifications: await listOwnerNotifications(db, tgId) });
+      }
+
+      case "platform_mark_owner_notification_read": {
+        const id = String(payload.id || "").trim();
+        if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: "invalid_notification_id" }, 400);
+        const { data, error } = await db.from("platform_owner_notifications")
+          .update({ read_at: new Date().toISOString() })
+          .eq("id", id).eq("recipient_telegram_id", tgId)
+          .select("id").maybeSingle();
+        if (error) throw error;
+        if (!data) return json({ error: "notification_not_found" }, 404);
+        return json({ ok: true });
       }
 
       case "platform_list_my_shops": {
@@ -2869,6 +3042,8 @@ Deno.serve(async (req: Request) => {
           throw freezeError;
         }
         await logPlatformAdminAction(db, tgId, shopId, "FREEZE", { reason, previousStatus: frozen.previousStatus, newStatus: "FROZEN", frozenDeleteAt: frozen.frozenDeleteAt });
+        await ownerNotification(db, await ownerIdForShop(db, shopId), shopId,
+          frozen?.name || "Do'kon", "FROZEN", reason);
         notifyLifecycleOwnerInBackground(db, PLATFORM_BOT_TOKEN, shopId, "FROZEN", {
           SHOP_NAME: frozen?.name || "Do'koningiz",
           REASON: reason,
@@ -2932,6 +3107,8 @@ Deno.serve(async (req: Request) => {
         }
 
         await logPlatformAdminAction(db, tgId, shopId, "REACTIVATE", { previousStatus: "FROZEN", newStatus: "ACTIVE" });
+        await ownerNotification(db, await ownerIdForShop(db, shopId), shopId,
+          reactivated?.name || "Do'kon", "REACTIVATED", null);
         notifyLifecycleOwnerInBackground(db, PLATFORM_BOT_TOKEN, shopId, "REACTIVATED", {
           SHOP_NAME: reactivated?.name || "Do'koningiz",
           REASON: "",
@@ -3070,6 +3247,8 @@ Deno.serve(async (req: Request) => {
           p_backup_id: deletionBackup.id,
         });
         if (purgeErr) throw purgeErr;
+        await ownerNotification(db, ownerTelegramId, shopId,
+          shopName || "Do'kon", "TERMINATED", reason);
 
         return json({ ok: true, storageCleanup, deletionArchiveId, backupId: deletionBackup.id, backupDownloadUrl: deletionBackup.url, backupSizeBytes: deletionBackup.sizeBytes, backupExpiresIn: 3600 });
       }

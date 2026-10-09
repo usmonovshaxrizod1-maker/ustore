@@ -81,14 +81,12 @@ test('task 2: shop_settings supports IMAGE/WORDMARK and switching logo source re
   assert.match(app, /const WORDMARK_PRESETS = \[/);
   const presetsBlock = app.slice(app.indexOf('const WORDMARK_PRESETS = ['), app.indexOf('];', app.indexOf('const WORDMARK_PRESETS = [')));
   const presetCount = (presetsBlock.match(/\{ id:/g) || []).length;
-  assert.ok(presetCount > 6, 'wordmark chooser must offer more than 6 professional styles');
-  for (const family of ['sans', 'mono', 'serif', 'condensed', 'wide', 'rounded', 'display']) {
-    assert.match(presetsBlock, new RegExp(`family: '${family}'`), `wordmark styles must include a visually distinct ${family} direction`);
-  }
+  assert.equal(presetCount, 50, 'wordmark chooser must offer exactly 50 different fonts');
+  assert.equal(new Set([...presetsBlock.matchAll(/font: '([^']+)'/g)].map(x=>x[1])).size, 50, 'wordmark styles must use 50 distinct font family names');
   assert.doesNotMatch(app, /@font-face/, 'no bundled/custom font file is required; system/browser stacks keep Telegram WebView light');
 
-  assert.match(app, /function wordmarkFontFamily\(family\) \{/);
-  assert.match(app, /ui-monospace, SFMono-Regular, Menlo, Consolas, monospace/, 'mono preset must reuse a system mono stack');
+  assert.match(app, /function wordmarkFontFamily\(preset\) \{/);
+  assert.match(app, /https:\/\/fonts\.googleapis\.com\/css2\?family=/, 'Google Fonts are loaded on demand for consistent Web and Mini App rendering');
   assert.match(css, /\.fc-wordmark-style-menu\{[^}]*max-height:[^;}]+;[^}]*overflow-y:auto/s, 'Word-like style list must have bounded height and internal vertical scroll');
   assert.doesNotMatch(app, /switchLogoBackToImage|Yuklangan rasmga qaytish/, 'there must be no UI or helper for switching back to an obsolete logo source');
 
@@ -198,7 +196,7 @@ test('task 6: sending a support message shows an immediate "Yuborilmoqda..." opt
     assert.ok(app.includes(startCall), `missing poll start call: ${startCall}`);
   }
   const closePageStart = app.indexOf('function closePage() {');
-  assert.match(app.slice(closePageStart, closePageStart + 200), /stopSupportThreadPoll\(\);/, 'closePage() must stop the poll — it is the generic exit for the Support page among many others');
+  assert.match(app.slice(closePageStart, closePageStart + 400), /stopSupportThreadPoll\(\);/, 'closePage() must stop the poll — it is the generic exit for the Support page among many others');
   const switchTabStart = app.indexOf('function switchTab(tab) {');
   assert.match(app.slice(switchTabStart, switchTabStart + 400), /stopSupportThreadPoll\(\);/);
 

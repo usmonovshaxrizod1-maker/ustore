@@ -13,21 +13,20 @@ test('task15: landing explicitly presents both web and Telegram Mini App', () =>
   assert.match(app, /Web sayt va Telegram Mini App orqali soting/);
 });
 
-test('task15: showcase contains all eight agreed product stories', () => {
-  for (const key of ['channels','catalog','orders','inventory','marketing','checkout','analytics','branding']) {
-    assert.match(app, new RegExp(`key:'${key}'`));
-  }
-  assert.match(app, /LANDING_SHOWCASE_SLIDES\.map/);
-  assert.match(app, /Telegram Mini App/);
-  assert.match(app, /O‘z domeningiz/);
+test('task2 supersedes task15: landing renders persistent admin-controlled image slides, not old mockups', () => {
+  assert.match(app, /landingSlides\.slice\(0,10\)/);
+  assert.match(app, /plat-photo-slide/);
+  assert.doesNotMatch(app, /LANDING_SHOWCASE_SLIDES/);
+  assert.match(app, /adminLandingSave/);
+  assert.match(app, /adminLandingShift/);
 });
 
-test('task15: carousel autoplays every three seconds and supports manual navigation', () => {
-  assert.match(app, /setInterval\(\(\) => \{/);
-  assert.match(app, /\}, 3000\);/);
+test('task2: slider autoplays every five seconds, buttons and swipe remain usable', () => {
+  assert.match(app, /setInterval\(/);
+  assert.match(app, /5000\)/);
   assert.match(app, /landingShowcaseStep\(-1\)/);
   assert.match(app, /landingShowcaseStep\(1\)/);
-  assert.match(app, /landingShowcaseGo\(\$\{index\}\)/);
+  assert.match(app, /landingShowcaseGo\(\$\{i\}\)/);
   assert.match(app, /landingShowcaseTouchStart/);
   assert.match(app, /landingShowcaseTouchEnd/);
 });

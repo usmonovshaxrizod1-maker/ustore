@@ -207,6 +207,19 @@ Deno.serve(async (req: Request) => {
         });
         if (freezeError) { console.error("[SUBSCRIPTION_CRON] freeze failed", { shopId: s.id, message: freezeError.message }); continue; }
         frozenCount++;
+        // Same persistent inbox as manual freeze: visible in Platform Web and Telegram.
+        try {
+          const { data: membership } = await db.from("shop_memberships")
+            .select("telegram_user_id").eq("shop_id", s.id).eq("role", "OWNER")
+            .eq("status", "ACTIVE").maybeSingle();
+          if (membership?.telegram_user_id) {
+            const { error: inboxError } = await db.from("platform_owner_notifications").insert({
+              event_key: crypto.randomUUID(), recipient_telegram_id: String(membership.telegram_user_id),
+              shop_id: s.id, shop_name: row?.name || "Do'kon", kind: "FROZEN", reason,
+            });
+            if (inboxError) console.error("[SUBSCRIPTION_CRON_INBOX_FAILED]", inboxError);
+          }
+        } catch (error) { console.error("[SUBSCRIPTION_CRON_INBOX_FAILED]", error); }
         const sent = await sendTemplatedNotification(db, PLATFORM_BOT_TOKEN, s.id, "FROZEN", frozen.frozenAt, templates, {
           SHOP_NAME: row?.name || "Do'koningiz",
           REASON: reason,

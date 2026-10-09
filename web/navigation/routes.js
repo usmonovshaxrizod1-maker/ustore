@@ -10,6 +10,7 @@ export const PLATFORM_ROUTES = Object.freeze([
   { id: 'platform-admin-support-ticket', path: '/platform/admin/support/:ticketId', navId: 'support', platform: true, platformAuth: true, platformSuperAdmin: true },
   { id: 'platform-admin-tariffs', path: '/platform/admin/tariffs', navId: 'tariffs', platform: true, platformAuth: true, platformSuperAdmin: true },
   { id: 'platform-admin-analytics', path: '/platform/admin/analytics', navId: 'analytics', platform: true, platformAuth: true, platformSuperAdmin: true },
+  { id: 'platform-admin-landing', path: '/platform/admin/landing', navId: 'landing', platform: true, platformAuth: true, platformSuperAdmin: true },
   { id: 'platform-admin-settings', path: '/platform/admin/settings', navId: 'settings', platform: true, platformAuth: true, platformSuperAdmin: true },
   { id: 'platform-app', path: '/platform/app', navId: 'app', platform: true, platformAuth: true },
   { id: 'platform-shops', path: '/platform/shops', navId: 'shops', platform: true, platformAuth: true },
@@ -19,6 +20,7 @@ export const PLATFORM_ROUTES = Object.freeze([
   { id: 'platform-request', path: '/platform/requests/:requestId', navId: 'requests', platform: true, platformAuth: true },
   { id: 'platform-support', path: '/platform/support', navId: 'support', platform: true, platformAuth: true },
   { id: 'platform-support-ticket', path: '/platform/support/:ticketId', navId: 'support', platform: true, platformAuth: true },
+  { id: 'platform-notifications', path: '/platform/notifications', navId: 'app', platform: true, platformAuth: true },
   { id: 'platform-profile', path: '/platform/profile', navId: 'profile', platform: true, platformAuth: true },
 ]);
 
