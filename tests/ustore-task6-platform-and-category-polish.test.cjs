@@ -75,7 +75,7 @@ test('both entrypoints include fresh asset versions', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'),'utf8');
   const platformEntry = fs.readFileSync(path.join(root, 'platform/index.html'),'utf8');
   assert.match(html, /ustore\.css\?v=331/);
-  assert.match(html, /ustore-shop-app\.js\?v=333/);
+  assert.match(html, /ustore-shop-app\.js\?v=334/);
   assert.match(platformEntry, /platform\.css\?v=43/);
   assert.match(platformEntry, /platform-app\.js\?v=66/);
 });

@@ -144,6 +144,6 @@ test('FIX8-8 Store Settings root is a compact premium menu hierarchy; pause text
 
 test('FIX8 cache versions are bumped for the modified Shop App assets', () => {
   assert.match(html, /ustore\.css\?v=331/);
-  assert.match(html, /ustore-shop-app\.js\?v=333/);
+  assert.match(html, /ustore-shop-app\.js\?v=334/);
 });
 

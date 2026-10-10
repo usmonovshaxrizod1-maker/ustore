@@ -33,5 +33,5 @@ test('marketing feature selectors do not modify app business logic or mobile', (
     assert.match(app, new RegExp('function ' + fn + '\\('));
   }
   assert.match(html, /ustore\.css\?v=331/);
-  assert.match(html, /ustore-shop-app\.js\?v=333/);
+  assert.match(html, /ustore-shop-app\.js\?v=334/);
 });

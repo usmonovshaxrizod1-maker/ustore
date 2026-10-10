@@ -54,15 +54,16 @@ test('onImageUrlInput retries once through the image proxy before showing the er
   assert.doesNotMatch(fn, /tempImageUrl = .*wsrv/, 'proxy URL must never be assigned into tempImageUrl');
 });
 
-test('QR-code reading (payment merchant QR) is unaffected — it decodes an uploaded local file via BarcodeDetector, never loads an external image URL over the network', () => {
-  const fn = block('async function tryAutoFillQrPaymentUrlFromFile(providerId, file) {', 'async function ', 1500);
+test('QR-code reading decodes the uploaded local file and uses a bundled fallback without the native API', () => {
+  const fn = block('async function readQrValueFromFile(file) {', 'async function tryAutoFillQrPaymentUrlFromFile', 5000);
   assert.match(fn, /new BarcodeDetector/);
-  assert.match(fn, /createImageBitmap\(file\)/, 'reads the local File object directly — no network fetch, so hotlink/referrer blocking cannot apply here');
-  assert.doesNotMatch(fn, /\.src\s*=/, 'no <img src=...> network load in the QR decode path');
+  assert.match(fn, /createImageBitmap\(file\)/);
+  assert.match(fn, /ensureScript\('\.\/vendor\/jsQR\.js\?v=1\.4\.0'\)/);
+  assert.doesNotMatch(fn, /fetch\(/, 'QR decoder must not fetch the image from an external origin');
 });
 
 test('cache version bumped for this fix', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.match(html, /ustore-shop-app\.js\?v=333/);
+  assert.match(html, /ustore-shop-app\.js\?v=334/);
 });
 

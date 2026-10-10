@@ -45,5 +45,5 @@ test('only Privacy and Terms require consent; optional documents can be publishe
 });
 
 test('new shop app JS asset version is referenced to prevent stale legal-document UI', () => {
-  assert.match(html, /ustore-shop-app\.js\?v=333/);
+  assert.match(html, /ustore-shop-app\.js\?v=334/);
 });

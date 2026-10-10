@@ -49,7 +49,7 @@ test('Google Fonts narrowly whitelisted by web CSP, style assets cache busted, a
     assert.match(content,/style-src 'self' https:\/\/fonts\.googleapis\.com/);
     assert.match(content,/font-src 'self' data: https:\/\/fonts\.gstatic\.com/);
   }
-  assert.match(html,/ustore-shop-app\.js\?v=333/);
+  assert.match(html,/ustore-shop-app\.js\?v=334/);
   assert.match(html,/ustore\.css\?v=331/);
   assert.doesNotMatch(block, /\.woff|\.ttf|\.otf|@font-face/);
 });

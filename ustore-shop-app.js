@@ -11829,6 +11829,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         p.paymentUrl = next;
         qrProviderNeedsTest.add(providerId);
         qrProviderTestState[providerId] = { status: 'changed' };
+        qrProviderDecodeState[providerId] = { status: 'manual' };
+        rerenderFulfillmentBody();
       }
     }
     function qrProviderExpectedHost(providerId, hostname) {
@@ -11901,17 +11903,66 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       return null;
     }
 
+    let qrDecoderLoadPromise = null;
+    async function readQrValueFromFile(file) {
+      if (typeof BarcodeDetector === 'function' && typeof createImageBitmap === 'function') {
+        try {
+          const detector = new BarcodeDetector({ formats: ['qr_code'] });
+          const bitmap = await createImageBitmap(file);
+          try {
+            const results = await detector.detect(bitmap);
+            const value = String(results?.[0]?.rawValue || '').trim();
+            if (value) return value;
+          } finally { bitmap.close?.(); }
+        } catch (_) { /* Some browsers expose BarcodeDetector without QR support. */ }
+      }
+
+      // A local decoder keeps image uploads usable on desktop browsers and
+      // Telegram WebViews that do not expose the native BarcodeDetector API.
+      if (typeof window.jsQR !== 'function') {
+        if (!qrDecoderLoadPromise) qrDecoderLoadPromise = ensureScript('./vendor/jsQR.js?v=1.4.0').catch((error) => {
+          qrDecoderLoadPromise = null;
+          throw error;
+        });
+        await qrDecoderLoadPromise;
+      }
+      if (typeof window.jsQR !== 'function') throw new Error('qr_decoder_unavailable');
+
+      let image = null;
+      let objectUrl = null;
+      try {
+        if (typeof createImageBitmap === 'function') {
+          try { image = await createImageBitmap(file); } catch (_) {}
+        }
+        if (!image) {
+          objectUrl = URL.createObjectURL(file);
+          image = await new Promise((resolve, reject) => {
+            const element = new Image();
+            element.onload = () => resolve(element);
+            element.onerror = () => reject(new Error('qr_image_decode_failed'));
+            element.src = objectUrl;
+          });
+        }
+        const width = image.width || image.naturalWidth;
+        const height = image.height || image.naturalHeight;
+        if (!width || !height) throw new Error('qr_image_decode_failed');
+        const scale = Math.min(1, 1600 / Math.max(width, height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(width * scale));
+        canvas.height = Math.max(1, Math.round(height * scale));
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) throw new Error('qr_canvas_unavailable');
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+        return String(window.jsQR(pixels.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' })?.data || '').trim();
+      } finally {
+        image?.close?.();
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+      }
+    }
     async function tryAutoFillQrPaymentUrlFromFile(providerId, file) {
       try {
-        if (typeof BarcodeDetector === 'undefined') {
-          qrProviderDecodeState[providerId] = { status: 'error', message: tr("Bu qurilmada QR'ni avtomatik o'qish qo'llab-quvvatlanmadi.", 'На этом устройстве авто-распознавание QR не поддерживается.') };
-          return false;
-        }
-        const detector = new BarcodeDetector({ formats: ['qr_code'] });
-        const bitmap = await createImageBitmap(file);
-        let results;
-        try { results = await detector.detect(bitmap); } finally { bitmap.close?.(); }
-        const raw = String(results?.[0]?.rawValue || '').trim();
+        const raw = await readQrValueFromFile(file);
         if (!raw) {
           qrProviderDecodeState[providerId] = { status: 'error', message: tr("QR kod o'qilmadi. Boshqa rasm tanlang.", 'QR-код не распознан. Выберите другое изображение.') };
           return false;
@@ -11919,7 +11970,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         qrProviderDecodedRaw[providerId] = raw;
         const paymentUrl = paymentUrlFromQrRaw(providerId, raw);
         if (!paymentUrl) {
-          qrProviderDecodeState[providerId] = { status: 'error', message: tr("QR o'qildi, lekin to'lov sahifasi aniqlanmadi. Boshqa QR rasm tanlang.", 'QR распознан, но платёжная страница не определена. Выберите другой QR.') };
+          qrProviderDecodeState[providerId] = { status: 'error', message: tr("QR o'qildi, ammo ichida to'lov havolasi yo'q. Provayderdan havola olib, pastga kiriting.", 'QR распознан, но платёжной ссылки внутри нет. Получите ссылку у провайдера и введите ниже.') };
           return false;
         }
         const p = qrProvidersOf().find(x => x.id === providerId);
@@ -11990,10 +12041,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           <div class="fc-qr-provider-body">
             <div class="fc-qr-image-row">
               ${preview}
-              <div class="min-w-0 flex-1"><input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary fc-btn-icon fc-qr-upload-btn" ${loading ? 'disabled' : ''} aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><p>${tr('QR rasm yuklang — to‘lov ma’lumoti avtomatik o‘qiladi.', 'Загрузите QR — платёжные данные распознаются автоматически.')}</p></div>
+              <div class="min-w-0 flex-1"><input id="qr-img-input-${provider.id}" type="file" accept="image/*" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><input id="qr-img-input-files-${provider.id}" type="file" class="hidden" onchange="pickQrProviderImage(event,'${provider.id}')"><button type="button" onclick="openImagePickerSheet('qr-img-input-${provider.id}','qr-img-input-files-${provider.id}')" class="fc-btn fc-btn-secondary fc-btn-icon fc-qr-upload-btn" ${loading ? 'disabled' : ''} aria-label="${tr('Rasm tanlash', 'Выбрать фото')}" title="${tr('Rasm tanlash', 'Выбрать фото')}"><i data-lucide="image-plus" class="w-4 h-4"></i></button><p>${tr('QR rasmni yuklang — ichida to‘lov havolasi bo‘lsa avtomatik olinadi.', 'Загрузите QR — если внутри есть платёжная ссылка, она заполнится автоматически.')}</p></div>
             </div>
             ${decode?.status === 'success' ? `<div class="fc-qr-verified fc-qr-read-ok"><i data-lucide="scan-line" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR muvaffaqiyatli o'qildi", 'QR успешно распознан'))}</div>` : ''}
             ${decode?.status === 'error' ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${escapeHtml(decode.message || tr("QR kodni o'qib bo'lmadi", 'Не удалось распознать QR'))}</div>` : ''}
+            ${decode?.status === 'error' || decode?.status === 'manual' ? `<label class="fc-mini-field fc-qr-manual-link"><span>${tr('To‘lov havolasi (agar mavjud bo‘lsa)','Ссылка на оплату (если есть)')}</span><input type="url" inputmode="url" value="${escapeHtml(provider.paymentUrl || '')}" placeholder="https://..." onchange="setQrProviderPaymentUrl('${provider.id}',this.value)"></label>` : ''}
             ${provider.paymentUrl ? `<div class="fc-qr-actions"><button type="button" onclick="testQrProviderPaymentUrl('${provider.id}')" class="fc-btn fc-qr-test-btn" ${loading ? 'disabled' : ''}><i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>${tr('Sinab ko‘rish','Проверить')}</button></div>` : ''}
             ${test?.status === 'opened' ? `<div class="fc-qr-test-confirm"><p>${escapeHtml(test.note || tr('To‘lov sahifasi to‘g‘ri ochildimi?', 'Страница оплаты открылась правильно?'))}</p><div><button type="button" onclick="confirmQrProviderTest('${provider.id}',true)" class="is-ok"><i data-lucide="check" class="w-3.5 h-3.5"></i>${tr('To‘g‘ri ishladi','Работает правильно')}</button><button type="button" onclick="confirmQrProviderTest('${provider.id}',false)" class="is-bad"><i data-lucide="x" class="w-3.5 h-3.5"></i>${tr('Noto‘g‘ri','Неверно')}</button></div></div>` : ''}
             ${verified ? `<div class="fc-qr-verified"><i data-lucide="badge-check" class="w-4 h-4"></i>${tr('Tekshirildi — saqlash mumkin','Проверено — можно сохранить')}</div>` : (qrProviderNeedsTest.has(provider.id) && provider.paymentUrl ? `<div class="fc-qr-unverified"><i data-lucide="circle-alert" class="w-4 h-4"></i>${tr('Saqlashdan oldin Sinab ko‘rish tugmasi orqali tekshiring.','Перед сохранением проверьте через кнопку «Проверить».')}</div>` : '')}

@@ -79,5 +79,5 @@ test('desktop/tablet responsive layout is browser admin only', () => {
   assert.match(css, /\.fc-fulfillment-desktop-sidebar\{display:none\}/);
   assert.match(css, /\.fc-icon-action-bar\.hidden\{display:none!important\}/);
   assert.match(html, /ustore\.css\?v=331/);
-  assert.match(html, /ustore-shop-app\.js\?v=333/);
+  assert.match(html, /ustore-shop-app\.js\?v=334/);
 });
