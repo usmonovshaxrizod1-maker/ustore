@@ -77,5 +77,5 @@ test('both entrypoints include fresh asset versions', () => {
   assert.match(html, /ustore\.css\?v=332/);
   assert.match(html, /ustore-shop-app\.js\?v=335/);
   assert.match(platformEntry, /platform\.css\?v=43/);
-  assert.match(platformEntry, /platform-app\.js\?v=67/);
+  assert.match(platformEntry, /platform-app\.js\?v=68/);
 });

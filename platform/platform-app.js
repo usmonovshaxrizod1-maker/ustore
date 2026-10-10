@@ -22,6 +22,7 @@
   const SHOP_FREEZE_DAYS = 60;
 
   const browserBridge = window.USTORE_FRAME_BRIDGE?.kind === 'platform' ? window.USTORE_FRAME_BRIDGE : null;
+  let platformWelcome = null;
   let tg = browserBridge ? null : window.Telegram?.WebApp || null;
   let browserPlatformActor = null;
   if (tg) tg.expand();
@@ -669,15 +670,24 @@
     // orqadagi ro'yxat tabini ko'rinadigan qiladi.
     document.body.classList.toggle('plat-support-desktop-split', isAdminMode && (currentTab === 'support' || activePage === 'ADMIN_SUPPORT_THREAD'));
     if (accessDenied) {
+      window.USTORE_SHOP_WELCOME?.dismiss(platformWelcome);
+      platformWelcome = null;
       app.innerHTML = `<div class="wrap"><header class="top"><h1>UStorE</h1></header><div class="card"><p class="notice error">${pIcon('alert',16)} Xatolik yuz berdi. Iltimos, botni qayta oching.</p></div></div>`;
+      browserBridge?.appReady?.();
       return;
     }
     if (loading) {
-      app.innerHTML = `<div class="plat-boot-state"><div class="plat-boot-brand">UStorE</div><span class="plat-boot-spinner"></span><b>UStorE yuklanmoqda...</b><small>Do‘konlaringiz va obuna ma’lumotlari tayyorlanmoqda.</small></div>`;
+      if (!browserBridge && !platformWelcome) {
+        platformWelcome = window.USTORE_SHOP_WELCOME.create({mode:'platform',name:'UStorE'});
+        document.body.append(platformWelcome);
+      }
       return;
     }
+    window.USTORE_SHOP_WELCOME?.dismiss(platformWelcome);
+    platformWelcome = null;
     if (bootError) {
       app.innerHTML = `<div class="plat-boot-state is-error"><div class="plat-boot-brand">UStorE</div><span class="plat-boot-error-icon">${pIcon('info', 24)}</span><b>Ma’lumotlarni yuklab bo‘lmadi</b><small>${escapeHtml(bootError)}</small><button class="primary plat-boot-retry" onclick="retryBoot()">Qayta urinish</button></div>`;
+      browserBridge?.appReady?.();
       return;
     }
 

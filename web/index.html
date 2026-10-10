@@ -12,21 +12,23 @@
   <meta http-equiv="Expires" content="0">
   <title>UStorE</title>
   <link rel="stylesheet" href="./styles/index.css?v=20261009t3">
-  <link rel="stylesheet" href="./shop-welcome.css?v=20261009t1">
-  <script src="./shop-welcome.js?v=20261009t1"></script>
+  <link rel="stylesheet" href="./shop-welcome.css?v=20261010p1">
+  <script src="./shop-welcome.js?v=20261010p1"></script>
   <script src="./config.public.js?v=20261009flow1"></script>
-  <script src="./launch-boot.js?v=20261009t1"></script>
-  <script type="module" src="./app.js?v=20261009t7"></script>
+  <script src="./launch-boot.js?v=20261010p1"></script>
+  <script type="module" src="./app.js?v=20261010p1"></script>
 </head>
 <body>
   <a class="uw-skip-link" href="#uw-main-content">Asosiy qismga o‘tish</a>
   <div id="ustore-web-app" aria-live="polite">
-    <section class="uw-launch uw-launch--platform" role="status" aria-live="polite" aria-busy="true">
-      <div class="uw-launch__inner">
-        <div class="uw-launch__brand"><span class="uw-launch__monogram">U</span><div class="uw-launch__brand-copy"><span class="uw-launch__eyebrow">USTORE</span><h1>UStorE</h1></div></div>
-        <div class="uw-launch__loader" aria-hidden="true"><span></span><span></span><span></span></div>
-        <p class="uw-launch__message">Biznesingiz uchun platforma tayyorlanmoqda…</p>
-        <small class="uw-launch__foot">Xavfsiz ulanish va kerakli modullar yuklanmoqda</small>
+    <section class="uw-launch uw-launch--platform uw-initial-platform-opening ustore-welcome ustore-welcome--platform" role="status" aria-live="polite" aria-busy="true">
+      <div class="ustore-welcome__art" aria-hidden="true"></div>
+      <div class="ustore-welcome__content">
+        <div class="ustore-welcome__glass"><span class="ustore-welcome__logo"><span class="ustore-welcome__monogram">U</span></span></div>
+        <h1 class="ustore-welcome__title"><span class="ustore-welcome__name">UStorE</span><span class="ustore-welcome__greeting">Biznesingiz uchun platforma tayyorlanmoqda…</span></h1>
+        <div class="ustore-welcome__dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="ustore-welcome__error" hidden></div>
+        <small class="ustore-welcome__foot">Xavfsiz ulanish va kerakli modullar yuklanmoqda</small>
       </div>
     </section>
     <section class="uw-shop-opening uw-initial-shop-opening ustore-welcome" role="status" aria-busy="true">

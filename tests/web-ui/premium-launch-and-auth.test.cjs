@@ -7,7 +7,7 @@ test('platform and shop hosts use branded premium launch states instead of techn
   const css = fs.readFileSync('web/styles/components.css','utf8');
   assert.match(app,/function launchView/);
   assert.doesNotMatch(app,/Do‘kon tayyorlanmoqda/);
-  assert.match(app,/Biznesingiz uchun platforma tayyorlanmoqda/);
+  assert.match(fs.readFileSync('shop-welcome.js','utf8'),/Biznesingiz uchun platforma tayyorlanmoqda/);
   assert.match(app,/tenantBrand\.shopName/);
   assert.match(app,/shopLaunchShown/);
   assert.match(css,/\.uw-launch/);

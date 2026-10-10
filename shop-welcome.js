@@ -69,12 +69,20 @@
     section.append(art,body);
     return body;
   }
-  function create({ extraClass = '', name = '', logoUrl = '', locale = 'uz', theme = null } = {}) {
+  function create({ extraClass = '', name = '', logoUrl = '', locale = 'uz', theme = null, mode = 'shop', message = '' } = {}) {
     const section=document.createElement('section');
     section.className=`ustore-welcome uw-shop-opening ${extraClass}`.trim();
     section.setAttribute('role','status'); section.setAttribute('aria-busy','true');
     content(section);
     update(section, { name,logoUrl,locale,theme });
+    if (mode === 'platform') {
+      section.classList.add('ustore-welcome--platform');
+      section.classList.remove('uw-shop-opening');
+      section.querySelector('.ustore-welcome__greeting').textContent=message || (locale==='ru'?'Готовим платформу для вашего бизнеса…':'Biznesingiz uchun platforma tayyorlanmoqda…');
+      const foot=document.createElement('small'); foot.className='ustore-welcome__foot';
+      foot.textContent=locale==='ru'?'Устанавливаем безопасное соединение и загружаем необходимые модули':'Xavfsiz ulanish va kerakli modullar yuklanmoqda';
+      section.querySelector('.ustore-welcome__content').append(foot);
+    }
     return section;
   }
   function update(section, {name,logoUrl,locale,theme} = {}) {

@@ -1,4 +1,6 @@
 /* Shared UStorE storefront welcome — CSS/SVG only, no image/video animation. */
+.ustore-welcome--platform .ustore-welcome__greeting{font-size:clamp(17px,4vw,23px);line-height:1.4;margin-top:18px;letter-spacing:normal}
+.ustore-welcome__foot{max-width:36ch;margin-top:18px;font:400 14px/1.5 system-ui,sans-serif;color:#315f9d}
 .ustore-welcome{--ustore-welcome-accent:#2563eb;--ustore-welcome-title-accent:#315f9d;--ustore-welcome-hue:0deg;position:fixed;inset:0;z-index:100000;isolation:isolate;display:grid;place-items:center;box-sizing:border-box;overflow:hidden;margin:0;padding:max(20px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));min-height:100vh;min-height:100dvh;background:#e8f3ff;color:#14294b;text-align:center;font-family:Georgia,'Times New Roman',serif;opacity:1;transition:opacity .32s ease;}
 .ustore-welcome *,.ustore-welcome *::before,.ustore-welcome *::after{box-sizing:border-box}
 .ustore-welcome--leaving{opacity:0;pointer-events:none}

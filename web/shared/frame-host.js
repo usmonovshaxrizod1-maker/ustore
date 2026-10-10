@@ -41,10 +41,11 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   if (botId) src.searchParams.set('bot_id', botId);
   frame.src = src.href;
   let placeholder = null;
-  if (kind === 'shop') {
+  if (kind === 'shop' || kind === 'platform') {
     wrapper.className = `${wrapper.className} is-loading`.trim();
     placeholder = globalThis.USTORE_SHOP_WELCOME.create({
-      name:tenant?.shopName || 'Do‘kon',logoUrl:tenant?.logoUrl || null,
+      mode:kind,
+      name:kind === 'platform' ? 'UStorE' : tenant?.shopName || 'Do‘kon',logoUrl:tenant?.logoUrl || null,
       theme:tenant?.designSettings || null,locale:document.documentElement.lang || 'uz',
     });
   }
@@ -71,6 +72,8 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     retry.textContent = 'Qayta urinish';
     retry.addEventListener('click', () => location.reload());
     panel.append(title, copy, retry);
+    globalThis.USTORE_SHOP_WELCOME.dismiss(placeholder, {immediate:true});
+    placeholder = null;
     wrapper.append(panel);
   }, 18000) : null;
   const loadingTimer = kind === 'shop' ? setTimeout(() => {

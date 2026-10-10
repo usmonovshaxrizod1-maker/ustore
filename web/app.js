@@ -5,7 +5,7 @@ import { createButton, createStatePanel } from './components/ui.js';
 import { createTranslator, normalizeLocale } from './i18n/index.js';
 import { localizeCustomerDom } from './i18n/customer-copy.js';
 import { buildCanonicalUrl, createDocumentMetadataManager, sharePage } from './metadata/index.js';
-import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261009t8';
+import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261010p1';
 import { secureUuidV4 } from './shared/browser-id.js';
 import { shopAuthReturnTo } from './features/auth/return-target.js';
 
@@ -178,28 +178,7 @@ function shopOpeningView({ name = '', logoUrl = null } = {}) {
 function launchView({ mode = 'platform', name = '', logoUrl = null, message = '' } = {}) {
   const shop = mode === 'shop';
   if (shop) return shopOpeningView({ name: String(name || '').trim() || shopNameHintFromHostname(), logoUrl });
-  const subtitle = message || 'Biznesingiz uchun platforma tayyorlanmoqda…';
-  const section = document.createElement('section');
-  section.className = 'uw-launch uw-launch--platform';
-  section.setAttribute('role','status'); section.setAttribute('aria-live','polite'); section.setAttribute('aria-busy','true');
-  const inner = document.createElement('div'); inner.className = 'uw-launch__inner';
-  const brand = document.createElement('div'); brand.className = 'uw-launch__brand';
-  if (logoUrl) {
-    const img = document.createElement('img'); img.className = 'uw-launch__logo'; img.src = String(logoUrl); img.alt = '';
-    img.addEventListener('error', () => { img.remove(); const fallback=document.createElement('span'); fallback.className='uw-launch__monogram'; fallback.textContent='U'; brand.prepend(fallback); }, { once:true });
-    brand.append(img);
-  } else {
-    const mark = document.createElement('span'); mark.className = 'uw-launch__monogram'; mark.textContent = 'U'; brand.append(mark);
-  }
-  const brandText=document.createElement('div'); brandText.className='uw-launch__brand-copy';
-  const eyebrow=document.createElement('span'); eyebrow.className='uw-launch__eyebrow'; eyebrow.textContent='USTORE';
-  const heading=document.createElement('h1'); heading.textContent='UStorE';
-  brandText.append(eyebrow);
-  brandText.append(heading); brand.append(brandText);
-  const loader=document.createElement('div'); loader.className='uw-launch__loader'; loader.setAttribute('aria-hidden','true'); loader.innerHTML='<span></span><span></span><span></span>';
-  const text=document.createElement('p'); text.className='uw-launch__message'; text.textContent=subtitle;
-  const foot=document.createElement('small'); foot.className='uw-launch__foot'; foot.textContent='Xavfsiz ulanish va kerakli modullar yuklanmoqda';
-  inner.append(brand,loader,text,foot); section.append(inner); return section;
+  return globalThis.USTORE_SHOP_WELCOME.create({ mode: 'platform', name: 'UStorE', locale:uiLocale, message });
 }
 function currentTarget() { return `${location.pathname}${location.search}${location.hash}`; }
 function go(target, replace = false) {

@@ -30,11 +30,11 @@
   const hydrate = () => {
     try {
       if (globalThis.location?.pathname === '/auth/handoff') {
-        const title = document.querySelector('.uw-launch__brand-copy h1');
-        const message = document.querySelector('.uw-launch__message');
+        const title = document.querySelector('.uw-initial-platform-opening .ustore-welcome__name');
+        const message = document.querySelector('.uw-initial-platform-opening .ustore-welcome__greeting');
         if (title) title.textContent = 'UStorE';
         if (message) message.textContent = 'Xavfsiz kirish tayyorlanmoqda…';
-        document.querySelector('.uw-launch__foot')?.remove();
+        document.querySelector('.uw-initial-platform-opening .ustore-welcome__foot')?.remove();
         return;
       }
       if (authEntry) {
