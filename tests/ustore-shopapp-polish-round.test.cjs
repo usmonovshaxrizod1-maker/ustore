@@ -83,10 +83,10 @@ test('task 2: shop_settings supports IMAGE/WORDMARK and switching logo source re
   const presetCount = (presetsBlock.match(/\{ id:/g) || []).length;
   assert.equal(presetCount, 50, 'wordmark chooser must offer exactly 50 different fonts');
   assert.equal(new Set([...presetsBlock.matchAll(/font: '([^']+)'/g)].map(x=>x[1])).size, 50, 'wordmark styles must use 50 distinct font family names');
-  assert.doesNotMatch(app, /@font-face/, 'no bundled/custom font file is required; system/browser stacks keep Telegram WebView light');
+  assert.doesNotMatch(app, /@font-face/, 'font files load on demand through FontFace instead of eager stylesheet rules');
 
   assert.match(app, /function wordmarkFontFamily\(preset\) \{/);
-  assert.match(app, /https:\/\/fonts\.googleapis\.com\/css2\?family=/, 'Google Fonts are loaded on demand for consistent Web and Mini App rendering');
+  assert.match(app, /new FontFace\(/, 'self-hosted font files are loaded on demand for consistent Web and Mini App rendering');
   assert.match(css, /\.fc-wordmark-style-menu\{[^}]*max-height:[^;}]+;[^}]*overflow-y:auto/s, 'Word-like style list must have bounded height and internal vertical scroll');
   assert.doesNotMatch(app, /switchLogoBackToImage|Yuklangan rasmga qaytish/, 'there must be no UI or helper for switching back to an obsolete logo source');
 

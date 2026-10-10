@@ -1,0 +1,132 @@
+// Isolated local browser regression; never logs in to or mutates production.
+// Run after npm run build. Arguments: Playwright module, output directory, browser executable.
+const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const ts=require('typescript');
+const {chromium}=require(process.argv[2]||'playwright');
+const root=path.resolve(__dirname,'..'),dist=path.join(root,'dist/web');
+const output=path.resolve(process.argv[3]||path.join(root,'dist/task4-9-qa'));
+fs.mkdirSync(output,{recursive:true});
+const shop=fs.readFileSync(path.join(root,'ustore-shop-app.js'),'utf8');
+const ast=ts.createSourceFile('shop.js',shop,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
+function fn(name){let result;function visit(node){if(ts.isFunctionDeclaration(node)&&node.name?.text===name)result=node.getText(ast);else if(!result)ts.forEachChild(node,visit);}visit(ast);assert.ok(result,name);return result;}
+function headersFor(url){const headers=new Map();let match=false;for(const line of fs.readFileSync(path.join(root,'web/_headers'),'utf8').split(/\r?\n/)){if(!line.trim()||line.startsWith('#'))continue;if(!/^\s/.test(line)){match=new RegExp('^'+line.replace(/[.+?^${}()|[\]\\]/g,'\\$&').replace('*','.*')+'$').test(url);}else if(match){const value=line.trim();if(value.startsWith('! '))headers.delete(value.slice(2).toLowerCase());else{const pos=value.indexOf(':'),key=value.slice(0,pos).toLowerCase(),v=value.slice(pos+1).trim();headers.set(key,headers.has(key)?headers.get(key)+', '+v:v);}}}return Object.fromEntries(headers);}
+const fixtureHelpers=`
+const tr=a=>a,escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeCreateIcons=()=>{},showAppNotice=m=>{window.notice=String(m);},showActionToast=()=>{},appConfirm=async()=>true;
+let uiLang='uz',categories=[],adminCatParentId=null,activePopupModal=null,shopInfoDraft=null,shopLogoType=null,shopLogoWordmark=null,shopLogoUrl=null;
+let wordmarkDraftPresetId='font-montserrat',wordmarkDraftText='Oʻzbek Магазин',wordmarkDraftTextColor='#172033',wordmarkDraftBgColor='#ffffff';
+const WORDMARK_MAX_WORDS=3,wordmarkWordCount=s=>s.split(/\\s+/).length,wordmarkContrastRatio=()=>21;
+const clearShopLogoDraft=()=>{},cloneData=structuredClone,clearTempImageSelection=()=>{},canManageCatalog=()=>true;
+const imageIO=window.UstoreImageIO,saveCatalogCache=()=>{};
+const upsertLocalCategory=row=>categories.push(mapCategoryFromDB(row));
+window.apiCalls=[];
+async function callApi(action,payload){window.apiCalls.push({action,payload:structuredClone(payload)});if(action==='set_shop_logo')return {ok:true};const prior=categories.find(c=>c.id===payload.categoryId);return {category:{id:payload.categoryId||'new-category',name:payload.name,icon_id:payload.iconId,icon_color:payload.iconColor,icon_type:payload.iconType,img:prior?.img||null}};}
+function render(){document.getElementById('category-editor').innerHTML=categoryVisualEditorHtml();}
+`;
+const categoryStart=shop.indexOf('    function mapCategoryFromDB('),categoryEnd=shop.indexOf('    // Buyurtma va savat tarixi',categoryStart);
+const fontStart=shop.indexOf('    const WORDMARK_PRESETS = ['),fontEnd=shop.indexOf('    function currentShopNameForWordmark()',fontStart);
+const functions=fixtureHelpers+shop.slice(categoryStart,categoryEnd)+shop.slice(fontStart,fontEnd)+[
+  'readBlobAsArrayBuffer','makeDetachedImageFile','decodeImageSource','canvasToBlob','compressImage','compressImageToLimit','fileToBase64',
+  'openAddCatModal','openEditCategoryModal','saveCategoryFromModal','saveCategoryEdit','saveWordmarkLogo','exportWordmarkLogo','renderFeaturedCategoriesRowHtml',
+].map(fn).join('\n')+`
+let featuredCategories=[];const categoryName=c=>c.name;
+function showFonts(){document.getElementById('font-previews').innerHTML=WORDMARK_PRESETS.map(p=>'<div class="qa-font"><b>'+p.font+'</b>'+renderWordmarkHtml(p.id,wordmarkDraftText)+'</div>').join('');}
+render();showFonts();window.qaReady=true;
+`;
+const hostScript=`import {createMiniAppFrameHost} from '/shared/frame-host.js';
+window.qaCalls=[];
+window.qaHost=createMiniAppFrameHost({kind:'platform',route:'/platform/app',viewerKey:'11111111-1111-4111-8111-111111111111',runtime:{endpoints:{platform:location.origin+'/qa-api'},tokenStore:{get:()=> 'isolated-test-session'}},fetchImpl:async(url,options)=>{const request=JSON.parse(options.body);window.qaCalls.push(request);return new Response(JSON.stringify({isSuperAdmin:false,myShops:[],myRequests:[],ownerNotifications:[],tariffs:[],landingSlides:[],platformActor:{firstName:'Local',lastName:'Test',telegramId:'12345'}}),{status:200,headers:{'Content-Type':'application/json'}});}});document.body.append(window.qaHost.element);`;
+const fixtureHTML=`<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/ustore.css"><style>body{background:#edf3f8;padding:20px;--ustore-button:#2563eb;--ustore-card-bg:white;--ustore-input-bg:#edf3f8;--ustore-border:#dbe4ef;--ustore-text:#172033}.qa-fonts{display:grid;grid-template-columns:1fr 1fr;gap:18px}.qa-font{background:white;padding:12px;display:grid;gap:6px}.qa-font .fc-wordmark-text{font-size:32px!important}.qa-font b{font:12px system-ui}.fc-sheet-overlay{position:fixed;inset:0;z-index:50;background:#0006;display:grid;place-items:center}.fc-sheet{background:white;max-width:640px;width:95%;padding:14px;max-height:95vh;overflow:auto}.fc-category-icon-select>span{width:36px;height:36px}.qa-shell{width:80px;height:80px;display:inline-flex}</style></head><body><div id="category-editor"></div><input id="m-cat-name" value="Test"><input id="ec-name" value="Renamed"><div id="visuals"></div><div id="font-previews" class="qa-fonts"></div><script src="/ustore-image-io.js"></script><script src="/qa-functions.js"></script></body></html>`;
+const server=http.createServer((req,res)=>{const url=new URL(req.url,'http://localhost'),pathname=url.pathname;
+  const virtual={'/qa-fonts':fixtureHTML,'/qa-functions.js':functions,'/qa-host.js':hostScript,'/platform/app':'<!doctype html><link rel="stylesheet" href="/styles/index.css"><script src="/shop-welcome.js"></script><script type="module" src="/qa-host.js"></script>'};
+  if(Object.hasOwn(virtual,pathname)){res.writeHead(200,{...(pathname==='/platform/app'?headersFor(pathname):{}),'Content-Type':pathname.endsWith('.js')?'text/javascript':'text/html; charset=utf-8'});res.end(virtual[pathname]);return;}
+  const rel=pathname==='/platform-ui/'?'/platform-ui/index.html':pathname;
+  const source=rel.startsWith('/web/assets/category-icons/')?path.join(root,rel):rel==='/ustore.css'?path.join(root,rel):path.join(dist,rel);
+  if(!source.startsWith(root+path.sep)||!fs.existsSync(source)||fs.statSync(source).isDirectory()){res.writeHead(404);res.end('not found');return;}
+  const type={'.js':'text/javascript','.css':'text/css','.html':'text/html; charset=utf-8','.json':'application/json','.svg':'image/svg+xml','.woff2':'font/woff2'}[path.extname(source)]||'application/octet-stream';
+  res.writeHead(200,{...headersFor(pathname),'Content-Type':type});res.end(fs.readFileSync(source));
+});
+
+(async()=>{let browser;try{
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin='http://127.0.0.1:'+server.address().port;
+  browser=await chromium.launch({headless:true,...(process.argv[4]?{executablePath:process.argv[4]}:{}),args:['--disable-gpu','--disable-ipc-flooding-protection']});
+  const context=await browser.newContext({acceptDownloads:true});
+  await context.route(/^https:\/\/(telegram\.org|cdn\.jsdelivr\.net)\//,route=>route.fulfill({status:200,contentType:'text/javascript',body:''}));
+  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.setViewportSize({width:1440,height:1000});await page.clock.install();
+  await page.goto(origin+'/platform/app');
+  const frame=page.frameLocator('iframe');
+  await frame.locator('.plat-boot-state').waitFor({state:'hidden',timeout:15000});
+  await frame.locator('.plat-chrome, .wrap, .plat-shell').first().waitFor({timeout:10000}).catch(()=>{});
+  assert.equal(await page.locator('iframe').count(),1);
+  assert.ok(await page.evaluate(()=>window.qaCalls.some(c=>c.action==='platform_boot')));
+  assert.equal(await frame.locator('.plat-render-error').count(),0);
+  // Actual platform inline handlers must execute under the iframe CSP.
+  await frame.locator('button[onclick="switchTab(\'shops\')"]:visible').click();
+  await frame.locator('button.active[onclick="switchTab(\'shops\')"]:visible').waitFor();
+  await frame.locator('button[onclick="switchTab(\'home\')"]:visible').click();
+  // The host's failure timer must be cleared by platform APP_READY.
+  await page.clock.fastForward(19000);
+  assert.equal(await page.locator('.uw-miniapp-failure').count(),0);
+  await page.screenshot({path:path.join(output,'ustr-platform-after-login.png'),fullPage:true});
+  await page.close();
+
+  const shopPage=await context.newPage();shopPage.on('pageerror',e=>errors.push(e.message));
+  await shopPage.goto(origin+'/qa-fonts');await shopPage.waitForFunction(()=>window.qaReady);
+  await shopPage.waitForFunction(()=>document.querySelectorAll('.qa-font [data-font-state="ready"]').length===50,{},{timeout:30000});
+  assert.equal(await shopPage.locator('.qa-font [data-font-state="error"]').count(),0);
+  assert.equal(new Set(await shopPage.locator('.qa-font .fc-wordmark-text').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).fontFamily))).size,50);
+  await shopPage.locator('button[onclick="openCategoryIconPicker()"]').click();
+  await shopPage.locator('.fc-category-icon-grid button').first().waitFor();
+  assert.equal(await shopPage.locator('.fc-category-icon-grid button').count(),1045);
+  const search=shopPage.locator('#fc-category-icon-picker input');await search.fill('sport');
+  assert.ok(await shopPage.locator('.fc-category-icon-grid button').count()>0);
+  assert.ok(await shopPage.locator('.fc-category-icon-grid button').count()<1045);
+  await search.fill('');
+  await shopPage.locator('button[onclick="chooseCategoryIcon(\'fitness_medicineball\')"]').click();
+  await shopPage.locator('button[onclick="chooseCategoryIconColor(\'green\')"]').click();
+  await shopPage.locator('button[onclick="confirmCategoryIconPicker()"]').click();
+  await shopPage.evaluate(()=>saveCategoryFromModal());
+  assert.deepEqual(await shopPage.evaluate(()=>({id:categories[0].iconId,color:categories[0].iconColor,type:categories[0].iconType})),{id:'fitness_medicineball',color:'green',type:'legacy'});
+  await shopPage.evaluate(()=>openEditCategoryModal('new-category'));
+  await shopPage.evaluate(()=>saveCategoryEdit('new-category'));
+  assert.equal(await shopPage.evaluate(()=>categories[0].name),'Renamed');
+  await shopPage.evaluate(()=>openAddCatModal());
+  assert.equal(await shopPage.evaluate(()=>categoryIconDraft.id),'stationery_folder');
+
+  // Real alpha-bearing file passes the actual compression + upload preparation.
+  const alpha=await shopPage.evaluate(async()=>{const c=document.createElement('canvas');c.width=c.height=32;c.getContext('2d').fillRect(8,8,16,16);return c.toDataURL('image/png').split(',')[1];});
+  await shopPage.locator('button[onclick="setCategoryVisualType(\'image\')"]').click();
+  await shopPage.locator('#category-visual-file').setInputFiles({name:'transparent.png',mimeType:'image/png',buffer:Buffer.from(alpha,'base64')});
+  assert.equal(await shopPage.evaluate(async()=>{const p=await categoryVisualSavePayload();const blob=await(await fetch('data:'+p.imageUpload.mimeType+';base64,'+p.imageUpload.base64)).blob();const b=await createImageBitmap(blob);const c=document.createElement('canvas');c.width=c.height=32;const ctx=c.getContext('2d');ctx.drawImage(b,0,0);return ctx.getImageData(0,0,1,1).data[3];}),0);
+  for(const [width,height] of [[390,844],[820,1180],[1440,1000]]){
+    await shopPage.setViewportSize({width,height});
+    await shopPage.evaluate(()=>{featuredCategories=[{categoryId:'new-category'}];document.getElementById('visuals').innerHTML=`<span class="qa-shell fc-category-icon-frame${categoryVisualShellClass(categories[0])}">${categoryIconMarkup(categories[0])}</span>`+renderFeaturedCategoriesRowHtml();});
+    assert.deepEqual(await shopPage.locator('#visuals .fc-category-visual-shell').evaluateAll(nodes=>nodes.map(n=>getComputedStyle(n).backgroundColor)),['rgba(0, 0, 0, 0)','rgba(0, 0, 0, 0)']);
+    await shopPage.screenshot({path:path.join(output,`fonts-icons-${width}.png`),fullPage:true});
+  }
+  const rasterHashes=new Set(),exports=[];
+  const ids=await shopPage.evaluate(()=>WORDMARK_PRESETS.map(p=>p.id));
+  // Check one real browser download. Capture subsequent Blob bytes to avoid
+  // Chromium's automated repeated-download throttle during a 50-font batch.
+  const firstDownload=shopPage.waitForEvent('download');
+  await shopPage.evaluate(()=>exportWordmarkLogo());
+  await (await firstDownload).delete();
+  for(const id of ids){
+    const png=await shopPage.evaluate(async id=>{
+      const click=HTMLAnchorElement.prototype.click;let bytes;
+      HTMLAnchorElement.prototype.click=function(){const name=this.download;bytes=fetch(this.href).then(r=>r.arrayBuffer()).then(buffer=>{let raw='';for(const b of new Uint8Array(buffer))raw+=String.fromCharCode(b);return {name,base64:btoa(raw)};});};
+      try{wordmarkDraftPresetId=id;await exportWordmarkLogo();if(!bytes)throw Error(window.notice||'export did not create a PNG');return await bytes;}
+      finally{HTMLAnchorElement.prototype.click=click;}
+    },id);
+    const file=path.join(output,png.name);fs.writeFileSync(file,Buffer.from(png.base64,'base64'));
+    rasterHashes.add(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'));exports.push(file);
+  }
+  assert.equal(rasterHashes.size,50,'all 50 exported typefaces must visibly differ');
+  await shopPage.evaluate(()=>{wordmarkDraftPresetId='font-lobster';return saveWordmarkLogo();});
+  assert.equal(await shopPage.evaluate(()=>shopLogoWordmark.presetId),'font-lobster');
+  assert.equal(await shopPage.evaluate(()=>wordmarkSupportsText('font-lobster',shopLogoWordmark.text)),true);
+  assert.deepEqual(errors,[]);
+  const report={platformIframe:'loaded; boot bridge, inline navigation and APP_READY checked',originalIcons:1045,search:true,color:true,createEdit:true,alphaCorner:0,viewports:[390,820,1440],fontPreviewReady:50,uniquePNGExports:rasterHashes.size,saveSelectedFont:true,pageErrors:errors};
+  fs.writeFileSync(path.join(output,'browser-results.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+}finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}})().catch(error=>{console.error(error);process.exitCode=1;});

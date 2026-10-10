@@ -64,6 +64,6 @@ test('QR-code reading decodes the uploaded local file and uses a bundled fallbac
 
 test('cache version bumped for this fix', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-  assert.match(html, /ustore-shop-app\.js\?v=334/);
+  assert.match(html, /ustore-shop-app\.js\?v=335/);
 });
 

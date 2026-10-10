@@ -1647,9 +1647,9 @@ test('cache-busting: ustore.css and ustore-commerce.js query versions were bumpe
   // mini-modal redesign, per-variant price, swipe gallery, object-fit
   // consistency) — bumped v99->v100. ustore-commerce.js was NOT touched
   // Commerce logic was updated again after this historical round.
-  assert.match(html, /ustore\.css\?v=331"/, 'current ustore.css must not be served stale');
+  assert.match(html, /ustore\.css\?v=332"/, 'current ustore.css must not be served stale');
   assert.match(html, /ustore-commerce\.js\?v=8"/, 'ustore-commerce.js gained the FREE/FIXED "Umumiy qiymat" general-value blocks (2026-09) and must not be served stale');
-  assert.match(html, /ustore-shop-app\.js\?v=334"/, "current ustore-shop-app.js must not be served stale");
+  assert.match(html, /ustore-shop-app\.js\?v=335"/, "current ustore-shop-app.js must not be served stale");
 });
 
 test('13-band: delivery region comment is optional, capped at 200 chars, and omitted when blank', () => {

@@ -169,13 +169,9 @@ function normalizeProductImageUrl(value: unknown): string | null {
     throw new Error("invalid_image_url");
   }
 }
-function categoryEmojiIsValid(value: unknown): boolean {
-  const raw = String(value ?? '').trim();
-  return Array.from(raw).length > 0 && Array.from(raw).length <= 16 && /\p{Extended_Pictographic}/u.test(raw) && !/[<>&\r\n]/.test(raw);
-}
-function categoryVisualKind(value: unknown): 'legacy' | 'emoji' | 'image' {
+function categoryVisualKind(value: unknown): 'legacy' | 'image' {
   if (value === undefined || value === null) return 'legacy';
-  if (value === 'legacy' || value === 'emoji' || value === 'image') return value;
+  if (value === 'legacy' || value === 'image') return value;
   throw new Error('invalid_category_visual_type');
 }
 async function storeProductImage(db: any, shopId: string, upload: any): Promise<{ url: string; path: string }> {
@@ -6721,10 +6717,9 @@ Deno.serve(async (req: Request) => {
         if (!name) return json({ error: "invalid_category_name" }, 400);
         const iconId = payload.iconId === undefined ? 'stationery_folder' : String(payload.iconId || '');
         const iconColor = String(payload.iconColor || 'brand');
-        if (payload.iconType !== undefined && !['legacy','emoji','image'].includes(payload.iconType)) return json({ error:'invalid_category_visual_type' },400);
+        if (payload.iconType !== undefined && !['legacy','image'].includes(payload.iconType)) return json({ error:'invalid_category_visual_type' },400);
         const iconType = categoryVisualKind(payload.iconType);
-        const iconEmoji = iconType === 'emoji' ? String(payload.iconEmoji || '').trim() : null;
-        if (iconType === 'emoji' && !categoryEmojiIsValid(iconEmoji)) return json({ error:'invalid_category_emoji' },400);
+        const iconEmoji = null;
         if (!(await categoryIconIsAllowed(db, iconId)) || !CATEGORY_ICON_COLORS.has(iconColor)) return json({ error: 'invalid_category_icon' }, 400);
         const { data: maxRow } = await db.from("categories").select("sort_order")
           .eq("shop_id", shopId).order("sort_order", { ascending: false }).limit(1).maybeSingle();
@@ -6732,7 +6727,7 @@ Deno.serve(async (req: Request) => {
         let uploadedImage: { url: string; path: string } | null = null;
         try {
           if (payload.imageUpload) uploadedImage = await storeProductImage(db, shopId, payload.imageUpload);
-          const categoryImg = iconType === 'emoji' ? null : (uploadedImage?.url || (payload.img ? normalizeProductImageUrl(payload.img) : (payload.parentId ? "📦" : "📁")));
+          const categoryImg = uploadedImage?.url || (payload.img ? normalizeProductImageUrl(payload.img) : null);
           if (iconType === 'image' && (!categoryImg || !/^https:\/\//i.test(categoryImg))) return json({ error:'category_image_required' },400);
           const { data, error } = await db.from("categories").insert({
             shop_id: shopId, name, name_ru: null, parent_id: payload.parentId ?? null,
@@ -6863,14 +6858,10 @@ Deno.serve(async (req: Request) => {
         if (!currentCategory) return json({ error: "category_not_found" }, 404);
         const dbUpdate: Record<string, unknown> = {};
         if (payload.iconType !== undefined) {
-          if (!['legacy','emoji','image'].includes(payload.iconType)) return json({ error:'invalid_category_visual_type' },400);
+          if (!['legacy','image'].includes(payload.iconType)) return json({ error:'invalid_category_visual_type' },400);
           const kind = categoryVisualKind(payload.iconType);
           dbUpdate.icon_type = kind;
-          if (kind === 'emoji') {
-            if (!categoryEmojiIsValid(payload.iconEmoji)) return json({ error:'invalid_category_emoji' },400);
-            dbUpdate.icon_emoji = String(payload.iconEmoji).trim();
-            dbUpdate.img = null;
-          } else dbUpdate.icon_emoji = null;
+          // Historic icon_emoji values remain in storage; the SVG/image UI ignores them.
         }
         if (payload.iconId !== undefined) {
           const iconId = payload.iconId === null ? null : String(payload.iconId);
@@ -6899,7 +6890,7 @@ Deno.serve(async (req: Request) => {
           if (payload.imageUpload) {
             uploadedImage = await storeProductImage(db, shopId, payload.imageUpload);
             dbUpdate.img = uploadedImage.url;
-          } else if (payload.img !== undefined && dbUpdate.icon_type !== 'emoji') {
+          } else if (payload.img !== undefined) {
             dbUpdate.img = payload.img ? normalizeProductImageUrl(payload.img) : null;
           }
           if (dbUpdate.icon_type === 'image') {

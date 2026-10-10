@@ -15,11 +15,11 @@ function sourceFunction(name,nextName){
   assert.ok(start>=0&&end>start);
   return shop.substring(start,end);
 }
-test('native emoji/icon & transparent category image use independent, safe render modes',()=>{
+test('original SVGs and transparent category images use independent safe render modes',()=>{
   const sandbox={CATEGORY_ICON_COLORS:['brand'],CATEGORY_ICON_SPRITE:'category-icons.svg',customCategoryIconMap:new Map(),escapeHtml:value=>String(value).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))};
-  vm.runInNewContext('const categoryEmojiValid = value => Boolean(value) && /\\p{Extended_Pictographic}/u.test(value) && !/[<>&]/.test(value);'+sourceFunction('categoryIconMarkup','categoryIconPickerItems')+'this.icon=categoryIconMarkup',sandbox);
-  const a=sandbox.icon({iconType:'emoji',iconEmoji:'🍕'});
-  assert.match(a,/fc-category-native-emoji/);assert.match(a,/🍕/);assert.doesNotMatch(a,/<use/);
+  vm.runInNewContext(sourceFunction('categoryIconMarkup','categoryIconPickerItems')+'this.icon=categoryIconMarkup',sandbox);
+  const a=sandbox.icon({iconType:'emoji',iconEmoji:'🍕',iconId:'sports_ball'});
+  assert.match(a,/#sports_ball/);assert.doesNotMatch(a,/🍕|fc-category-native-emoji/);
   const b=sandbox.icon({iconType:'image',img:'https://cdn.example.com/logo-alpha.png'});
   assert.match(b,/<img/);assert.match(b,/logo-alpha.png/);assert.match(b,/fc-category-visual-image/);
   const c=sandbox.icon({iconType:'legacy',iconId:'stationery_folder',iconColor:'brand'});
@@ -35,7 +35,8 @@ test('per-category visual selection is saved in shop API and returned to all cat
   assert.match(edge,/case "add_category"[\s\S]*?icon_type: iconType, icon_emoji:iconEmoji/);
   assert.match(edge,/case "edit_category"[\s\S]*?dbUpdate\.icon_type = kind/);
   assert.match(edge,/category_image_required/);
-  assert.match(edge,/categoryEmojiIsValid/);
+  assert.doesNotMatch(shop,/CATEGORY_EMOJI_OPTIONS|chooseCategoryEmoji|fc-category-emoji-grid/);
+  assert.doesNotMatch(edge,/categoryEmojiIsValid|dbUpdate\.icon_emoji\s*=/);
   assert.match(edge,/select\("id,name,name_ru,parent_id,img,icon_id,icon_color,icon_type,icon_emoji,sort_order"\)/);
   assert.match(migration,/alter table public\.categories add column if not exists icon_type/);
   assert.match(migration,/alter table public\.categories add column if not exists icon_emoji/);

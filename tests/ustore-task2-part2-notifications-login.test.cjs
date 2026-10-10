@@ -12,7 +12,7 @@ test('Web PLATFORM iframe ships on ustr.uz itself; Shop Mini App still uses GitH
   assert.match(host, /'\/platform-ui\/'/);
   assert.match(host, /new URL\('\/ustore\/', MINI_APP_ORIGIN\)/);
   assert.match(build, /copyTree\(path\.join\(root,'platform'\), path\.join\(webDist,'platform-ui'\)\)/);
-  assert.match(read('web/_headers'), /\/platform-ui\/\*\s+X-Frame-Options: SAMEORIGIN/);
+  assert.match(read('web/_headers'), /\/platform-ui\/\*\s+! X-Frame-Options\s+! Content-Security-Policy\s+X-Frame-Options: SAMEORIGIN/);
   assert.match(read('web/index.html'), /frame-src 'self'/);
 });
 

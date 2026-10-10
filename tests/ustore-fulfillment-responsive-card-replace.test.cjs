@@ -78,6 +78,6 @@ test('desktop/tablet responsive layout is browser admin only', () => {
   assert.match(css, /@media\(min-width:1150px\)[\s\S]*?\.fc-fulfillment-choice-grid\{grid-template-columns:repeat\(4,/);
   assert.match(css, /\.fc-fulfillment-desktop-sidebar\{display:none\}/);
   assert.match(css, /\.fc-icon-action-bar\.hidden\{display:none!important\}/);
-  assert.match(html, /ustore\.css\?v=331/);
-  assert.match(html, /ustore-shop-app\.js\?v=334/);
+  assert.match(html, /ustore\.css\?v=332/);
+  assert.match(html, /ustore-shop-app\.js\?v=335/);
 });

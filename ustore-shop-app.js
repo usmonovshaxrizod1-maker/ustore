@@ -1158,14 +1158,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     const CATEGORY_ICON_SPRITE = './web/assets/category-icons/category-icons.svg';
     const CATEGORY_ICON_COLORS = ['brand','blue','green','rose','amber','slate'];
     let categoryIconDraft = { id:'stationery_folder', color:'brand' };
-    // Individual category visual: native emoji OR a transparent-capable uploaded image.
-    // 'legacy' is retained ONLY for categories using their earlier SVG icons.
-    let categoryVisualDraft = { type:'emoji', emoji:'📦', imageUrl:null, file:null, previewUrl:null };
-    const CATEGORY_EMOJI_OPTIONS = ['📦','🛍️','🛒','🍎','🥦','🍞','🥩','🥛','☕','🍰','🍕','🍔','🍫','🧃','🍵','🌸','💐','🧴','💄','💅','🧼','👗','👕','👖','👟','👠','👜','⌚','💍','🧢','🧣','🧸','🎁','🎉','📚','✏️','🎨','🖥️','💻','📱','🎧','📷','⌨️','🕹️','🔌','💡','🏠','🪑','🛏️','🧹','🧺','🚗','🚲','🏍️','🏀','⚽','🏋️','💪','🏕️','🧘','🎸','🎼','🐶','🐱','🌿','🌱','🌳','🪴','🔧','🛠️','⚙️','🧰','💊','🩺','🍼','👶','🕶️','🧳','🗂️'];
-    function categoryEmojiValid(value) {
-      const chars = Array.from(String(value || '').trim());
-      return chars.length > 0 && chars.length <= 16 && /\p{Extended_Pictographic}/u.test(chars.join('')) && !/[<>&\r\n]/.test(chars.join(''));
-    }
+    // 'legacy' is the original SVG mode in the existing database schema.
+    // Keep IDs, colors and image URLs when switching modes; no data migration.
+    let categoryVisualDraft = { type:'legacy', imageUrl:null, file:null, previewUrl:null };
     function releaseCategoryVisualPreview() {
       if (categoryVisualDraft.previewUrl && categoryVisualDraft.previewUrl.startsWith('blob:')) {
         try { URL.revokeObjectURL(categoryVisualDraft.previewUrl); } catch (_) {}
@@ -1175,8 +1170,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function resetCategoryVisualDraft(category) {
       releaseCategoryVisualPreview();
       categoryVisualDraft = {
-        type: category ? (category.iconType || 'legacy') : 'emoji',
-        emoji: category?.iconEmoji || '📦',
+        type: category?.iconType === 'image' ? 'image' : 'legacy',
         imageUrl: category?.img && /^https:\/\//i.test(category.img) ? category.img : null,
         file: null, previewUrl: null,
       };
@@ -1184,7 +1178,6 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function categoryVisualPreviewMarkup() {
       return categoryIconMarkup({
         iconType:categoryVisualDraft.type,
-        iconEmoji:categoryVisualDraft.emoji,
         img:categoryVisualDraft.previewUrl || categoryVisualDraft.imageUrl,
         iconId:categoryIconDraft.id, iconColor:categoryIconDraft.color,
       });
@@ -1193,15 +1186,13 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const type = categoryVisualDraft.type;
       return `<div class="fc-category-visual-editor" id="fc-category-visual-editor">
         <div class="fc-category-visual-switch" role="group" aria-label="${tr('Katalog belgisi turi','Тип значка каталога')}">
-          <button type="button" class="${type==='emoji'?'is-selected':''}" aria-pressed="${type==='emoji'}" onclick="setCategoryVisualType('emoji')">${tr('Emoji','Эмодзи')}</button>
+          <button type="button" class="${type==='legacy'?'is-selected':''}" aria-pressed="${type==='legacy'}" onclick="setCategoryVisualType('legacy')">${tr('Ikonkalar','Иконки')}</button>
           <button type="button" class="${type==='image'?'is-selected':''}" aria-pressed="${type==='image'}" onclick="setCategoryVisualType('image')">${tr('Rasm yuklash','Загрузить изображение')}</button>
         </div>
         <div class="fc-category-visual-preview-line"><span class="fc-category-visual-preview" data-category-visual-preview>${categoryVisualPreviewMarkup()}</span>
         <small>${type==='image' ? tr('Shaffof PNG/WebP fonni saqlaydi. JPG faylidagi oq fon avtomatik o‘chirilmaydi.','Прозрачный фон PNG/WebP сохраняется. Белый фон JPG автоматически не удаляется.') : tr('Har bir kategoriya uchun alohida belgi.','Отдельный значок для каждой категории.')}</small></div>
-        ${type==='emoji' ? `<div class="fc-category-emoji-grid" role="group" aria-label="${tr('Emoji tanlash','Выбрать эмодзи')}">${CATEGORY_EMOJI_OPTIONS.map(emoji=>`<button type="button" class="${categoryVisualDraft.emoji===emoji?'is-selected':''}" aria-label="${escapeHtml(emoji)}" aria-pressed="${categoryVisualDraft.emoji===emoji}" onclick="chooseCategoryEmoji('${emoji}')">${emoji}</button>`).join('')}</div>
-          <label class="fc-shop-field"><span>${tr('Boshqa emoji','Другое эмодзи')}</span><input type="text" class="fc-shop-input" maxlength="32" value="${escapeHtml(categoryVisualDraft.emoji)}" placeholder="📦" onchange="chooseCategoryEmoji(this.value)"></label>` : ''}
+        ${type==='legacy' ? `<button type="button" class="fc-btn fc-btn-secondary fc-category-icon-select" onclick="openCategoryIconPicker()"><span data-category-icon-preview>${categoryVisualPreviewMarkup()}</span>${tr('1045 ta ikonka — tanlash va rang','1045 иконок — выбор и цвет')}</button>` : ''}
         ${type==='image' ? `<div class="fc-category-image-actions"><button type="button" class="fc-btn fc-btn-secondary" onclick="document.getElementById('category-visual-file')?.click()"><i data-lucide="image-plus" class="w-4 h-4"></i>${tr('Rasm tanlash','Выбрать изображение')}</button><input id="category-visual-file" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" onchange="onCategoryVisualFilePicked(event)"></div><small class="fc-category-image-hint">${tr('PNG, JPG yoki WebP. 6 MB gacha. Rasm kesilmaydi yoki oq fon qo‘shilmaydi.','PNG, JPG или WebP. До 6 МБ. Изображение не обрезается и белый фон не добавляется.')}</small>` : ''}
-        ${type==='legacy' ? `<small>${tr('Oldingi belgi saqlangan. Uni yangilash uchun Emoji yoki Rasmni tanlang.','Старый значок сохранён. Выберите эмодзи или изображение для замены.')}</small>` : ''}
       </div>`;
     }
     function refreshCategoryVisualEditor() {
@@ -1209,17 +1200,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (root) { root.outerHTML = categoryVisualEditorHtml(); safeCreateIcons(); }
     }
     function setCategoryVisualType(type) {
-      if (type !== 'emoji' && type !== 'image') return;
+      if (type !== 'legacy' && type !== 'image') return;
       categoryVisualDraft.type = type;
-      refreshCategoryVisualEditor();
-    }
-    function chooseCategoryEmoji(value) {
-      const emoji = String(value || '').trim();
-      if (!categoryEmojiValid(emoji)) {
-        showAppNotice(tr('Haqiqiy emoji tanlang.','Выберите настоящий эмодзи.'));
-        refreshCategoryVisualEditor(); return;
-      }
-      categoryVisualDraft.emoji = emoji;
       refreshCategoryVisualEditor();
     }
     async function onCategoryVisualFilePicked(event) {
@@ -1237,13 +1219,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     async function categoryVisualSavePayload(existing) {
       const kind = categoryVisualDraft.type;
       if (kind === 'legacy') return { iconType:'legacy' };
-      if (kind === 'emoji') {
-        if (!categoryEmojiValid(categoryVisualDraft.emoji)) throw new Error(tr('To‘g‘ri emoji tanlang.','Выберите корректный эмодзи.'));
-        return { iconType:'emoji', iconEmoji:categoryVisualDraft.emoji, img:null };
-      }
       const file = categoryVisualDraft.file;
       if (!file && !categoryVisualDraft.imageUrl) throw new Error(tr('Kategoriya rasmini tanlang.','Выберите изображение категории.'));
-      if (!file) return { iconType:'image', iconEmoji:null };
+      if (!file) return { iconType:'image' };
       const prepared = await compressImageToLimit(file, 900000, 720, 0.78);
       // In some older WebViews a requested WebP compression can fall back to JPEG.
       // Never let that silently turn a transparent PNG/WebP into an opaque rectangle.
@@ -1252,7 +1230,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const safePrepared = requiresAlphaSafeFormat && !compressionKeepsAlpha ? file : (prepared || file);
       const image = safePrepared.size <= 6 * 1024 * 1024 ? safePrepared : file;
       if (image.size > 6 * 1024 * 1024) throw new Error(tr('Rasm juda katta.','Изображение слишком большое.'));
-      return { iconType:'image', iconEmoji:null, imageUpload:{ mimeType:image.type, base64:await fileToBase64(image) } };
+      return { iconType:'image', imageUpload:{ mimeType:image.type, base64:await fileToBase64(image) } };
     }
     let categoryIconManifest = null;
     let customCategoryIconMap = new Map();
@@ -1260,13 +1238,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     let categoryIconPickerGroup = 'all';
     let categoryIconPickerChoice = null;
     function categoryVisualShellClass(category) {
-      return category?.iconType === 'emoji' || category?.iconType === 'image' ? ' fc-category-visual-shell' : '';
+      return ' fc-category-visual-shell';
     }
     function categoryIconMarkup(category) {
-      if (category?.iconType === 'emoji') {
-        const emoji = categoryEmojiValid(category?.iconEmoji) ? category.iconEmoji : '📦';
-        return `<span class="fc-category-native-emoji" role="img" aria-label="${escapeHtml(emoji)}">${escapeHtml(emoji)}</span>`;
-      }
       if (category?.iconType === 'image') {
         const source = String(category?.img || '');
         if (/^(https:\/\/|blob:)/i.test(source)) {
@@ -1329,7 +1303,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function chooseCategoryIcon(id) {if(!categoryIconPickerItems().some(item=>item.id===id))return;categoryIconPickerChoice.id=id;renderCategoryIconPicker();}
     function chooseCategoryIconColor(color) {if(!CATEGORY_ICON_COLORS.includes(color))return;categoryIconPickerChoice.color=color;renderCategoryIconPicker();}
     function closeCategoryIconPicker() {document.getElementById('fc-category-icon-picker')?.remove();}
-    function confirmCategoryIconPicker() {categoryIconDraft={...categoryIconPickerChoice};closeCategoryIconPicker();const preview=document.querySelector('[data-category-icon-preview]');if(preview)preview.innerHTML=categoryIconMarkup({iconId:categoryIconDraft.id,iconColor:categoryIconDraft.color});}
+    function confirmCategoryIconPicker() {categoryIconDraft={...categoryIconPickerChoice};categoryVisualDraft.type='legacy';closeCategoryIconPicker();refreshCategoryVisualEditor();}
     // Buyurtma va savat tarixi endi to'g'ridan-to'g'ri bazadan emas, balki
     // serverda tasdiqlangan Edge Function javobidan keladi (pastdagi callApi).
     function formatOrderForUi(o) {
@@ -7289,13 +7263,13 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       if (kind==='PAYMENT') return openPaymentSettingsPage();
       if (kind==='DESIGN') return openDesignSettings();
       if (kind==='PRODUCT') return openAddProductModal();
-      if (kind==='CATEGORY') { currentTab='categories'; activePage=null; adminCatParentId=null; activePopupModal='ADD_CAT'; render(); }
+      if (kind==='CATEGORY') { currentTab='categories'; activePage=null; adminCatParentId=null; return openAddCatModal(); }
     }
 
     function adminQuickCreate(kind) {
       closeAdminCommandCenter();
       if (kind==='PRODUCT') return openAddProductModal();
-      if (kind==='CATEGORY') { currentTab='categories'; activePage=null; adminCatParentId=null; activePopupModal='ADD_CAT'; return render(); }
+      if (kind==='CATEGORY') { currentTab='categories'; activePage=null; adminCatParentId=null; return openAddCatModal(); }
       if (kind==='BANNER') return openBannerForm();
       if (kind==='PROMO') return openPromoForm();
     }
@@ -16882,9 +16856,12 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       return WORDMARK_PRESETS.find((p) => p.id === id) || WORDMARK_LEGACY_PRESETS.find((p) => p.id === id) || WORDMARK_PRESETS[0];
     }
     const wordmarkRequestedFonts = new Map();
+    const wordmarkFontStates = new Map();
+    const wordmarkFontRecords = new Map();
+    let wordmarkCatalogRequest = null;
     let wordmarkFontObserver = null;
     function wordmarkFontFamily(preset) {
-      if (preset.font) return `"${preset.font}", ${preset.fallback}`;
+      if (preset.font) return `"UStore ${preset.font}"`;
       // Eski logotiplar uchun original font stack'lar o'zgarmaydi.
       const stacks = {
         mono: 'var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace)',
@@ -16897,36 +16874,64 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       };
       return stacks[preset.family] || stacks.sans;
     }
-    // Font faqat ro'yxatda ko'ringan yoki tanlangan paytda yuklanadi.
-    // Browserning OS shriftlariga tayanmaymiz. Xatoda generic fallback qoladi.
+    function wordmarkSupportsText(presetId, text) {
+      const preset = wordmarkPresetById(presetId);
+      if (!preset.font) return true; // Keep previously saved legacy logos unchanged.
+      const record = wordmarkFontRecords.get(presetId);
+      return !!record && Array.from(String(text || '')).every((character) => {
+        const code = character.codePointAt(0);
+        return record.ranges.some(([first, last]) => code >= first && code <= last);
+      });
+    }
+    function wordmarkFontState(presetId, text) {
+      const state = wordmarkFontStates.get(presetId) || 'loading';
+      return state === 'ready' && !wordmarkSupportsText(presetId, text) ? 'unsupported' : state;
+    }
+    function refreshWordmarkFontState(presetId) {
+      document.querySelectorAll(`.fc-wordmark[data-wordmark-preset="${presetId}"]`).forEach((element) => {
+        const state = wordmarkFontState(presetId, element.dataset.wordmarkText);
+        element.dataset.fontState = state;
+        element.setAttribute('aria-busy', String(state === 'loading'));
+        const status = element.querySelector('.fc-wordmark-font-status');
+        if (status) status.textContent = state === 'error' ? tr('Shrift yuklanmadi','Шрифт не загрузился') : state === 'unsupported' ? tr('Bu harflar qo‘llanmaydi','Эти буквы не поддерживаются') : tr('Shrift yuklanmoqda…','Шрифт загружается…');
+      });
+    }
+    // Self-hosted, licensed font bytes only. Never paint a generic fallback as a preview.
     function ensureWordmarkFont(presetId) {
       const preset = wordmarkPresetById(presetId);
       if (!preset.font) return Promise.resolve(true);
       if (wordmarkRequestedFonts.has(preset.font)) return wordmarkRequestedFonts.get(preset.font);
+      wordmarkFontStates.set(presetId, 'loading');
+      refreshWordmarkFontState(presetId);
       const promise = new Promise((resolve) => {
-        const link = document.createElement('link');
         let settled = false;
         const finish = (ok) => {
           if (settled) return;
           settled = true;
           clearTimeout(timeout);
-          if (!ok && link.parentNode) link.remove();
+          wordmarkFontStates.set(presetId, ok ? 'ready' : 'error');
+          refreshWordmarkFontState(presetId);
           resolve(ok);
         };
         // Tarmoq javob bermay qolsa Saqlash cheksiz kutib qolmasin.
         const timeout = setTimeout(() => finish(false), 12000);
-        link.rel = 'stylesheet';
-        link.dataset.wordmarkFont = preset.font;
-        link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(preset.font).replace(/%20/g, '+')}:wght@${preset.weight}&display=swap`;
-        link.onload = async () => {
+        (async () => {
           try {
-            if (!document.fonts || !document.fonts.load) return finish(false);
-            const faces = await document.fonts.load(`${preset.weight} 16px "${preset.font}"`, 'FITCORE Фиткоре Oʻzbek');
-            finish(faces.length > 0 && faces.some((face) => face.status === 'loaded'));
+            if (!document.fonts || typeof FontFace !== 'function') return finish(false);
+            if (!wordmarkCatalogRequest) wordmarkCatalogRequest = fetch('./vendor/wordmark-fonts/catalog.json', {cache:'force-cache'})
+              .then((response) => { if (!response.ok) throw new Error('font_catalog_unavailable'); return response.json(); })
+              .then((catalog) => { catalog.fonts.forEach((record) => wordmarkFontRecords.set(record.id, record)); })
+              .catch((error) => { wordmarkCatalogRequest = null; throw error; });
+            await wordmarkCatalogRequest;
+            const record = wordmarkFontRecords.get(presetId);
+            if (!record || record.weight !== preset.weight) return finish(false);
+            const face = new FontFace(`UStore ${preset.font}`, `url("./vendor/wordmark-fonts/${record.file}") format("woff2")`, {weight:String(preset.weight),style:preset.style});
+            await face.load();
+            if (settled) return;
+            document.fonts.add(face);
+            finish(face.status === 'loaded');
           } catch (_) { finish(false); }
-        };
-        link.onerror = () => finish(false);
-        (document.head || document.documentElement).appendChild(link);
+        })();
       });
       const tracked = promise.then((ok) => {
         // Offline bo'lganidan so'ng qayta ulangan foydalanuvchi yana urinishi mumkin.
@@ -16942,7 +16947,7 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       if (!menu || menu.classList.contains('is-hidden')) return;
       const rows = [...menu.querySelectorAll('.fc-wordmark-style-option[data-wordmark-font]')];
       if (!('IntersectionObserver' in window)) {
-        rows.slice(0, 6).forEach((row) => ensureWordmarkFont(row.dataset.presetId));
+        rows.forEach((row) => ensureWordmarkFont(row.dataset.presetId));
         return;
       }
       wordmarkFontObserver = new IntersectionObserver((entries) => {
@@ -16975,9 +16980,11 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       if (p.monogram) {
         const initial = escapeHtml(String(text || '?').trim().charAt(0).toUpperCase() || '?');
         const badgeStyle = `${textColor ? `background:${escapeHtml(textColor)};` : ''}${bgColor ? `color:${escapeHtml(bgColor)};` : ''}`;
-        return `<span class="fc-wordmark ${cls}"><span class="fc-wordmark-badge" style="${badgeStyle}">${initial}</span><span class="fc-wordmark-text" style="${textStyle}">${safeText}</span></span>`;
+        return `<span class="fc-wordmark ${cls}"><span class="fc-wordmark-badge" style="${badgeStyle}">${initial}</span><span class="fc-wordmark-text" style="${escapeHtml(textStyle)}">${safeText}</span></span>`;
       }
-      return `<span class="fc-wordmark ${cls}"><span class="fc-wordmark-text" style="${textStyle}">${safeText}</span></span>`;
+      const state = p.font ? wordmarkFontState(p.id, text) : 'ready';
+      const status = state === 'error' ? tr('Shrift yuklanmadi','Шрифт не загрузился') : state === 'unsupported' ? tr('Bu harflar qo‘llanmaydi','Эти буквы не поддерживаются') : tr('Shrift yuklanmoqda…','Шрифт загружается…');
+      return `<span class="fc-wordmark ${cls}" ${p.font ? `data-wordmark-preset="${p.id}" data-wordmark-text="${safeText}" data-font-state="${state}" aria-busy="${state==='loading'}"` : ''}><span class="fc-wordmark-text" style="${escapeHtml(textStyle)}">${safeText}</span>${p.font ? `<span class="fc-wordmark-font-status" role="status">${status}</span>` : ''}</span>`;
     }
     function currentShopNameForWordmark() {
       return String((shopInfoDraft || shopContact)?.name || shopContact?.name || '').trim();
@@ -17138,6 +17145,7 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       if (!(await ensureWordmarkFont(wordmarkDraftPresetId))) {
         return showAppNotice(tr('Tanlangan shrift yuklanmadi. Internetni tekshirib, qayta urinib ko‘ring.', 'Не удалось загрузить шрифт. Проверьте интернет и попробуйте снова.'));
       }
+      if (!wordmarkSupportsText(wordmarkDraftPresetId, text)) return showAppNotice(tr('Tanlangan shrift matndagi ayrim harflarni qo‘llamaydi. Boshqa shrift tanlang.','Выбранный шрифт не поддерживает некоторые буквы. Выберите другой шрифт.'));
       try {
         const wordmark = { presetId: wordmarkDraftPresetId, text, textColor: wordmarkDraftTextColor, backgroundColor: wordmarkDraftBgColor };
         await callApi('set_shop_logo', { logoType: 'WORDMARK', wordmark });
@@ -17152,6 +17160,39 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
         console.error(e);
         showAppNotice(tr("❌ Logotipni saqlab bo'lmadi: ", "❌ Не удалось сохранить логотип: ") + (e.message || e));
       }
+    }
+
+    async function exportWordmarkLogo() {
+      const text = wordmarkDraftText.trim();
+      const preset = wordmarkPresetById(wordmarkDraftPresetId);
+      if (!text || !preset.font) return;
+      if (!(await ensureWordmarkFont(preset.id)) || !wordmarkSupportsText(preset.id, text)) {
+        return showAppNotice(tr('Shrift tayyor emas yoki matndagi harflarni qo‘llamaydi. Eksport qilinmadi.','Шрифт не готов или не поддерживает буквы. Экспорт не выполнен.'));
+      }
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1600; canvas.height = 400;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('canvas_unavailable');
+        context.fillStyle = wordmarkDraftBgColor;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        let size = 240;
+        context.font = `${preset.weight} ${size}px ${wordmarkFontFamily(preset)}`;
+        const measured = context.measureText(text).width;
+        if (measured > 1440) size = Math.floor(size * 1440 / measured);
+        context.font = `${preset.weight} ${size}px ${wordmarkFontFamily(preset)}`;
+        context.fillStyle = wordmarkDraftTextColor;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2);
+        const blob = await canvasToBlob(canvas, 'image/png', 1);
+        if (!blob) throw new Error('logo_export_failed');
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url; link.download = `logo-${preset.id}.png`;
+        document.body.appendChild(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (_) { showAppNotice(tr('Logotipni eksport qilib bo‘lmadi.','Не удалось экспортировать логотип.')); }
     }
     // IMAGE va WORDMARK bir-birini almashtiradi; eski manbaga qaytish actioni yo'q.
 
@@ -18761,7 +18802,7 @@ if (activePopupModal === 'LOGO_CROP') {
                   ${WORDMARK_LEGACY_PRESETS.some((p) => p.id === wordmarkDraftPresetId) ? `<button type="button" class="fc-wordmark-style-option is-selected" data-font-name="${wordmarkPresetById(wordmarkDraftPresetId).label()}" onclick="selectWordmarkPreset('${wordmarkDraftPresetId}')"><span class="fc-wordmark-style-option-preview">${renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, { className: 'is-preview' })}</span><small>${wordmarkPresetById(wordmarkDraftPresetId).label()} (${tr('eski uslub', 'старый стиль')})</small></button>` : ''}
                 </div>
               </div>
-              <p class="fc-wordmark-online-note">${tr('Shriftlar internet orqali yuklanadi; avval yuklanmagan shrift qisqa vaqt ichida paydo bo‘ladi.', 'Шрифты загружаются через интернет; новый шрифт может появиться с небольшой задержкой.')}</p>
+              <p class="fc-wordmark-online-note">${tr('50 ta shrift UStorE fayllaridan yuklanadi. Yuklanmagan shrift o‘rniga boshqa shrift ko‘rsatilmaydi.', '50 шрифтов загружаются из файлов UStorE. Неподгруженный шрифт не заменяется другим.')}</p>
               <div class="fc-wordmark-color-presets">
                 ${WORDMARK_COLOR_PRESETS.map((c) => `<button type="button" onclick="applyWordmarkColorPreset('${c.id}')" aria-label="${tr('Rang kombinatsiyasi','Цветовая схема')}" style="background:${c.bg}"><span style="color:${c.text}">Aa</span></button>`).join('')}
               </div>
@@ -18776,6 +18817,7 @@ if (activePopupModal === 'LOGO_CROP') {
                   <span id="wordmark-header-preview">${renderWordmarkHtml(wordmarkDraftPresetId, wordmarkDraftText, { textColor: wordmarkDraftTextColor, bgColor: wordmarkDraftBgColor })}</span>
                 </div>
               </div>
+              ${wordmarkPresetById(wordmarkDraftPresetId).font ? `<button type="button" class="fc-btn fc-btn-secondary" onclick="exportWordmarkLogo()">${tr('PNG yuklab olish','Скачать PNG')}</button>` : ''}
               <div class="fc-icon-action-bar"><button onclick="closeWordmarkGenerator()" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button><button onclick="saveWordmarkLogo()" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-5 h-5"></i></button></div>
             </div>
           </div>

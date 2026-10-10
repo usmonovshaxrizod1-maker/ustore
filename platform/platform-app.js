@@ -691,6 +691,7 @@
         const chromeBody = activePage === 'ADMIN_SUPPORT_THREAD' ? renderAdminSupportTab() : '';
         app.innerHTML = `${renderChrome(chromeBody)}<div id="plat-page-container">${renderActivePage()}</div>`;
         if (activePage === 'CONNECT_SHOP') wireConnectShopView();
+        browserBridge?.appReady?.();
       } catch (e) {
         console.error('platform active-page render error', { activePage, error: e });
         app.innerHTML = `${renderChrome(`<div class="plat-render-error"><span>${pIcon('info',24)}</span><h2>Sahifani ochib bo‘lmadi</h2><p>Qayta urinib ko‘ring yoki bosh sahifaga qayting.</p><button class="primary" onclick="retryCurrentView()">Qayta urinish</button><button class="secondary" onclick="goHomePage()">Bosh sahifa</button></div>`)}`;
@@ -709,6 +710,7 @@
       const baseBody = showLanding ? renderLandingHero() : showDashboard ? renderShopDashboard() : renderTabBody();
       const body = !isAdminMode && currentTab === 'home' ? `${renderUserRequestsHomeTop()}${baseBody}` : baseBody;
       app.innerHTML = `${renderChrome(body)}`;
+      browserBridge?.appReady?.();
       if (showLanding) requestAnimationFrame(() => { syncLandingShowcaseDom(); startLandingShowcaseAutoplay(); });
       else stopLandingShowcaseAutoplay();
     } catch (e) {

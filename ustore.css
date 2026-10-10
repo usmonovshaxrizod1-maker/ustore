@@ -6716,14 +6716,9 @@ body.ustore-browser-mode .fc-initial-loader{display:none}
     .fc-mkt-pro-personal > .space-y-2){grid-template-columns:repeat(3,minmax(0,1fr))!important}
 }
 
-/* Category visual choices: true system emoji or alpha-preserving image, shared by Mini App and Web. */
-.fc-category-icon-frame:has(.fc-category-visual-image), .fc-category-icon-frame:has(.fc-category-native-emoji),
-.fc-featured-cat-icon:has(.fc-category-visual-image), .fc-featured-cat-icon:has(.fc-category-native-emoji) {background:transparent;border-color:transparent;box-shadow:none}
+/* Original SVGs and alpha-preserving images share the Mini App / Web contract. */
 .fc-category-visual-image{display:block;max-width:100%;max-height:100%;width:100%;height:100%;object-fit:contain;object-position:center;background:transparent!important;border:0;box-shadow:none;mix-blend-mode:normal}
-.fc-category-native-emoji{display:inline-flex;align-items:center;justify-content:center;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif;font-size:clamp(22px,2.7rem,42px);line-height:1;white-space:nowrap;background:transparent}
-.fc-cat-nav-icon .fc-category-native-emoji{font-size:1.1rem}
 .fc-cat-nav-icon .fc-category-visual-image{width:1.25rem;height:1.25rem}
-.fc-featured-cat-icon .fc-category-native-emoji{font-size:1.65rem}
 .fc-category-image-empty{display:grid;place-items:center;color:var(--ustore-text-muted,#64748b)}
 .fc-category-visual-editor{display:grid;gap:10px;padding-top:8px}
 .fc-category-visual-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:3px;background:#f1f5f9;border-radius:12px}
@@ -6731,13 +6726,9 @@ body.ustore-browser-mode .fc-initial-loader{display:none}
 .fc-category-visual-switch button.is-selected{background:white;border-color:#cbd5e1;box-shadow:0 1px 5px #0f172a12;color:#0f172a}
 .fc-category-visual-preview-line{display:flex;align-items:center;gap:12px;min-width:0}
 .fc-category-visual-preview{width:72px;height:72px;display:grid;place-items:center;flex:none;border-radius:16px;border:1px dashed #cbd5e1;background:transparent;overflow:hidden}
-.fc-category-visual-preview .fc-category-native-emoji{font-size:44px}
 .fc-category-visual-preview-line small,.fc-category-image-hint{color:#64748b;font-size:11px;line-height:1.55}
-.fc-category-emoji-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;max-height:175px;overflow:auto;padding:3px}
-.fc-category-emoji-grid button{display:grid;place-items:center;min-height:37px;border:1px solid #e2e8f0;border-radius:9px;font-size:23px;line-height:1;background:white;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
-.fc-category-emoji-grid button.is-selected{border-color:var(--ustore-button);background:#eff6ff}
 .fc-category-image-actions{display:flex;align-items:center;gap:8px}
-@media(min-width:768px){.fc-category-visual-editor{max-width:560px}.fc-category-emoji-grid{grid-template-columns:repeat(9,minmax(0,1fr))}}
+@media(min-width:768px){.fc-category-visual-editor{max-width:560px}}
 /* The older featured-category rule uses object-fit:cover; override it for transparent visual cutouts. */
 .fc-featured-cat-icon img.fc-category-visual-image,
 .fc-category-icon-frame img.fc-category-visual-image,
@@ -6809,8 +6800,8 @@ body.ustore-browser-mode .fc-initial-loader{display:none}
   body.ustore-browser-mode.fc-admin-mode .fc-card-replacement-fields{grid-template-columns:minmax(0,1fr)}
 }
 
-/* TASK 6 — Category visuals, Android/WebView-safe: no opaque chip behind native emoji
-   or an alpha-channel PNG/WebP. No :has() dependency, so Telegram and Web match. */
+/* No opaque chip behind an original SVG or alpha-channel PNG/WebP.
+   No :has() dependency, so older Telegram WebViews and Web match. */
 .fc-category-icon-frame.fc-category-visual-shell,
 .fc-featured-cat-icon.fc-category-visual-shell,
 .fc-cat-nav-icon.fc-category-visual-shell,
@@ -6820,7 +6811,7 @@ body.ustore-browser-mode .fc-initial-loader{display:none}
   border-color:transparent!important;
   box-shadow:none!important;
 }
-.fc-category-visual-shell .fc-category-native-emoji,
+.fc-category-visual-shell .fc-category-svg,
 .fc-category-visual-shell .fc-category-visual-image{
   background:transparent!important;
   box-shadow:none!important;
@@ -6834,6 +6825,12 @@ body.ustore-browser-mode .fc-initial-loader{display:none}
 /* 9-topshiriq: Word kabi 50 ta haqiqiy shrift — qulay izlash va lazy font loading. */
 .fc-wordmark-style-search{position:sticky;top:-.28rem;z-index:2;width:100%;min-height:2.25rem;box-sizing:border-box;margin:0 0 .3rem;padding:.45rem .65rem;border:1px solid var(--ustore-border,#dbe4ef);border-radius:.65rem;background:var(--ustore-card-bg,#fff);color:var(--ustore-text,#172033);font:inherit;font-size:.75rem;outline-offset:2px}
 .fc-wordmark-style-option[hidden]{display:none!important}
+.fc-wordmark[data-font-state]:not([data-font-state="ready"])>.fc-wordmark-text{display:none!important}
+.fc-wordmark-font-status{font-family:var(--default-font-family,system-ui,sans-serif);font-size:12px!important;font-weight:500;color:currentColor}
+.fc-wordmark[data-font-state="ready"]>.fc-wordmark-font-status{display:none}
+.fc-wordmark[data-font-state="loading"]>.fc-wordmark-font-status::before{content:"";display:inline-block;width:.7em;height:.7em;margin-right:.4em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:fc-wordmark-font-spin .8s linear infinite}
+@keyframes fc-wordmark-font-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.fc-wordmark[data-font-state="loading"]>.fc-wordmark-font-status::before{animation:none}}
 .fc-wordmark-online-note{font-size:.62rem;color:var(--ustore-muted-text,#64748b);line-height:1.4}
 .fc-wordmark-style-option-preview .fc-wordmark-text{font-size:.87rem!important}
 @media(min-width:768px){.fc-wordmark-style-menu{max-height:min(20rem,53dvh)}}
