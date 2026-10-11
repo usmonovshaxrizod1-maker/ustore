@@ -51,12 +51,27 @@ test('nested production handoff route uses root assets while GitHub preview stay
   const { productionWebEntry } = await load('scripts/web-entry-paths.mjs');
   const source = fs.readFileSync(path.join(root, 'web/index.html'), 'utf8');
   const production = productionWebEntry(source);
-  for (const asset of ['styles/index.css', 'config.public.js', 'app.js', 'launch-boot.js']) {
+  for (const asset of ['styles/index.css', 'shop-welcome.css', 'shop-welcome.js', 'config.public.js', 'app.js', 'launch-boot.js']) {
     assert.ok(source.includes(`./${asset}`));
     assert.ok(production.includes(`/${asset}`));
     assert.equal(production.includes(`./${asset}`), false);
   }
   assert.equal(fs.readFileSync(path.join(root, 'dist/web/index.html'), 'utf8'), production);
+});
+
+test('all production entry scripts and styles resolve at the origin root on login return routes', async () => {
+  const { productionWebEntry } = await load('scripts/web-entry-paths.mjs');
+  const html = productionWebEntry(fs.readFileSync(path.join(root, 'web/index.html'), 'utf8'));
+  const assets = [...html.matchAll(/(?:src|href)="(\.\/[^"?#]+|\/[^"?#]+)(?:[?#][^"]*)?"/g)].map(match => match[1]);
+  for (const route of ['/platform/app', '/platform/login', '/auth/callback', '/auth/handoff', '/profile', '/profile/']) {
+    for (const asset of assets) {
+      const url = new URL(asset, `https://shop.example${route}`);
+      assert.equal(url.pathname, '/' + asset.replace(/^\.?\//, ''), `${route}: ${asset}`);
+    }
+  }
+  const preview = fs.readFileSync(path.join(root, 'web/index.html'), 'utf8');
+  assert.ok(preview.includes('src="./shop-welcome.js'));
+  assert.ok(preview.includes('href="./shop-welcome.css'));
 });
 
 test('desktop shell widens without changing mobile bottom navigation', () => {

@@ -11,7 +11,7 @@ import {
   createLivePlatformAdapter,
   createLiveDomainsAdapter,
   createLiveTenantResolver,
-} from '../services/live/index.js?v=20261009t7';
+} from '../services/live/index.js?v=20261011login1';
 
 function safeBaseUrl(value) {
   const url = new URL(String(value || ''));

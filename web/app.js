@@ -346,7 +346,7 @@ async function applySharedShopMetadata(routeState, epoch) {
   return true;
 }
 function loadProductionRuntimeModule() {
-  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261009t7');
+  if (!productionRuntimeModulePromise) productionRuntimeModulePromise = import('./runtime/production.js?v=20261011login1');
   return productionRuntimeModulePromise;
 }
 function loadAuthFeatureModule() {
@@ -386,8 +386,8 @@ function loadLoginFeatureModule() {
   // A cached older login module must not be paired with a newer app.js after
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
   if (!loginFeatureModulePromise) {
-    loginFeatureModulePromise = import('./features/auth/login.js?v=20261009t7')
-      .catch(() => import(`./features/auth/login.js?v=20261009t7&retry=${Date.now()}`))
+    loginFeatureModulePromise = import('./features/auth/login.js?v=20261011login1')
+      .catch(() => import(`./features/auth/login.js?v=20261011login1&retry=${Date.now()}`))
       .catch((error) => { loginFeatureModulePromise = null; throw error; });
   }
   return loginFeatureModulePromise;
@@ -1043,7 +1043,7 @@ async function startWebApp() {
       (location.pathname === '/auth/telegram/callback' || location.pathname === '/' || !!previewBase())) {
     try {
       const [runtime, callback, authStore] = await Promise.all([
-        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261009t7'), import('./services/live/auth.js?v=20261009t7'),
+        loadProductionRuntimeModule(), import('./features/auth/official-telegram-callback.js?v=20261011login1'), import('./services/live/auth.js?v=20261011login1'),
       ]);
       const result = await callback.completeOfficialTelegramCallback({
         locationRef: location, historyRef: history,
