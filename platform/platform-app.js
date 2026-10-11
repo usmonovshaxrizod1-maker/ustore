@@ -249,6 +249,10 @@
   // Dashboard'da bir nechta do'kon bo'lsa qaysi biri ko'rsatilayotgani.
   let tariffBillingPeriod = 'monthly'; // 'monthly' | 'annual'
   let dashboardShopId = null;
+  let myShopStatusFilter = 'ACTIVE';
+  const myShopStatusFilters = [
+    ['ALL', 'Barchasi'], ['ACTIVE', 'Faol'], ['FROZEN', 'Muzlatilgan'], ['TERMINATED', 'O‘chirilgan'],
+  ];
   let currentTab = 'home'; // user: home|shops|subscription|help|profile ; admin: dashboard|shops|requests|tariffs|profile
   let activePage = null;
   let ownerNotifications = [];
@@ -844,7 +848,7 @@
         </div>
       </div>
       <div id="plat-role-popover" class="hidden plat-role-popover"></div>
-      <div class="plat-content">${bodyHtml}</div>
+      <div class="plat-content ${!isAdminMode && !activePage && (currentTab === 'shops' || (currentTab === 'home' && myShops.length)) ? 'plat-shops-content' : ''}">${bodyHtml}</div>
       ${activePage ? '' : renderBottomNav()}
     `;
   }
@@ -2440,9 +2444,31 @@
   // myShops (platform_list_my_shops, boot()da yuklangan) va mySupportTickets
   // dan.
   // ======================================================================
+  function getFilteredMyShops() {
+    return myShopStatusFilter === 'ALL' ? [...myShops] : myShops.filter((shop) => shop.status === myShopStatusFilter);
+  }
+
+  function renderMyShopStatusFilters() {
+    return `<div class="plat-shop-status-filters" role="group" aria-label="Do‘kon holati">${myShopStatusFilters.map(([value, label]) => `<button type="button" class="${myShopStatusFilter === value ? 'active' : ''}" aria-pressed="${myShopStatusFilter === value}" onclick="setMyShopStatusFilter('${value}')">${label}</button>`).join('')}</div>`;
+  }
+
+  function renderFilteredShopsEmpty() {
+    const titles = { ACTIVE: 'Faol do‘kon yo‘q', FROZEN: 'Muzlatilgan do‘kon yo‘q', TERMINATED: 'O‘chirilgan do‘kon yo‘q', ALL: 'Hozircha do‘kon yo‘q' };
+    return `<div class="plat-filter-empty"><h2>${titles[myShopStatusFilter]}</h2><p>Bu holatdagi do‘konlar shu yerda ko‘rinadi.</p>${myShopStatusFilter !== 'ALL' ? `<button type="button" class="secondary" onclick="setMyShopStatusFilter('ALL')">Barcha do‘konlarni ko‘rish</button>` : ''}</div>`;
+  }
+
+  function setMyShopStatusFilter(value) {
+    if (!myShopStatusFilters.some(([filter]) => filter === value)) return;
+    myShopStatusFilter = value;
+    render();
+  }
+
   function renderShopDashboard() {
-    if (!dashboardShopId || !myShops.some((shop) => shop.id === dashboardShopId)) dashboardShopId = myShops[0].id;
-    const s = myShops.find((shop) => shop.id === dashboardShopId) || myShops[0];
+    const shops = getFilteredMyShops();
+    const heading = `<div class="plat-dashboard-head"><div><p class="plat-dashboard-eyebrow">Mening do'konlarim</p><h1>${myShops.length} ta ulangan do'kon</h1></div><button class="plat-icon-button" onclick="switchTab('shops')" aria-label="Do‘konlarim">${pIcon('shop',17)}</button></div>${renderMyShopStatusFilters()}`;
+    if (!shops.length) return heading + renderFilteredShopsEmpty();
+    if (!shops.some((shop) => shop.id === dashboardShopId)) dashboardShopId = shops[0].id;
+    const s = shops.find((shop) => shop.id === dashboardShopId);
     const left = daysUntil(s.subscriptionExpiresAt);
     const unreadSupport = mySupportTickets.filter((ticket) => ticket.status === 'ANSWERED').length;
     const alerts = [];
@@ -2455,14 +2481,13 @@
     const productLimit = s.productLimit ?? null;
     const usedProducts = Number(s.usedProductCount || 0);
     const productPct = productLimit ? Math.min(100, Math.round(usedProducts / productLimit * 100)) : null;
-    const tabsClass = myShops.length === 1 ? 'is-one' : myShops.length === 2 ? 'is-two' : 'is-many';
     const shopAction = s.botUsername
       ? `<a class="primary plat-dashboard-open-shop" href="https://t.me/${escapeHtml(s.botUsername)}" target="_blank" rel="noopener">${pIcon('shop',15)} Do'konni ochish</a>`
       : '';
     return `
-      <div class="plat-dashboard-head"><div><p class="plat-dashboard-eyebrow">Mening do'konlarim</p><h1>${myShops.length} ta ulangan do'kon</h1></div><button class="plat-icon-button" onclick="switchTab('shops')" aria-label="Do‘konlarim">${pIcon('shop',17)}</button></div>
-      <div class="plat-dashboard-shop-tabs ${tabsClass}">
-        ${myShops.map((shop)=>{ const d=daysUntil(shop.subscriptionExpiresAt); const active=shop.id===s.id; const plan=shop.tariffName || 'Tarifsiz'; return `<button class="plat-dashboard-shop-card ${active?'active':''}" onclick="setDashboardShop('${shop.id}')"><span class="plat-shop-avatar ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span><span class="plat-dashboard-shop-copy"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${escapeHtml(plan)}</small><em class="${d!==null&&d<=7?'is-warn':''}">${d===null?'Obuna ma’lumoti yo‘q':d<=0?'Obuna tugagan':`Obunaga ${d} kun qoldi`}</em></span><span class="status-dot ${shop.status==='ACTIVE'?'ok':''}"></span></button>`; }).join('')}
+      ${heading}
+      <div class="plat-dashboard-shop-tabs" aria-label="Mening do‘konlarim">
+        ${shops.map((shop)=>{ const d=daysUntil(shop.subscriptionExpiresAt); const active=shop.id===s.id; const plan=shop.tariffName || 'Tarifsiz'; return `<button type="button" class="plat-dashboard-shop-card ${active?'active':''}" aria-pressed="${active}" aria-label="${escapeHtml((shop.shopName || shop.botUsername || shop.publicCode) + ', ' + statusLabel(shop.status))}" onclick="setDashboardShop('${shop.id}')"><span class="plat-shop-avatar ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span><span class="plat-dashboard-shop-copy"><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${escapeHtml(plan)}</small><em class="${d!==null&&d<=7?'is-warn':''}">${d===null?'Obuna ma’lumoti yo‘q':d<=0?'Obuna tugagan':`Obunaga ${d} kun qoldi`}</em></span><span class="status-dot ${shop.status==='ACTIVE'?'ok':''}" aria-hidden="true"></span></button>`; }).join('')}
       </div>
 
       <section class="card plat-dashboard-focus">
@@ -2511,16 +2536,19 @@
     return '';
   }
   function renderMyShopsTab() {
+    const shops = getFilteredMyShops();
     const activeCount = myShops.filter((s) => s.status === 'ACTIVE').length;
     const noPlanCount = myShops.filter((s) => !s.tariffId || !s.subscriptionExpiresAt).length;
     const expiringCount = myShops.filter((s) => { const d = daysUntil(s.subscriptionExpiresAt); return d !== null && d >= 0 && d <= 7; }).length;
-    if (!myShops.length) return `<div class="plat-empty-pro"><span>${pIcon('shop',30)}</span><h1>Hozircha do'kon yo'q</h1><p>Yangi do'kon yaratish uchun tarifni tanlang.</p><button class="primary" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon yaratish</button></div>`;
+    if (!myShops.length) return `${renderMyShopStatusFilters()}<div class="plat-empty-pro"><span>${pIcon('shop',30)}</span><h1>Hozircha do'kon yo'q</h1><p>Yangi do'kon yaratish uchun tarifni tanlang.</p><button class="primary" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon yaratish</button></div>`;
     const thirdCount = noPlanCount > 0 ? noPlanCount : expiringCount;
     const thirdLabel = noPlanCount > 0 ? 'Tarifsiz' : 'Tez tugaydi';
     return `
       <div class="plat-tab-head plat-shops-head"><div><h1>Do'konlarim</h1><p>${myShops.length} ta ulangan do'kon</p></div><button class="primary plat-new-shop-main" onclick="startNewShopFlow()">${pIcon('plus',16)} Yangi do'kon</button></div>
       <div class="plat-summary-strip plat-shops-summary"><div><span class="tone-blue">${pIcon('shop',16)}</span><b>${myShops.length}</b><small>Do'kon</small></div><div><span class="tone-blue">${pIcon('check',16)}</span><b>${activeCount}</b><small>Faol</small></div><div><span class="tone-blue">${pIcon(noPlanCount > 0 ? 'diamond' : 'calendar',16)}</span><b>${thirdCount}</b><small>${thirdLabel}</small></div></div>
-      <div class="plat-shop-list-simple" aria-label="Mening do‘konlarim">${[...myShops].sort((a,b) => {
+      ${renderMyShopStatusFilters()}
+      ${!shops.length ? renderFilteredShopsEmpty() : ''}
+      <div class="plat-shop-list-simple" aria-label="Mening do‘konlarim">${shops.sort((a,b) => {
         const rank = { ACTIVE: 0, PROVISIONING: 1, FROZEN: 2, TERMINATING: 3, TERMINATED: 4 };
         return (rank[a.status] ?? 5) - (rank[b.status] ?? 5);
       }).map((shop) => {
@@ -5419,6 +5447,7 @@
   window.startUpgradeFor = startUpgradeFor;
   window.startExtendFor = startExtendFor;
   window.setDashboardShop = setDashboardShop;
+  window.setMyShopStatusFilter = setMyShopStatusFilter;
   window.setPaymentHistoryShop = setPaymentHistoryShop;
   window.loadMyPaymentHistory = loadMyPaymentHistory;
   window.togglePaymentHistoryRow = togglePaymentHistoryRow;

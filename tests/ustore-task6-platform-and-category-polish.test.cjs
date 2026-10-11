@@ -15,12 +15,11 @@ function section(src, start, end) {
 
 test('user shops show coherent, separate status and plan/expiry with status-first ordering', () => {
   const body = section(platform, 'function renderMyShopsTab()', 'function openMyShopManage(');
-  assert.match(body, /\[\.\.\.myShops\]\.sort\(/);
+  assert.match(body, /shops\.sort\(/);
   assert.match(body, /ACTIVE:\s*0[\s\S]*?FROZEN:\s*2[\s\S]*?TERMINATED:\s*4/);
   for (const name of ['plat-shop-list-top','plat-shop-list-status','plat-shop-list-facts','plat-shop-list-open']) assert.ok(body.includes(name));
   assert.match(body, /openMyShopManage\('\$\{shop\.id\}'\)/);
-  assert.match(platformCss, /min-width:700px[\s\S]*?plat-shop-list-simple\{grid-template-columns:repeat\(2/);
-  assert.match(platformCss, /min-width:1180px[\s\S]*?plat-shop-list-simple\{grid-template-columns:repeat\(3/);
+  assert.match(platformCss, /min-width:768px[\s\S]*?plat-shop-list-simple\{grid-template-columns:repeat\(3/);
 });
 
 test('help cards distinguish create, problem report, and existing ticket history', () => {
@@ -76,6 +75,6 @@ test('both entrypoints include fresh asset versions', () => {
   const platformEntry = fs.readFileSync(path.join(root, 'platform/index.html'),'utf8');
   assert.match(html, /ustore\.css\?v=332/);
   assert.match(html, /ustore-shop-app\.js\?v=335/);
-  assert.match(platformEntry, /platform\.css\?v=43/);
-  assert.match(platformEntry, /platform-app\.js\?v=68/);
+  assert.match(platformEntry, /platform\.css\?v=44/);
+  assert.match(platformEntry, /platform-app\.js\?v=69/);
 });
