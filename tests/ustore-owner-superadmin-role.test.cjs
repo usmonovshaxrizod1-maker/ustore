@@ -12,7 +12,7 @@ test('platform super-admin still loads an actual shop OWNER membership', () => {
   assert.ok(start >= 0 && end > start, 'shop authority block must exist');
   const block = shopApi.slice(start, end);
 
-  assert.match(block, /const membershipResult = await db\.from\("shop_memberships"\)/);
+  assert.match(block, /const membershipResult = isGuestRequest \? \{ data:null,error:null \} : await db\.from\("shop_memberships"\)/);
   assert.match(block, /const membershipRow: any = membershipResult\.data;/);
   assert.doesNotMatch(block, /if \(!isPlatformSuperAdmin\)/);
 });

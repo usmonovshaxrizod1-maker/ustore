@@ -7,7 +7,7 @@ const MINI_APP_ORIGIN = 'https://usmonovshaxrizod1-maker.github.io';
 // PLATFORM Web is self-hosted at ustr.uz. Only the Telegram Mini App and
 // Shop iframe remain on GitHub Pages; no cross-site PLATFORM frame needed.
 const platformFrameUrl = () => new URL(location.hostname === 'usmonovshaxrizod1-maker.github.io' ? '/ustore/web/platform-ui/' : '/platform-ui/', location.origin);
-const PUBLIC_SHOP_ACTIONS = new Set(['boot', 'get_catalog', 'get_web_bundles', 'get_web_promotions', 'get_web_promotion']);
+const PUBLIC_SHOP_ACTIONS = new Set(['boot', 'get_catalog', 'get_web_bundles', 'get_web_promotions', 'get_web_promotion', 'guest_create_order','guest_track_order','guest_discount_preview','guest_delivery_branches','guest_delivery_districts']);
 const GUEST_READ_ACTIONS = new Set(['get_favorites', 'get_recent_views', 'get_my_orders', 'get_my_support_tickets']);
 const BACKGROUND_GUEST_ACTIONS = new Set(['record_product_view', 'save_cart_snapshot']);
 

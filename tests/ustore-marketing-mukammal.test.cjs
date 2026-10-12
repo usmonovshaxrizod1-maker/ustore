@@ -181,7 +181,7 @@ test('automatic gift supports order amount, category quantity and specific produ
 test('gift product is appended to the same atomic place_order call and snapshotted at zero price', () => {
   const block = apiBlock('case "create_order"', 'case "cancel_order"');
   const append = block.indexOf('product_id: String(automaticGift.giftProduct.id)');
-  const place = block.indexOf('db.rpc("place_order"');
+  const place = block.indexOf('db.rpc("ustore_create_checkout_order"');
   assert.ok(append > 0 && place > append);
   assert.match(block, /source_type: "GIFT"/);
   assert.match(block, /price_override: 0/);
@@ -194,7 +194,7 @@ test('gift stock race rolls back, auto-pauses, and retries once without double d
   assert.match(block, /insufficient_stock:\$\{automaticGift\.giftProduct\.id\}/);
   assert.match(block, /automatic_gift_rules"\)\.update\(\{ is_active: false/);
   assert.match(block, /rpcItems\.pop\(\)/);
-  assert.ok((block.match(/db\.rpc\("place_order"/g) || []).length >= 2);
+  assert.ok((block.match(/await placeCheckout\(\)/g) || []).length >= 3);
 });
 
 test('used gift campaigns deactivate instead of destructive history deletion', () => {
@@ -218,7 +218,7 @@ test('marketing UI has dark-theme tokens and a 360px overflow fallback', () => {
 
 test('marketing frontend cache version is bumped together', () => {
   // POLISH ROUND (7-topshiriq, 2026-08-30): v99->v100 for this round's changes.
-  assert.match(html, /ustore\.css\?v=332/);
-  assert.match(html, /ustore-shop-app\.js\?v=335/);
+  assert.match(html, /ustore\.css\?v=333/);
+  assert.match(html, /ustore-shop-app\.js\?v=336/);
 });
 

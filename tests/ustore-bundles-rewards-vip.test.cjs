@@ -65,7 +65,7 @@ test('create_order expands bundle components into the SAME rpcItems array passed
   assert.match(block, /rpcItems\.push\(\{/);
   assert.match(block, /product_id: pid, qty: \(Math\.max\(1, Math\.round\(Number\(c\.qty\) \|\| 1\)\)\) \* req\.qty/);
   assert.match(block, /source_type: "BUNDLE"/);
-  assert.match(block, /db\.rpc\("place_order", \{[\s\S]*p_items: rpcItems/);
+  assert.match(block, /db\.rpc\("ustore_create_checkout_order", \{[\s\S]*p_items: rpcItems/);
   assert.doesNotMatch(block, /create or replace function/i, 'must not define a new/modified SQL function inline — place_order stays untouched');
 });
 

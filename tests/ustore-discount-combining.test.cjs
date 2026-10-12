@@ -153,7 +153,7 @@ test('combining O\'CHIQ bo\'lganda eski "faqat eng foydalisi" mantig\'i (shu jum
 
 test('VIP mavjudligi (vipInfo) HAR DOIM hisoblanadi — mijoz checkbox\'ni o\'chirgan bo\'lsa ham, "sizda shaxsiy chegirma bor" belgisi ko\'rinishi uchun', () => {
   const block = extractResolveBestCartDiscount();
-  assert.match(block, /const vip = await resolveVipDiscount\(db, shopId, tgId, subtotal\);/);
+  assert.match(block, /const vip = tgId \? await resolveVipDiscount\(db, shopId, tgId, subtotal\) : null;/);
   assert.match(block, /const vipInfo = vip \? \{ discountType: vip\.discount\.discount_type, discountValue: Number\(vip\.discount\.discount_value\) \} : null;/);
   assert.match(block, /if \(vip && opts\.includeVip\) candidates\.push/, 'VIP faqat opts.includeVip=true bo\'lganda "eligible" hisoblanadi');
 });
@@ -268,9 +268,9 @@ test('useVip tanlovi currentCartDiscountKey\'ga kiritilgan — aks holda checkbo
 
 test('barcha uchta so\'rov (savat preview, checkout preview, create_order) useVip/useVipDiscount qiymatini serverga uzatadi', () => {
   assert.match(app, /callApi\('discount_preview', \{ items, promoCode: appliedPromoState\?\.code \|\| null, hasBundle: Object\.keys\(bundleCart\)\.length > 0, useVip: useVipDiscount \}\)/);
-  assert.match(app, /callApi\('discount_preview',\{items,promoCode:code\|\|null,hasBundle:Object\.keys\(bundleCart\)\.length>0,useVip:useVipDiscount\}\)/);
+  assert.match(app, /callApi\('discount_preview',\{items,bundleItems,promoCode:code\|\|null,hasBundle:bundleItems\.length>0,useVip:useVipDiscount\}\)/);
   const createOrderCallIdx = app.indexOf("callApi('create_order', {");
-  const submitBlock = app.slice(createOrderCallIdx, createOrderCallIdx + 500);
+  const submitBlock = app.slice(createOrderCallIdx, app.indexOf('const newOrder', createOrderCallIdx));
   assert.match(submitBlock, /useVip: useVipDiscount,/);
 });
 

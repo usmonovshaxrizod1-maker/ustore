@@ -167,7 +167,7 @@ test('create_order validates click_connections status=CONNECTED and platform acc
   const end = shopApi.indexOf('\n      case "cancel_order"');
   const block = shopApi.slice(start, end);
   const clickGateIdx = block.indexOf('payMethod === "CLICK"');
-  const placeOrderIdx = block.indexOf('db.rpc("place_order"');
+  const placeOrderIdx = block.indexOf('db.rpc("ustore_create_checkout_order"');
   assert.ok(clickGateIdx >= 0 && placeOrderIdx >= 0 && clickGateIdx < placeOrderIdx, 'the click_connections CONNECTED check must run before place_order, not after');
   assert.match(block, /clickCreateInvoice\(clickCreds/);
   const invoiceCallIdx = block.indexOf('clickCreateInvoice(clickCreds');

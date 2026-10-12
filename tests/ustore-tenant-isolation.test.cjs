@@ -143,7 +143,7 @@ test('every business-table query in the main switch is shop-scoped: no bare .fro
 
 test('every RPC call that touches shop-owned data passes p_shop_id explicitly', () => {
   const shopScopedRpcs = [
-    'allocate_global_skus', 'place_order', 'update_order_status', 'set_stock_by_sku',
+    'allocate_global_skus', 'ustore_create_checkout_order', 'update_order_status', 'set_stock_by_sku',
     'get_users_summary_fast', 'ustore_bulk_trash_products', 'ustore_purge_trash_batch',
     'ustore_restore_trash_items', 'ustore_purge_trash_items',
   ];

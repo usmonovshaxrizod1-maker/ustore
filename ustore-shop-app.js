@@ -1697,6 +1697,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // 100 tadan ko'p bo'lsa raqamli sahifalash (1,2,3...) chiqadi.
     let billzBrowsePageSize = 10;
     let fulfillmentConfig = commerce.defaultConfig(TOP_LEVEL_REGION_IDS);
+    let guestCheckoutActive = false;
+    let guestTrackingCode = localStorage.getItem(scopedKey('guestTrackingCode')) || '';
+    let guestTrackingResult = null, guestTrackingBusy = false, guestTrackingError = '';
+    let orderSuccessState = null;
     let fulfillmentDraft = null;
     let fulfillmentSavePending = false;
 
@@ -2500,6 +2504,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function beginVisibleMutation() {}
     function endVisibleMutation() {}
     async function callApi(action, payload) {
+      if (browserBridge && !browserBridge.authenticated) {
+        const guestActions = { create_order:'guest_create_order',discount_preview:'guest_discount_preview',get_delivery_branches:'guest_delivery_branches',get_delivery_districts:'guest_delivery_districts' };
+        if (guestActions[action] && fulfillmentConfig.checkout?.enabled) action = guestActions[action];
+      }
       if (browserBridge) return browserBridge.request(action, payload || {});
       const perfStarted = performance.now();
       const showAutomaticProgress = false;
@@ -6036,7 +6044,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       safeCreateIcons();
     }
     function renderOrderPauseSettingsPage(container) {
-      renderPageShell(container, tr('Buyurtmalarni qabul qilish','Приём заказов'), orderPauseDetailCardHtml(), { onBack:'closeOrderPauseSettingsPage()' });
+      renderPageShell(container, tr('Buyurtmalarni qabul qilish','Приём заказов'), orderPauseDetailCardHtml() + guestCheckoutSettingsHtml(), { onBack:'closeOrderPauseSettingsPage()' });
     }
 
     function renderSettingsPage(container) {
@@ -8364,6 +8372,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       return itemsTotal + bundlesTotal;
     }
 
+    function checkoutDiscountedSubtotal() {
+      const discount = Number(checkoutDiscountState?.totalDiscount) || Number(appliedPromoState?.discountAmount) || 0;
+      return Math.max(0, checkoutSubtotal() - discount);
+    }
+
     function promoErrorMessage(code) {
       if (String(code || '').startsWith('promo_min_order:')) {
         const minAmount = code.split(':')[1];
@@ -8432,9 +8445,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     async function refreshCheckoutDiscountPreview(code = appliedPromoState?.code || '', shouldRender = true) {
-      const items = Object.entries(cart).map(([key,itemData])=>({productId:cartEntryProductId(key,itemData),qty:itemData.qty}));
+      const items = Object.entries(cart).map(([key,itemData])=>({productId:cartEntryProductId(key,itemData),qty:itemData.qty,size:itemData.size||null,color:itemData.color||null}));
       try {
-        const result = await callApi('discount_preview',{items,promoCode:code||null,hasBundle:Object.keys(bundleCart).length>0,useVip:useVipDiscount});
+        const bundleItems=Object.entries(bundleCart).map(([bundleId,item])=>({bundleId,qty:item.qty}));
+        const result = await callApi('discount_preview',{items,bundleItems,promoCode:code||null,hasBundle:bundleItems.length>0,useVip:useVipDiscount});
         checkoutDiscountState = result || null;
       } catch(e) { checkoutDiscountState = null; }
       if(shouldRender)renderCheckoutOptions();
@@ -8520,6 +8534,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function clearCheckoutReceipt() {
+      checkoutReceiptStatus = 'empty';
       checkoutReceiptSelectionVersion += 1;
       if (checkoutReceiptPreviewUrl) URL.revokeObjectURL(checkoutReceiptPreviewUrl);
       checkoutReceiptFile = null;
@@ -8529,16 +8544,17 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     // 1.8: native "Choose file / No file chosen" matni hech qachon ko'rinmasin —
     // faqat custom tugma + tanlangach preview + "Almashtirish".
+    let checkoutReceiptStatus = 'empty';
     function renderReceiptPicker(receiptRequired) {
       const label = `${tr("To'lov cheki/skrinshoti", 'Чек/скриншот оплаты')} ${receiptRequired ? '*' : `(${tr('ixtiyoriy', 'необязательно')})`}`;
       const hint = tr("To'lov cheki yoki skrinshot rasmini yuklang.", 'Загрузите фото чека или скриншот оплаты.');
       // Galereya va fayl tanlash bir xil picker-sheet orqali ishlaydi.
       const galleryInput = `<input id="chk-receipt" type="file" accept="image/*" onchange="onCheckoutReceiptPicked(event)" class="hidden">`;
-      const filesInput = `<input id="chk-receipt-files" type="file" onchange="onCheckoutReceiptPicked(event)" class="hidden">`;
+      const filesInput = `<input id="chk-receipt-files" type="file" accept="image/jpeg,image/png,image/webp" onchange="onCheckoutReceiptPicked(event)" class="hidden">`;
       if (checkoutReceiptPreviewUrl) {
         return `
           <label class="block font-bold">${label}</label>
-          <p class="fc-checkout-upload-hint">${hint}</p>
+          <p class="fc-checkout-upload-hint" role="status" aria-live="polite">${checkoutReceiptStatus === 'preparing' ? tr('Chek tayyorlanmoqda…','Подготавливаем чек…') : checkoutReceiptStatus === 'uploading' ? tr('Chek serverga yuklanmoqda…','Загружаем чек на сервер…') : checkoutReceiptStatus === 'error' ? tr('Chek yuklanmadi. Qayta urinishingiz yoki rasmni almashtirishingiz mumkin.','Чек не загружен. Повторите попытку или замените изображение.') : tr('Rasm tayyor. Buyurtma berilganda serverga yuklanadi.','Изображение готово. Оно загрузится при оформлении заказа.')}</p>
           <div class="fc-checkout-upload-row">
             <img src="${checkoutReceiptPreviewUrl}" class="fc-checkout-receipt-preview" alt="${tr('Yuklangan to‘lov skrinshoti','Загруженный скриншот оплаты')}">
             <button type="button" onclick="openImagePickerSheet('chk-receipt','chk-receipt-files')" class="fc-checkout-upload-action" aria-label="${tr('Skrinshotni almashtirish','Заменить скриншот')}" title="${tr('Skrinshotni almashtirish','Заменить скриншот')}"><i data-lucide="image-plus" class="w-5 h-5"></i><span>${tr('Skrinshotni almashtirish','Заменить скриншот')}</span></button>
@@ -8595,12 +8611,12 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
     async function openCheckoutForm() {
       if (Object.keys(cart).length === 0 && Object.keys(bundleCart).length === 0) return;
-      if (browserBridge && !browserBridge.authenticated) {
-        browserBridge.navigate('/checkout');
+      if (browserBridge && !browserBridge.authenticated && !guestCheckoutActive) {
+        if (fulfillmentConfig.checkout?.enabled) { openGuestCheckoutChoice(); return; }
+        browserBridge.navigate('/profile?next=%2Fcheckout');
         return;
       }
       await loadServerCheckoutDraft();
-      clearCheckoutReceipt();
       checkoutStep = normalizeCheckoutStepValue(checkoutDraft.step, checkoutDraft.flowVersion);
       checkoutDraft.step = checkoutStep;
       checkoutDraft.flowVersion = CHECKOUT_FLOW_VERSION;
@@ -8615,7 +8631,6 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function closeCheckoutForm() {
       saveCheckoutDraft();
-      clearCheckoutReceipt();
       activePopupModal = null;
       render();
     }
@@ -8629,15 +8644,18 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       }, 350);
     }
     function saveCheckoutDraft() {
+      const earlierStepValue = (id, fallback) => checkoutStep === 1
+        ? document.getElementById(id)?.value ?? fallback
+        : fallback;
       checkoutDraft = {
         ...checkoutDraft,
         step: checkoutStep,
         flowVersion: CHECKOUT_FLOW_VERSION,
-        fullname: document.getElementById('chk-fullname')?.value ?? checkoutDraft.fullname ?? '',
-        phone: document.getElementById('chk-phone')?.value ?? checkoutDraft.phone ?? '',
-        regionKey: document.getElementById('chk-region-key')?.value ?? checkoutDraft.regionKey ?? 'tashkent_city',
-        district: document.getElementById('chk-district')?.value ?? checkoutDraft.district ?? '',
-        address: document.getElementById('chk-address')?.value ?? checkoutDraft.address ?? '',
+        fullname: earlierStepValue('chk-fullname', checkoutDraft.fullname ?? ''),
+        phone: earlierStepValue('chk-phone', checkoutDraft.phone ?? ''),
+        regionKey: earlierStepValue('chk-region-key', checkoutDraft.regionKey ?? 'tashkent_city'),
+        district: earlierStepValue('chk-district', checkoutDraft.district ?? ''),
+        address: earlierStepValue('chk-address', checkoutDraft.address ?? ''),
         deliveryMethodId: selectedDeliveryMethodId,
         paymentMethodId: selectedPayMethod,
         branch: checkoutSelectedBranch ? {
@@ -8650,10 +8668,19 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       localStorage.setItem(scopedKey('checkoutDraft'), JSON.stringify(checkoutDraft));
       persistCheckoutDraftServer();
     }
+    function saveGuestCheckoutName() {
+      checkoutDraft.firstName = document.getElementById('chk-firstname')?.value || '';
+      checkoutDraft.lastName = document.getElementById('chk-lastname')?.value || '';
+      const full = document.getElementById('chk-fullname');
+      if (full) full.value = `${checkoutDraft.firstName.trim()} ${checkoutDraft.lastName.trim()}`.trim();
+      saveCheckoutDraft();
+    }
     function checkoutStepValid(step) {
       saveCheckoutDraft();
       if (step === 1) {
-        const fullname=String(checkoutDraft.fullname||'').trim(), phone=String(checkoutDraft.phone||'').replace(/\s+/g,'');
+        const checked=commerce.validateCheckoutFields({...checkoutDraft,guest:guestCheckoutActive,branch:checkoutSelectedBranch});
+        if (checked.error?.step===1) { revealCheckoutError(checked.error); return false; }
+        const fullname=String(checkoutDraft.fullname||'').trim(), phone=checked.phone;
         if (fullname.length < 2) { showAppNotice(tr('Ism va familiyangizni kiriting.','Введите имя и фамилию.')); return false; }
         if (!/^\+?\d{9,15}$/.test(phone)) { showAppNotice(tr('Telefon raqamini to‘g‘ri kiriting.','Введите корректный номер телефона.')); return false; }
         if (!checkoutDraft.regionKey) { showAppNotice(tr('Hududni tanlang.','Выберите регион.')); return false; }
@@ -8857,6 +8884,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function selectDelivery(methodId) {
+      if (methodId === 'FREE' && fulfillmentConfig.delivery.free.minimumEnabled && checkoutDiscountedSubtotal() <= fulfillmentConfig.delivery.free.minimumSubtotal) {
+        return showAppNotice(tr('Bepul yetkazish uchun tovarlar summasi belgilangan limitdan ko‘proq bo‘lishi kerak.', 'Для бесплатной доставки сумма товаров должна превышать установленный порог.'));
+      }
       // 2-band: POST provider tuman-maydonini yashirmaydi/almashtirmaydi —
       // bitta umumiy #chk-district har doim ko'rinadi. Agar tuman
       // allaqachon tanlangan bo'lsa, provider bosilgach filiallar darhol
@@ -8983,14 +9013,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function renderCheckoutOptions() {
       const regionKey = document.getElementById('chk-region-key')?.value || checkoutDraft.regionKey || 'tashkent_city';
       const districtValue = document.getElementById('chk-district')?.value || '';
-      const deliveryOptions = commerce.deliveryOptions(fulfillmentConfig, regionKey, districtValue);
+      const deliveryOptions = commerce.deliveryOptions(fulfillmentConfig, regionKey, districtValue, checkoutDiscountedSubtotal());
       const paymentOptions = commerce.paymentOptions(fulfillmentConfig, regionKey, districtValue);
-      if (!deliveryOptions.some(option => option.id === selectedDeliveryMethodId)) {
+      if (!deliveryOptions.some(option => option.id === selectedDeliveryMethodId && option.eligible !== false)) {
         // 5.6: yetkazib berish provideri (POST:BTS/POST:EMU) hech qachon
         // avtomatik tanlanmaydi — mijoz buni o'zi bosishi shart. Boshqa
         // turlar (FREE/FIXED/TAXI) uchun avvalgi qulay xulq — birinchisi
         // avtomatik tanlanadi — saqlanadi.
-        const fallback = deliveryOptions.find(option => option.kind !== 'POST');
+        const fallback = deliveryOptions.find(option => option.kind !== 'POST' && option.eligible !== false);
         selectedDeliveryMethodId = fallback ? fallback.id : null;
       }
       if (!paymentOptions.some(option => option.id === selectedPayMethod)) selectedPayMethod = paymentOptions[0]?.id || null;
@@ -9003,10 +9033,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         // 5.6: provider tugmalari tuman tanlanmaguncha bosilmaydigan
         // ko'rinishda ko'rsatiladi — lekin onclick faol qoladi, shunda
         // bosilsa selectDelivery o'zi aniq ogohlantirish ko'rsatadi.
-        const disabledLook = option.kind === 'POST' && !districtValue;
+        const disabledLook = option.eligible === false || option.kind === 'POST' && !districtValue;
         return `
         <button type="button" onclick="selectDelivery('${escapeHtml(option.id)}')" class="fc-checkout-choice ${option.id === selectedDeliveryMethodId ? 'is-selected' : ''} ${disabledLook ? 'is-muted' : ''}">
-          <span class="fc-checkout-choice-icon"><i data-lucide="${deliveryOptionIcon(option)}" class="w-4 h-4"></i></span><span>${deliveryOptionLabel(option)}</span>
+          <span class="fc-checkout-choice-icon"><i data-lucide="${deliveryOptionIcon(option)}" class="w-4 h-4"></i></span><span>${deliveryOptionLabel(option)}${option.kind === 'FREE' && fulfillmentConfig.delivery.free.minimumEnabled ? `<small class="fc-free-delivery-hint">${option.eligible ? tr('Bepul yetkazish mavjud!','Бесплатная доставка доступна!') : tr(`Yana ${money(option.remaining)} kerak.`,`Добавьте ещё ${money(option.remaining)}.`)}</small>` : ''}</span>
         </button>`;
       }).join('') : `<div class="fc-bg-danger-soft border fc-border-danger fc-text-danger p-3 rounded-xl font-bold">${tr('Bu hudud uchun yetkazib berish usuli yoqilmagan.', 'Для этого региона способы доставки не настроены.')}</div>`;
 
@@ -9176,6 +9206,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       // 1.11: preview tanlangan zahoti ORIGINAL File'dan ko'rsatiladi — V2:
       // FileReader/ArrayBuffer orqali oldindan o'qish shart emas.
       const selectionVersion = ++checkoutReceiptSelectionVersion;
+      checkoutReceiptStatus = 'preparing';
       checkoutReceiptFile = file;
       if (checkoutReceiptPreviewUrl) { try { URL.revokeObjectURL(checkoutReceiptPreviewUrl); } catch (_) {} }
       checkoutReceiptPreviewUrl = URL.createObjectURL(file);
@@ -9192,6 +9223,12 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         } catch (previewErr) {
           imageIO.logStage('PREVIEW_FAILED', { message: previewErr?.message, level: 'warn' });
         }
+      }).then(prepared => {
+        if (selectionVersion === checkoutReceiptSelectionVersion) { checkoutReceiptStatus = 'ready'; rerenderReceiptPicker(); }
+        return prepared;
+      }, error => {
+        if (selectionVersion === checkoutReceiptSelectionVersion) { checkoutReceiptStatus = 'error'; checkoutReceiptPreparing = null; rerenderReceiptPicker(); }
+        return file;
       });
       rerenderReceiptPicker();
     }
@@ -9204,6 +9241,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // app-api orqali yuboriladi.
     async function prepareReceiptImageUpload() {
       if (!checkoutReceiptFile && !checkoutReceiptPreparing) return null;
+      const selectionVersion = checkoutReceiptSelectionVersion;
       let prepared;
       try {
         prepared = checkoutReceiptPreparing ? await checkoutReceiptPreparing : checkoutReceiptFile;
@@ -9212,17 +9250,50 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         // 5.2: eski (allaqachon rad etilgan) promise qayta-qayta kutilib,
         // "Yuborish" cheksiz bir xil xato bilan qaytmasligi uchun — chek
         // holatini tozalaymiz, foydalanuvchi ochiq ko'rinishda qayta tanlaydi.
-        clearCheckoutReceipt();
+        checkoutReceiptPreparing = null;
+        checkoutReceiptStatus = 'error';
         rerenderReceiptPicker();
         throw new Error('receipt_read_failed');
       }
       if (!prepared || prepared.size > 6 * 1024 * 1024) throw new Error('receipt_too_large');
+      if (selectionVersion !== checkoutReceiptSelectionVersion) throw new Error('receipt_selection_changed');
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(prepared.type)) throw new Error('invalid_receipt_file');
+      const base64 = await fileToBase64(prepared);
+      if (selectionVersion !== checkoutReceiptSelectionVersion) throw new Error('receipt_selection_changed');
       return {
-        base64: await fileToBase64(prepared),
+        base64,
         mimeType: prepared.type,
         fileName: prepared.name || 'payment-receipt.jpg',
       };
+    }
+
+    function revealCheckoutError(error) {
+      const messages = {
+        name_required: tr('Ism va familiyangizni kiriting.', 'Введите имя и фамилию.'),
+        phone_invalid: tr('Telefon raqamingizni +998 90 123 45 67 ko‘rinishida kiriting.', 'Введите телефон в формате +998 90 123 45 67.'),
+        region_required: tr('Hududni tanlang.', 'Выберите регион.'),
+        district_required: tr('Tumanni tanlang.', 'Выберите район.'),
+        address_required: tr('Yetkazib berish manzilini kiriting.', 'Введите адрес доставки.'),
+        branch_required: tr('Pochta filialini tanlang.', 'Выберите почтовое отделение.'),
+        delivery_required: tr('Yetkazib berish usulini tanlang.', 'Выберите способ доставки.'),
+        payment_required: tr('To‘lov usulini tanlang.', 'Выберите способ оплаты.'),
+        receipt_required: tr('Chekni yuklash yoki qayta tanlash kerak.','Загрузите чек или выберите файл заново.'),
+        free_delivery_minimum_not_met: tr('Bepul yetkazish uchun summa yetarli emas. Boshqa usulni tanlang.','Суммы недостаточно для бесплатной доставки. Выберите другой способ.'),
+      };
+      const message = messages[error.code] || tr('Ushbu maydonni to‘ldiring.', 'Заполните это поле.');
+      if (checkoutStep !== error.step) { checkoutStep = error.step; checkoutDraft.step = error.step; render(); }
+      const field = document.getElementById(error.field);
+      const holder = field?.closest('.fc-checkout-field') || field;
+      field?.setAttribute('aria-invalid', 'true');
+      holder?.querySelector('[data-checkout-error]')?.remove();
+      if (holder) {
+        const note = document.createElement('p'); note.dataset.checkoutError = 'true';
+        note.className = 'fc-checkout-receipt-error'; note.setAttribute('role', 'alert'); note.textContent = message;
+        holder.append(note); holder.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (holder.querySelector('input,summary,button') || field)?.focus?.({ preventScroll: true });
+      }
+      showAppNotice(message);
+      return false;
     }
 
     let submittingOrder = false;
@@ -9234,10 +9305,13 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         return showAppNotice(`${tr("🚫 Siz botdan foydalanish huquqidan mahrum qilingansiz", "🚫 Доступ к оформлению заказов заблокирован")}.\n${tr('Sabab','Причина')}: ${myStatus.blockReason || tr("ko'rsatilmagan",'не указана')}\n\n${tr("Batafsil ma'lumot uchun Profil bo'limiga qarang.",'Подробности смотрите в разделе «Профиль».')}`);
       }
 
-      const fullname = document.getElementById('chk-fullname').value.trim();
-      const phone = document.getElementById('chk-phone').value.trim();
-      const regionKey = document.getElementById('chk-region-key').value;
-      const selectedDistrictValue = document.getElementById('chk-district').value.trim();
+      saveCheckoutDraft();
+      const checked = commerce.validateCheckoutFields({ ...checkoutDraft, guest:guestCheckoutActive, branch: checkoutSelectedBranch });
+      if (checked.error) return revealCheckoutError(checked.error);
+      const fullname = String(checkoutDraft.fullname || '').trim();
+      const phone = checked.phone;
+      const regionKey = checkoutDraft.regionKey;
+      const selectedDistrictValue = String(checkoutDraft.district || '').trim();
       const deliveryOptions = commerce.deliveryOptions(fulfillmentConfig, regionKey, selectedDistrictValue);
       const paymentOptions = commerce.paymentOptions(fulfillmentConfig, regionKey, selectedDistrictValue);
       const selectedDelivery = deliveryOptions.find(option => option.id === selectedDeliveryMethodId);
@@ -9248,7 +9322,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       // tanlangan filial manzili ishlatiladi.
       const tuman = isPostDelivery ? (checkoutSelectedBranch?.district_or_city || '') : selectedDistrictValue;
       const district = isPostDelivery ? tuman : (regionKey === 'tashkent_city' ? tuman : `${topLevelRegionLabel(regionKey)}, ${tuman}`);
-      const address = isPostDelivery ? (checkoutSelectedBranch?.full_address || '') : document.getElementById('chk-address').value.trim();
+      const address = isPostDelivery ? (checkoutSelectedBranch?.full_address || '') : String(checkoutDraft.address || '').trim();
 
       let hasError = false;
 
@@ -9259,14 +9333,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       requiredFields.forEach(([id, val]) => {
         const el = document.getElementById(id);
         if (!val || val === '+998') {
-          el.classList.add('fc-border-danger', 'fc-bg-danger-soft');
+          el?.classList.add('fc-border-danger', 'fc-bg-danger-soft');
           hasError = true;
         } else {
-          el.classList.remove('fc-border-danger', 'fc-bg-danger-soft');
+          el?.classList.remove('fc-border-danger', 'fc-bg-danger-soft');
         }
       });
 
-      if (hasError) return showAppNotice(tr("Iltimos, barcha qizil maydonlarni to'ldiring!", "Заполните все поля, отмеченные красным!"));
+      if (hasError) return revealCheckoutError({ field: requiredFields.find(([, val]) => !val || val === '+998')?.[0] || 'chk-fullname', step: 1, code: 'field_required' });
 
       if (!isValidPhone(phone)) {
         document.getElementById('chk-phone').classList.add('fc-border-danger', 'fc-bg-danger-soft');
@@ -9351,8 +9425,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           localStorage.setItem(scopedKey('checkoutRequestKey'), checkoutKey);
         }
 
+        if (receiptImageUpload) { checkoutReceiptStatus = 'uploading'; rerenderReceiptPicker(); showLoader(tr('Chek yuklanmoqda va buyurtma tekshirilmoqda…','Загружаем чек и проверяем заказ…')); }
         const result = await callApi('create_order', {
           items: itemsPayload, bundleItems: bundleItemsPayload, fullname, phone, regionKey, district, address,
+          ...(guestCheckoutActive ? {firstName:checkoutDraft.firstName,lastName:checkoutDraft.lastName} : {}),
           deliveryMethodId: selectedDeliveryMethodId,
           paymentMethodId: selectedPayment.id === 'QR' ? `QR:${selectedQrProvider.id}` : selectedPayMethod,
           receiptImageUpload, branchId: isPostDelivery ? checkoutSelectedBranch?.id : undefined,
@@ -9384,10 +9460,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
           : selectedPayment.id === 'PAYME' && newOrder.payment?.paymeCheckoutUrl ? { kind: 'PAYME', url: newOrder.payment.paymeCheckoutUrl }
           : selectedPayment.id === 'UZUM' && newOrder.payment?.uzumPaymentUrl ? { kind: 'UZUM', url: newOrder.payment.uzumPaymentUrl }
           : null;
+        guestCheckoutActive = false;
         openOrderSuccessCelebration(newOrder.id, autoPayInfo);
       } catch (e) {
         console.error(e);
-        if (String(e.message).includes('insufficient_stock')) {
+        if (String(e.message).includes('checkout_key_cancelled')) {
+          localStorage.removeItem(scopedKey('checkoutRequestKey'));
+          showAppNotice(tr('Oldingi urinish bekor qilingan. Ma’lumotlar saqlandi; buyurtmani qayta yuboring.','Предыдущая попытка отменена. Данные сохранены; отправьте заказ повторно.'));
+        } else if (String(e.message).includes('insufficient_stock')) {
           showAppNotice(tr("❌ Afsuski, savatchangizdagi bir yoki bir nechta tovar omborda tugab qoldi. Savatchani tekshiring.", "❌ Один или несколько товаров в корзине закончились. Проверьте корзину."));
         } else if (String(e.message).includes('bundle_unavailable')) {
           showAppNotice(tr("❌ Savatchangizdagi bir aksiya endi mavjud emas (o'chirilgan yoki muddati tugagan). Savatchani tekshiring.", "❌ Одна из акций в корзине больше недоступна (удалена или истёк срок). Проверьте корзину."));
@@ -9400,7 +9480,20 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         } else if (String(e.message).includes('receipt_required')) {
           showAppNotice(tr("Buyurtmani yuborish uchun to'lov chekini yuklang.", 'Чтобы отправить заказ, загрузите чек оплаты.'));
         } else if (String(e.message).includes('receipt_upload_failed')) {
+          checkoutReceiptStatus = 'error'; rerenderReceiptPicker();
           showAppNotice(tr("❌ To'lov cheki yuklanmadi, shuning uchun buyurtma yaratilmadi. Qayta urinib ko'ring.", "❌ Чек оплаты не загрузился, поэтому заказ не был создан. Попробуйте ещё раз."));
+        } else if (String(e.message).includes('receipt_storage_verify_failed')) {
+          checkoutReceiptStatus = 'error'; rerenderReceiptPicker();
+          revealCheckoutError({field:'chk-receipt-wrap',step:2,code:'receipt_required'});
+        } else if (String(e.message).includes('free_delivery_minimum_not_met')) {
+          revealCheckoutError({field:'delivery-method-wrap',step:1,code:'free_delivery_minimum_not_met'});
+        } else if (String(e.message).includes('guest_checkout_disabled')) {
+          showAppNotice(tr('Do‘kon mehmon buyurtmalarini o‘chirgan. Kirib davom eting.','Магазин отключил гостевые заказы. Войдите, чтобы продолжить.'));
+        } else if (String(e.message).includes('rate_limited')) {
+          showAppNotice(tr('Urinishlar soni oshib ketdi. Birozdan keyin qayta urinib ko‘ring.','Слишком много попыток. Повторите немного позже.'));
+        } else if (String(e.message).includes('quote_changed')) {
+          await refreshCheckoutDiscountPreview();
+          showAppNotice(tr('Narx yoki chegirma o‘zgardi. Yangilangan summani tekshirib, qayta yuboring.','Цена или скидка изменилась. Проверьте новую сумму и повторите.'));
         } else if (String(e.message).includes('promo_limit_changed')) {
           appliedPromoState = null;
           showAppNotice(tr("Promo-kod limiti hozirgina tugadi. Savat tiklandi; boshqa promo-kod bilan qayta urinishingiz mumkin.", "Лимит промокода только что закончился. Корзина восстановлена; попробуйте другой промокод."));
@@ -9417,31 +9510,120 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
 
     function openOrderSuccessCelebration(orderId, autoPayInfo) {
-      selectedProductModal = null;
-      const isClickPayment = autoPayInfo?.kind === 'CLICK';
-      const payUrl = (autoPayInfo?.kind === 'PAYME' || autoPayInfo?.kind === 'UZUM') ? autoPayInfo.url : null;
-      const providerName = autoPayInfo?.kind === 'PAYME' ? 'Payme' : autoPayInfo?.kind === 'UZUM' ? 'Uzum' : '';
-      document.getElementById('modal-container').innerHTML = `
-        <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div class="bg-white rounded-3xl p-6 text-center max-w-sm w-full space-y-4 shadow-2xl">
-            <div class="text-5xl fc-celebration-icon">${fcIcon('<path d="m12 3-1.2 3.6L7 8l3.8 1.4L12 13l1.2-3.6L17 8l-3.8-1.4L12 3ZM5 14l-.8 2.2L2 17l2.2.8L5 20l.8-2.2L8 17l-2.2-.8L5 14ZM19 14l-.8 2.2L16 17l2.2.8L19 20l.8-2.2L22 17l-2.2-.8L19 14Z' , 'w-12 h-12')}</div>
-            <h3 class="text-xl font-black text-gray-900">${tr("Buyurtmangiz qabul qilindi!", "Ваш заказ принят!")}</h3>
-            <p class="text-xs text-gray-500">${tr("Buyurtma ID:", "ID заказа:")} <b class="text-blue-600">#${orderId}</b>${isClickPayment
-              ? tr(". To'lov so'rovi Click ilovangizga yuborildi — to'lovni shu yerda tasdiqlang.", ". Запрос на оплату отправлен в ваше приложение Click — подтвердите оплату там.")
-              : payUrl
-                ? tr(`. ${providerName} orqali to'lash uchun pastdagi tugmani bosing.`, `. Нажмите кнопку ниже, чтобы оплатить через ${providerName}.`)
-                : tr(`. ${escapeHtml(shopDisplayName())} mutaxassislari tez orada siz bilan bog'lanishadi.`, `. Специалисты ${escapeHtml(shopDisplayName())} скоро свяжутся с вами.`)}</p>
-            ${payUrl ? `<button onclick="openSafeExternalUrl('${escapeHtml(payUrl)}')" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl text-xs"><i data-lucide="external-link" class="w-4 h-4 inline"></i> ${tr(`${providerName} orqali to'lash`, `Оплатить через ${providerName}`)}</button>` : ''}
-            <button onclick="document.getElementById('modal-container').innerHTML=''; switchTab('orders');" class="w-full ${payUrl ? 'bg-gray-100 text-gray-700' : 'bg-blue-600 text-white'} font-bold py-3 rounded-xl text-xs">
-              ${ICON_PACKAGE} ${tr("Buyurtmalarda ko\'rish", "Посмотреть в заказах")}
-            </button>
-          </div>
-        </div>
-      `;
-      if (payUrl && window.lucide) safeCreateIcons();
+      hideActionToast();
+      orderSuccessState = { order: orders.find(order => String(order.id) === String(orderId)) || {id:orderId}, autoPayInfo };
+      const code = orderSuccessState.order.guestTrackingCode;
+      if (/^\d{10}$/.test(code || '')) {
+        guestTrackingCode = String(code); guestTrackingResult = null;
+        localStorage.setItem(scopedKey('guestTrackingCode'), guestTrackingCode);
+      }
+      selectedProductModal = null; activePopupModal = 'ORDER_SUCCESS';
+      renderModalContainer();
+      requestAnimationFrame(() => document.querySelector('.fc-checkout-dialog button')?.focus());
     }
 
-    // 4. ORDERS TAB (USER & ADMIN)
+    function guestContactLinksHtml(contacts = fulfillmentConfig.checkout || {}) {
+      const links = [];
+      const phone = String(contacts.phone || '').replace(/[\s()-]/g,'');
+      if (/^\+998\d{9}$/.test(phone)) links.push(`<a href="tel:${phone}">${fcIcon('<path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 3.1 5.2 2 2 0 0 1 5.1 3h3l2 5-2 2a16 16 0 0 0 6 6l2-2Z"/>','w-4 h-4')}${tr('Qo‘ng‘iroq','Позвонить')}</a>`);
+      if (/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(contacts.telegram || '')) links.push(`<a href="https://t.me/${contacts.telegram}" target="_blank" rel="noopener" onclick="openGuestContact(event,this.href,'telegram')">${fcIcon('<path d="m22 2-7 20-4-9-9-4Z M22 2 11 13"/>','w-4 h-4')}Telegram</a>`);
+      try {
+        const url = new URL(contacts.instagram || '');
+        if (url.protocol==='https:' && ['instagram.com','www.instagram.com'].includes(url.hostname) && !url.username && !url.password && /^\/[A-Za-z0-9_.]{1,30}\/?$/.test(url.pathname)) links.push(`<a href="${escapeHtml(url.href)}" target="_blank" rel="noopener" onclick="openGuestContact(event,this.href,'instagram')">${fcIcon('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>','w-4 h-4')}Instagram</a>`);
+      } catch {}
+      return links.length ? `<nav class="fc-guest-contacts" aria-label="${tr('Do‘kon bilan bog‘lanish','Связаться с магазином')}">${links.join('')}</nav>` : '';
+    }
+    function openGuestContact(event,url,kind) {
+      if (kind==='telegram' && tg?.openTelegramLink) { event.preventDefault(); tg.openTelegramLink(url); }
+      else if (tg?.openLink) { event.preventDefault(); tg.openLink(url); }
+    }
+    function checkoutDialogHtml(title,body) {
+      return `<div class="fc-checkout-dialog-overlay"><section class="fc-checkout-dialog" role="dialog" aria-modal="true" aria-labelledby="fc-checkout-dialog-title"><h2 id="fc-checkout-dialog-title">${title}</h2>${body}</section></div>`;
+    }
+    function orderSuccessHtml() {
+      const order = orderSuccessState?.order || {}, payment = orderSuccessState?.autoPayInfo;
+      const guest = order.isGuest && /^\d{10}$/.test(order.guestTrackingCode || '');
+      const reviewing = order.hasReceipt || isReceiptPendingReview(order);
+      const description = reviewing ? tr('Chekingiz qabul qilindi. Do‘kon uni tekshirgach to‘lov holati yangilanadi.','Чек получен. После проверки магазин обновит статус оплаты.') : tr('Do‘kon buyurtmangizni ko‘rib chiqadi va siz bilan bog‘lanadi.','Магазин обработает заказ и свяжется с вами.');
+      const provider = payment?.kind;
+      const payButton = payment?.url && ['PAYME','UZUM'].includes(provider) ? `<button type="button" class="fc-btn-primary" onclick="openSafeExternalUrl(decodeURIComponent('${encodeURIComponent(payment.url).replace(/'/g,'%27')}'))">${tr('To‘lash','Оплатить')} · ${provider==='PAYME'?'Payme':'Uzum'}</button>` : '';
+      const check = `<div class="fc-order-success-check" aria-hidden="true">${fcIcon('<path d="m6 12 4 4 8-8"/>','w-7 h-7')}</div>`;
+      const details = guest ? `<div class="fc-guest-code"><span>${tr('Buyurtmani kuzatish kodi','Код отслеживания заказа')}</span><strong>${order.guestTrackingCode}</strong><button type="button" onclick="copyGuestTrackingCode()">${fcIcon('<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>','w-4 h-4')}${tr('Nusxalash','Копировать')}</button></div><p class="fc-guest-code-note">${tr('Kodni saqlab qo‘ying — buyurtma holatini u orqali tekshirasiz.','Сохраните код — по нему можно проверить статус заказа.')}</p>` : `<div class="fc-success-order-number">${tr('Buyurtma','Заказ')} <b>#${escapeHtml(order.id)}</b></div>`;
+      return checkoutDialogHtml(tr('Buyurtmangiz qabul qilindi!','Ваш заказ принят!'),`${check}<p class="fc-success-store">${escapeHtml(shopDisplayName())}</p><p>${description}</p>${details}${provider==='CLICK'?`<p>${tr('To‘lovni Click ilovangizda tasdiqlang.','Подтвердите оплату в приложении Click.')}</p>`:''}${payButton}<div class="fc-success-actions"><button type="button" class="fc-btn-primary" onclick="finishOrderSuccess('orders')">${tr(guest?'Buyurtmani kuzatish':'Buyurtmalarda ko‘rish',guest?'Отследить заказ':'Мои заказы')}</button><button type="button" class="fc-btn-secondary" onclick="finishOrderSuccess('home')">${tr('Do‘konga qaytish','Вернуться в магазин')}</button></div>${guest?guestContactLinksHtml():''}`);
+    }
+    async function copyGuestTrackingCode() {
+      if (await copyTextToClipboard(guestTrackingCode)) showActionToast(tr('Kod nusxalandi','Код скопирован'),'success');
+    }
+    function finishOrderSuccess(tab) {
+      orderSuccessState = null; activePopupModal = null; switchTab(tab);
+      if (tab==='orders' && browserBridge && !browserBridge.authenticated) requestAnimationFrame(()=>document.getElementById('guest-tracking-code')?.focus());
+    }
+    function openGuestCheckoutChoice() {
+      activePopupModal='GUEST_CHECKOUT_CHOICE'; renderModalContainer();
+      requestAnimationFrame(()=>document.querySelector('.fc-checkout-dialog button')?.focus());
+    }
+    function guestCheckoutChoiceHtml() {
+      return checkoutDialogHtml(tr('Buyurtmani qanday rasmiylashtirasiz?','Как оформить заказ?'),`<p>${tr('Profilingiz orqali kiring yoki ro‘yxatdan o‘tmasdan davom eting.','Войдите в профиль или продолжите без регистрации.')}</p><div class="fc-success-actions"><button type="button" class="fc-btn-primary" onclick="continueGuestCheckout()">${tr('Mehmon sifatida davom etish','Продолжить как гость')}</button><button type="button" class="fc-btn-secondary" onclick="loginForCheckout()">${tr('Kirish / ro‘yxatdan o‘tish','Вход / регистрация')}</button><button type="button" class="fc-dialog-cancel" onclick="activePopupModal=null;render()">${tr('Bekor qilish','Отмена')}</button></div>`);
+    }
+    function continueGuestCheckout() { activePopupModal=null; guestCheckoutActive=true; openCheckoutForm(); }
+    function loginForCheckout() {
+      activePopupModal=null; guestCheckoutActive=false;
+      if (browserBridge) { const path='/profile?next=%2Fcheckout'; window.USTORE_APPLY_WEB_ROUTE(path); browserBridge.navigate(path); }
+      else switchTab('profile');
+    }
+    function guestTrackingHtml() {
+      const result = guestTrackingResult;
+      const details = result ? `<section class="fc-guest-tracking-result" aria-live="polite"><div class="fc-order-kv"><span>${tr('Buyurtma holati','Статус заказа')}</span><b>${escapeHtml(statusLabel(result.status))}</b></div><div class="fc-order-kv"><span>${tr('Sana','Дата')}</span><b>${escapeHtml(new Date(result.createdAt).toLocaleString(uiLang==='ru'?'ru-RU':'uz-UZ'))}</b></div><div class="fc-order-kv"><span>${tr('Jami','Итого')}</span><b>${money(result.total)}</b></div><div class="fc-order-kv"><span>${tr('To‘lov','Оплата')}</span><b>${escapeHtml(paymentStatusLabel(result.paymentStatus))}</b></div><div class="fc-order-kv"><span>${tr('Yetkazib berish','Доставка')}</span><b>${escapeHtml(shipmentStatusLabel(result.shipmentStatus))}</b></div></section>${guestContactLinksHtml(result.contacts)}` : '';
+      return `<section class="fc-guest-tracking"><h2>${tr('Buyurtmani kuzatish','Отследить заказ')}</h2><p>${tr('Buyurtmadan keyin berilgan 10 xonali kodni kiriting.','Введите 10-значный код, полученный после заказа.')}</p><form onsubmit="event.preventDefault();trackGuestOrder()"><label for="guest-tracking-code">${tr('Kuzatuv kodi','Код отслеживания')}</label><div class="fc-guest-tracking-input"><input id="guest-tracking-code" type="text" inputmode="numeric" autocomplete="off" maxlength="10" pattern="[0-9]{10}" value="${escapeHtml(guestTrackingCode)}" oninput="guestTrackingCode=this.value" ${guestTrackingBusy?'disabled':''}><button type="submit" class="fc-btn-primary" ${guestTrackingBusy?'disabled':''}>${guestTrackingBusy?tr('Tekshirilmoqda…','Проверяем…'):tr(result?'Yangilash':'Tekshirish',result?'Обновить':'Проверить')}</button></div></form>${guestTrackingError?`<p class="fc-checkout-receipt-error" role="alert">${escapeHtml(guestTrackingError)}</p>`:''}${details}</section>`;
+    }
+    async function trackGuestOrder() {
+      if (guestTrackingBusy) return;
+      guestTrackingCode=String(document.getElementById('guest-tracking-code')?.value || guestTrackingCode).trim();
+      if (!/^\d{10}$/.test(guestTrackingCode)) { guestTrackingError=tr('10 xonali kodni to‘liq kiriting.','Введите полный 10-значный код.'); guestTrackingResult=null; render(); return; }
+      guestTrackingBusy=true; guestTrackingError=''; guestTrackingResult=null; render();
+      try {
+        const result=await callApi('guest_track_order',{code:guestTrackingCode});
+        guestTrackingResult={...result.tracking,contacts:result.contacts};
+        localStorage.setItem(scopedKey('guestTrackingCode'),guestTrackingCode);
+      } catch(error) {
+        guestTrackingError=String(error.message).includes('rate_limited') ? tr('Urinishlar ko‘p. Birozdan keyin qayta tekshiring.','Слишком много попыток. Повторите позже.') : String(error.message).includes('order_not_found') ? tr('Bu do‘konda ushbu kod bilan buyurtma topilmadi. Kodni tekshiring.','В этом магазине заказ с таким кодом не найден. Проверьте код.') : tr('Hozir tekshirib bo‘lmadi. Qayta urinib ko‘ring.','Сейчас не удалось проверить. Повторите попытку.');
+      } finally { guestTrackingBusy=false; render(); }
+    }
+    function openGuestTracking() { activePopupModal='GUEST_TRACKING'; renderModalContainer(); }
+
+    function guestCheckoutSettingsHtml() {
+      const config=fulfillmentConfig.checkout || {};
+      const phone=config.phone || shopContact.phone || '';
+      const telegram=config.telegram || String(shopContact.telegram || '').replace(/^https?:\/\/(?:www\.)?t\.me\//,'').replace(/^@/,'').replace(/\/$/,'');
+      let instagram=config.instagram || shopContact.instagram || '';
+      if (/^[A-Za-z0-9_.]{1,30}$/.test(instagram)) instagram=`https://www.instagram.com/${instagram}/`;
+      return `<section class="fc-guest-settings"><h3>${tr('Ro‘yxatdan o‘tmasdan buyurtma','Заказы без регистрации')}</h3><p>${tr('Mehmonlar akkaunt ochmasdan buyurtma beradi. Ularning telefoni tasdiqlanmagan bo‘ladi.','Гости оформляют заказ без аккаунта. Их номер телефона не подтверждается.')}</p><label class="fc-guest-settings-toggle"><input id="guest-checkout-enabled" type="checkbox" ${config.enabled?'checked':''}>${tr('Mehmon buyurtmalariga ruxsat berish','Разрешить гостевые заказы')}</label><label for="guest-contact-phone">${tr('Do‘kon telefoni *','Телефон магазина *')}</label><input id="guest-contact-phone" type="tel" autocomplete="tel" value="${escapeHtml(phone)}" placeholder="+998 90 123 45 67"><label for="guest-contact-telegram">Telegram · ${tr('ixtiyoriy','необязательно')}</label><input id="guest-contact-telegram" value="${escapeHtml(telegram)}" placeholder="@username"><label for="guest-contact-instagram">Instagram · ${tr('ixtiyoriy','необязательно')}</label><input id="guest-contact-instagram" type="url" value="${escapeHtml(instagram)}" placeholder="https://www.instagram.com/shop/"><p>${tr('Yoqish uchun do‘kon telefonini kiriting. Aloqalar mehmon buyurtmasi va kuzatuv oynasida ko‘rsatiladi.','Для включения укажите телефон магазина. Контакты появятся в подтверждении и отслеживании гостевого заказа.')}</p><button type="button" class="fc-btn-primary" onclick="saveGuestCheckoutSettings(this)">${tr('Saqlash','Сохранить')}</button><p id="guest-settings-error" role="alert" class="fc-checkout-receipt-error"></p></section>`;
+    }
+    async function saveGuestCheckoutSettings(button) {
+      if (button.disabled) return;
+      const payload={enabled:document.getElementById('guest-checkout-enabled').checked,phone:document.getElementById('guest-contact-phone').value,telegram:document.getElementById('guest-contact-telegram').value,instagram:document.getElementById('guest-contact-instagram').value};
+      button.disabled=true;
+      try {
+        const phone=String(payload.phone||'').replace(/[\s()-]/g,'');
+        const telegram=String(payload.telegram||'').trim().replace(/^@/,'');
+        if (phone && !/^\+998\d{9}$/.test(phone)) throw new Error('invalid_guest_phone');
+        if (payload.enabled && !phone) throw new Error('guest_contact_phone_required');
+        if (telegram && !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(telegram)) throw new Error('invalid_guest_telegram');
+        if (String(payload.instagram||'').trim()) {
+          let url; try { url=new URL(payload.instagram.trim()); } catch { throw new Error('invalid_guest_instagram'); }
+          if (url.protocol!=='https:' || !['instagram.com','www.instagram.com'].includes(url.hostname) || url.username || url.password || !/^\/[A-Za-z0-9_.]{1,30}\/?$/.test(url.pathname)) throw new Error('invalid_guest_instagram');
+        }
+        const result=await callApi('set_guest_checkout_config',payload);
+        fulfillmentConfig.checkout=result.checkout;
+        showActionToast(tr('Sozlamalar saqlandi','Настройки сохранены'),'success'); render();
+      } catch(error) {
+        const messages={guest_contact_phone_required:tr('Yoqish uchun +998 formatida do‘kon telefonini kiriting.','Для включения укажите телефон магазина в формате +998.'),invalid_guest_phone:tr('Telefonni +998 formatida kiriting.','Укажите телефон в формате +998.'),invalid_guest_telegram:tr('Telegram username noto‘g‘ri. Masalan: @shop_name.','Некорректное имя Telegram. Например: @shop_name.'),invalid_guest_instagram:tr('Instagram profilining https havolasini kiriting.','Укажите https-ссылку на профиль Instagram.')};
+        document.getElementById('guest-settings-error').textContent=messages[error.message] || tr('Saqlanmadi. Qayta urinib ko‘ring.','Не сохранено. Повторите попытку.');
+        button.disabled=false;
+      }
+    }
+
+
     function orderCreatedDate(o) {
       const d = new Date(o?.createdAt || o?.date || 0);
       return Number.isNaN(d.getTime()) ? null : d;
@@ -9625,6 +9807,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const key = String(status || 'PENDING').toUpperCase();
       const labels = {
         PENDING: tr("To'lov kutilmoqda", 'Ожидает оплаты'),
+        RECEIPT_REVIEW: tr('Chek tekshirilmoqda', 'Чек проверяется'),
         PAID: tr("To'langan", 'Оплачен'),
         FAILED: tr("To'lov amalga oshmadi", 'Оплата не прошла'),
         CANCELLED: tr("To'lov bekor qilingan", 'Оплата отменена'),
@@ -9757,7 +9940,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function renderOrders(container) {
       if (browserBridge && !browserBridge.authenticated) {
-        container.innerHTML = `<div class="fc-guest-profile-shell space-y-4"><section class="fc-profile-card fc-guest-profile-card"><div class="fc-profile-avatar"><i data-lucide="package" class="w-7 h-7"></i></div><div class="fc-profile-copy"><div class="fc-profile-eyebrow">${tr('Buyurtmalarim','Мои заказы')}</div><h2>${tr('Buyurtmalarni ko‘rish uchun kiring','Войдите, чтобы увидеть заказы')}</h2><p class="fc-profile-phone">${tr('Buyurtmalaringiz va ularning holati profilingizda mavjud.','Ваши заказы и их статусы доступны в профиле.')}</p></div></section><section class="fc-profile-menu fc-guest-auth-actions"><button type="button" onclick="openGuestProfileFromOrders()" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="log-in"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Kirish','Войти')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button></section></div>`;
+        container.innerHTML = `${guestTrackingHtml()}<div class="fc-guest-profile-shell space-y-4"><section class="fc-profile-card fc-guest-profile-card"><div class="fc-profile-avatar"><i data-lucide="package" class="w-7 h-7"></i></div><div class="fc-profile-copy"><div class="fc-profile-eyebrow">${tr('Buyurtmalarim','Мои заказы')}</div><h2>${tr('Buyurtmalarni ko‘rish uchun kiring','Войдите, чтобы увидеть заказы')}</h2><p class="fc-profile-phone">${tr('Buyurtmalaringiz va ularning holati profilingizda mavjud.','Ваши заказы и их статусы доступны в профиле.')}</p></div></section><section class="fc-profile-menu fc-guest-auth-actions"><button type="button" onclick="openGuestProfileFromOrders()" class="fc-profile-menu-row"><span class="fc-profile-menu-icon"><i data-lucide="log-in"></i></span><span class="fc-profile-menu-copy"><span class="fc-profile-menu-title">${tr('Kirish','Войти')}</span></span><i data-lucide="chevron-right" class="fc-profile-menu-chevron"></i></button></section></div>`;
         return;
       }
       if (isAdminMode && isUserAnAdmin && !hasPermission('orders.view')) {
@@ -9828,7 +10011,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const periodOrders = filterOrdersBySelectedDate(orders);
       let userOrders = periodOrders.filter(o => userOrderFilter === 'ALL' || o.status === userOrderFilter);
 
-      container.innerHTML = `
+      container.innerHTML = `<button type="button" class="fc-btn-secondary fc-guest-track-entry" onclick="openGuestTracking()">${tr('Kod orqali buyurtmani kuzatish','Отследить заказ по коду')}</button>
         <div class="space-y-3">
           <h2 class="text-lg font-bold text-slate-800">${t('my_orders')}</h2>
           <div class="fc-orders-filter-toolbar">${renderOrderStatusCompactFilter(userOrderFilter, "userOrderFilter=this.value; ordersPage=1; render();")}${renderOrdersDateFilterHtml()}</div>
@@ -12090,6 +12273,11 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       </div>`;
     }
 
+    function setFreeDeliveryMinimum(enabled) {
+      fulfillmentDraft.delivery.free.minimumEnabled = !!enabled;
+      rerenderFulfillmentPanel();
+    }
+
     function renderFulfillmentDeliveryBody() {
       const kind = fulfillmentDeliveryKind;
       if (kind === 'POST') {
@@ -12107,6 +12295,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const generalHtml = renderDeliveryGeneralCard(kind, method.general);
       return `<div class="space-y-3">
         <div class="fc-delivery-master-toggle"><div><b>${tr('Usulni yoqish','Включить способ')}</b><small>${descriptions[kind]}</small></div><label class="fc-toggle"><input type="checkbox" ${method.enabled ? 'checked' : ''} onchange="setDeliveryMethodEnabled('${kind}',this.checked)"><span class="fc-toggle-track"></span></label></div>
+        ${kind === 'FREE' && method.enabled ? `<div class="fc-delivery-general-card"><label class="flex items-center gap-3"><input type="checkbox" ${method.minimumEnabled ? 'checked' : ''} onchange="setFreeDeliveryMinimum(this.checked)"><b>${tr('Bepul yetkazish summasi limiti','Порог бесплатной доставки')}</b></label>${method.minimumEnabled ? `<label class="fc-mini-field"><span>${tr('Chegirmadan keyingi tovarlar summasi bundan ko‘proq bo‘lsin','Сумма товаров после скидок должна быть больше')}</span><div class="fc-money-input"><input type="number" min="0" step="1" value="${method.minimumSubtotal || 0}" oninput="fulfillmentDraft.delivery.free.minimumSubtotal=Math.max(0,Math.floor(Number(this.value)||0))"><em>${tr('so‘m','сум')}</em></div></label>` : ''}</div>` : ''}
         ${method.enabled ? `<div class="fc-delivery-config-grid"><div class="fc-delivery-general-column">${generalHtml}</div><div class="fc-delivery-regions-column"><b class="fc-fulfillment-subtitle">${tr('Hududlar','Регионы')}</b><div class="fc-delivery-bulk-tools">${settingsBulkButtons(`bulkDeliveryRegions('${kind}',true)`, `bulkDeliveryRegions('${kind}',false)`)}</div>${renderDeliveryRegionRows(kind)}</div></div>` : `<div class="fc-empty-state compact"><p>${tr('Bu yetkazib berish usuli o‘chirilgan.','Этот способ доставки выключен.')}</p></div>`}
       </div>`;
     }
@@ -17915,6 +18104,13 @@ async function processCroppedLogoFile(file, editingInsideShopInfo) {
       });
       document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && container.innerHTML.trim()) closeAnyOpenModal();
+        const dialog=container.querySelector('.fc-checkout-dialog');
+        if (event.key==='Tab' && dialog) {
+          const nodes=[...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),a[href]')];
+          const first=nodes[0],last=nodes.at(-1);
+          if (event.shiftKey && document.activeElement===first) { event.preventDefault();last?.focus(); }
+          else if (!event.shiftKey && document.activeElement===last) { event.preventDefault();first?.focus(); }
+        }
       });
     }
 
@@ -17942,6 +18138,9 @@ function renderModalContainer() {
       try {
       const container = document.getElementById('modal-container');
       installModalEscapeHandlers();
+      if (activePopupModal === 'ORDER_SUCCESS') { container.innerHTML=orderSuccessHtml(); return; }
+      if (activePopupModal === 'GUEST_CHECKOUT_CHOICE') { container.innerHTML=guestCheckoutChoiceHtml(); return; }
+      if (activePopupModal === 'GUEST_TRACKING') { container.innerHTML=checkoutDialogHtml(tr('Buyurtmani kuzatish','Отследить заказ'),guestTrackingHtml()+`<button class="fc-btn-secondary" onclick="activePopupModal=null;render()">${tr('Yopish','Закрыть')}</button>`); return; }
       // CORRECTION ROUND (2026-08-31): ADD_PROD/EDIT_PROD_FIELD ochiq
       // bo'lganda, HAR safar (rang/o'lcham inline tahriri sabab bo'lgan
       // ham) shu funksiya butun modal innerHTML'ini almashtirishdan OLDIN,
@@ -18935,7 +19134,7 @@ if (activePopupModal === 'LOGO_CROP') {
                 <section class="fc-checkout-section ${checkoutStep===1?'':'hidden'}" data-checkout-step="1">
                   <div class="fc-checkout-section-head"><span><i data-lucide="user-round" class="w-4 h-4"></i></span><div><b>${tr("Mijoz ma'lumotlari",'Данные клиента')}</b><small>${tr("Bog'lanish uchun kerakli ma'lumotlar", 'Данные для связи')}</small></div></div>
                   <div class="fc-checkout-fields">
-                    <label class="fc-checkout-field"><span>${tr("Ism va familiyangiz *", "Имя и фамилия *")}</span><div class="fc-checkout-input"><i data-lucide="user" class="w-4 h-4"></i><input type="text" id="chk-fullname" oninput="saveCheckoutDraft()" placeholder="Ali Valiyev"></div></label>
+                    ${guestCheckoutActive ? `<div class="fc-guest-name-grid"><label class="fc-checkout-field"><span>${tr('Ismingiz *','Имя *')}</span><div class="fc-checkout-input"><input id="chk-firstname" autocomplete="given-name" maxlength="60" value="${escapeHtml(checkoutDraft.firstName || '')}" oninput="saveGuestCheckoutName()"></div></label><label class="fc-checkout-field"><span>${tr('Familiyangiz *','Фамилия *')}</span><div class="fc-checkout-input"><input id="chk-lastname" autocomplete="family-name" maxlength="60" value="${escapeHtml(checkoutDraft.lastName || '')}" oninput="saveGuestCheckoutName()"></div></label></div><input type="hidden" id="chk-fullname" value="${escapeHtml(checkoutDraft.fullname || '')}">` : `<label class="fc-checkout-field"><span>${tr("Ism va familiyangiz *", "Имя и фамилия *")}</span><div class="fc-checkout-input"><i data-lucide="user" class="w-4 h-4"></i><input type="text" id="chk-fullname" oninput="saveCheckoutDraft()" placeholder="Ali Valiyev"></div></label>`}
                     <label class="fc-checkout-field"><span>${tr("Telefon raqamingiz *", "Номер телефона *")}</span><div class="fc-checkout-input"><i data-lucide="phone" class="w-4 h-4"></i><input type="text" id="chk-phone" oninput="saveCheckoutDraft()" placeholder="+998 90 123 45 67" class="font-mono"></div></label>
                   </div>
                 </section>
@@ -19324,10 +19523,10 @@ if (activePopupModal === 'LOGO_CROP') {
             <div class="fc-order-detail-modal bg-white rounded-3xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
               <div class="fc-order-modal-head"><div><h3>${tr('Buyurtma','Заказ')} #${o.id}</h3><p>${escapeHtml(o.date)}</p></div><span class="fc-order-status ${statusColorClass(orderDisplayStatus(o))}">${statusLabel(orderDisplayStatus(o))}</span></div>
               ${(isAdminMode && isUserAnAdmin) ? renderAdminOrderNextActionHtml(o) + renderAdminOrderProgressHtml(o) : ''}
-              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="user-round" class="w-4 h-4"></i>${tr('Mijoz','Клиент')}</div><div class="fc-order-kv"><span>${tr('Ism','Имя')}</span><b>${escapeHtml(o.user)}</b></div><div class="fc-order-kv"><span>${tr('Telefon','Телефон')}</span><b>${escapeHtml(o.phone)}</b></div></section>
+              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="user-round" class="w-4 h-4"></i>${tr('Mijoz','Клиент')}</div><div class="fc-order-kv"><span>${tr('Ism','Имя')}</span><b>${escapeHtml(o.user)}</b></div><div class="fc-order-kv"><span>${tr('Telefon','Телефон')}</span><b>${escapeHtml(o.phone)}</b></div>${o.isGuest?`<div class="fc-order-kv"><span>${tr('Mehmon · telefon tasdiqlanmagan','Гость · телефон не подтверждён')}</span><b>${escapeHtml(o.guestTrackingCode||'')}</b></div>`:''}</section>
               ${canManageOrders() ? `<section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="sticky-note" class="w-4 h-4"></i>${tr("Ichki izoh (faqat xodimlar ko'radi)", "Внутренняя заметка (видна только сотрудникам)")}</div><textarea id="order-internal-note-${o.id}" rows="2" placeholder="${tr('Masalan: mijoz 18:00 dan keyin yetkazishni so\'radi','Например: клиент просил доставить после 18:00')}" class="w-full p-2 border rounded-xl text-xs" onclick="event.stopPropagation()">${escapeHtml(o.internalNote || '')}</textarea><button type="button" onclick="event.stopPropagation(); saveOrderInternalNote(${o.id})" class="fc-action-icon-btn is-save" aria-label="${tr('Saqlash','Сохранить')}" title="${tr('Saqlash','Сохранить')}"><i data-lucide="check" class="w-4 h-4"></i></button></section>` : ''}
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="truck" class="w-4 h-4"></i>${tr('Yetkazib berish','Доставка')}</div><div class="fc-order-kv"><span>${escapeHtml(deliveryTariffLabel(o.delivery))}</span><b>${escapeHtml(deliveryTariffValue(o.delivery, o.deliveryFee))}</b></div><div class="fc-order-kv"><span>${tr('Hudud:','Регион:')}</span><b>${escapeHtml(o.delivery?.regionLabel || regionLabel(o.region))}${o.district?` · ${escapeHtml(districtLabelForUi(o.district))}`:''}</b></div>${o.address?`<div class="fc-order-kv"><span>${tr('Manzil','Адрес')}</span><b>${escapeHtml(o.address)}</b></div>`:''}<div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(deliverySnapshotLabel(o))}</b></div><div class="fc-order-kv"><span>${tr('Jo‘natma holati','Статус отправления')}</span><b>${escapeHtml(effectiveShipmentStatusLabel(o))}</b></div></section>
-              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div><div class="fc-order-kv"><span>${tr('Pul holati','Статус оплаты')}</span><b class="${paymentStatusClass(o.paymentStatus)}">${escapeHtml(paymentStatusLabel(o.paymentStatus))}</b></div>${o.paymentStatus==='PENDING'&&o.paymentDueAt?`<div class="fc-order-kv"><span>${tr('To‘lov muddati','Срок оплаты')}</span><b>${new Date(o.paymentDueAt).toLocaleString()}</b></div>`:''}${o.paidAt?`<div class="fc-order-kv"><span>${tr('To‘langan vaqt','Время оплаты')}</span><b>${new Date(o.paidAt).toLocaleString()}</b></div>`:''}${o.refundedAt?`<div class="fc-order-kv"><span>${tr('Qaytarilgan vaqt','Время возврата')}</span><b>${new Date(o.refundedAt).toLocaleString()}</b></div>`:''}</section>
+              <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="credit-card" class="w-4 h-4"></i>${tr('To‘lov','Оплата')}</div><div class="fc-order-kv"><span>${tr('Usul','Способ')}</span><b>${escapeHtml(o.payment?.label || payMethodLabel(o.payMethod))}</b></div><div class="fc-order-kv"><span>${tr('Pul holati','Статус оплаты')}</span><b class="${paymentStatusClass(o.paymentStatus)}">${escapeHtml(paymentStatusLabel(isReceiptPendingReview(o)?"RECEIPT_REVIEW":o.paymentStatus))}</b></div>${o.paymentStatus==='PENDING'&&o.paymentDueAt?`<div class="fc-order-kv"><span>${tr('To‘lov muddati','Срок оплаты')}</span><b>${new Date(o.paymentDueAt).toLocaleString()}</b></div>`:''}${o.paidAt?`<div class="fc-order-kv"><span>${tr('To‘langan vaqt','Время оплаты')}</span><b>${new Date(o.paidAt).toLocaleString()}</b></div>`:''}${o.refundedAt?`<div class="fc-order-kv"><span>${tr('Qaytarilgan vaqt','Время возврата')}</span><b>${new Date(o.refundedAt).toLocaleString()}</b></div>`:''}</section>
               ${renderPendingPaymentContinuationHtml(o)}
               <section class="fc-order-section"><div class="fc-order-section-title"><i data-lucide="package" class="w-4 h-4"></i>${tr('Tovarlar','Товары')}</div><div class="fc-order-items">${o.items.map(i=>`<div class="fc-order-item">${i.img?`<img referrerpolicy="no-referrer" src="${escapeHtml(i.img)}" onerror="this.style.display='none'" loading="lazy">`:`<span class="fc-order-item-placeholder"><i data-lucide="package" class="w-4 h-4"></i></span>`}<div><b>${escapeHtml(orderItemName(i))}</b><small>${(i.sku && isAdminMode && isUserAnAdmin) ? `<span class="text-gray-400 font-mono">(ID: ${escapeHtml(i.sku)})</span>` : ''} ${i.qty} × ${money(i.price)}</small></div><strong>${money(i.price*i.qty)}</strong></div>`).join('')}</div></section>
               ${renderReturnWorkflowHtml(o)}

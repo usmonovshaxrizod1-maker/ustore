@@ -9,9 +9,10 @@ const evidenceDir = path.join(root, 'docs', 'web', 'release-evidence');
 fs.mkdirSync(evidenceDir, { recursive: true });
 
 const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
-const migrationFiles = fs.readdirSync(migrationsDir).filter((n) => /^\d{3}_.+\.sql$/.test(n)).sort();
+const migrationFiles = fs.readdirSync(migrationsDir).filter((n) => /^(?:\d{3}|\d{14})_.+\.sql$/.test(n)).sort();
 const byNumber = new Map();
 for (const name of migrationFiles) {
+  if (/^\d{14}_/.test(name)) continue;
   const n = Number(name.slice(0,3));
   if (!byNumber.has(n)) byNumber.set(n, []);
   byNumber.get(n).push(name);
@@ -22,11 +23,12 @@ const max = numbers.at(-1) ?? 0;
 const duplicates = [...byNumber].filter(([, names]) => names.length > 1).map(([number,names])=>({number,names}));
 const gaps = [];
 if (min !== 1) gaps.push(1);
-const unrecognized = fs.readdirSync(migrationsDir).filter(n=>n.endsWith('.sql') && !/^\d{3}_.+\.sql$/.test(n));
+const unrecognized = fs.readdirSync(migrationsDir).filter(n=>n.endsWith('.sql') && !/^(?:\d{3}|\d{14})_.+\.sql$/.test(n));
 for (let n=min; n<=max; n++) if (!byNumber.has(n)) gaps.push(n);
 const ledger = migrationFiles.map((name) => {
   const bytes = fs.readFileSync(path.join(migrationsDir,name));
-  return { number:Number(name.slice(0,3)), name, bytes:bytes.length, sha256:sha256(bytes) };
+  const version=name.split('_')[0];
+  return { number:Number(version), name, bytes:bytes.length, sha256:sha256(bytes) };
 });
 
 const scanRoots = ['supabase/functions','web','scripts','platform'];

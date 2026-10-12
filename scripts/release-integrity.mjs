@@ -33,7 +33,9 @@ export function inspectRelease(root) {
   if (!names.length || names.length !== ledger.migrations?.length) throw Error('migration_ledger_stale');
   names.forEach((name,i)=>{
     const m=ledger.migrations[i];
-    if (Number(name.slice(0,3)) !== i+1 || m.number!==i+1 || m.name!==name || m.sha256!==hash(read(`supabase/migrations/${name}`))) throw Error('migration_ledger_mismatch');
+    const version=name.split('_')[0];
+    const validVersion=/^\d{3}$/.test(version) ? Number(version)===i+1 : /^\d{14}$/.test(version);
+    if (!validVersion || m.number!==Number(version) || m.name!==name || m.sha256!==hash(read(`supabase/migrations/${name}`))) throw Error('migration_ledger_mismatch');
   });
   const sourceFiles=['web','supabase/functions','supabase/migrations','scripts'].flatMap(d=>walk(path.join(root,d))).concat(['config.public.js','config.public.example.js','package.json'].map(f=>path.join(root,f))).sort();
   return {buildManifestSha256:hash(read('dist/BUILD_MANIFEST.json')),migrationSetSha256:hash(JSON.stringify(ledger.migrations)),sourceSha256:hash(JSON.stringify(sourceFiles.map(f=>[path.relative(root,f),hash(fs.readFileSync(f))]))),maxMigration:names.length};

@@ -17,6 +17,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.116.0";
 import { decryptBotToken, encryptBotToken } from "../_shared/bot-token-crypto.ts";
 import { json, corsHeaders } from "../_shared/http.ts";
+import { normalizeGuestCheckout, createGuestTrackingCode, guestTrackingProjection, guestRateKey } from "../_shared/guest-checkout.ts";
+import { recoverCheckoutAttempt } from "../_shared/checkout-recovery.ts";
 import { verifyTelegramInitData, telegramWebhookSecret, telegramApi } from "../_shared/telegram.ts";
 import {
   billzLogin, encryptTokenPair, getValidBillzAccessToken,
@@ -202,7 +204,7 @@ async function storeProductImage(db: any, shopId: string, upload: any): Promise<
   return { url: data.publicUrl, path };
 }
 
-async function storePaymentReceipt(db: any, shopId: string, orderId: number, tgId: string, upload: any): Promise<{ path: string }> {
+async function storePaymentReceipt(db: any, shopId: string, orderId: number | string, tgId: string | null, upload: any): Promise<{ path: string }> {
   const mimeType = String(upload?.mimeType || "").toLowerCase();
   const extensionByMime: Record<string, string> = {
     "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
@@ -217,12 +219,29 @@ async function storePaymentReceipt(db: any, shopId: string, orderId: number, tgI
   if (!binary.length || binary.length > 6 * 1024 * 1024) throw new Error("receipt_too_large");
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const path = `shops/${shopId}/receipts/${orderId}/${tgId}-${crypto.randomUUID()}.${ext}`;
+  const validHeader = mimeType === 'image/jpeg' ? bytes[0]===255 && bytes[1]===216 && bytes[2]===255
+    : mimeType === 'image/png' ? [137,80,78,71,13,10,26,10].every((value,index)=>bytes[index]===value)
+    : String.fromCharCode(...bytes.slice(0,4))==='RIFF' && String.fromCharCode(...bytes.slice(8,12))==='WEBP';
+  if (!validHeader) throw new Error('invalid_receipt_file');
+  const path = `shops/${shopId}/receipts/${orderId}/${tgId || 'guest'}-${crypto.randomUUID()}.${ext}`;
   const { error } = await db.storage.from("payment-receipts").upload(path, bytes, {
     contentType: mimeType, cacheControl: "300", upsert: false,
   });
   if (error) throw new Error(`receipt_upload_failed:${error.message}`);
+  const slash = path.lastIndexOf('/');
+  const stored = await db.storage.from("payment-receipts").list(path.slice(0, slash), { search: path.slice(slash + 1), limit: 1 });
+  if (stored.error || !stored.data?.some((file: any) => file.name === path.slice(slash + 1) && Number(file.metadata?.size) === bytes.length)) {
+    await db.storage.from("payment-receipts").remove([path]);
+    throw new Error("receipt_storage_verify_failed");
+  }
   return { path };
+}
+function guestCreatedOrder(order: any) {
+  return { id:order.id,isGuest:true,guestTrackingCode:order.guest_tracking_code,
+    createdAt:order.created_at,status:order.status,subtotal:Number(order.subtotal),
+    totalPrice:Number(order.total_price),payableTotal:Number(order.payable_total),
+    deliveryFee:Number(order.delivery_fee),paymentStatus:order.payment_status || 'PENDING',
+    payment:order.payment_snapshot,hasReceipt:!!order.payment_receipt_path,receiptReviewStatus:order.receipt_review_status || 'PENDING' };
 }
 function nullableText(v: unknown, max = 200): string | null {
   const s = String(v ?? "").trim();
@@ -380,9 +399,13 @@ function cleanConfigRegions(raw: any, kind: "FREE" | "FIXED" | "TAXI" | "POST" |
 
 function sanitizeFulfillmentConfig(raw: any, strict = false) {
   const base: any = defaultFulfillmentConfig();
+  base.checkout = normalizeGuestCheckout(raw?.checkout, strict);
   if (!raw || typeof raw !== "object") return base;
   const delivery = raw.delivery || {};
   base.delivery.free.enabled = delivery.free?.enabled === true;
+  base.delivery.free.minimumEnabled = delivery.free?.minimumEnabled === true;
+  base.delivery.free.minimumSubtotal = nonNegativeInteger(delivery.free?.minimumSubtotal);
+  if (strict && base.delivery.free.minimumEnabled && (!Number.isSafeInteger(Number(delivery.free?.minimumSubtotal)) || Number(delivery.free.minimumSubtotal) < 0)) throw new Error("invalid_free_delivery_minimum");
   base.delivery.free.regions = cleanConfigRegions(delivery.free?.regions, "FREE", strict);
   base.delivery.free.general = sanitizeGeneral(delivery.free?.general, "FREE");
   base.delivery.fixed.enabled = delivery.fixed?.enabled === true;
@@ -3059,7 +3082,8 @@ function mapOrderForClient(o: any, opts: { includeInternalNote?: boolean; return
   const deliveryFee = Number(o.delivery_fee) || 0;
   const payableTotal = Number(o.payable_total ?? o.total_price) || 0;
   return {
-    id: o.id, source: o.order_source || "TELEGRAM", tgId: o.tg_id, user: o.user_name, phone: o.phone, region: o.region,
+    id: o.id, source: o.is_guest ? "GUEST" : o.order_source || "TELEGRAM", tgId: o.tg_id, user: o.user_name, phone: o.phone, region: o.region,
+    isGuest: o.is_guest === true, guestTrackingCode: o.guest_tracking_code || null, phoneVerified: o.is_guest === true ? false : undefined,
     district: o.district, address: o.address, payMethod: o.pay_method,
     items: o.items || [], subtotal, deliveryFee, payableTotal, totalPrice: payableTotal, status: o.status,
     paymentStatus: o.payment_status || "PENDING",
@@ -3204,6 +3228,7 @@ async function resolvePromoDiscount(db: any, shopId: string, rawCode: string, tg
   const { data: promo, error } = await db.from("promotions").select("*").eq("shop_id", shopId).eq("code", code).maybeSingle();
   if (error) throw error;
   if (!promo || !promo.is_active) return { ok: false, error: "promo_not_found" };
+  if (!tgId && (promo.per_customer_limit || promo.new_customer_only || promo.issued_to_tg_id)) return { ok:false,error:'promo_login_required' };
   const now = Date.now();
   if (promo.starts_at && new Date(promo.starts_at).getTime() > now) return { ok: false, error: "promo_not_started" };
   if (promo.ends_at && new Date(promo.ends_at).getTime() < now) return { ok: false, error: "promo_expired" };
@@ -3420,7 +3445,7 @@ async function resolveBestCartDiscount(
   // VIP mavjudligi HAR DOIM tekshiriladi (opts.includeVip'dan qat'i nazar) —
   // aks holda checkbox o'chirilganda "sizda shaxsiy chegirma bor" belgisini
   // ko'rsatishning umuman iloji bo'lmasdi.
-  const vip = await resolveVipDiscount(db, shopId, tgId, subtotal);
+  const vip = tgId ? await resolveVipDiscount(db, shopId, tgId, subtotal) : null;
   const vipInfo = vip ? { discountType: vip.discount.discount_type, discountValue: Number(vip.discount.discount_value) } : null;
   if (vip && opts.includeVip) candidates.push({ source: "VIP", data: vip.discount, discountAmount: vip.discountAmount });
   const tier = await resolveTierDiscount(db, shopId, subtotal, cartProductIds);
@@ -3719,6 +3744,7 @@ const WEB_ADMIN_ACTION_PERMISSIONS: Readonly<Record<string, Permission | null>> 
   set_legal_documents: 'shop.settings.manage', retry_bad_translations: 'shop.settings.manage',
   set_shop_contact: 'shop.settings.manage', set_low_stock_threshold: 'shop.settings.manage',
   set_orders_paused: 'shop.settings.manage', set_fulfillment_config: 'shop.settings.manage',
+  set_guest_checkout_config: 'shop.settings.manage',
   set_order_policies: 'shop.settings.manage',
   set_design_settings: 'shop.settings.manage', set_shop_logo: 'shop.settings.manage', set_start_message: 'shop.settings.manage',
   click_get_status: 'integrations.manage', click_connect: 'integrations.manage', click_disconnect: 'integrations.manage', click_start_test_payment: 'integrations.manage', click_test_progress: 'integrations.manage',
@@ -4246,7 +4272,34 @@ Deno.serve(async (req: Request) => {
     const clientMode = String(body?.clientMode || "").toLowerCase();
     const isWebAdminRequest = clientMode === "web";
     let ctx: ShopContext;
-    if (isWebAdminRequest) {
+    const isGuestRequest = ['guest_create_order','guest_discount_preview','guest_delivery_branches','guest_delivery_districts','guest_track_order'].includes(String(action));
+    if (isGuestRequest) {
+      const tenantResult = await resolveShopTenant(db, req, body);
+      if (!tenantResult.ok) return json({ error: tenantResult.error }, tenantResult.status);
+      const tenant = tenantResult.tenant;
+      const sessionResult = await resolveOptionalWebSession(db, req, false);
+      if (!sessionResult.ok) return json({ error: sessionResult.error }, sessionResult.status);
+      const settings = await db.from('shop_settings').select('fulfillment_config').eq('shop_id',tenant.shopId).maybeSingle();
+      if (settings.error) throw settings.error;
+      const guest = normalizeGuestCheckout(settings.data?.fulfillment_config?.checkout);
+      const kind = action === 'guest_track_order' ? 'TRACK' : action === 'guest_create_order' ? 'CREATE' : 'PREVIEW';
+      const limit = await db.rpc('ustore_guest_rate_limit',{p_shop_id:tenant.shopId,p_key:await guestRateKey(req),p_kind:kind});
+      if (limit.error) throw limit.error;
+      if (limit.data !== true) return json({ error:'guest_rate_limited' },429);
+      if (action === 'guest_track_order') {
+        const code = String(payload?.code || '').trim();
+        if (!/^[0-9]{10}$/.test(code)) return json({ error:'invalid_tracking_code' },400);
+        const found = await db.from('orders').select('guest_tracking_code,status,created_at,payable_total,total_price,payment_status,payment_receipt_path,receipt_review_status,shipment')
+          .eq('shop_id',tenant.shopId).eq('is_guest',true).eq('guest_tracking_code',code).maybeSingle();
+        if (found.error) throw found.error;
+        if (!found.data) return json({ error:'guest_order_not_found' },404);
+        return json({ tracking:guestTrackingProjection(found.data), contacts:guest });
+      }
+      if (!guest.enabled && action !== 'guest_create_order') return json({ error:'guest_checkout_disabled' },403);
+      if (sessionResult.session && action === 'guest_create_order') return json({ error:'already_authenticated' },409);
+      const botToken = action === 'guest_create_order' ? await decryptBotToken(BOT_TOKEN_MASTER_KEY,tenant.tokenCiphertext,tenant.tokenIv) : '';
+      ctx = { ...tenant, tgId:null, botToken } as unknown as ShopContext;
+    } else if (isWebAdminRequest) {
       // Public/customer web actions returned above. Reaching the legacy admin
       // switch from web is forbidden unless the action is explicitly in the
       // Astra-6a whitelist. Browser role/permission/shopId claims are ignored.
@@ -4317,7 +4370,7 @@ Deno.serve(async (req: Request) => {
     // the shop membership so the client receives that OWNER role and exposes
     // owner-only pages (for example Domains). Platform authority still stays
     // separate: a super-admin without membership remains staffRole=null.
-    const membershipResult = await db.from("shop_memberships").select("role,status")
+    const membershipResult = isGuestRequest ? { data:null,error:null } : await db.from("shop_memberships").select("role,status")
       .eq("shop_id", shopId).eq("telegram_user_id", tgId).eq("status", "ACTIVE").maybeSingle();
     if (membershipResult.error) throw membershipResult.error;
     const membershipRow: any = membershipResult.data;
@@ -4710,6 +4763,7 @@ Deno.serve(async (req: Request) => {
 
       // 1.14: checkout uchun — delivery_branches PLATFORM-GLOBAL, shop_id
       // filtri yo'q (21-band).
+      case "guest_delivery_branches":
       case "get_delivery_branches": {
         const regionKey = String(payload.regionKey || "");
         const provider = String(payload.provider || "");
@@ -4731,6 +4785,7 @@ Deno.serve(async (req: Request) => {
         return json({ branches });
       }
 
+      case "guest_delivery_districts":
       case "get_delivery_districts": {
         const regionKey = String(payload.regionKey || "");
         if (!UZ_TOP_LEVEL_REGION_SET.has(regionKey)) return json({ error: "invalid_region" }, 400);
@@ -5855,6 +5910,14 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true });
       }
 
+      case "set_guest_checkout_config": {
+        await requirePermission('shop.settings.manage');
+        let guest;
+        try { guest=normalizeGuestCheckout(payload,true); } catch(error:any) { return json({error:error.message},400); }
+        const saved=await db.rpc('ustore_set_guest_checkout',{p_shop_id:shopId,p_config:guest});
+        if (saved.error) throw saved.error;
+        return json({checkout:guest});
+      }
       case "set_fulfillment_config": {
         await requirePermission('shop.settings.manage');
         let clean: any;
@@ -10127,6 +10190,7 @@ Deno.serve(async (req: Request) => {
 
       // Unified checkout preview for automatic tier and optional promo+tier
       // stacking. create_order repeats the same resolver authoritatively.
+      case "guest_discount_preview":
       case "discount_preview": {
         const items = Array.isArray(payload.items) ? payload.items : [];
         const productIds = Array.from(new Set(items.map((i: any) => String(i.productId || "")).filter(Boolean)));
@@ -10152,7 +10216,8 @@ Deno.serve(async (req: Request) => {
           maxCombinedPercent: discountSettingsRow?.max_combined_discount_percent != null ? Number(discountSettingsRow.max_combined_discount_percent) : null,
           includeVip,
         };
-        if (!productIds.length) return json({ source: null, subtotal: 0, totalDiscount: 0, promoDiscount: 0, tierDiscount: 0, vipDiscount: 0, vipInfo: null, allowCombining: discountOpts.allowCombining, nextTier: null, gift: null });
+        const bundleItems = Array.isArray(payload.bundleItems) ? payload.bundleItems : [];
+        if (!productIds.length && !bundleItems.length) return json({ source: null, subtotal: 0, totalDiscount: 0, promoDiscount: 0, tierDiscount: 0, vipDiscount: 0, vipInfo: null, allowCombining: discountOpts.allowCombining, nextTier: null, gift: null });
         const { data: rows, error } = await db.from("products").select("id,price,variants,is_visible,status").eq("shop_id", shopId).in("id", productIds);
         if (error) throw error;
         const rowById = new Map((rows || []).map((r: any) => [String(r.id), r]));
@@ -10161,6 +10226,16 @@ Deno.serve(async (req: Request) => {
           const row: any = rowById.get(String(i.productId));
           if (!row || row.status === "DELETED" || row.is_visible === false) continue;
           subtotal += productLinePrice(row, i) * Math.max(0, Number(i.qty) || 0);
+        }
+        if (bundleItems.length) {
+          const result = await db.from('bundles').select('id,bundle_price,is_active,starts_at,ends_at').eq('shop_id',shopId).in('id',bundleItems.map((item:any)=>String(item.bundleId)));
+          if (result.error) throw result.error;
+          for (const requested of bundleItems) {
+            const bundle=result.data?.find((item:any)=>String(item.id)===String(requested.bundleId));
+            const qty=Number(requested.qty);
+            if (!bundle?.is_active || !Number.isInteger(qty) || qty<=0 || (bundle.starts_at && new Date(bundle.starts_at).getTime()>Date.now()) || (bundle.ends_at && new Date(bundle.ends_at).getTime()<Date.now())) return json({error:'bundle_unavailable'},400);
+            subtotal+=Number(bundle.bundle_price)*qty;
+          }
         }
         const best = await resolveBestCartDiscount(
           db, shopId, tgId, subtotal, productIds,
@@ -10231,8 +10306,24 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true });
       }
 
+      case "guest_create_order":
       case "create_order": {
-        const { data: selfRow } = await db.from("app_users").select("is_blocked,block_reason").eq("shop_id", shopId).eq("tg_id", tgId).maybeSingle();
+        const checkoutKey = String(payload.checkoutKey || "").trim();
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkoutKey)) {
+          return json({ error: "invalid_checkout_key" }, 400);
+        }
+
+        // A lost response must return the committed order, without re-uploading
+        // its receipt or reserving stock again. Never replay another owner.
+        const previous = await db.from("orders").select("*").eq("shop_id", shopId).eq("checkout_key", checkoutKey).maybeSingle();
+        if (previous.error) throw previous.error;
+        if (previous.data) {
+          if (previous.data.tg_id !== tgId) return json({ error: "checkout_key_conflict" }, 409);
+          if (previous.data.status === "CANCELLED") return json({ error: "checkout_key_cancelled" }, 409);
+          return json({ order: isGuestRequest ? guestCreatedOrder(previous.data) : mapOrderForClient(previous.data, { includeInternalNote: isAdmin }), replayed: true });
+        }
+
+        const { data: selfRow } = isGuestRequest ? {data:null} : await db.from("app_users").select("is_blocked,block_reason").eq("shop_id", shopId).eq("tg_id", tgId).maybeSingle();
         if (selfRow?.is_blocked) return json({ error: `blocked:${selfRow.block_reason || "Sabab ko'rsatilmagan"}` }, 403);
         // Online Do'kon yaxshilashlari, 13-band: katalog/narx ko'rish davom
         // etadi (bu tekshiruv faqat create_order'da) — faqat yangi buyurtma
@@ -10249,7 +10340,8 @@ Deno.serve(async (req: Request) => {
           ? payload.bundleItems.map((b: any) => ({ bundleId: String(b.bundleId || ""), qty: Number.parseInt(String(b.qty), 10) })).filter((b: any) => b.bundleId && Number.isInteger(b.qty) && b.qty > 0)
           : [];
         if (bundleReqs.length) await validateAndPauseBundles(db, shopId, BOT_TOKEN);
-        const fullname = nullableText(payload.fullname, 120);
+        const fullname = isGuestRequest ? nullableText(`${String(payload.firstName || '').trim()} ${String(payload.lastName || '').trim()}`,120) : nullableText(payload.fullname, 120);
+        if (isGuestRequest && (!String(payload.firstName || '').trim() || !String(payload.lastName || '').trim())) return json({error:'guest_name_required'},400);
         const phone = String(payload.phone || "").replace(/\s+/g, "");
         const regionKey = String(payload.regionKey || "");
         if (!UZ_TOP_LEVEL_REGION_SET.has(regionKey)) return json({ error: "invalid_region" }, 400);
@@ -10457,107 +10549,14 @@ Deno.serve(async (req: Request) => {
           console.error("[AUTOMATIC_GIFT_RESOLVE_FAILED]", e);
         }
         const orderProductIds = Array.from(new Set(rpcItems.map((i: any) => i.product_id)));
-        const checkoutKey = String(payload.checkoutKey || "").trim();
-        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(checkoutKey)) {
-          return json({ error: "invalid_checkout_key" }, 400);
-        }
-
-        let rpcResult = await db.rpc("place_order", {
-          p_shop_id: shopId, p_tg_id: tgId, p_user_name: fullname, p_phone: phone, p_region: region,
-          p_district: district, p_address: address, p_pay_method: payMethod, p_items: rpcItems, p_checkout_key: checkoutKey,
-        });
-        // A concurrent order may consume the last gift after the availability
-        // check. place_order is atomic and rolls that failed attempt back; we
-        // pause the campaign and retry once without the gift, never double-
-        // decrementing either purchased or gift stock.
-        if (rpcResult.error && automaticGift && String(rpcResult.error.message || "").includes(`insufficient_stock:${automaticGift.giftProduct.id}`)) {
-          if (automaticGift.rule.stock_zero_policy === "AUTO_PAUSE") {
-            await db.from("automatic_gift_rules").update({ is_active: false, updated_at: new Date().toISOString() })
-              .eq("shop_id", shopId).eq("id", automaticGift.rule.id);
-          }
-          rpcItems.pop();
-          automaticGift = null;
-          rpcResult = await db.rpc("place_order", {
-            p_shop_id: shopId, p_tg_id: tgId, p_user_name: fullname, p_phone: phone, p_region: region,
-            p_district: district, p_address: address, p_pay_method: payMethod, p_items: rpcItems, p_checkout_key: checkoutKey,
-          });
-        }
-        const { data, error } = rpcResult;
-        if (error) {
-          const m = String(error.message || "");
-          // Bundle komponenti yetmasa ham RPC bir xil "insufficient_stock:<id>"
-          // beradi (mavjud xatolik matni o'zgarmagan) — qaysi mahsulot
-          // ekanini id orqali aniqlab, aniqroq xato qaytaramiz.
-          if (m.includes("insufficient_stock")) {
-            const failedId = m.split(":")[1];
-            return json({ error: failedId && bundleComponentProductIds.includes(failedId) ? "bundle_unavailable" : "insufficient_stock" }, 400);
-          }
-          if (m.includes("variant_required_or_invalid") || m.includes("invalid_variant")) return json({ error: "invalid_variant" }, 400);
-          throw error;
-        }
-        const created = Array.isArray(data) ? data[0] : data;
-        const orderId = Number(created?.id);
-        let subtotal = Number(created?.subtotal ?? created?.totalPrice ?? created?.total_price);
-        if (!Number.isInteger(orderId) || orderId <= 0 || !Number.isFinite(subtotal) || subtotal < 0) {
-          throw new Error("invalid_place_order_response");
-        }
-        if (created?.replayed === true) {
-          const { data: existingOrder, error: existingOrderError } = await db.from("orders").select("*")
-            .eq("shop_id", shopId).eq("id", orderId).single();
-          if (existingOrderError) throw existingOrderError;
-          return json({ order: mapOrderForClient(existingOrder, { includeInternalNote: isAdmin }), replayed: true });
-        }
-
-        if (automaticGift) {
-          const giftId = String(automaticGift.giftProduct.id);
-          const giftQty = Number(automaticGift.rule.gift_quantity) || 1;
-          const { error: usageErr } = await db.from("automatic_gift_usages").insert({
-            shop_id: shopId, rule_id: automaticGift.rule.id, order_id: orderId, tg_id: tgId,
-            gift_product_id: giftId, gift_quantity: giftQty,
-          });
-          if (usageErr) console.error("[AUTOMATIC_GIFT_USAGE_FAILED]", usageErr);
-          if (automaticGift.rule.stock_zero_policy === "AUTO_PAUSE" && Number(automaticGift.giftProduct.stock) <= giftQty) {
-            await db.from("automatic_gift_rules").update({ is_active: false, updated_at: new Date().toISOString() })
-              .eq("shop_id", shopId).eq("id", automaticGift.rule.id);
-          }
-        }
-
-        let enrichedItems: any[] | undefined;
-        try {
-          const orderItemProductIds = Array.from(new Set(items.map((i: any) => String(i.productId || "")).filter(Boolean)));
-          const [{ data: createdItemsRow }, nameRuRes] = await Promise.all([
-            db.from("orders").select("items").eq("id", orderId).eq("shop_id", shopId).maybeSingle(),
-            orderItemProductIds.length ? db.from("products").select("sku,name_ru").eq("shop_id", shopId).in("id", orderItemProductIds) : Promise.resolve({ data: [] }),
-          ]);
-          const nameRuBySku = new Map<string, string>();
-          for (const row of nameRuRes?.data || []) if (row.sku && row.name_ru) nameRuBySku.set(String(row.sku), String(row.name_ru));
-          if (Array.isArray(createdItemsRow?.items) && nameRuBySku.size) {
-            enrichedItems = createdItemsRow.items.map((it: any) => {
-              const nameRu = it?.sku ? nameRuBySku.get(String(it.sku)) : undefined;
-              return nameRu ? { ...it, nameRu } : it;
-            });
-          }
-        } catch (e) {
-          console.error("order item name_ru enrichment failed", e);
-        }
-
-        let receiptPath: string | null = null;
-        if (payload.receiptImageUpload) {
-          try {
-            const uploaded = await storePaymentReceipt(db, shopId, orderId, tgId, payload.receiptImageUpload);
-            receiptPath = uploaded.path;
-            paymentSnapshot = { ...paymentSnapshot, receiptStatus: "RECEIVED" };
-          } catch (e: any) {
-            try {
-              await db.rpc("update_order_status", {
-                p_shop_id: shopId, p_order_id: orderId, p_new_status: "CANCELLED", p_requester_tg_id: tgId,
-                p_is_admin: true, p_cancel_reason: "To'lov cheki yuklanmadi",
-              });
-            } catch (_) {}
-            return json({ error: "receipt_upload_failed" }, 400);
-          }
-        }
-
+        if (isGuestRequest && !fulfillmentConfig.checkout.enabled) return json({error:"guest_checkout_disabled"},403);
+        // Price the requested lines from live tenant products, including variant
+        // prices and server-calculated bundle/gift overrides. SQL rechecks under locks.
+        const subtotal = rpcItems.reduce((sum: number, line: any) => {
+          const product: any = orderProductMap.get(String(line.product_id));
+          const variant = (product?.variants || []).find((v: any) => normalizeName(v.size) === normalizeName(line.size) && normalizeName(v.color) === normalizeName(line.color));
+          return sum + Number(line.price_override ?? variant?.price ?? product?.price ?? 0) * Number(line.qty);
+        }, 0);
         const deliveryFee = deliverySnapshot.kind === "FIXED" ? nonNegativeInteger(deliverySnapshot.fee) : 0;
 
         // Chegirma, agar mos bo'lsa — SUBTOTAL ma'lum bo'lgandan keyin,
@@ -10608,6 +10607,117 @@ Deno.serve(async (req: Request) => {
         }
         const payableTotal = Math.max(0, subtotal + deliveryFee - totalDiscount);
 
+        const checkoutQuote = { isGuest:isGuestRequest, guestTrackingCode:isGuestRequest ? createGuestTrackingCode() : null, expectedSubtotal: subtotal, totalDiscount, promoDiscount, tierDiscount, vipDiscount,
+          promotionId: appliedPromo?.id || null, promoCode: appliedPromo?.code || null,
+          customerDiscountId: appliedVip?.id || null, discountSource, tierId: appliedTier?.id || null,
+          tierSnapshot: appliedTier || null, deliveryFee, payableTotal };
+        let receiptPath: string | null = null;
+        if (payload.receiptImageUpload) {
+          try {
+            receiptPath = (await storePaymentReceipt(db, shopId, checkoutKey, tgId, payload.receiptImageUpload)).path;
+            paymentSnapshot = { ...paymentSnapshot, receiptStatus: "RECEIVED" };
+          } catch (uploadError: any) {
+            console.error("[CHECKOUT_RECEIPT_UPLOAD_FAILED]", { shopId, code: String(uploadError?.message || "receipt_upload_failed") });
+            return json({ error: "receipt_upload_failed" }, 400);
+          }
+        }
+
+        const placeCheckout = async () => {
+          try { return await db.rpc("ustore_create_checkout_order", {
+          p_shop_id: shopId, p_tg_id: tgId, p_user_name: fullname, p_phone: phone, p_region: region,
+          p_district: district, p_address: address, p_pay_method: payMethod, p_items: rpcItems, p_checkout_key: checkoutKey,
+          p_receipt_path: receiptPath, p_delivery_snapshot: deliverySnapshot, p_payment_snapshot: paymentSnapshot, p_quote: checkoutQuote,
+          }); } catch (error) { return { data: null, error }; }
+        };
+        let rpcResult = await placeCheckout();
+        for (let collision = 0; isGuestRequest && rpcResult.error?.message?.includes('orders_guest_tracking_code_unique') && collision < 4; collision++) {
+          checkoutQuote.guestTrackingCode = createGuestTrackingCode();
+          rpcResult = await placeCheckout();
+        }
+        // A concurrent order may consume the last gift after the availability
+        // check. place_order is atomic and rolls that failed attempt back; we
+        // pause the campaign and retry once without the gift, never double-
+        // decrementing either purchased or gift stock.
+        if (rpcResult.error && automaticGift && String(rpcResult.error.message || "").includes(`insufficient_stock:${automaticGift.giftProduct.id}`)) {
+          if (automaticGift.rule.stock_zero_policy === "AUTO_PAUSE") {
+            await db.from("automatic_gift_rules").update({ is_active: false, updated_at: new Date().toISOString() })
+              .eq("shop_id", shopId).eq("id", automaticGift.rule.id);
+          }
+          rpcItems.pop();
+          automaticGift = null;
+          rpcResult = await placeCheckout();
+        }
+        const { data, error } = rpcResult;
+        if (error) {
+          const recovery = await recoverCheckoutAttempt(db, shopId, checkoutKey, tgId, error);
+          if (recovery.conflict) return json({ error: "checkout_key_conflict" }, 409);
+          if (recovery.order) {
+            if (recovery.order.status === "CANCELLED") return json({ error: "checkout_key_cancelled" }, 409);
+            return json({ order: isGuestRequest ? guestCreatedOrder(recovery.order) : mapOrderForClient(recovery.order, { includeInternalNote: isAdmin }), replayed: true });
+          }
+          if (receiptPath && recovery.canRemoveReceipt) await db.storage.from("payment-receipts").remove([receiptPath]);
+          const m = String(error.message || "");
+          // Bundle komponenti yetmasa ham RPC bir xil "insufficient_stock:<id>"
+          // beradi (mavjud xatolik matni o'zgarmagan) — qaysi mahsulot
+          // ekanini id orqali aniqlab, aniqroq xato qaytaramiz.
+          if (m.includes("insufficient_stock")) {
+            const failedId = m.split(":")[1];
+            return json({ error: failedId && bundleComponentProductIds.includes(failedId) ? "bundle_unavailable" : "insufficient_stock" }, 400);
+          }
+          if (m.includes('free_delivery_minimum_not_met')) return json({error:'free_delivery_minimum_not_met'},409);
+          if (m.includes('quote_changed')) return json({error:'quote_changed'},409);
+          if (m.includes('promo_usage_limit_reached') || m.includes('promo_customer_limit_reached')) return json({error:'promo_limit_changed'},409);
+          if (m.includes("variant_required_or_invalid") || m.includes("invalid_variant")) return json({ error: "invalid_variant" }, 400);
+          throw error;
+        }
+        const created = Array.isArray(data) ? data[0] : data;
+        const orderId = Number(created?.id);
+        const committedSubtotal = Number(created?.subtotal ?? created?.totalPrice ?? created?.total_price);
+        if (!Number.isInteger(orderId) || orderId <= 0 || !Number.isFinite(committedSubtotal) || committedSubtotal < 0) {
+          throw new Error("invalid_place_order_response");
+        }
+        if (created?.replayed === true) {
+          if (receiptPath && receiptPath !== created?.receiptPath) await db.storage.from("payment-receipts").remove([receiptPath]);
+          const { data: existingOrder, error: existingOrderError } = await db.from("orders").select("*")
+            .eq("shop_id", shopId).eq("id", orderId).single();
+          if (existingOrderError) throw existingOrderError;
+          return json({ order: isGuestRequest ? guestCreatedOrder(existingOrder) : mapOrderForClient(existingOrder, { includeInternalNote: isAdmin }), replayed: true });
+        }
+
+        if (automaticGift) {
+          const giftId = String(automaticGift.giftProduct.id);
+          const giftQty = Number(automaticGift.rule.gift_quantity) || 1;
+          const { error: usageErr } = await db.from("automatic_gift_usages").insert({
+            shop_id: shopId, rule_id: automaticGift.rule.id, order_id: orderId, tg_id: tgId,
+            gift_product_id: giftId, gift_quantity: giftQty,
+          });
+          if (usageErr) console.error("[AUTOMATIC_GIFT_USAGE_FAILED]", usageErr);
+          if (automaticGift.rule.stock_zero_policy === "AUTO_PAUSE" && Number(automaticGift.giftProduct.stock) <= giftQty) {
+            await db.from("automatic_gift_rules").update({ is_active: false, updated_at: new Date().toISOString() })
+              .eq("shop_id", shopId).eq("id", automaticGift.rule.id);
+          }
+        }
+
+        let enrichedItems: any[] | undefined;
+        try {
+          const orderItemProductIds = Array.from(new Set(items.map((i: any) => String(i.productId || "")).filter(Boolean)));
+          const [{ data: createdItemsRow }, nameRuRes] = await Promise.all([
+            db.from("orders").select("items").eq("id", orderId).eq("shop_id", shopId).maybeSingle(),
+            orderItemProductIds.length ? db.from("products").select("sku,name_ru").eq("shop_id", shopId).in("id", orderItemProductIds) : Promise.resolve({ data: [] }),
+          ]);
+          const nameRuBySku = new Map<string, string>();
+          for (const row of nameRuRes?.data || []) if (row.sku && row.name_ru) nameRuBySku.set(String(row.sku), String(row.name_ru));
+          if (Array.isArray(createdItemsRow?.items) && nameRuBySku.size) {
+            enrichedItems = createdItemsRow.items.map((it: any) => {
+              const nameRu = it?.sku ? nameRuBySku.get(String(it.sku)) : undefined;
+              return nameRu ? { ...it, nameRu } : it;
+            });
+          }
+        } catch (e) {
+          console.error("order item name_ru enrichment failed", e);
+        }
+
+
         // CLICK: to'lov so'rovini (invoice) HOZIR, to'liq summa (yetkazib
         // berish bilan) ma'lum bo'lgach yuboramiz — mijoz o'z Click
         // ilovasida tasdiqlaydi, haqiqiy tasdiqlash keyin click-webhook
@@ -10653,7 +10763,7 @@ Deno.serve(async (req: Request) => {
           try {
             const returnUrl = ctx.botUsername ? `https://t.me/${ctx.botUsername}` : undefined;
             const { orderId: uzumOrderId, paymentUrl } = await uzumRegisterPayment(uzumCreds, {
-              amountTiyin: Math.round(payableTotal * 100), clientId: tgId, orderNumber: String(orderId),
+              amountTiyin: Math.round(payableTotal * 100), clientId: isGuestRequest ? checkoutQuote.guestTrackingCode! : tgId, orderNumber: String(orderId),
               successUrl: returnUrl, failureUrl: returnUrl, lang: "uz-UZ",
             });
             await db.from("uzum_transactions").insert({
@@ -10678,7 +10788,7 @@ Deno.serve(async (req: Request) => {
           providerName: deliverySnapshot.providerName || null,
           updatedAt: new Date().toISOString(),
         };
-        const { data: orderRow, error: snapshotError } = await db.from("orders").update({
+        const snapshotResult = await db.from("orders").update({
           subtotal, delivery_fee: deliveryFee, payable_total: payableTotal, total_price: payableTotal,
           delivery_snapshot: deliverySnapshot, payment_snapshot: paymentSnapshot, shipment,
           // 042: promo_code endi discountSource'ning ANIQ qiymatiga qarab
@@ -10697,45 +10807,20 @@ Deno.serve(async (req: Request) => {
           discount_source: discountSource,
           ...(enrichedItems ? { items: enrichedItems } : {}),
           ...(receiptPath ? { payment_receipt_path: receiptPath, payment_receipt_uploaded_at: new Date().toISOString() } : {}),
-        }).eq("id", orderId).eq("shop_id", shopId).eq("tg_id", tgId).select("*").single();
-        if (snapshotError || !orderRow) {
-          try {
-            await db.rpc("update_order_status", {
-              p_shop_id: shopId, p_order_id: orderId, p_new_status: "CANCELLED", p_requester_tg_id: tgId,
-              p_is_admin: true, p_cancel_reason: "Fulfillment snapshot saqlanmadi",
-            });
-          } catch (_) {}
-          if (receiptPath) EdgeRuntime.waitUntil(cleanupPrivateReceipt(db, shopId, orderId, receiptPath));
-          throw snapshotError || new Error("order_snapshot_failed");
+        }).eq("id", orderId).eq("shop_id", shopId).select("*").single();
+        let orderRow = snapshotResult.data;
+        if (snapshotResult.error || !orderRow) {
+          // The complete order and private receipt already committed atomically.
+          // Optional item/invoice enrichment failure must not cancel that order.
+          console.error('[ORDER_ENRICHMENT_FAILED]',{shopId,orderId,code:snapshotResult.error?.code});
+          const committed = await db.from('orders').select('*').eq('shop_id',shopId).eq('id',orderId).single();
+          if (committed.error || !committed.data) throw new Error('order_confirmation_unavailable');
+          orderRow=committed.data;
         }
         // 042: xuddi shu sabab bilan — promo ishlatilishi (limit/mijoz-bошiga
         // limit hisobi uchun MUHIM) endi ANIQ source qiymatiga emas,
         // promoDiscount > 0'ga qarab yoziladi, aks holda COMBINED rejimida
         // promo-kod chekловsiz qayta-qayta ishlatilishi mumkin edi.
-        if (appliedPromo?.id && promoDiscount > 0) {
-          const { error: redemptionError } = await db.from("promotion_redemptions").insert({
-            shop_id: shopId, promotion_id: appliedPromo.id, order_id: orderId, tg_id: tgId, discount_amount: promoDiscount,
-          });
-          if (redemptionError) {
-            console.error("[PROMO_REDEMPTION_INSERT_FAILED]", redemptionError);
-            await db.rpc("update_order_status", {
-              p_shop_id: shopId, p_order_id: orderId, p_new_status: "CANCELLED", p_requester_tg_id: tgId,
-              p_is_admin: true, p_cancel_reason: "Promo-kod limiti o'zgardi",
-            });
-            if (receiptPath) EdgeRuntime.waitUntil(cleanupPrivateReceipt(db, shopId, orderId, receiptPath));
-            return json({ error: "promo_limit_changed" }, 409);
-          }
-        }
-        // 4-paket, 10.17-band: shaxsiy chegirma foydalanish tarixi/limiti —
-        // promotion_redemptions bilan AYNAN bir xil naqsh (order committed
-        // bo'lgach, haqiqatan qo'llangan bo'lsagina — vipDiscount > 0).
-        if (appliedVip?.id && vipDiscount > 0) {
-          try {
-            await db.from("customer_discount_usages").insert({ shop_id: shopId, customer_discount_id: appliedVip.id, order_id: orderId, tg_id: tgId, discount_amount: vipDiscount });
-          } catch (e) {
-            console.error("[CUSTOMER_DISCOUNT_USAGE_INSERT_FAILED]", e);
-          }
-        }
         // Shop takomillashtirish: buyurtma to'liq muvaffaqiyatli yaratilgach,
         // reward qoidalarini fon rejimida tekshiradi (checkout javobini
         // sekinlashtirmaydi) — order-total va lifetime-total ikkalasi ham.
@@ -10748,7 +10833,7 @@ Deno.serve(async (req: Request) => {
         const mapped = mapOrderForClient(orderRow, { includeInternalNote: isAdmin });
         EdgeRuntime.waitUntil(backgroundNotifyOrder(db, shopId, BOT_TOKEN, PLATFORM_SUPER_ADMIN_ID, mapped, fullname, phone, regionLabelForSnapshot(regionKey), district, address, paymentSnapshot.label));
         if (receiptPath) EdgeRuntime.waitUntil(notifyReceiptAdmins(db, shopId, BOT_TOKEN, PLATFORM_SUPER_ADMIN_ID, orderId, receiptPath));
-        return json({ order: mapped });
+        return json({ order: isGuestRequest ? guestCreatedOrder(orderRow) : mapped });
       }
 
       case "cancel_order":
@@ -10811,7 +10896,7 @@ Deno.serve(async (req: Request) => {
         const { data: orderRow, error: orderFetchError } = await db.from("orders").select("*").eq("id", payload.orderId).eq("shop_id", shopId).single();
         if (orderFetchError) throw orderFetchError;
         if (newStatus === "DELIVERED" && orderRow.payment_status === "PAID") {
-          EdgeRuntime.waitUntil(checkAndIssueRewards(db, shopId, String(orderRow.tg_id), Number(orderRow.id), Number(orderRow.payable_total || 0), BOT_TOKEN));
+          if (orderRow.tg_id) EdgeRuntime.waitUntil(checkAndIssueRewards(db, shopId, String(orderRow.tg_id), Number(orderRow.id), Number(orderRow.payable_total || 0), BOT_TOKEN));
           EdgeRuntime.waitUntil(pushOrderToBillzInBackground(db, shopId, Number(orderRow.id), orderRow.items || [], BOT_TOKEN_MASTER_KEY));
         }
         // Astra-6c: admin status change Telegram orqali yetkazishga urinadi,
@@ -10837,7 +10922,7 @@ Deno.serve(async (req: Request) => {
         }
         auditLater("PAYMENT_RECEIPT_APPROVED", "order", orderId);
         const orderRow = Array.isArray(approved) ? approved[0] : approved;
-        EdgeRuntime.waitUntil(checkAndIssueRewards(db, shopId, String(orderRow.tg_id), Number(orderRow.id), Number(orderRow.payable_total || 0), BOT_TOKEN));
+        if (orderRow.tg_id) EdgeRuntime.waitUntil(checkAndIssueRewards(db, shopId, String(orderRow.tg_id), Number(orderRow.id), Number(orderRow.payable_total || 0), BOT_TOKEN));
         EdgeRuntime.waitUntil(pushOrderToBillzInBackground(db, shopId, Number(orderRow.id), orderRow.items || [], BOT_TOKEN_MASTER_KEY));
         return json({ order: mapOrderForClient(orderRow, { includeInternalNote: true }) });
       }

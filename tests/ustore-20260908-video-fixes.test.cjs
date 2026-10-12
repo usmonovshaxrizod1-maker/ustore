@@ -168,7 +168,7 @@ test('VIDEO-11 legal settings switch updates only its own card instead of full-p
 });
 
 test('VIDEO release cache versions include this fix batch', () => {
-  assert.match(html, /ustore\.css\?v=332/);
-  assert.match(html, /ustore-shop-app\.js\?v=335/);
+  assert.match(html, /ustore\.css\?v=333/);
+  assert.match(html, /ustore-shop-app\.js\?v=336/);
 });
 

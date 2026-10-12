@@ -14,7 +14,11 @@ test('a single release URL version reaches all Telegram Login modules on GitHub 
   const live = read('web/services/live/index.js');
   const match = html.match(/src="\.\/app\.js\?v=([^"&]+)"/);
   assert.ok(match, 'HTML must request the new app.js after a manual upload');
-  const version = match[1];
+  // UI-only releases keep the unchanged login modules on their coherent auth
+  // release. The HTML UI release need not invalidate authenticated modules.
+  const authMatch=runtime.match(/services\/live\/index\.js\?v=([^']+)/);
+  assert.ok(authMatch);
+  const version = authMatch[1];
   for (const [source, spec] of [
     [app, `./runtime/production.js?v=${version}`],
     [app, `./features/auth/login.js?v=${version}`],

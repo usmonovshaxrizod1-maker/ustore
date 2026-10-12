@@ -99,7 +99,7 @@ test("set_order_internal_note requires requirePermission('orders.manage'), and s
 
 test('create_order rejects new orders while paused with a clear, catalog-still-visible-only block — checked right after the existing blocked-user check, before any cart/stock work happens', () => {
   const start = shopApi.indexOf('case "create_order"');
-  const block = shopApi.slice(start, start + 900);
+  const block = shopApi.slice(start, shopApi.indexOf('case "cancel_order"', start));
   assert.match(block, /if \(pauseRow\?\.orders_paused\) return json\(\{ error: `orders_paused:\$\{pauseRow\.orders_paused_note \|\| ""\}` \}, 400\);/);
   const blockedIdx = block.indexOf('is_blocked');
   const pauseIdx = block.indexOf('orders_paused');

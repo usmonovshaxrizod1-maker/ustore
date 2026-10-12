@@ -5,7 +5,7 @@ import { createButton, createStatePanel } from './components/ui.js';
 import { createTranslator, normalizeLocale } from './i18n/index.js';
 import { localizeCustomerDom } from './i18n/customer-copy.js';
 import { buildCanonicalUrl, createDocumentMetadataManager, sharePage } from './metadata/index.js';
-import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261010p1';
+import { createMiniAppFrameHost } from './shared/frame-host.js?v=20261012checkout1';
 import { secureUuidV4 } from './shared/browser-id.js';
 import { shopAuthReturnTo } from './features/auth/return-target.js';
 
@@ -1009,7 +1009,7 @@ async function renderRoute(routeState, reason = 'refresh') {
     if (welcome) globalThis.USTORE_SHOP_WELCOME.update(welcome, {name:context.shop.name,logoUrl:context.shop.logoUrl,theme:context.shop.designSettings,locale:uiLocale});
     try { globalThis.sessionStorage?.setItem?.(`ustore:shop:entered:${location.hostname.toLowerCase()}`, '1'); } catch (_) {}
     try { globalThis.localStorage?.setItem?.(`ustore:shop:brand:${location.hostname.toLowerCase()}`, JSON.stringify({name:context.shop.name,logoUrl:context.shop.logoUrl,theme:context.shop.designSettings || null})); } catch (_) {}
-    const protectedRoute=routeState.route.auth||routeState.route.admin||routeState.route.id==='checkout';
+    const protectedRoute=routeState.route.auth||routeState.route.admin;
     if(protectedRoute&&!context.actor){await renderShopSignIn(routeState,epoch);return;}
     if(routeState.route.admin&&!actorIsAdmin(context.actor)){mountShell(routeState,stateView('permission','Ruxsat yo‘q','Bu admin sahifasi uchun do‘kon vakolati kerak.'),'Ruxsat yo‘q');return;}
     if (!await applySharedShopMetadata(routeState, epoch) || epoch !== renderEpoch) return;

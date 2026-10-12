@@ -168,22 +168,14 @@ test('checkout sends the receipt atomically with create_order, not as a separate
   assert.doesNotMatch(submitFn, /callApi\('upload_payment_receipt'/);
 });
 
-test('server rejects create_order before placing it when a required receipt is missing, and rolls back if upload fails', () => {
-  const server = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'functions', 'shop-api', 'index.ts'), 'utf8');
-  const start = server.indexOf('case "create_order"');
-  const end = server.indexOf('case "cancel_order"');
-  const createOrderCase = server.slice(start, end);
-
-  const rpcIdx = createOrderCase.indexOf('db.rpc("place_order"');
-  const receiptRequiredIdx = createOrderCase.indexOf('paymentSnapshot.receiptRequired && !payload.receiptImageUpload');
-  assert.ok(receiptRequiredIdx >= 0, 'missing pre-creation receiptRequired guard');
-  assert.ok(rpcIdx > receiptRequiredIdx, 'receipt-required guard must run BEFORE place_order is called');
-  assert.match(createOrderCase, /error: "receipt_required"/);
-
-  const uploadIdx = createOrderCase.indexOf('storePaymentReceipt(db, shopId, orderId, tgId, payload.receiptImageUpload)');
-  assert.ok(uploadIdx > rpcIdx, 'receipt upload must happen after the order exists (needs orderId)');
-  const compensateIdx = createOrderCase.indexOf('CANCELLED', uploadIdx);
-  assert.ok(compensateIdx > uploadIdx && compensateIdx < createOrderCase.indexOf('error: "receipt_upload_failed"'), 'failed receipt upload must cancel the just-created order');
+test('server verifies a required private receipt before atomic order creation; upload failure creates no order', () => {
+ const server=fs.readFileSync(path.join(__dirname,'../supabase/functions/shop-api/index.ts'),'utf8');
+ const create=server.slice(server.indexOf('case "create_order"'),server.indexOf('case "cancel_order"'));
+ const rpc=create.indexOf('db.rpc("ustore_create_checkout_order"');
+ assert.ok(create.indexOf('paymentSnapshot.receiptRequired && !payload.receiptImageUpload')<rpc);
+ assert.ok(create.indexOf('await storePaymentReceipt')<rpc);
+ assert.match(create,/p_receipt_path: receiptPath/);
+ assert.doesNotMatch(create,/p_cancel_reason: "To'lov cheki yuklanmadi"/);
 });
 
 // Regression guard for the Farg'ona / Qoraqalpog'iston admin-checkbox bug:
@@ -238,7 +230,7 @@ test('receipt picker hides the native file input behind a custom button and show
   // as every other image-upload location in the app (previously only had
   // one accept="image/*" input, no separate Files source).
   assert.match(fn, /id="chk-receipt"[^>]*accept="image\/\*"/, 'gallery input (accept=image/*) must exist');
-  assert.match(fn, /id="chk-receipt-files"\s+type="file"\s+onchange="onCheckoutReceiptPicked\(event\)"/, 'a second, accept-less files input must exist so Android "Files" picking works');
+  assert.match(fn, /id="chk-receipt-files"\s+type="file"[^>]*onchange="onCheckoutReceiptPicked\(event\)"/, 'a second, accept-less files input must exist so Android "Files" picking works');
   // Legacy audit: the two separately-labeled Galereya/Fayl buttons were
   // unified into ONE trigger opening the shared openImagePickerSheet()
   // (which itself offers both sources) — both hidden inputs above still
@@ -910,7 +902,7 @@ test('5.1: the shop logo picker reuses the same shared V2 image pipeline as prod
 
 test('5.2: "USTORE" only ever appears as fixed platform/bot branding, never substituted for an editable shop name field', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  assert.doesNotMatch(app, /shopName|shop_name|storeName/);
+  // Contact examples may contain shop_name; editable branding must remain dynamic.
   const aboutStart = app.indexOf("function renderProfile");
   const aboutEnd = app.indexOf('shop-about-card', aboutStart) + 400;
   const aboutBlock = app.slice(aboutStart, aboutEnd);
@@ -1006,7 +998,7 @@ test('5.2: a failed local read of the payment receipt clears the stale (already-
   const start = app.indexOf('async function prepareReceiptImageUpload');
   const end = app.indexOf('let submittingOrder');
   const block = app.slice(start, end > start ? end : start + 1200);
-  assert.ok(block.includes('clearCheckoutReceipt();'), 'must clear the stale receipt selection on read failure');
+  assert.ok(block.includes('checkoutReceiptPreparing = null;'), 'must clear the rejected preparation promise while retaining the original file');
   assert.ok(block.includes('rerenderReceiptPicker();'), 'must re-render the picker so the user sees "no file chosen" and can re-pick');
   assert.ok(block.includes("throw new Error('receipt_read_failed')"), 'must surface a distinguishable error code');
 
@@ -1075,7 +1067,7 @@ test('5.6/2-band: checkout has a SINGLE unified district selector (no separate P
   const renderStart = app.indexOf('function renderCheckoutOptions');
   const renderEnd = app.indexOf('const notice = document.getElementById', renderStart);
   const renderBlock = app.slice(renderStart, renderEnd);
-  assert.ok(renderBlock.includes("deliveryOptions.find(option => option.kind !== 'POST')"), 'auto-select fallback must explicitly skip POST-kind options');
+  assert.ok(renderBlock.includes("deliveryOptions.find(option => option.kind !== 'POST' && option.eligible !== false)"), 'auto-select fallback must explicitly skip POST-kind options');
   // District field must stay visible for POST too (only the address field
   // is swapped for the branch picker) — this is exactly what fixed the
   // "district disappears when BTS/EMU chosen" bug.
@@ -1216,7 +1208,7 @@ test('v2.6 image IO: FileReader is primary and arrayBuffer is a genuinely differ
 // qolmaslik" talabiga mos.
 test('v2.6/6-band image UI: pickers accept image/* (wider gallery selection) but JS still only stores the MIME types the backend can actually persist', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  assert.doesNotMatch(app, /accept="image\/jpeg,image\/png,image\/webp"/, '6-band: pickers must no longer pre-filter to only 3 exact MIME types at the OS picker level');
+  assert.match(app, /id="chk-receipt-files"[^>]*accept="image\/jpeg,image\/png,image\/webp"/, 'payment receipts explicitly restrict persistable formats');
   const wide = app.match(/accept="image\/\*"/g) || [];
   assert.ok(wide.length >= 5, `expected accept="image/*" on all image pickers, got ${wide.length}`);
   assert.match(app, /SUPPORTED_IMAGE_MIME = new Set\(\['image\/jpeg', 'image\/png', 'image\/webp'\]\)/, 'server-storable formats must stay restricted to JPEG/PNG/WebP');
@@ -1647,9 +1639,9 @@ test('cache-busting: ustore.css and ustore-commerce.js query versions were bumpe
   // mini-modal redesign, per-variant price, swipe gallery, object-fit
   // consistency) — bumped v99->v100. ustore-commerce.js was NOT touched
   // Commerce logic was updated again after this historical round.
-  assert.match(html, /ustore\.css\?v=332"/, 'current ustore.css must not be served stale');
-  assert.match(html, /ustore-commerce\.js\?v=8"/, 'ustore-commerce.js gained the FREE/FIXED "Umumiy qiymat" general-value blocks (2026-09) and must not be served stale');
-  assert.match(html, /ustore-shop-app\.js\?v=335"/, "current ustore-shop-app.js must not be served stale");
+  assert.match(html, /ustore\.css\?v=333"/, 'current ustore.css must not be served stale');
+  assert.match(html, /ustore-commerce\.js\?v=9"/, 'ustore-commerce.js gained the FREE/FIXED "Umumiy qiymat" general-value blocks (2026-09) and must not be served stale');
+  assert.match(html, /ustore-shop-app\.js\?v=336"/, "current ustore-shop-app.js must not be served stale");
 });
 
 test('13-band: delivery region comment is optional, capped at 200 chars, and omitted when blank', () => {

@@ -118,7 +118,7 @@ test('resolvePromoDiscount checks active/date-range/min-order/scoping/usage-limi
 
 test('create_order resolves the best cart discount AFTER subtotal is known but BEFORE the Click invoice amount is computed, so Click never charges the pre-discount total', () => {
   const orderStart = shopApi.indexOf('case "create_order"');
-  const subtotalIdx = shopApi.indexOf('let subtotal = Number(created?.subtotal', orderStart);
+  const subtotalIdx = shopApi.indexOf('const subtotal = rpcItems.reduce(', orderStart);
   const promoIdx = shopApi.indexOf('resolveBestCartDiscount(', orderStart);
   const payableIdx = shopApi.indexOf('const payableTotal = Math.max(0, subtotal + deliveryFee - totalDiscount);', orderStart);
   const clickIdx = shopApi.indexOf('clickCreateInvoice(clickCreds', orderStart);
@@ -143,9 +143,8 @@ test('an order row snapshots promo/tier/vip parts and discount_source; promo_cod
   assert.match(block, /promo_discount: promoDiscount, tier_discount: tierDiscount, vip_discount: vipDiscount,/);
   assert.match(block, /tier_snapshot: appliedTier \?/);
   assert.match(block, /discount_source: discountSource,/);
-  const redemptionIdx = shopApi.indexOf('promotion_redemptions").insert', updateIdx);
-  const redemptionBlock = shopApi.slice(redemptionIdx - 200, redemptionIdx);
-  assert.match(redemptionBlock, /if \(appliedPromo\?\.id && promoDiscount > 0\) \{/,
+  const redemptionBlock = fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261011160643_checkout_receipt_atomic.sql'),'utf8');
+  assert.match(redemptionBlock, /nullif\(p_quote->>'promotionId',''\) is not null and \(p_quote->>'promoDiscount'\)::numeric>0/,
     'promo redemption logging (usage-limit enforcement) must also key off promoDiscount > 0, not an exact source string');
 });
 
@@ -153,7 +152,9 @@ test('a successful redemption is recorded in promotion_redemptions (for usage-li
   const orderStart = shopApi.indexOf('case "create_order"');
   const orderEnd = shopApi.indexOf('\n      case "cancel_order"', orderStart);
   const block = shopApi.slice(orderStart, orderEnd > orderStart ? orderEnd : orderStart + 9000);
-  assert.match(block, /db\.from\("promotion_redemptions"\)\.insert\(\{[\s\S]*shop_id: shopId, promotion_id: appliedPromo\.id, order_id: orderId, tg_id: tgId, discount_amount: promoDiscount,[\s\S]*\}\)/);
+  assert.match(block, /promotionId: appliedPromo\?\.id/);
+  const atomic=fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261011160643_checkout_receipt_atomic.sql'),'utf8');
+  assert.match(atomic,/insert into public\.promotion_redemptions\(shop_id,promotion_id,order_id,tg_id,discount_amount\) values\(p_shop_id,/);
 });
 
 test('an invalid/expired/limit-reached promo at order time does NOT block the order — it silently applies zero discount instead (stock is already reserved by then, so failing here would strand an order)', () => {

@@ -94,7 +94,7 @@ test('Astra-5c live adapter wires quote, order create and payment status/start w
 
 test('Astra-5c server derives order source and rejects receipt-required manual methods from web quote', () => {
   const api = fs.readFileSync(path.join(root, 'supabase/functions/shop-api/index.ts'), 'utf8');
-  assert.match(api, /source: o\.order_source \|\| "TELEGRAM"/);
+  assert.match(api, /source: o\.is_guest \? "GUEST" : o\.order_source \|\| "TELEGRAM"/);
   const start = api.indexOf('function listWebPaymentMethods');
   const end = api.indexOf('async function webIdempotencyUuid', start);
   const segment = api.slice(start, end);

@@ -239,8 +239,8 @@ test('Payme credentials only open via a paymentsPageView page (never logging pas
 });
 
 test('after create_order succeeds with PAYME or UZUM, the frontend redirects the customer via openSafeExternalUrl to the checkout/payment URL returned in the order\'s payment snapshot — unlike CLICK, which only waits for a push notification with no redirect needed', () => {
-  const block = shopAppJs.slice(shopAppJs.indexOf('function openOrderSuccessCelebration'), shopAppJs.indexOf('function openOrderSuccessCelebration') + 2000);
-  assert.match(block, /openSafeExternalUrl\('\$\{escapeHtml\(payUrl\)\}'\)/);
+  const block = shopAppJs.slice(shopAppJs.indexOf('function orderSuccessHtml'), shopAppJs.indexOf('function finishOrderSuccess'));
+  assert.match(block, /openSafeExternalUrl\(decodeURIComponent\('\$\{encodeURIComponent\(payment\.url\)/);
   assert.match(shopAppJs, /newOrder\.payment\?\.paymeCheckoutUrl/);
   assert.match(shopAppJs, /newOrder\.payment\?\.uzumPaymentUrl/);
 });

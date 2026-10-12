@@ -34,8 +34,9 @@
     }
     return {
       version: VERSION,
+      checkout: { enabled: false, phone: '', telegram: '', instagram: '' },
       delivery: {
-        free: { enabled: true, regions: freeRegions, general: { enabled: false, comment: null, estimatedTime: null } },
+        free: { enabled: true, minimumEnabled: false, minimumSubtotal: 0, regions: freeRegions, general: { enabled: false, comment: null, estimatedTime: null } },
         fixed: { enabled: false, regions: {}, general: { enabled: false, fee: null, comment: null, estimatedTime: null } },
         taxi: { enabled: false, general: { enabled: false, exactFee: null, minFee: null, maxFee: null, comment: null, estimatedTime: null }, regions: {} },
         post: {
@@ -170,10 +171,16 @@
   function normalizeConfig(raw, regionIds) {
     const ids = cleanRegionIds(regionIds);
     const base = defaultConfig(ids);
+    base.checkout = {
+      enabled: raw?.checkout?.enabled === true,
+      phone: String(raw?.checkout?.phone || ''), telegram: String(raw?.checkout?.telegram || ''), instagram: String(raw?.checkout?.instagram || '')
+    };
     if (!raw || typeof raw !== 'object') return base;
 
     const delivery = raw.delivery || {};
     base.delivery.free.enabled = bool(delivery.free?.enabled);
+    base.delivery.free.minimumEnabled = bool(delivery.free?.minimumEnabled);
+    base.delivery.free.minimumSubtotal = nonNegativeInt(delivery.free?.minimumSubtotal);
     base.delivery.free.regions = normalizeRegions(delivery.free?.regions, ids, 'FREE');
     base.delivery.free.general = normalizeGeneral(delivery.free?.general, 'FREE');
     base.delivery.fixed.enabled = bool(delivery.fixed?.enabled);
@@ -244,7 +251,7 @@
     });
   }
 
-  function deliveryOptions(config, regionId, district = null) {
+  function deliveryOptions(config, regionId, district = null, discountedSubtotal = Infinity) {
     const result = [];
     const delivery = config?.delivery || {};
     const free = delivery.free?.regions?.[regionId];
@@ -254,7 +261,9 @@
       const general = delivery.free?.general?.enabled ? delivery.free.general : {};
       const comment = free.comment ?? general.comment ?? null;
       const estimatedTime = free.estimatedTime ?? general.estimatedTime ?? null;
-      result.push({ id: 'FREE', kind: 'FREE', fee: 0, payableFee: 0, comment, estimatedTime });
+      const minimum = nonNegativeInt(delivery.free.minimumSubtotal);
+      const eligible = !delivery.free.minimumEnabled || discountedSubtotal > minimum;
+      result.push({ id: 'FREE', kind: 'FREE', fee: 0, payableFee: 0, comment, estimatedTime, eligible, minimum, remaining: eligible ? 0 : Math.max(1, minimum - Math.floor(discountedSubtotal) + 1) });
     }
     const fixed = delivery.fixed?.regions?.[regionId];
     if (delivery.fixed?.enabled && fixed?.enabled && districtAllowed(fixed, district)) {
@@ -346,7 +355,27 @@
     return { config: normalized, issues };
   }
 
+  function validateCheckoutFields(draft) {
+    const phone = String(draft.phone || '').replace(/[\s()-]/g, '');
+    const fail = (field, step, code) => ({ phone, error: { field, step, code } });
+    if (draft.guest && !String(draft.firstName || '').trim()) return fail('chk-firstname',1,'name_required');
+    if (draft.guest && !String(draft.lastName || '').trim()) return fail('chk-lastname',1,'name_required');
+    if (String(draft.fullname || '').trim().split(/\s+/).filter(Boolean).length < 2) return fail('chk-fullname', 1, 'name_required');
+    if (!/^\+998\d{9}$/.test(phone)) return fail('chk-phone', 1, 'phone_invalid');
+    if (!draft.regionKey) return fail('chk-region-key', 1, 'region_required');
+    if (!draft.deliveryMethodId) return fail('delivery-method-wrap', 1, 'delivery_required');
+    if (String(draft.deliveryMethodId).startsWith('POST:')) {
+      if (!draft.branch?.id) return fail('chk-branch-wrap', 1, 'branch_required');
+    } else {
+      if (!draft.district) return fail('chk-district', 1, 'district_required');
+      if (!String(draft.address || '').trim()) return fail('chk-address', 1, 'address_required');
+    }
+    if (!draft.paymentMethodId) return fail('pay-method-wrap', 2, 'payment_required');
+    return { phone, error: null };
+  }
+
   return Object.freeze({
+    validateCheckoutFields,
     VERSION,
     DELIVERY_KINDS,
     PAYMENT_IDS,

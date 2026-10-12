@@ -10,7 +10,7 @@ test('Astra-6c keeps server-derived order source: Telegram default and WEB overr
   const api = read('supabase/functions/shop-api/index.ts');
   assert.match(sql, /add column if not exists order_source text not null default 'TELEGRAM'/);
   assert.match(sql, /order_source = 'WEB'/);
-  assert.match(api, /source: o\.order_source \|\| "TELEGRAM"/);
+  assert.match(api, /source: o\.is_guest \? "GUEST" : o\.order_source \|\| "TELEGRAM"/);
 });
 
 test('Astra-6c new-order admin Telegram message includes the server mapped source', () => {

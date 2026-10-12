@@ -114,7 +114,7 @@ test('11-band: discount_preview resolves the same automatic-gift rule create_ord
 test('13-band: promotions support an optional max_order_amount (server validates min<=subtotal<=max, and rejects max<min at save time) alongside the existing min_order_amount', () => {
   assert.match(migration, /add column if not exists max_order_amount numeric\(14,2\)/);
   const start = api.indexOf('async function resolvePromoDiscount(');
-  const block = api.slice(start, start + 1600);
+  const block = api.slice(start, api.indexOf("async function resolveTierDiscount", start));
   assert.match(block, /subtotal > Number\(promo\.max_order_amount\)/);
   assert.match(api, /if \(minOrderAmount !== null && maxOrderAmount !== null && maxOrderAmount < minOrderAmount\) return json\(\{ error: "invalid_amount_range" \}, 400\);/);
   assert.match(app, /id="promo-f-max"/);
@@ -122,7 +122,7 @@ test('13-band: promotions support an optional max_order_amount (server validates
 
 test('14-band: a promo issued to a specific customer (issued_to_tg_id set) can only be redeemed by that same customer UNLESS the issuing reward_rule was marked transferable — enforced in resolvePromoDiscount (server-side), and the reward-rule form exposes the "who can use it" choice', () => {
   const start = api.indexOf('async function resolvePromoDiscount(');
-  const block = api.slice(start, start + 1600);
+  const block = api.slice(start, api.indexOf("async function resolveTierDiscount", start));
   assert.match(block, /promo\.issued_to_tg_id && !promo\.transferable && String\(promo\.issued_to_tg_id\) !== String\(tgId\)/);
   assert.match(migration, /alter table public\.reward_rules[\s\S]*?add column if not exists transferable boolean not null default false;/);
   assert.match(app, /id="coupon-transferable"/);
