@@ -355,6 +355,29 @@
     return { config: normalized, issues };
   }
 
+  function customerCanCancel(order, { enabled = true, cutoff = 'BEFORE_SHIPPED' } = {}) {
+    if (!enabled || !order || !['NEW','PROCESSING'].includes(order.status)) return false;
+    const shipment = order.shipment?.status || 'READY';
+    if (shipment === 'DELIVERED') return false;
+    if (cutoff === 'NEW_ONLY') return order.status === 'NEW';
+    if (cutoff === 'BEFORE_SHIPPED') return !['IN_TRANSIT','HANDED_TO_CARRIER'].includes(shipment);
+    return cutoff === 'ANY_NON_TERMINAL';
+  }
+
+  function guestSocialUrl(value, kind) {
+    let username=String(value || '').trim().replace(/^@/,'');
+    if (/^https?:\/\//i.test(username)) {
+      try {
+        const url=new URL(username);
+        const hosts=kind==='telegram' ? ['t.me','www.t.me','telegram.me','www.telegram.me'] : ['instagram.com','www.instagram.com'];
+        if (!hosts.includes(url.hostname) || url.username || url.password || url.port || !/^\/[^/]+\/?$/.test(url.pathname)) return '';
+        username=url.pathname.split('/')[1];
+      } catch { return ''; }
+    }
+    if (kind==='telegram') return /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(username) ? `https://t.me/${username}` : '';
+    return /^[A-Za-z0-9_.]{1,30}$/.test(username) && !['.','..'].includes(username) ? `https://www.instagram.com/${username}/` : '';
+  }
+
   function validateCheckoutFields(draft) {
     const phone = String(draft.phone || '').replace(/[\s()-]/g, '');
     const fail = (field, step, code) => ({ phone, error: { field, step, code } });
@@ -375,6 +398,8 @@
   }
 
   return Object.freeze({
+    customerCanCancel,
+    guestSocialUrl,
     validateCheckoutFields,
     VERSION,
     DELIVERY_KINDS,

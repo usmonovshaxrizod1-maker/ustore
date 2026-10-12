@@ -30,7 +30,7 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
   wrapper.className = 'uw-miniapp-host';
   frame.className = 'uw-miniapp-frame';
   frame.title = kind === 'shop' ? `${tenant?.shopName || 'Do‘kon'} ilovasi` : 'UStorE ilovasi';
-  if (kind === 'shop') frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation allow-downloads');
+  if (kind === 'shop') frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-downloads');
   // PLATFORM UI is the app's own checked-in code on the same origin.
   frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
   const src = kind === 'shop' ? new URL('/ustore/', MINI_APP_ORIGIN) : platformFrameUrl();
@@ -150,7 +150,7 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
     // Catalog stays on the public Web projection, including its admin-aware
     // visibility. Guest boot stays public; authenticated boot is the full UI.
     const options = {
-      method: 'POST', credentials: 'omit',
+      method: 'POST', credentials: 'omit', ...(action==='guest_track_order'?{cache:'no-store'}:{}),
       headers: { 'content-type': 'application/json', ...(token ? { authorization: `UStoreSession ${token}` } : {}) },
       body: JSON.stringify(body),
     };

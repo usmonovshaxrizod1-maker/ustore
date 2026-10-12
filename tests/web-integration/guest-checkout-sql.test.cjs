@@ -27,6 +27,8 @@ async function fixture(){
  await db.exec(read('20261011160643_checkout_receipt_atomic.sql'));
  await db.exec(read('20261011161230_guest_checkout_tracking.sql'));
  await db.exec(read('20261012024744_guest_checkout_search_path.sql'));
+ const policyMigration=fs.readdirSync('supabase/migrations').find(n=>n.endsWith('_shop_customer_cancellation_policy.sql'));
+ if(policyMigration)await db.exec(read(policyMigration));
  const paths=await db.query("select proconfig from pg_proc where proname in ('ustore_place_guest_base','ustore_place_guest_order')");
  assert.equal(paths.rows.length,2);for(const fn of paths.rows)assert.ok(fn.proconfig.includes('search_path=public'));
  const workflow=read('075_order_workflow_atomic.sql');const approve=workflow.indexOf('create or replace function public.ustore_approve_payment_receipt');
@@ -81,4 +83,24 @@ test('guest limits are persistent, independent by tenant, and settings preserve 
   for(let i=0;i<30;i++)assert.equal(await request(shop,'TRACK'),true);assert.equal(await request(shop,'TRACK'),false);
   assert.equal(await request(shop,'PREVIEW'),true);
  }finally{await db.close();}
+});
+test('locked cancellation RPC enforces OFF and all customer cutoffs while preserving admin cancellation',async()=>{
+ const db=await fixture();try{
+  await db.exec('alter table shop_settings add column if not exists customer_cancellation_enabled boolean not null default true; alter table shop_settings add column if not exists customer_cancel_cutoff text not null default \'BEFORE_SHIPPED\';');
+  await db.query('insert into shop_settings(shop_id,fulfillment_config,customer_cancellation_enabled) values($1,$2,false)',[shop,'{}']);
+  const owner='123';const created=await db.query('select public.place_order($1,$2,$3,$4,$5,$6,$7,$8,$9) as result',[shop,owner,'Ali Valiyev','+998901234567','TASHKENT','Bektemir','Uy 1','CASH',JSON.stringify([{product_id:product,qty:1}])]);
+  const id=created.rows[0].result.id;
+  const cancel=admin=>db.query('select public.update_order_status($1,$2,$3,$4,$5,$6)',[shop,id,'CANCELLED',owner,admin,'fixture']);
+  await assert.rejects(cancel(false),/customer_cancellation_disabled/);
+  await db.query('update shop_settings set customer_cancellation_enabled=true,customer_cancel_cutoff=$1 where shop_id=$2',['NEW_ONLY',shop]);
+  await db.query('update orders set status=$1 where id=$2',['PROCESSING',id]);await assert.rejects(cancel(false),/cancel_not_allowed_at_this_stage/);
+  await db.query('update shop_settings set customer_cancel_cutoff=$1 where shop_id=$2',['BEFORE_SHIPPED',shop]);
+  await db.query('update orders set shipment=$1 where id=$2',['{"status":"HANDED_TO_CARRIER"}',id]);await assert.rejects(cancel(false),/cancel_not_allowed_at_this_stage/);
+  await db.query('update orders set status=$1 where id=$2',['NEW',id]);await assert.rejects(cancel(false),/cancel_not_allowed_at_this_stage/);
+  await db.query('update orders set shipment=$1 where id=$2',['{"status":"DELIVERED"}',id]);
+  await db.query('update shop_settings set customer_cancel_cutoff=$1 where shop_id=$2',['ANY_NON_TERMINAL',shop]);await assert.rejects(cancel(false),/cancel_not_allowed_at_this_stage/);
+  await db.query('update orders set status=$1,shipment=$2 where id=$3',['PROCESSING','{"status":"IN_TRANSIT"}',id]);await cancel(false);
+  await assert.rejects(cancel(false),/cancel_not_allowed_at_this_stage/);
+  await db.query('update orders set status=$1 where id=$2',['NEW',id]);await db.query('update shop_settings set customer_cancellation_enabled=false where shop_id=$1',[shop]);await cancel(true);
+ }finally{await db.close()}
 });

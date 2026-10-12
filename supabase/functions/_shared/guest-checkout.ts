@@ -1,18 +1,25 @@
 // Guest checkout never creates user accounts or exposes private order data.
 export function normalizeGuestCheckout(raw: any = {}, strict = false) {
   const phone = String(raw?.phone || '').replace(/[\s()-]/g, '');
-  const telegram = String(raw?.telegram || '').trim().replace(/^@/, '');
-  const instagram = String(raw?.instagram || '').trim();
+  const socialUsername = (value: unknown, kind: 'telegram' | 'instagram') => {
+    let username=String(value || '').trim().replace(/^@/,'');
+    if (/^https?:\/\//i.test(username)) {
+      try {
+        const url=new URL(username);
+        const hosts=kind==='telegram' ? ['t.me','www.t.me','telegram.me','www.telegram.me'] : ['instagram.com','www.instagram.com'];
+        if (!hosts.includes(url.hostname) || url.username || url.password || url.port || !/^\/[^/]+\/?$/.test(url.pathname)) return '';
+        username=url.pathname.split('/')[1];
+      } catch { return ''; }
+    }
+    const valid=kind==='telegram' ? /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(username) : /^[A-Za-z0-9_.]{1,30}$/.test(username) && !['.','..'].includes(username);
+    return valid ? username : '';
+  };
+  const telegram = socialUsername(raw?.telegram,'telegram');
+  const instagram = socialUsername(raw?.instagram,'instagram');
   const validPhone = /^\+998\d{9}$/.test(phone);
-  const validTelegram = !telegram || /^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(telegram);
-  let instagramUrl = '';
-  if (instagram) {
-    try {
-      const url = new URL(instagram);
-      if (url.protocol !== 'https:' || !['instagram.com','www.instagram.com'].includes(url.hostname) || url.username || url.password || !/^\/[A-Za-z0-9_.]{1,30}\/?$/.test(url.pathname)) throw new Error();
-      instagramUrl = `https://www.instagram.com/${url.pathname.split('/')[1]}/`;
-    } catch { if (strict) throw new Error('invalid_guest_instagram'); }
-  }
+  const validTelegram = !String(raw?.telegram || '').trim() || !!telegram;
+  const instagramUrl = instagram ? `https://www.instagram.com/${instagram}/` : '';
+  if (strict && String(raw?.instagram || '').trim() && !instagram) throw new Error('invalid_guest_instagram');
   if (strict && phone && !validPhone) throw new Error('invalid_guest_phone');
   if (strict && !validTelegram) throw new Error('invalid_guest_telegram');
   if (strict && raw?.enabled === true && !validPhone) throw new Error('guest_contact_phone_required');
@@ -33,11 +40,11 @@ export function createGuestTrackingCode(): string {
 }
 
 export function guestTrackingProjection(order: any) {
-  const reviewing = order.payment_receipt_path && order.receipt_review_status === 'PENDING' && order.payment_status !== 'PAID';
   return {
     code: String(order.guest_tracking_code), status: order.status, createdAt: order.created_at,
     total: Number(order.payable_total ?? order.total_price) || 0,
-    paymentStatus: reviewing ? 'RECEIPT_REVIEW' : order.payment_status || 'PENDING',
+    paymentStatus: order.payment_status || 'PENDING',
+    receiptReviewStatus: order.payment_receipt_path ? order.receipt_review_status || 'PENDING' : null,
     shipmentStatus: order.shipment?.status || 'READY',
   };
 }

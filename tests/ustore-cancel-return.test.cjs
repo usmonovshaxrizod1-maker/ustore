@@ -25,7 +25,7 @@ test('BEFORE_SHIPPED (the default) blocks self-cancel once shipment has actually
   const start = shopApi.indexOf('const cutoff = settingsForCutoff');
   const block = shopApi.slice(start, start + 700);
   assert.match(block, /const shipped = \["IN_TRANSIT", "HANDED_TO_CARRIER"\]\.includes\(shipmentStatus\);/);
-  assert.match(block, /cutoff === "BEFORE_SHIPPED" \? \(orderForCutoff\?\.status === "NEW" \|\| \(orderForCutoff\?\.status === "PROCESSING" && !shipped\)\)/);
+  assert.match(block, /cutoff === "BEFORE_SHIPPED" \? \(!shipped && \["NEW","PROCESSING"\]\.includes\(orderForCutoff\?\.status\)\)/);
 });
 
 test('a customer-supplied cancel reason is used verbatim when given, and only falls back to the old hardcoded text when left blank — never silently discarded', () => {

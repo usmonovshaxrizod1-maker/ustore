@@ -6835,6 +6835,25 @@ body.ustore-browser-mode .fc-initial-loader{display:none}
 .fc-wordmark-style-option-preview .fc-wordmark-text{font-size:.87rem!important}
 @media(min-width:768px){.fc-wordmark-style-menu{max-height:min(20rem,53dvh)}}
 /* Checkout confirmation and guest tracking share the shop's surface and controls. */
+.fc-guest-name-grid .fc-checkout-input{grid-template-columns:minmax(0,1fr)}
+.fc-checkout-input input{min-width:0;text-align:start}
+.fc-settings-detail-card+.fc-guest-settings{margin-top:16px}
+.fc-guest-settings.fc-settings-detail-card{padding:0}
+.fc-guest-settings-fields{padding:0 20px 20px}
+.fc-guest-settings-fields[hidden]{display:none}
+.fc-guest-settings-fields>label{display:block;font-size:13px;font-weight:700;margin:12px 0 7px}
+.fc-guest-settings-fields>input{width:100%;min-height:46px;padding:12px;border:1px solid var(--ustore-border,#dfe7f2);border-radius:12px;background:var(--ustore-input-bg,#f5f8fc);color:var(--ustore-text,#172033);font-size:16px}
+.fc-guest-settings #guest-settings-error:not(:empty){margin:0;padding:0 20px 16px}
+.fc-guest-contact-note{margin-top:20px!important}
+.fc-guest-contact-note+.fc-guest-contacts{margin-top:10px}
+.fc-product-detail-add,.fc-variant-add-cart{display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:44px;background:var(--ustore-button,#2563eb);color:#fff;border-radius:.85rem;font-weight:800}
+.fc-product-detail-stepper{min-height:44px;grid-template-columns:44px minmax(0,1fr) 44px!important;margin-bottom:8px}
+.fc-product-detail-stepper button{min-height:44px}
+.fc-order-confirm-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fc-order-confirm-head .fc-confirm-title{margin:0}
+.fc-order-confirm-head>.fc-btn-icon{flex-shrink:0;min-width:40px;min-height:40px}
+.fc-reject-submit,.fc-confirm-box.is-order-cancel .fc-confirm-actions .fc-btn{display:flex;align-items:center;justify-content:center;min-height:44px;line-height:1.35;text-align:center}
+@media(max-width:767px){body.ustore-browser-mode .fc-desktop-profile-logout{display:inline-grid!important;color:var(--ustore-danger,#dc2626)}}
 .fc-checkout-dialog-overlay { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(15,23,42,.48); backdrop-filter:blur(3px); }
 .fc-checkout-dialog { width:min(100%,440px); max-height:calc(100dvh - 40px); overflow-y:auto; overscroll-behavior:contain; padding:28px; border:1px solid var(--fc-border,#dfe7f2); border-radius:24px; background:var(--fc-surface,#fff); color:var(--fc-text,#172033); box-shadow:0 24px 64px rgba(15,23,42,.18); text-align:center; }
 .fc-checkout-dialog h2 { font-size:22px; font-weight:800; line-height:1.25; margin:0 0 18px; }

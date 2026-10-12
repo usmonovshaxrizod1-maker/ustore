@@ -2319,9 +2319,9 @@ test('admin mode hides Favorites/Recently-viewed nav (user-mode feature stays in
   assert.match(app, /function openPage/, 'openPage/FAVORITES/RECENT routing itself must still exist for ordinary users');
 });
 
-test('cashless payment: cancel button hidden while a card/QR receipt is still PENDING review; admin approve/reject queue excludes CANCELLED orders', () => {
+test('cashless payment: customer cancellation follows shop policy; admin approve/reject queue excludes CANCELLED orders', () => {
   const app = fs.readFileSync(path.join(__dirname, '..', 'ustore-shop-app.js'), 'utf8');
-  assert.match(app, /\(o\.status === 'NEW' && !isReceiptPendingReview\(o\)\) \? `\s*<button onclick="openCancelOrderSheet/, 'customer cancel button must check !isReceiptPendingReview(o), not just status===NEW');
+  assert.match(app, /customerCanCancelOrder\(o\) \? `\s*<button onclick="openCancelOrderSheet/, 'customer cancel button must use the shop cancellation policy and current order status');
   const nextStart = app.indexOf('function adminOrderNextAction');
   const nextEnd = app.indexOf('function renderAdminOrderNextActionHtml', nextStart);
   const nextBlock = app.slice(nextStart, nextEnd);

@@ -1525,7 +1525,7 @@ async function publicWebBundles(db: any, shopId: string) {
 
 async function publicWebBoot(db: any, shopId: string) {
   const [shopR, designR, legalDocuments, activeBanners, clickConnR, paymeConnR, promoCodeR] = await Promise.all([
-    db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,address_ru,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,seller_legal_name,seller_tax_id,seller_registration_number,seller_legal_address,seller_bank_details,start_message,start_image_url,fulfillment_config,work_hours,orders_paused,orders_paused_note,featured_category_ids,customer_cancel_cutoff,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle(),
+    db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,address_ru,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,seller_legal_name,seller_tax_id,seller_registration_number,seller_legal_address,seller_bank_details,start_message,start_image_url,fulfillment_config,work_hours,orders_paused,orders_paused_note,featured_category_ids,customer_cancel_cutoff,customer_cancellation_enabled,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle(),
     db.from("design_settings").select("theme_id,colors").eq("shop_id", shopId).maybeSingle(),
     readShopLegalDocuments(db, shopId),
     activeBannersForClient(db, shopId),
@@ -1556,6 +1556,7 @@ async function publicWebBoot(db: any, shopId: string) {
       ? shop.featured_category_ids.filter((e: any) => e && typeof e === "object" && e.categoryId).map((e: any) => ({ categoryId: String(e.categoryId), productIds: Array.isArray(e.productIds) ? e.productIds.map((x: any) => String(x)) : [] }))
       : [],
     customerCancelCutoff: shop.customer_cancel_cutoff || "BEFORE_SHIPPED",
+    customerCancellationEnabled: shop.customer_cancellation_enabled !== false,
     returnRequestsEnabled: shop.return_requests_enabled !== false, returnWindowDays: Math.max(1, Number(shop.return_window_days) || 7),
     returnPolicyText: shop.return_policy_text || null, allowDiscountCombining: shop.allow_discount_combining === true,
     maxCombinedDiscountPercent: shop.max_combined_discount_percent != null ? Number(shop.max_combined_discount_percent) : null,
@@ -2407,14 +2408,15 @@ async function handleWebPrivateShopAction(db: any, shopId: string, principal: an
     if (ownedOrderError) throw ownedOrderError;
     if (!ownedOrder) return { __error: "order_not_found", __status: 404 };
     if (action === "web_order_cancel") {
-      const { data: settings, error: settingsError } = await db.from("shop_settings").select("customer_cancel_cutoff").eq("shop_id", shopId).maybeSingle();
+      const { data: settings, error: settingsError } = await db.from("shop_settings").select("customer_cancel_cutoff,customer_cancellation_enabled").eq("shop_id", shopId).maybeSingle();
       if (settingsError) throw settingsError;
+      if (settings?.customer_cancellation_enabled === false) return { __error: "customer_cancellation_disabled", __status: 409 };
       const cutoff = settings?.customer_cancel_cutoff || "BEFORE_SHIPPED";
       const shipmentStatus = ownedOrder.shipment?.status || "READY";
       const shipped = ["IN_TRANSIT", "HANDED_TO_CARRIER"].includes(shipmentStatus);
-      const allowed = cutoff === "NEW_ONLY" ? ownedOrder.status === "NEW"
-        : cutoff === "BEFORE_SHIPPED" ? (ownedOrder.status === "NEW" || (ownedOrder.status === "PROCESSING" && !shipped))
-        : ownedOrder.status === "NEW" || ownedOrder.status === "PROCESSING";
+      const allowed = shipmentStatus !== "DELIVERED" && (cutoff === "NEW_ONLY" ? ownedOrder.status === "NEW"
+        : cutoff === "BEFORE_SHIPPED" ? (!shipped && ["NEW","PROCESSING"].includes(ownedOrder.status))
+        : cutoff === "ANY_NON_TERMINAL" && (ownedOrder.status === "NEW" || ownedOrder.status === "PROCESSING"));
       if (!allowed) return { __error: "cancel_not_allowed_at_this_stage", __status: 409 };
     }
     const nextStatus = action === "web_order_cancel" ? "CANCELLED" : "DELIVERED";
@@ -2422,6 +2424,8 @@ async function handleWebPrivateShopAction(db: any, shopId: string, principal: an
     const result = await db.rpc("update_order_status", { p_shop_id: shopId, p_order_id: orderId, p_new_status: nextStatus, p_requester_tg_id: tgId, p_is_admin: false, p_cancel_reason: reason });
     if (result.error) {
       const message = String(result.error.message || "");
+      if (message.includes("customer_cancellation_disabled")) return { __error: "customer_cancellation_disabled", __status: 409 };
+      if (message.includes("cancel_not_allowed_at_this_stage")) return { __error: "cancel_not_allowed_at_this_stage", __status: 409 };
       if (message.includes("forbidden")) return { __error: "forbidden", __status: 403 };
       if (message.includes("terminal_status") || message.includes("invalid_transition")) return { __error: "invalid_status_transition", __status: 409 };
       if (message.includes("order_not_found")) return { __error: "order_not_found", __status: 404 };
@@ -4293,7 +4297,9 @@ Deno.serve(async (req: Request) => {
           .eq('shop_id',tenant.shopId).eq('is_guest',true).eq('guest_tracking_code',code).maybeSingle();
         if (found.error) throw found.error;
         if (!found.data) return json({ error:'guest_order_not_found' },404);
-        return json({ tracking:guestTrackingProjection(found.data), contacts:guest });
+        const trackingResponse=json({ tracking:guestTrackingProjection(found.data), contacts:guest });
+        trackingResponse.headers.set('Cache-Control','no-store');
+        return trackingResponse;
       }
       if (!guest.enabled && action !== 'guest_create_order') return json({ error:'guest_checkout_disabled' },403);
       if (sessionResult.session && action === 'guest_create_order') return json({ error:'already_authenticated' },409);
@@ -4663,7 +4669,7 @@ Deno.serve(async (req: Request) => {
       case "get_admin_settings": {
         await requirePermission('shop.settings.manage');
         const [shopR, designR] = await Promise.all([
-          db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,seller_legal_name,seller_tax_id,seller_registration_number,seller_legal_address,seller_bank_details,start_message,start_image_url,fulfillment_config,work_hours,low_stock_threshold,orders_paused,orders_paused_note,customer_cancel_cutoff,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle(),
+          db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,seller_legal_name,seller_tax_id,seller_registration_number,seller_legal_address,seller_bank_details,start_message,start_image_url,fulfillment_config,work_hours,low_stock_threshold,orders_paused,orders_paused_note,customer_cancel_cutoff,customer_cancellation_enabled,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle(),
           db.from("design_settings").select("theme_id,colors").eq("shop_id", shopId).maybeSingle(),
         ]);
         if (shopR.error) throw shopR.error;
@@ -4689,6 +4695,7 @@ Deno.serve(async (req: Request) => {
           lowStockThreshold: resolveLowStockThreshold(row.low_stock_threshold),
           orderPolicies: {
             customerCancelCutoff: row.customer_cancel_cutoff || "BEFORE_SHIPPED",
+            customerCancellationEnabled: row.customer_cancellation_enabled !== false,
             returnRequestsEnabled: row.return_requests_enabled !== false,
             returnWindowDays: Math.max(1, Number(row.return_window_days) || 7),
             returnPolicyText: row.return_policy_text || null,
@@ -4856,7 +4863,7 @@ Deno.serve(async (req: Request) => {
           shop_id: shopId, tg_id: tgId, first_name: ctx.firstName ?? null, last_name: ctx.lastName ?? null,
           username: ctx.username ?? null, last_seen_at: new Date().toISOString(),
         }, { onConflict: "shop_id,tg_id" }).select("is_blocked,block_reason,warned,warn_reason,profile_first_name,profile_last_name,phone").single();
-        const shopPromise = db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,address_ru,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,seller_legal_name,seller_tax_id,seller_registration_number,seller_legal_address,seller_bank_details,start_message,start_image_url,fulfillment_config,work_hours,low_stock_threshold,orders_paused,orders_paused_note,featured_category_ids,customer_cancel_cutoff,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle();
+        const shopPromise = db.from("shop_settings").select("name,logo_url,logo_type,logo_wordmark,address,address_ru,coordinates,phone,phone_2,phone_3,instagram,telegram,facebook,about,email,youtube,tiktok,seller_legal_name,seller_tax_id,seller_registration_number,seller_legal_address,seller_bank_details,start_message,start_image_url,fulfillment_config,work_hours,low_stock_threshold,orders_paused,orders_paused_note,featured_category_ids,customer_cancel_cutoff,customer_cancellation_enabled,return_requests_enabled,return_window_days,return_policy_text,allow_discount_combining,max_combined_discount_percent").eq("shop_id", shopId).maybeSingle();
         const designPromise = db.from("design_settings").select("theme_id,colors").eq("shop_id", shopId).maybeSingle();
         const legalPromise = readShopLegalDocuments(db, shopId);
         const subsPromise = db.from("stock_notifications").select("product_id,variant_sku").eq("shop_id", shopId).eq("tg_id", tgId).is("notified_at", null);
@@ -4932,6 +4939,7 @@ Deno.serve(async (req: Request) => {
             ? shopRow.featured_category_ids.filter((e: any) => e && typeof e === "object" && e.categoryId).map((e: any) => ({ categoryId: String(e.categoryId), productIds: Array.isArray(e.productIds) ? e.productIds.map((x: any) => String(x)) : [] }))
             : [],
           customerCancelCutoff: shopRow?.customer_cancel_cutoff || "BEFORE_SHIPPED",
+          customerCancellationEnabled: shopRow?.customer_cancellation_enabled !== false,
           returnRequestsEnabled: shopRow?.return_requests_enabled !== false,
           returnWindowDays: Math.max(1, Number(shopRow?.return_window_days) || 7),
           returnPolicyText: shopRow?.return_policy_text || null,
@@ -5202,6 +5210,10 @@ Deno.serve(async (req: Request) => {
         if (payload.customerCancelCutoff !== undefined) {
           const allowed = ["NEW_ONLY", "BEFORE_SHIPPED", "ANY_NON_TERMINAL"];
           patch.customer_cancel_cutoff = allowed.includes(payload.customerCancelCutoff) ? payload.customerCancelCutoff : "BEFORE_SHIPPED";
+        }
+        if (payload.customerCancellationEnabled !== undefined) {
+          if (typeof payload.customerCancellationEnabled !== 'boolean') return json({error:'invalid_cancellation_policy'},400);
+          patch.customer_cancellation_enabled = payload.customerCancellationEnabled;
         }
         if (payload.returnRequestsEnabled !== undefined) patch.return_requests_enabled = !!payload.returnRequestsEnabled;
         if (payload.returnWindowDays !== undefined) {
@@ -10870,14 +10882,15 @@ Deno.serve(async (req: Request) => {
         if (action === "cancel_order" && !isAdmin) {
           const [{ data: orderForCutoff }, { data: settingsForCutoff }] = await Promise.all([
             db.from("orders").select("status,shipment").eq("id", payload.orderId).eq("shop_id", shopId).maybeSingle(),
-            db.from("shop_settings").select("customer_cancel_cutoff").eq("shop_id", shopId).maybeSingle(),
+            db.from("shop_settings").select("customer_cancel_cutoff,customer_cancellation_enabled").eq("shop_id", shopId).maybeSingle(),
           ]);
+          if (settingsForCutoff?.customer_cancellation_enabled === false) return json({ error: "customer_cancellation_disabled" }, 400);
           const cutoff = settingsForCutoff?.customer_cancel_cutoff || "BEFORE_SHIPPED";
           const shipmentStatus = orderForCutoff?.shipment?.status || "READY";
           const shipped = ["IN_TRANSIT", "HANDED_TO_CARRIER"].includes(shipmentStatus);
-          const allowed = cutoff === "NEW_ONLY" ? orderForCutoff?.status === "NEW"
-            : cutoff === "BEFORE_SHIPPED" ? (orderForCutoff?.status === "NEW" || (orderForCutoff?.status === "PROCESSING" && !shipped))
-            : orderForCutoff?.status === "NEW" || orderForCutoff?.status === "PROCESSING";
+          const allowed = shipmentStatus !== "DELIVERED" && (cutoff === "NEW_ONLY" ? orderForCutoff?.status === "NEW"
+            : cutoff === "BEFORE_SHIPPED" ? (!shipped && ["NEW","PROCESSING"].includes(orderForCutoff?.status))
+            : cutoff === "ANY_NON_TERMINAL" && (orderForCutoff?.status === "NEW" || orderForCutoff?.status === "PROCESSING"));
           if (!allowed) return json({ error: "cancel_not_allowed_at_this_stage" }, 400);
         }
         const cancelReason = action === "cancel_order" ? (nullableText(payload.reason, 500) || "Mijoz tomonidan bekor qilindi") : nullableText(payload.reason, 500);
@@ -10887,6 +10900,8 @@ Deno.serve(async (req: Request) => {
         });
         if (error) {
           const m = String(error.message || "");
+          if (m.includes("customer_cancellation_disabled")) return json({ error:"customer_cancellation_disabled" },400);
+          if (m.includes("cancel_not_allowed_at_this_stage")) return json({ error:"cancel_not_allowed_at_this_stage" },400);
           if (m.includes("forbidden")) return json({ error: "forbidden" }, 403);
           if (m.includes("terminal_status") || m.includes("invalid_transition")) return json({ error: "invalid_status_transition" }, 400);
           if (m.includes("order_not_found")) return json({ error: "order_not_found" }, 404);

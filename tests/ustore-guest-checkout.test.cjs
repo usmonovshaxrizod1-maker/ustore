@@ -14,6 +14,6 @@ test('tracking codes stay strings of ten secure random digits and are not derive
 });
 test('public tracking cannot expose address, phone, receipt, account, private items or internal order ID',()=>{
  const h=helpers(),r=h.guestTrackingProjection({id:9,guest_tracking_code:'0012345678',status:'NEW',created_at:'now',total_price:100,payment_status:'PENDING',payment_receipt_path:'private',receipt_review_status:'PENDING',phone:'secret',address:'secret',items:['secret'],account_id:'secret',shipment:{status:'READY'}});
- assert.equal(r.code,'0012345678');assert.equal(r.paymentStatus,'RECEIPT_REVIEW');
+ assert.equal(r.code,'0012345678');assert.equal(r.paymentStatus,'PENDING');assert.equal(r.receiptReviewStatus,'PENDING');
  for(const key of ['id','phone','address','items','account_id','payment_receipt_path'])assert.equal(key in r,false);
 });

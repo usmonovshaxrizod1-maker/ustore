@@ -166,9 +166,10 @@ function escapeHtml(str) {
       return tr('Saqlash amalga oshmadi. Qayta urinib ko‘ring.', 'Не удалось сохранить. Повторите попытку.');
     }
     async function appConfirm(message, opts = {}) {
+      if (opts.showClose) hideActionToast();
       const danger = opts.danger === true;
       const title = opts.title || (danger ? tr('Amalni tasdiqlang','Подтвердите действие') : tr('Tasdiqlash','Подтверждение'));
-      return fcConfirm(title, String(message || ''), { danger, confirmLabel: opts.confirmLabel || tr('Tasdiqlash','Подтвердить'), cancelLabel: opts.cancelLabel || tr('Bekor qilish','Отмена') });
+      return fcConfirm(title, String(message || ''), { danger, showClose:opts.showClose===true, confirmLabel: opts.confirmLabel || tr('Tasdiqlash','Подтвердить'), cancelLabel: opts.cancelLabel || tr('Bekor qilish','Отмена') });
     }
 
     // Legacy audit, 1-band: eski via.placeholder.com (tashqi, tarmoqqa
@@ -1364,6 +1365,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     let featuredCategoriesSaving = false;
     // Bekor qilish cutoff + qaytarish murojaati (Online Do'kon yaxshilashlari, 14/15-band).
     let customerCancelCutoff = 'BEFORE_SHIPPED';
+    let customerCancellationEnabled = true;
     let returnRequestsEnabled = true;
     let returnWindowDays = 7;
     let returnPolicyText = '';
@@ -1698,6 +1700,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     let billzBrowsePageSize = 10;
     let fulfillmentConfig = commerce.defaultConfig(TOP_LEVEL_REGION_IDS);
     let guestCheckoutActive = false;
+    let guestCheckoutContactsDraft = null;
     let guestTrackingCode = localStorage.getItem(scopedKey('guestTrackingCode')) || '';
     let guestTrackingResult = null, guestTrackingBusy = false, guestTrackingError = '';
     let orderSuccessState = null;
@@ -2031,7 +2034,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     // ko'rsatiladi (ikkita alohida ko'rsatkich birlashtirildi). Tepadagi
     // badge endi buyurtmaning haqiqiy o.status qiymatini ko'rsatadi.
     function orderDisplayStatus(o) {
-      if (o?.receiptReviewStatus === 'REJECTED') return 'REJECTED';
+      if (o?.status === 'NEW' && o?.receiptReviewStatus === 'REJECTED') return 'REJECTED';
       return o?.status;
     }
 
@@ -2761,6 +2764,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const leftMs = deadline - Date.now();
       if (leftMs < 0) return { allowed:false, reason:tr('Qaytarish muddati tugagan.','Срок возврата истёк.'), deadline };
       return { allowed:true, daysLeft:Math.max(0, Math.ceil(leftMs / 86400000)), deadline };
+    }
+    function customerCanCancelOrder(order) {
+      return commerce.customerCanCancel(order, {enabled:customerCancellationEnabled,cutoff:customerCancelCutoff});
     }
     function closeOrderHelpSheet() { document.getElementById('fc-order-help-root')?.remove(); }
     function openOrderHelpSheet(orderId) {
@@ -4298,7 +4304,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function restoreShopRenderState(snapshot) {
       if(!snapshot) return;
       const apply=()=>{
-        (snapshot.fields||[]).forEach(st=>{const el=document.getElementById(st.key)||document.querySelector(`[name="${String(st.key).replace(/"/g,'\\"')}"]`);if(!el)return;if(st.checked!==null&&'checked' in el)el.checked=st.checked;if('value' in el)el.value=st.value;});
+        (snapshot.fields||[]).forEach(st=>{const el=document.getElementById(st.key)||document.querySelector(`[name="${String(st.key).replace(/"/g,'\\"')}"]`);if(!el)return;if(el.closest('.fc-guest-settings') || (el.type==='checkbox' && el.closest('.fc-order-policy-panel')))return;if(st.checked!==null&&'checked' in el)el.checked=st.checked;if('value' in el)el.value=st.value;});
         (snapshot.scrolls||[]).forEach(st=>{const el=document.querySelectorAll(st.selector)[st.index];if(el){el.scrollTop=st.top;el.scrollLeft=st.left;}});
         if(snapshot.focus){const el=(snapshot.focus.id&&document.getElementById(snapshot.focus.id))||(snapshot.focus.name&&document.querySelector(`[name="${String(snapshot.focus.name).replace(/"/g,'\\"')}"]`));if(el?.focus){try{el.focus({preventScroll:true});}catch(_){try{el.focus();}catch(_){}}if(snapshot.focus.selectionStart!==null&&typeof el.setSelectionRange==='function'){try{el.setSelectionRange(snapshot.focus.selectionStart,snapshot.focus.selectionEnd);}catch(_){}}}}
       };
@@ -4422,8 +4428,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         root.id = 'fc-confirm-root';
         root.innerHTML = `
           <div class="fc-confirm-backdrop" onclick="window.__fcConfirmAnswer(false)">
-            <div class="fc-confirm-box" onclick="event.stopPropagation()">
-              <p class="fc-confirm-title">${escapeHtml(title)}</p>
+            <div class="fc-confirm-box ${opts.showClose?'is-order-cancel':''}" onclick="event.stopPropagation()">
+              ${opts.showClose?`<div class="fc-order-confirm-head"><p class="fc-confirm-title">${escapeHtml(title)}</p><button type="button" class="fc-btn fc-btn-icon" onclick="window.__fcConfirmAnswer(false)" aria-label="${tr('Yopish','Закрыть')}">${fcIcon('<path d="m6 6 12 12M6 18 18 6"/>','w-4 h-4')}</button></div>`:`<p class="fc-confirm-title">${escapeHtml(title)}</p>`}
               <p class="fc-confirm-text">${escapeHtml(text)}</p>
               <div class="fc-confirm-actions">
                 <button onclick="window.__fcConfirmAnswer(false)" class="fc-btn fc-btn-secondary">${escapeHtml(cancelLabel)}</button>
@@ -6074,12 +6080,14 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       safeCreateIcons();
     }
     function applyOrderPolicyPatch(patch) {
+      if (patch.customerCancellationEnabled !== undefined) customerCancellationEnabled = !!patch.customerCancellationEnabled;
       if (patch.customerCancelCutoff !== undefined) customerCancelCutoff = String(patch.customerCancelCutoff || 'BEFORE_SHIPPED');
       if (patch.returnRequestsEnabled !== undefined) returnRequestsEnabled = !!patch.returnRequestsEnabled;
       if (patch.returnWindowDays !== undefined) returnWindowDays = Math.max(1, Math.min(365, Number(patch.returnWindowDays) || 7));
       if (patch.returnPolicyText !== undefined) returnPolicyText = String(patch.returnPolicyText || '');
     }
     function orderPolicyToastFor(patch) {
+      if (patch.customerCancellationEnabled !== undefined) return patch.customerCancellationEnabled ? tr('Bekor qilish yoqildi','Отмена включена') : tr('Bekor qilish o‘chirildi','Отмена выключена');
       if (patch.returnWindowDays !== undefined) return tr(`Qaytarish muddati ${returnWindowDays} kunga o‘zgartirildi`, `Срок возврата изменён на ${returnWindowDays} дн.`);
       if (patch.returnRequestsEnabled !== undefined) return patch.returnRequestsEnabled ? tr('Qaytarish yoqildi','Возврат включён') : tr('Qaytarish o‘chirildi','Возврат выключен');
       if (patch.customerCancelCutoff !== undefined) return tr('Bekor qilish sharti o‘zgartirildi','Условие отмены изменено');
@@ -6090,7 +6098,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const normalized = { ...patch };
       if (normalized.returnWindowDays !== undefined) normalized.returnWindowDays = Math.max(1, Math.min(365, Number(normalized.returnWindowDays) || 7));
       const before = {
-        customerCancelCutoff, returnRequestsEnabled, returnWindowDays, returnPolicyText,
+        customerCancellationEnabled, customerCancelCutoff, returnRequestsEnabled, returnWindowDays, returnPolicyText,
       };
       const version = ++orderPoliciesMutationVersion;
       applyOrderPolicyPatch(normalized);
@@ -6223,7 +6231,8 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       const dayOptions = [1,3,7,14,30];
       return `<section class="fc-order-policy-panel">
         <div class="fc-order-policy-head"><span class="fc-shop-settings-icon"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></span><div><b>${tr('Qaytarish va bekor qilish','Возврат и отмена')}</b><small>${tr('Bekor qilish va qaytarish muddatlarini boshqaring.','Настройте отмену и срок возврата.')}</small></div></div>
-        <div class="fc-order-policy-row"><div><b>${tr('Mijoz qachongacha bekor qila oladi','До какого момента клиент может отменить')}</b></div><div class="fc-policy-segments">${cancelOptions.map(([id,label])=>`<button type="button" onclick="saveOrderPolicies({customerCancelCutoff:'${id}'})" class="${customerCancelCutoff===id?'is-active':''}">${label}</button>`).join('')}</div></div>
+        <div class="fc-order-policy-row is-toggle"><div><b>${tr('Bekor qilishni yoqish','Разрешить отмену')}</b></div><label class="fc-toggle"><input type="checkbox" aria-label="${tr('Bekor qilishni yoqish','Разрешить отмену')}" ${customerCancellationEnabled?'checked':''} onchange="saveOrderPolicies({customerCancellationEnabled:this.checked})"><span class="fc-toggle-track"></span></label></div>
+        ${customerCancellationEnabled ? `<div class="fc-order-policy-row"><div><b>${tr('Mijoz qachongacha bekor qila oladi','До какого момента клиент может отменить')}</b></div><div class="fc-policy-segments">${cancelOptions.map(([id,label])=>`<button type="button" onclick="saveOrderPolicies({customerCancelCutoff:'${id}'})" class="${customerCancelCutoff===id?'is-active':''}">${label}</button>`).join('')}</div></div>` : ''}
         <div class="fc-order-policy-row is-toggle"><div><b>${tr('Qaytarishni yoqish','Разрешить возврат')}</b><small>${tr('Oddiy muammo/support murojaati bundan mustaqil ishlaydi.','Обычная поддержка работает независимо.')}</small></div><label class="fc-toggle"><input type="checkbox" ${returnRequestsEnabled?'checked':''} onchange="saveOrderPolicies({returnRequestsEnabled:this.checked})"><span class="fc-toggle-track"></span></label></div>
         ${returnRequestsEnabled ? `<div class="fc-order-policy-row"><div><b>${tr('Qaytarish muddati','Срок возврата')}</b><small>${tr('Yetkazilgan vaqtdan boshlab hisoblanadi.','Считается с момента доставки.')}</small></div><div class="fc-return-days">${dayOptions.map(d=>`<button type="button" onclick="saveOrderPolicies({returnWindowDays:${d}})" class="${Number(returnWindowDays)===d?'is-active':''}">${d}</button>`).join('')}<label><input type="number" min="1" max="365" value="${escapeHtml(String(returnWindowDays))}" onchange="saveOrderPolicies({returnWindowDays:this.value})"><span>${tr('kun','дн.')}</span></label></div></div>
         <label class="fc-order-policy-text"><span>${tr('Qaytarish bo‘yicha qoida / izoh','Правила / инструкция возврата')}</span><textarea rows="2" maxlength="1200" placeholder="${tr('Masalan: mahsulot va qadoq holati...','Например: состояние товара и упаковки...')}" onchange="saveOrderPolicies({returnPolicyText:this.value})">${escapeHtml(returnPolicyText)}</textarea></label>` : ''}
@@ -9525,17 +9534,19 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     function guestContactLinksHtml(contacts = fulfillmentConfig.checkout || {}) {
       const links = [];
       const phone = String(contacts.phone || '').replace(/[\s()-]/g,'');
-      if (/^\+998\d{9}$/.test(phone)) links.push(`<a href="tel:${phone}">${fcIcon('<path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 3.1 5.2 2 2 0 0 1 5.1 3h3l2 5-2 2a16 16 0 0 0 6 6l2-2Z"/>','w-4 h-4')}${tr('Qo‘ng‘iroq','Позвонить')}</a>`);
-      if (/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(contacts.telegram || '')) links.push(`<a href="https://t.me/${contacts.telegram}" target="_blank" rel="noopener" onclick="openGuestContact(event,this.href,'telegram')">${fcIcon('<path d="m22 2-7 20-4-9-9-4Z M22 2 11 13"/>','w-4 h-4')}Telegram</a>`);
-      try {
-        const url = new URL(contacts.instagram || '');
-        if (url.protocol==='https:' && ['instagram.com','www.instagram.com'].includes(url.hostname) && !url.username && !url.password && /^\/[A-Za-z0-9_.]{1,30}\/?$/.test(url.pathname)) links.push(`<a href="${escapeHtml(url.href)}" target="_blank" rel="noopener" onclick="openGuestContact(event,this.href,'instagram')">${fcIcon('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>','w-4 h-4')}Instagram</a>`);
-      } catch {}
-      return links.length ? `<nav class="fc-guest-contacts" aria-label="${tr('Do‘kon bilan bog‘lanish','Связаться с магазином')}">${links.join('')}</nav>` : '';
+      if (/^\+998\d{9}$/.test(phone)) links.push(`<a href="tel:${phone}" target="_top" onclick="openGuestContact(event,this.href,'phone')">${fcIcon('<path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 3.1 5.2 2 2 0 0 1 5.1 3h3l2 5-2 2a16 16 0 0 0 6 6l2-2Z"/>','w-4 h-4')}${tr('Qo‘ng‘iroq','Позвонить')}</a>`);
+      const telegramUrl=commerce.guestSocialUrl(contacts.telegram,'telegram');
+      const instagramUrl=commerce.guestSocialUrl(contacts.instagram,'instagram');
+      if (telegramUrl) links.push(`<a href="${escapeHtml(telegramUrl)}" target="_blank" rel="noopener" onclick="openGuestContact(event,this.href,'telegram')">${fcIcon('<path d="m22 2-7 20-4-9-9-4Z M22 2 11 13"/>','w-4 h-4')}Telegram</a>`);
+      if (instagramUrl) links.push(`<a href="${escapeHtml(instagramUrl)}" target="_blank" rel="noopener" onclick="openGuestContact(event,this.href,'instagram')">${fcIcon('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/>','w-4 h-4')}Instagram</a>`);
+      return links.length ? `<p class="fc-guest-contact-note">${tr('Buyurtma haqida to‘liqroq ma’lumot olish uchun:','Для получения подробной информации о заказе:')}</p><nav class="fc-guest-contacts" aria-label="${tr('Do‘kon bilan bog‘lanish','Связаться с магазином')}">${links.join('')}</nav>` : '';
     }
     function openGuestContact(event,url,kind) {
-      if (kind==='telegram' && tg?.openTelegramLink) { event.preventDefault(); tg.openTelegramLink(url); }
-      else if (tg?.openLink) { event.preventDefault(); tg.openLink(url); }
+      if (kind==='phone') return;
+      if (!browserBridge && tg?.initData) {
+        if (kind==='telegram' && tg.openTelegramLink) { event.preventDefault(); tg.openTelegramLink(url); }
+        else if (tg.openLink) { event.preventDefault(); tg.openLink(url); }
+      }
     }
     function checkoutDialogHtml(title,body) {
       return `<div class="fc-checkout-dialog-overlay"><section class="fc-checkout-dialog" role="dialog" aria-modal="true" aria-labelledby="fc-checkout-dialog-title"><h2 id="fc-checkout-dialog-title">${title}</h2>${body}</section></div>`;
@@ -9563,7 +9574,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       requestAnimationFrame(()=>document.querySelector('.fc-checkout-dialog button')?.focus());
     }
     function guestCheckoutChoiceHtml() {
-      return checkoutDialogHtml(tr('Buyurtmani qanday rasmiylashtirasiz?','Как оформить заказ?'),`<p>${tr('Profilingiz orqali kiring yoki ro‘yxatdan o‘tmasdan davom eting.','Войдите в профиль или продолжите без регистрации.')}</p><div class="fc-success-actions"><button type="button" class="fc-btn-primary" onclick="continueGuestCheckout()">${tr('Mehmon sifatida davom etish','Продолжить как гость')}</button><button type="button" class="fc-btn-secondary" onclick="loginForCheckout()">${tr('Kirish / ro‘yxatdan o‘tish','Вход / регистрация')}</button><button type="button" class="fc-dialog-cancel" onclick="activePopupModal=null;render()">${tr('Bekor qilish','Отмена')}</button></div>`);
+      return checkoutDialogHtml(tr('Buyurtmani qanday rasmiylashtirasiz?','Как оформить заказ?'),`<p>${tr('Profilingiz orqali kiring yoki ro‘yxatdan o‘tmasdan davom eting.','Войдите в профиль или продолжите без регистрации.')}</p><div class="fc-success-actions"><button type="button" class="fc-btn-primary" onclick="continueGuestCheckout()">${tr('Ro‘yxatdan o‘tmasdan buyurtma berish','Заказать без регистрации')}</button><button type="button" class="fc-btn-secondary" onclick="loginForCheckout()">${tr('Kirish / ro‘yxatdan o‘tish','Вход / регистрация')}</button><button type="button" class="fc-dialog-cancel" onclick="activePopupModal=null;render()">${tr('Bekor qilish','Отмена')}</button></div>`);
     }
     function continueGuestCheckout() { activePopupModal=null; guestCheckoutActive=true; openCheckoutForm(); }
     function loginForCheckout() {
@@ -9573,7 +9584,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
     }
     function guestTrackingHtml() {
       const result = guestTrackingResult;
-      const details = result ? `<section class="fc-guest-tracking-result" aria-live="polite"><div class="fc-order-kv"><span>${tr('Buyurtma holati','Статус заказа')}</span><b>${escapeHtml(statusLabel(result.status))}</b></div><div class="fc-order-kv"><span>${tr('Sana','Дата')}</span><b>${escapeHtml(new Date(result.createdAt).toLocaleString(uiLang==='ru'?'ru-RU':'uz-UZ'))}</b></div><div class="fc-order-kv"><span>${tr('Jami','Итого')}</span><b>${money(result.total)}</b></div><div class="fc-order-kv"><span>${tr('To‘lov','Оплата')}</span><b>${escapeHtml(paymentStatusLabel(result.paymentStatus))}</b></div><div class="fc-order-kv"><span>${tr('Yetkazib berish','Доставка')}</span><b>${escapeHtml(shipmentStatusLabel(result.shipmentStatus))}</b></div></section>${guestContactLinksHtml(result.contacts)}` : '';
+      const details = result ? `<section class="fc-guest-tracking-result" aria-live="polite"><div class="fc-order-kv"><span>${tr('Buyurtma holati','Статус заказа')}</span><b>${escapeHtml(statusLabel(result.status))}</b></div><div class="fc-order-kv"><span>${tr('Sana','Дата')}</span><b>${escapeHtml(new Date(result.createdAt).toLocaleString(uiLang==='ru'?'ru-RU':'uz-UZ'))}</b></div><div class="fc-order-kv"><span>${tr('Jami','Итого')}</span><b>${money(result.total)}</b></div><div class="fc-order-kv"><span>${tr('To‘lov','Оплата')}</span><b>${escapeHtml(paymentStatusLabel(result.paymentStatus))}</b></div>${result.receiptReviewStatus ? `<div class="fc-order-kv"><span>${tr('Chek holati','Статус чека')}</span><b>${escapeHtml(receiptReviewLabel(result.receiptReviewStatus))}</b></div>` : ''}<div class="fc-order-kv"><span>${tr('Yetkazib berish','Доставка')}</span><b>${escapeHtml(shipmentStatusLabel(result.shipmentStatus))}</b></div></section>${guestContactLinksHtml(result.contacts)}` : '';
       return `<section class="fc-guest-tracking"><h2>${tr('Buyurtmani kuzatish','Отследить заказ')}</h2><p>${tr('Buyurtmadan keyin berilgan 10 xonali kodni kiriting.','Введите 10-значный код, полученный после заказа.')}</p><form onsubmit="event.preventDefault();trackGuestOrder()"><label for="guest-tracking-code">${tr('Kuzatuv kodi','Код отслеживания')}</label><div class="fc-guest-tracking-input"><input id="guest-tracking-code" type="text" inputmode="numeric" autocomplete="off" maxlength="10" pattern="[0-9]{10}" value="${escapeHtml(guestTrackingCode)}" oninput="guestTrackingCode=this.value" ${guestTrackingBusy?'disabled':''}><button type="submit" class="fc-btn-primary" ${guestTrackingBusy?'disabled':''}>${guestTrackingBusy?tr('Tekshirilmoqda…','Проверяем…'):tr(result?'Yangilash':'Tekshirish',result?'Обновить':'Проверить')}</button></div></form>${guestTrackingError?`<p class="fc-checkout-receipt-error" role="alert">${escapeHtml(guestTrackingError)}</p>`:''}${details}</section>`;
     }
     async function trackGuestOrder() {
@@ -9593,34 +9604,43 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function guestCheckoutSettingsHtml() {
       const config=fulfillmentConfig.checkout || {};
-      const phone=config.phone || shopContact.phone || '';
-      const telegram=config.telegram || String(shopContact.telegram || '').replace(/^https?:\/\/(?:www\.)?t\.me\//,'').replace(/^@/,'').replace(/\/$/,'');
-      let instagram=config.instagram || shopContact.instagram || '';
-      if (/^[A-Za-z0-9_.]{1,30}$/.test(instagram)) instagram=`https://www.instagram.com/${instagram}/`;
-      return `<section class="fc-guest-settings"><h3>${tr('Ro‘yxatdan o‘tmasdan buyurtma','Заказы без регистрации')}</h3><p>${tr('Mehmonlar akkaunt ochmasdan buyurtma beradi. Ularning telefoni tasdiqlanmagan bo‘ladi.','Гости оформляют заказ без аккаунта. Их номер телефона не подтверждается.')}</p><label class="fc-guest-settings-toggle"><input id="guest-checkout-enabled" type="checkbox" ${config.enabled?'checked':''}>${tr('Mehmon buyurtmalariga ruxsat berish','Разрешить гостевые заказы')}</label><label for="guest-contact-phone">${tr('Do‘kon telefoni *','Телефон магазина *')}</label><input id="guest-contact-phone" type="tel" autocomplete="tel" value="${escapeHtml(phone)}" placeholder="+998 90 123 45 67"><label for="guest-contact-telegram">Telegram · ${tr('ixtiyoriy','необязательно')}</label><input id="guest-contact-telegram" value="${escapeHtml(telegram)}" placeholder="@username"><label for="guest-contact-instagram">Instagram · ${tr('ixtiyoriy','необязательно')}</label><input id="guest-contact-instagram" type="url" value="${escapeHtml(instagram)}" placeholder="https://www.instagram.com/shop/"><p>${tr('Yoqish uchun do‘kon telefonini kiriting. Aloqalar mehmon buyurtmasi va kuzatuv oynasida ko‘rsatiladi.','Для включения укажите телефон магазина. Контакты появятся в подтверждении и отслеживании гостевого заказа.')}</p><button type="button" class="fc-btn-primary" onclick="saveGuestCheckoutSettings(this)">${tr('Saqlash','Сохранить')}</button><p id="guest-settings-error" role="alert" class="fc-checkout-receipt-error"></p></section>`;
+      const enabled=guestCheckoutContactsDraft?.enabled ?? config.enabled;
+      const phone=guestCheckoutContactsDraft?.phone ?? (config.phone || shopContact.phone || '');
+      const telegramUrl=commerce.guestSocialUrl(config.telegram || shopContact.telegram,'telegram');
+      const instagramUrl=commerce.guestSocialUrl(config.instagram || shopContact.instagram,'instagram');
+      const telegram=guestCheckoutContactsDraft?.telegram ?? (telegramUrl ? new URL(telegramUrl).pathname.slice(1) : config.telegram || shopContact.telegram || '');
+      const instagram=guestCheckoutContactsDraft?.instagram ?? (instagramUrl ? new URL(instagramUrl).pathname.split('/')[1] : config.instagram || shopContact.instagram || '');
+      return `<section class="fc-settings-detail-card fc-guest-settings"><div class="fc-settings-toggle-row"><span class="fc-settings-menu-icon"><i data-lucide="user-round"></i></span><div class="fc-settings-menu-copy"><b>${tr('Ro‘yxatdan o‘tmasdan buyurtma','Заказы без регистрации')}</b><small>${tr('Mijoz akkaunt ochmasdan buyurtma berishi mumkin.','Клиент может оформить заказ без аккаунта.')}</small></div><label class="fc-toggle"><input id="guest-checkout-enabled" type="checkbox" aria-label="${tr('Mehmon buyurtmalariga ruxsat berish','Разрешить гостевые заказы')}" aria-controls="guest-checkout-fields" ${enabled?'checked':''} onchange="toggleGuestCheckoutFields(this)"><span class="fc-toggle-track"></span></label></div>
+        <div id="guest-checkout-fields" class="fc-guest-settings-fields" ${enabled?'':'hidden'}><label for="guest-contact-phone">${tr('Do‘kon telefoni *','Телефон магазина *')}</label><input id="guest-contact-phone" oninput="rememberGuestCheckoutContacts()" type="tel" autocomplete="tel" value="${escapeHtml(phone)}" placeholder="+998 90 123 45 67"><label for="guest-contact-telegram">Telegram · ${tr('ixtiyoriy','необязательно')}</label><input id="guest-contact-telegram" oninput="rememberGuestCheckoutContacts()" value="${escapeHtml(telegram)}" placeholder="@username"><label for="guest-contact-instagram">Instagram · ${tr('ixtiyoriy','необязательно')}</label><input id="guest-contact-instagram" oninput="rememberGuestCheckoutContacts()" type="text" value="${escapeHtml(instagram)}" placeholder="@username"><p>${tr('Yoqish uchun do‘kon telefonini kiriting. Telegram va Instagram uchun username kifoya.','Для включения укажите телефон магазина. Для Telegram и Instagram достаточно имени пользователя.')}</p><button id="guest-settings-save" type="button" class="fc-btn fc-btn-primary" onclick="saveGuestCheckoutSettings(this)">${tr('Saqlash','Сохранить')}</button></div><p id="guest-settings-error" role="alert" class="fc-checkout-receipt-error"></p></section>`;
     }
-    async function saveGuestCheckoutSettings(button) {
+    function toggleGuestCheckoutFields(input) {
+      rememberGuestCheckoutContacts();
+      document.getElementById('guest-checkout-fields').hidden=!input.checked;
+      if (!input.checked) saveGuestCheckoutSettings(document.getElementById('guest-settings-save'),{...fulfillmentConfig.checkout,enabled:false},input);
+    }
+    function rememberGuestCheckoutContacts() {
+      guestCheckoutContactsDraft={enabled:document.getElementById('guest-checkout-enabled').checked,phone:document.getElementById('guest-contact-phone').value,telegram:document.getElementById('guest-contact-telegram').value,instagram:document.getElementById('guest-contact-instagram').value};
+    }
+    async function saveGuestCheckoutSettings(button, override=null, toggle=null) {
       if (button.disabled) return;
-      const payload={enabled:document.getElementById('guest-checkout-enabled').checked,phone:document.getElementById('guest-contact-phone').value,telegram:document.getElementById('guest-contact-telegram').value,instagram:document.getElementById('guest-contact-instagram').value};
-      button.disabled=true;
+      const payload=override || {enabled:document.getElementById('guest-checkout-enabled').checked,phone:document.getElementById('guest-contact-phone').value,telegram:document.getElementById('guest-contact-telegram').value,instagram:document.getElementById('guest-contact-instagram').value};
+      button.disabled=true;if(toggle)toggle.disabled=true;
+      document.getElementById('guest-settings-error').textContent='';
       try {
         const phone=String(payload.phone||'').replace(/[\s()-]/g,'');
-        const telegram=String(payload.telegram||'').trim().replace(/^@/,'');
         if (phone && !/^\+998\d{9}$/.test(phone)) throw new Error('invalid_guest_phone');
         if (payload.enabled && !phone) throw new Error('guest_contact_phone_required');
-        if (telegram && !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(telegram)) throw new Error('invalid_guest_telegram');
-        if (String(payload.instagram||'').trim()) {
-          let url; try { url=new URL(payload.instagram.trim()); } catch { throw new Error('invalid_guest_instagram'); }
-          if (url.protocol!=='https:' || !['instagram.com','www.instagram.com'].includes(url.hostname) || url.username || url.password || !/^\/[A-Za-z0-9_.]{1,30}\/?$/.test(url.pathname)) throw new Error('invalid_guest_instagram');
-        }
+        if (String(payload.telegram||'').trim() && !commerce.guestSocialUrl(payload.telegram,'telegram')) throw new Error('invalid_guest_telegram');
+        if (String(payload.instagram||'').trim() && !commerce.guestSocialUrl(payload.instagram,'instagram')) throw new Error('invalid_guest_instagram');
         const result=await callApi('set_guest_checkout_config',payload);
         fulfillmentConfig.checkout=result.checkout;
-        showActionToast(tr('Sozlamalar saqlandi','Настройки сохранены'),'success'); render();
+        showActionToast(tr('Sozlamalar saqlandi','Настройки сохранены'),'success');
+        if (!override) { guestCheckoutContactsDraft=null; render(); }
       } catch(error) {
-        const messages={guest_contact_phone_required:tr('Yoqish uchun +998 formatida do‘kon telefonini kiriting.','Для включения укажите телефон магазина в формате +998.'),invalid_guest_phone:tr('Telefonni +998 formatida kiriting.','Укажите телефон в формате +998.'),invalid_guest_telegram:tr('Telegram username noto‘g‘ri. Masalan: @shop_name.','Некорректное имя Telegram. Например: @shop_name.'),invalid_guest_instagram:tr('Instagram profilining https havolasini kiriting.','Укажите https-ссылку на профиль Instagram.')};
+        const messages={guest_contact_phone_required:tr('Yoqish uchun +998 formatida do‘kon telefonini kiriting.','Для включения укажите телефон магазина в формате +998.'),invalid_guest_phone:tr('Telefonni +998 formatida kiriting.','Укажите телефон в формате +998.'),invalid_guest_telegram:tr('Telegram username noto‘g‘ri. Masalan: @shop_name.','Некорректное имя Telegram. Например: @shop_name.'),invalid_guest_instagram:tr('Instagram username yoki profil havolasini kiriting.','Укажите имя пользователя Instagram или ссылку на профиль.')};
         document.getElementById('guest-settings-error').textContent=messages[error.message] || tr('Saqlanmadi. Qayta urinib ko‘ring.','Не сохранено. Повторите попытку.');
-        button.disabled=false;
-      }
+        if(toggle){toggle.checked=fulfillmentConfig.checkout?.enabled===true;if(guestCheckoutContactsDraft)guestCheckoutContactsDraft.enabled=toggle.checked;document.getElementById('guest-checkout-fields').hidden=!toggle.checked;}
+      } finally { button.disabled=false;if(toggle)toggle.disabled=false; }
     }
 
 
@@ -9803,6 +9823,9 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
       </div>`;
     }
 
+    function receiptReviewLabel(status) {
+      return ({PENDING:tr('Chek tekshirilmoqda','Чек проверяется'),APPROVED:tr('Chek tasdiqlangan','Чек подтверждён'),REJECTED:tr('Chek rad etilgan','Чек отклонён')})[status] || tr('Chek holati noma’lum','Статус чека неизвестен');
+    }
     function paymentStatusLabel(status) {
       const key = String(status || 'PENDING').toUpperCase();
       const labels = {
@@ -10040,7 +10063,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
               ` : ''}
               <div class="border-t pt-2 flex justify-between items-center font-bold text-sm">
                 <span class="text-green-600">${money(o.payableTotal ?? o.totalPrice)}</span>
-                ${(o.status === 'NEW' && !isReceiptPendingReview(o)) ? `
+                ${customerCanCancelOrder(o) ? `
                   <button onclick="openCancelOrderSheet(${o.id}, event)" class="text-xs fc-bg-danger-soft fc-text-danger border fc-border-danger px-2.5 py-1 rounded-lg font-bold">
                     <i data-lucide="x" class="w-3.5 h-3.5 inline-block align-[-2px]"></i> ${tr("Bekor qilish", "Отмена")}
                   </button>
@@ -10064,6 +10087,7 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
 
     function openCancelOrderSheet(orderId, e) {
       if (e) e.stopPropagation();
+      if (!isAdminMode && !customerCanCancelOrder(orders.find(o=>String(o.id)===String(orderId)))) return;
       cancelOrderTargetId = orderId;
       cancelOrderReasonIdx = -1;
       renderCancelOrderSheet();
@@ -10111,8 +10135,10 @@ Men tovarlar ro'yxatini yubormagunimcha katalog tuzmang.`;
         render();
       } catch (e2) {
         console.error(e2);
-        const code = e2?.details?.error || '';
-        if (code === 'cancel_not_allowed_at_this_stage') {
+        const code = e2?.details?.error || e2?.message || '';
+        if (code === 'customer_cancellation_disabled') {
+          showAppNotice(tr('Do‘kon mijozlar uchun bekor qilishni o‘chirgan.','Магазин отключил отмену заказов покупателями.'));
+        } else if (code === 'cancel_not_allowed_at_this_stage') {
           showAppNotice(tr("Bu bosqichda buyurtmani o'zingiz bekor qila olmaysiz. Iltimos, qo'llab-quvvatlash bilan bog'laning.", "На этом этапе вы не можете отменить заказ самостоятельно. Обратитесь в поддержку."));
         } else {
           showAppNotice(tr("❌ Xatolik yuz berdi, qayta urinib ko'ring.", "❌ Произошла ошибка. Попробуйте ещё раз."));
@@ -19425,9 +19451,9 @@ if (activePopupModal === 'LOGO_CROP') {
                       <p class="text-xs font-bold text-gray-600">${tr('Rang', 'Цвет')}: <span class="font-normal text-gray-500">${activeColorName ? escapeHtml(localizedVariantColor(activeColorName)) : tr('tanlanmagan','не выбран')}</span></p>
                       <div class="flex gap-2 flex-wrap">${colorGroups.map((c) => `<button onclick="selectColor(${escapeHtml(JSON.stringify(c.name))})" class="fc-color-swatch ${c.name === activeColorName ? 'is-active' : ''}" aria-label="${escapeHtml(localizedVariantColor(c.name))}" title="${escapeHtml(localizedVariantColor(c.name))}">${c.img ? `<img src="${escapeHtml(c.img)}" alt="">` : `<span class="fc-color-swatch-fallback">${escapeHtml(localizedVariantColor(c.name).slice(0,2))}</span>`}</button>`).join('')}</div>
                       ${activeColorName !== null ? `<p class="text-xs font-bold text-gray-600 mt-1">${tr("O'lcham",'Размер')}: <span class="font-normal text-gray-500">${activeSizeName ? escapeHtml(localizedVariantSize(activeSizeName)) : tr('tanlanmagan','не выбран')}</span></p><div class="flex gap-2 flex-wrap">${sizesForActiveColor.map((v) => { const out = Number(v.qty) <= 0; return `<button onclick="selectSize(${escapeHtml(JSON.stringify(v.size))})" class="fc-size-chip ${v.size === activeSizeName ? 'is-active' : ''} ${out ? 'is-out' : ''}" aria-label="${escapeHtml(localizedVariantSize(v.size))}${out ? ' · ' + tr('tugagan','нет в наличии') : ''}">${escapeHtml(localizedVariantSize(v.size))}${out ? `<small>${tr('Tugagan','Нет')}</small>` : ''}</button>`; }).join('')}</div>` : ''}
-                      <div class="mt-2">${activeVariant ? (Number(activeVariant.qty) > 0 ? (cartEntry ? `<div class="fc-variant-cart-inline"><div class="fc-customer-variant-stepper"><button type="button" onclick="changeActiveVariantCartQty(-1,event)" aria-label="${tr('Kamaytirish','Уменьшить')}"><i data-lucide="minus" class="w-5 h-5"></i></button><b>${cartEntry.qty}</b><button type="button" onclick="changeActiveVariantCartQty(1,event)" aria-label="${tr('Ko‘paytirish','Увеличить')}"><i data-lucide="plus" class="w-5 h-5"></i></button></div><button type="button" onclick="goToCartFromProductDetail()" class="fc-variant-go-cart">${tr('Savatga o‘tish','Перейти в корзину')}</button></div>` : `<button type="button" onclick="addVariantToCart('${p.id}')" class="fc-variant-add-cart"><i data-lucide="shopping-cart" class="w-4 h-4"></i><span>${tr('Savatga qo‘shish','Добавить в корзину')}</span></button>`) : `<div class="fc-variant-restock"><span class="fc-stock-out-badge"><i data-lucide="package-x" class="w-3.5 h-3.5"></i>${tr('Bu variant tugagan','Этого варианта нет')}</span>${renderStockSubscribeButtonHtml(p, activeVariant.sku)}</div>`) : `<p class="text-[10px] text-gray-400 text-center py-2">${tr("Avval o'lchamni tanlang.",'Сначала выберите размер.')}</p>`}</div>
+                      <div class="mt-2">${activeVariant ? (Number(activeVariant.qty) > 0 ? (cartEntry ? `<div class="fc-variant-cart-inline"><div class="fc-customer-variant-stepper"><button type="button" onclick="changeActiveVariantCartQty(-1,event)" aria-label="${tr('Kamaytirish','Уменьшить')}"><i data-lucide="minus" class="w-5 h-5"></i></button><b>${cartEntry.qty}</b><button type="button" onclick="changeActiveVariantCartQty(1,event)" aria-label="${tr('Ko‘paytirish','Увеличить')}"><i data-lucide="plus" class="w-5 h-5"></i></button></div><button type="button" onclick="goToCartFromProductDetail()" class="fc-variant-go-cart">${tr('Savatga o‘tish','Перейти в корзину')}</button></div>` : `<button type="button" onclick="addVariantToCart('${p.id}')" class="fc-variant-add-cart"><i data-lucide="plus" class="w-4 h-4"></i><span>${t('add_to_cart_short')}</span></button>`) : `<div class="fc-variant-restock"><span class="fc-stock-out-badge"><i data-lucide="package-x" class="w-3.5 h-3.5"></i>${tr('Bu variant tugagan','Этого варианта нет')}</span>${renderStockSubscribeButtonHtml(p, activeVariant.sku)}</div>`) : `<p class="text-[10px] text-gray-400 text-center py-2">${tr("Avval o'lchamni tanlang.",'Сначала выберите размер.')}</p>`}</div>
                     </div>`;
-                  })() : (p.stock > 0 ? (inCart ? `<div class="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-2xl p-2"><button onclick="changeCartQty('${p.id}', -1, event); openProductDetailModal('${p.id}');" class="w-10 h-10 bg-white font-bold rounded-xl shadow text-base text-blue-600">-</button><span class="font-bold text-base text-blue-800">${inCart.qty} ${tr('ta savatda','шт. в корзине')}</span><button onclick="changeCartQty('${p.id}', 1, event); openProductDetailModal('${p.id}');" class="w-10 h-10 bg-blue-600 font-bold rounded-xl text-base text-white">+</button></div>` : `<button onclick="addToCart('${p.id}', event); openProductDetailModal('${p.id}');" class="fc-product-detail-add"><span class="fc-product-desktop-svg"><i data-lucide="shopping-cart" class="w-4 h-4"></i></span><span class="fc-product-mobile-emoji">${ICON_CART}</span><span>${t('add_to_cart')}</span></button>`) : `<div class="fc-variant-restock"><span class="fc-stock-out-badge"><i data-lucide="package-x" class="w-3.5 h-3.5"></i>${tr('Mahsulot tugagan','Товара нет в наличии')}</span>${renderStockSubscribeButtonHtml(p)}</div>`)}
+                  })() : (p.stock > 0 ? (inCart ? `<div class="fc-inline-stepper fc-product-detail-stepper"><button onclick="changeCartQty('${p.id}', -1, event); openProductDetailModal('${p.id}');" class="w-10 h-10 bg-white font-bold rounded-xl shadow text-base text-blue-600">-</button><span class="font-bold text-base text-blue-800">${inCart.qty} ${tr('ta savatda','шт. в корзине')}</span><button onclick="changeCartQty('${p.id}', 1, event); openProductDetailModal('${p.id}');" class="w-10 h-10 bg-blue-600 font-bold rounded-xl text-base text-white">+</button></div>` : `<button onclick="addToCart('${p.id}', event); openProductDetailModal('${p.id}');" class="fc-product-detail-add w-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-1"><i data-lucide="plus" class="w-4 h-4"></i><span>${t('add_to_cart_short')}</span></button>`) : `<div class="fc-variant-restock"><span class="fc-stock-out-badge"><i data-lucide="package-x" class="w-3.5 h-3.5"></i>${tr('Mahsulot tugagan','Товара нет в наличии')}</span>${renderStockSubscribeButtonHtml(p)}</div>`)}
                 </div>
 
                 ${storefrontDeliverySignalsHtml()}
@@ -19465,17 +19491,17 @@ if (activePopupModal === 'LOGO_CROP') {
 
       // 14-band: chekni rad etish — sabab kiritish oynasi.
       if (activePopupModal === 'REJECT_RECEIPT') {
+        hideActionToast();
         container.innerHTML = `
           <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onclick="activePopupModal=null; rejectReceiptOrderId=null; render();">
-            <div class="bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" onclick="event.stopPropagation()">
-              <h3 class="font-bold text-sm text-gray-900 border-b pb-2">${ICON_X} ${tr('Chekni rad etish', 'Отклонить чек')}</h3>
+            <div class="fc-reject-receipt bg-white rounded-3xl p-5 max-w-sm w-full space-y-3 shadow-2xl text-xs" role="dialog" aria-modal="true" aria-labelledby="rr-title" onclick="event.stopPropagation()">
+              <div class="fc-order-confirm-head"><h3 id="rr-title" class="font-bold text-sm text-gray-900">${tr('Chekni rad etish', 'Отклонить чек')}</h3><button type="button" onclick="activePopupModal=null; rejectReceiptOrderId=null; render();" class="fc-btn fc-btn-icon" aria-label="${tr('Yopish','Закрыть')}">${fcIcon('<path d="m6 6 12 12M6 18 18 6"/>','w-4 h-4')}</button></div>
               <div>
                 <label class="font-bold text-gray-600">${tr('Rad etish sababi *', 'Причина отклонения *')}</label>
                 <textarea id="rr-reason" rows="3" placeholder="${tr('Masalan: rasm noaniq, summa mos emas...', 'Например: изображение нечёткое, сумма не совпадает...')}" class="w-full mt-1 p-2.5 border rounded-xl"></textarea>
               </div>
               <div class="flex gap-2 pt-1">
-                <button onclick="submitRejectReceipt()" class="flex-1 fc-bg-danger text-white font-bold py-2.5 rounded-xl">${ICON_X} ${tr('Rad etish', 'Отклонить')}</button>
-                <button onclick="activePopupModal=null; rejectReceiptOrderId=null; render();" class="fc-action-icon-btn is-cancel" aria-label="${tr('Bekor qilish','Отмена')}" title="${tr('Bekor qilish','Отмена')}"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button type="button" onclick="submitRejectReceipt()" class="fc-reject-submit flex-1 fc-bg-danger text-white font-bold py-2.5 rounded-xl">${tr('Rad etish', 'Отклонить')}</button>
               </div>
             </div>
           </div>
@@ -20064,7 +20090,7 @@ if (activePopupModal === 'LOGO_CROP') {
         showAppNotice(tr("Avval taksi yo'lga chiqqanini belgilang.", 'Сначала отметьте, что такси выехало.'));
         return;
       }
-      if (newStatus === 'CANCELLED' && !(await appConfirm(tr("Buyurtmani bekor qilasizmi?", "Отменить заказ?"), { danger:true }))) return;
+      if (newStatus === 'CANCELLED' && !(await appConfirm(tr("Buyurtmani bekor qilasizmi?", "Отменить заказ?"), { danger:true, showClose:true, title:tr('Buyurtmani bekor qilish','Отмена заказа'), confirmLabel:tr('Bekor qilish','Отменить'), cancelLabel:tr('Orqaga','Назад') }))) return;
 
       // Optimistic UI: status bosilishi bilan darhol o'zgaradi.
       orders[idx] = { ...orders[idx], status: newStatus };
@@ -22147,6 +22173,7 @@ if (activePopupModal === 'LOGO_CROP') {
         ordersPausedNote = bootData.ordersPausedNote || '';
         activeBanners = Array.isArray(bootData.activeBanners) ? bootData.activeBanners : [];
         featuredCategories = Array.isArray(bootData.featuredCategories) ? bootData.featuredCategories : [];
+        customerCancellationEnabled = bootData.customerCancellationEnabled !== false;
         customerCancelCutoff = bootData.customerCancelCutoff || 'BEFORE_SHIPPED';
         returnRequestsEnabled = bootData.returnRequestsEnabled !== false;
         returnWindowDays = Math.max(1, Number(bootData.returnWindowDays) || 7);
