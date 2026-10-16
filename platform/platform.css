@@ -17,6 +17,7 @@
   /* Fon / sirt */
   --c-bg: #F6F8FB;
   --c-bg-2: #F9FAFC;
+  --c-page-bg: #F6F8FB;
   --c-surface: #FFFFFF;
   --c-surface-elevated: #FFFFFF;
   /* UStorE ko'k (asosiy accent) */
@@ -791,6 +792,9 @@ button.plat-admin-kpi-card:active { transform: scale(0.98); }
 .plat-expired-group { margin-bottom: 16px; }
 .plat-expired-group-title { font-size: 12px; font-weight: 800; color: var(--plat2-title); margin: 0 0 8px; }
 .plat-expired-group-title span { font-weight: 600; color: var(--plat2-muted); }
+.plat-expired-list { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.plat-expired-group { margin:0; padding:16px; }
+.plat-expired-group-rows .shop-row { cursor:pointer; }
 
 .plat-quick-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .plat-quick-action {
@@ -1084,6 +1088,32 @@ body { background:var(--u-bg); }
   .plat-shop-avatar-lg.is-logo { width: 84px; height: 36px; }
   .plat-shop-pro-head h2 { font-size: 18px; }
   .plat-shop-pro-actions { grid-template-columns: 1fr 1fr; }
+}
+
+/* 2026-10-16 — admin information architecture and responsive hierarchy. */
+.plat-admin-mode .plat-content { background:var(--c-page-bg); }
+.plat-admin-surface { background:var(--c-surface); border:1px solid var(--c-border); border-radius:var(--r-card); box-shadow:var(--sh-card); }
+.plat-admin-operational-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.plat-admin-operational-grid > * { min-width:0; }
+.plat-admin-kpi-card:focus-visible,
+.plat-admin-action-card:focus-visible,
+.plat-admin-owner-card:focus-visible { outline:3px solid rgba(38,132,255,.3); outline-offset:2px; }
+.plat-admin-owner-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:12px; }
+.plat-admin-owner-card { width:100%; min-width:0; min-height:76px; display:grid; grid-template-columns:40px minmax(0,1fr) auto auto; align-items:center; gap:10px; padding:12px; border:1px solid var(--c-border-soft); border-radius:var(--r-card-sm); background:var(--c-surface); color:var(--c-text); font-family:inherit; text-align:left; cursor:pointer; }
+.plat-admin-owner-card:hover { border-color:var(--c-primary-border); background:var(--c-primary-softer); }
+.plat-admin-owner-icon { width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:10px; background:var(--c-primary-soft); color:var(--c-primary); }
+.plat-admin-owner-copy { min-width:0; }
+.plat-admin-owner-copy b,.plat-admin-owner-copy small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.plat-admin-owner-copy b { font-size:13px; color:var(--c-heading); }
+.plat-admin-owner-copy small { margin-top:4px; font-size:12px; color:var(--c-text-secondary); }
+.plat-admin-owner-count { min-width:28px; padding:4px 8px; border-radius:var(--r-pill); background:var(--c-primary-soft); color:var(--c-primary); font-size:12px; font-weight:800; text-align:center; }
+@media (max-width:1023px) {
+  .plat-admin-operational-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .plat-admin-owner-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:639px) {
+  .plat-admin-operational-grid { grid-template-columns:minmax(0,1fr); }
+  .plat-admin-owner-grid { grid-template-columns:minmax(0,1fr); padding:8px; }
 }
 
 /* ============================================================

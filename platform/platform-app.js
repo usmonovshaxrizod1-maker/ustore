@@ -952,6 +952,7 @@
     if (p === 'BUG_REPORT') return pageShell('Muammo haqida xabar berish', renderBugReportBody(), { onBack: "switchTab('help')" });
     if (p === 'FAQ_FULL') return pageShell('Ko‘p beriladigan savollar', renderFaqFullBody(), { onBack: "switchTab('help')" });
     if (p === 'EXPIRED_SHOPS') return pageShell("Muddati tugagan do'konlar", renderExpiredShopsBody(), { onBack: "switchTab('dashboard')" });
+    if (p === 'ADMIN_OWNERS') return pageShell("Foydalanuvchilar", renderAdminOwnersBody(), { onBack: "switchTab('dashboard')" });
     // Platform 2.0, Bosqich 2: Support endi root tab — standalone 'ADMIN_SUPPORT'
     // sahifasi olib tashlandi, thread'dan orqaga qaytish endi to'g'ridan-to'g'ri
     // shu tabga.
@@ -3228,7 +3229,7 @@
     return `
       <section class="plat-admin-action-required">
         <h2>${total ? `Bugun sizdan ${total} ta amal talab qilinadi` : "Bugun hech qanday amal talab qilinmaydi"}</h2>
-        <div class="plat-admin-action-grid">
+        <div class="plat-admin-action-grid plat-admin-operational-grid">
           ${items.map((it) => `
             <button type="button" class="plat-admin-action-card ${it.count ? it.tone : ''}" onclick="${it.onclick}">
               <span class="plat-admin-action-icon">${pIcon(it.icon, 18)}</span>
@@ -3263,8 +3264,8 @@
         </section>
       ` : ''}
       <h2 class="plat-admin-kpi-heading">Umumiy holat</h2>
-      <div class="plat-admin-kpi-grid">
-        <button type="button" class="plat-admin-kpi-card is-primary" onclick="switchTab('shops')">
+      <div class="plat-admin-kpi-grid plat-admin-operational-grid">
+        <button type="button" class="plat-admin-kpi-card is-primary" onclick="openActiveShopsFromDashboard()">
           <span class="plat-admin-kpi-icon">${pIcon('shop', 20)}</span>
           <span class="plat-admin-kpi-copy"><small>Faol do'konlar</small><b>${s.activeShopsCount}</b><em>${s.expiringSoonCount ? `${s.expiringSoonCount} tasi 7 kun ichida tugaydi` : 'Yaqin muddatda tugaydigan yo‘q'}</em></span>
           <span class="plat-admin-kpi-go">${pIcon('arrowRight',15)}</span>
@@ -3279,7 +3280,7 @@
           <span class="plat-admin-kpi-copy"><small>Yangi so'rovlar</small><b>${s.newRequestsCount}</b><em>${s.newRequestsCount ? 'Tekshiruv kutmoqda' : 'Yangi so‘rov yo‘q'}</em></span>
           <span class="plat-admin-kpi-go">${pIcon('arrowRight',15)}</span>
         </button>
-        <button type="button" class="plat-admin-kpi-card is-neutral" onclick="switchTab('settings')">
+        <button type="button" class="plat-admin-kpi-card is-neutral" onclick="openAdminOwnersFromDashboard()">
           <span class="plat-admin-kpi-icon">${pIcon('user', 20)}</span>
           <span class="plat-admin-kpi-copy"><small>Foydalanuvchilar</small><b>${s.totalUsersCount}</b><em>Do'kon egalari</em></span>
           <span class="plat-admin-kpi-go">${pIcon('arrowRight',15)}</span>
@@ -3302,6 +3303,58 @@
     const data = await callPlatformApi('platform_list_shops', {});
     adminShops = data.shops || [];
     render();
+  }
+  function openActiveShopsFromDashboard() {
+    setAdminShopsStatusFilter('ACTIVE');
+    switchTab('shops');
+  }
+  async function openAdminOwnersFromDashboard() {
+    if (!adminShops.length) await reloadAdminShops();
+    openPage('ADMIN_OWNERS');
+  }
+  function renderAdminOwnersBody() {
+    const ownersById = new Map();
+    adminShops.forEach((shop) => {
+      const ownerId = String(shop.ownerTelegramId || '').trim();
+      if (!ownerId) return;
+      const owner = ownersById.get(ownerId) || {
+        ownerId,
+        shopCount: 0,
+        activeCount: 0,
+        frozenCount: 0,
+        latestShopAt: null,
+      };
+      owner.shopCount += 1;
+      if (shop.status === 'ACTIVE') owner.activeCount += 1;
+      if (shop.status === 'FROZEN') owner.frozenCount += 1;
+      if (!owner.latestShopAt || new Date(shop.createdAt || 0) > new Date(owner.latestShopAt || 0)) owner.latestShopAt = shop.createdAt || null;
+      ownersById.set(ownerId, owner);
+    });
+    const owners = Array.from(ownersById.values()).sort((a, b) => a.ownerId.localeCompare(b.ownerId, 'uz', { numeric: true }));
+    if (!owners.length) return `<div class="plat-admin-empty"><span>${pIcon('user',24)}</span><b>Hozircha foydalanuvchi yo'q</b><small>Do'kon egasi paydo bo'lganda shu yerda ko'rinadi.</small></div>`;
+    return `
+      <div class="plat-admin-list-head">
+        <span class="plat-admin-eyebrow">Do'kon egalari</span>
+        <h1>${owners.length} ta foydalanuvchi</h1>
+        <p>Har bir egaga tegishli do'konlar va ularning joriy holati.</p>
+      </div>
+      <div class="plat-admin-owner-grid plat-admin-surface">
+        ${owners.map((owner) => `
+          <button type="button" class="plat-admin-owner-card" onclick="openAdminOwnerShops('${escapeHtml(owner.ownerId)}')">
+            <span class="plat-admin-owner-icon">${pIcon('user',19)}</span>
+            <span class="plat-admin-owner-copy"><b>ID ${escapeHtml(owner.ownerId)}</b><small>${owner.shopCount} ta do'kon · ${owner.activeCount} ta faol${owner.frozenCount ? ` · ${owner.frozenCount} ta muzlatilgan` : ''}</small></span>
+            <span class="plat-admin-owner-count">${owner.shopCount}</span>
+            ${pIcon('arrowRight',16)}
+          </button>
+        `).join('')}
+      </div>`;
+  }
+  function openAdminOwnerShops(ownerId) {
+    adminShopsSearchQuery = String(ownerId || '').trim();
+    adminShopsStatusFilter = 'ALL';
+    adminShopsTariffFilter = 'ALL';
+    adminShopsDaysFilter = 'ALL';
+    switchTab('shops');
   }
   function adminShopStatusLabel(status) {
     if (status === 'ACTIVE') return 'Faol';
@@ -3506,7 +3559,7 @@
   }
   function renderExpiredShopsBody() {
     const list = adminShops.filter((s) => s.status === 'FROZEN');
-    if (!list.length) return '<p class="empty">Hozircha muddati tugagan do\'kon yo\'q.</p>';
+    if (!list.length) return `<div class="plat-admin-empty"><span>${pIcon('calendar',24)}</span><b>Obunasi tugagan do'kon yo'q</b><small>Barcha do'konlarning obuna holati yaxshi.</small><button onclick="openActiveShopsFromDashboard()">Faol do'konlarni ko'rish</button></div>`;
     const groups = new Map();
     list.slice().sort((a, b) => (expiredShopAgeDays(a) ?? -1) - (expiredShopAgeDays(b) ?? -1))
       .forEach((s) => {
@@ -3515,14 +3568,14 @@
         groups.get(key).push(s);
       });
     const bucketOrder = ['Bugun muzlatilgan', '1-7 kun oldin', '8-14 kun oldin', `15-${EXPIRED_BUCKET_MID} kun oldin`, `${EXPIRED_BUCKET_MID + 1}-${SHOP_FREEZE_DAYS} kun oldin`, `${SHOP_FREEZE_DAYS} kundan ortiq (muzlatish muddati tugagan — qaror kerak)`, "Muzlatilgan sana noma'lum"];
-    return bucketOrder.filter((k) => groups.has(k)).map((k) => `
-      <div class="plat-expired-group">
+    return `<div class="plat-expired-list">${bucketOrder.filter((k) => groups.has(k)).map((k) => `
+      <section class="plat-expired-group plat-admin-surface">
         <h3 class="plat-expired-group-title">${escapeHtml(k)} <span>(${groups.get(k).length})</span></h3>
-        <div class="card">
+        <div class="plat-expired-group-rows">
           ${groups.get(k).map(renderExpiredShopRow).join('')}
         </div>
-      </div>
-    `).join('');
+      </section>
+    `).join('')}</div>`;
   }
   function renderExpiredShopRow(s) {
     const days = expiredShopAgeDays(s);
