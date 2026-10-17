@@ -3,6 +3,12 @@ export type SubscriptionAddon = {
   totalPrice: number; details: Record<string, unknown>;
 };
 export type NormalizedSubscriptionAddons = { items: SubscriptionAddon[]; addonsTotal: number; totalPrice: number };
+// JSONB may reorder object keys. Compare values, preserving only array order.
+export function stableSubscriptionInput(value: unknown): string {
+  if (Array.isArray(value)) return '['+value.map(stableSubscriptionInput).join(',')+']';
+  if(value!==null&&typeof value==='object')return '{'+Object.keys(value).sort().map(key=>JSON.stringify(key)+':'+stableSubscriptionInput((value as Record<string,unknown>)[key])).join(',')+'}';
+  return JSON.stringify(value) ?? 'null';
+}
 
 function text(value: unknown, max: number): string {
   if (value != null && typeof value !== 'string') throw new Error('invalid_addon_text');

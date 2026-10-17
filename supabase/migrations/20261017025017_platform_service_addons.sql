@@ -50,6 +50,9 @@ begin
  total_amount:=coalesce((p_values->>'total_price_snapshot')::numeric,tariff_amount+addon_amount);
  if total_amount is null or total_amount <> tariff_amount+addon_amount then raise exception 'invalid_subscription_total';end if;
  perform pg_advisory_xact_lock(hashtextextended('subscription:'||p_user,0));
+ -- Same eligibility as the existing draft-purge RPC, scoped to this buyer.
+ delete from public.subscription_requests where requester_telegram_id=p_user::bigint
+   and status='NEW' and payment_claimed_at is null and payment_deadline_at<=now();
  select * into r from public.subscription_requests where requester_telegram_id=p_user::bigint and web_submission_key=p_key;
  if found then
   if r.web_submission_input is distinct from p_input then raise exception 'submission_payload_conflict';end if;
@@ -86,10 +89,10 @@ declare a public.subscription_request_addons; request_status text;
 begin
  select * into a from public.subscription_request_addons where id=p_id for update;
  if not found then raise exception 'addon_not_found';end if;
- if a.status<>p_expected then raise exception 'addon_status_conflict';end if;
+ if a.status is distinct from p_expected then raise exception 'addon_status_conflict';end if;
  select status into request_status from public.subscription_requests where id=a.request_id;
  if request_status<>'APPROVED' then raise exception 'addon_payment_not_approved';end if;
- if not ((p_expected='PENDING' and p_next in ('IN_PROGRESS','CANCELLED')) or (p_expected='IN_PROGRESS' and p_next in ('COMPLETED','CANCELLED'))) then raise exception 'invalid_addon_transition';end if;
+ if p_next is null or not ((p_expected='PENDING' and p_next in ('IN_PROGRESS','CANCELLED')) or (p_expected='IN_PROGRESS' and p_next in ('COMPLETED','CANCELLED'))) then raise exception 'invalid_addon_transition';end if;
  if p_next='CANCELLED' and nullif(trim(p_reason),'') is null then raise exception 'addon_cancel_reason_required';end if;
  update public.subscription_request_addons set status=p_next,handled_by=p_actor,
    started_at=case when p_next='IN_PROGRESS' then now() else started_at end,

@@ -471,7 +471,7 @@
   let adminSupportTypeFilter = null; // 'SUPPORT' | 'BUG_REPORT' | null (hammasi)
 
   // ---- PAGE SHELL / ROUTER (ustore-shop-app.js'dagi naqsh) --------------
-  function openPage(pageId) { activePage = pageId; render({ preserve: false, scrollTop: true }); }
+  function openPage(pageId) { activePage = pageId; render({ preserve: false, scrollTop: true }); if(pageId==='EXPIRED_SHOPS'&&isSuperAdmin)reloadAdminShops().catch(()=>showToast("Do‘konlarni yuklab bo‘lmadi",'warning')); }
   function closePage() { activePage = null; render({ preserve: false, scrollTop: true }); }
   function goHomePage() {
     activePage = null;
@@ -1641,6 +1641,7 @@
       localStorage.setItem(newShopFormDraftStorageKey(), JSON.stringify({
         savedAt: Date.now(), shopName:newShopName, ownerTelegramId:newShopOwnerTelegramId,
         botName:newShopBotName, botBio:newShopBotBio,
+        services:checkoutServices,
       }));
     } catch (_) {}
   }
@@ -1652,6 +1653,7 @@
     newShopOwnerTelegramId = String(draft?.ownerTelegramId || currentTelegramUserId() || '');
     newShopBotName = String(draft?.botName || '');
     newShopBotBio = String(draft?.botBio || '');
+    checkoutServices = restoreCheckoutServices(draft?.services);
     clearNewShopBotPhoto();
   }
   function clearNewShopBotPhoto() {
@@ -1699,7 +1701,49 @@
     }
   }
 
+  let checkoutServices = globalThis.UStoreServiceAddons.empty();
+  let serviceSubmissionKey = null;
+  let resumedSubmittedRequestId = null;
+  function restoreCheckoutServices(value) {
+    const s={...globalThis.UStoreServiceAddons.empty(),...(value||{})};
+    s.products=(Array.isArray(s.products)?s.products:[]).slice(0,100).map(p=>({...p,id:globalThis.UStoreServiceAddons.secureUuid(),variants:(Array.isArray(p.variants)?p.variants:[]).slice(0,100).map(v=>({...v,id:globalThis.UStoreServiceAddons.secureUuid()}))}));
+    s.domain=String(s.domain||'');
+    return s;
+  }
+  function saveCheckoutServices() { saveNewShopLocalDraft(); }
+  function setCatalogSetupSelected(value) { checkoutServices.catalogSelected=value; saveCheckoutServices(); rerenderActivePage(); }
+  function setManagedDomainSelected(value) { checkoutServices.domainSelected=value; saveCheckoutServices(); rerenderActivePage(); }
+  function updateManagedDomain(field,value) { if(field==='years')checkoutServices.years=Number(value);else if(field==='domain')checkoutServices.domain=String(value).slice(0,253);saveCheckoutServices();rerenderActivePage(); }
+  function addCatalogProduct() { if(checkoutServices.products.length>=100)return;checkoutServices.products.push({id:globalThis.UStoreServiceAddons.secureUuid(),name:'',description:'',price:0,quantity:0,colors:'',sizes:'',variants:[]});saveCheckoutServices();rerenderActivePage(); }
+  function removeCatalogProduct(id) {checkoutServices.products=checkoutServices.products.filter(p=>p.id!==id);saveCheckoutServices();rerenderActivePage();}
+  function updateCatalogProduct(id,field,value) {const p=checkoutServices.products.find(p=>p.id===id);if(!p||!['name','description','price','quantity','colors','sizes'].includes(field))return;p[field]=['price','quantity'].includes(field)?(value===''?'':Number(value)):String(value);saveCheckoutServices();}
+  function addCatalogVariant(id) {const p=checkoutServices.products.find(p=>p.id===id);if(!p||p.variants.length>=100)return;p.variants.push({id:globalThis.UStoreServiceAddons.secureUuid(),color:'',size:'',price:p.price,quantity:0});saveCheckoutServices();rerenderActivePage();}
+  function updateCatalogVariant(id,variantId,field,value) {const p=checkoutServices.products.find(p=>p.id===id);const v=p?.variants.find(v=>v.id===variantId);if(!v||!['color','size','price','quantity'].includes(field))return;v[field]=['price','quantity'].includes(field)?(value===''?'':Number(value)):String(value);saveCheckoutServices();}
+  function removeCatalogVariant(id,variantId) {const p=checkoutServices.products.find(p=>p.id===id);if(!p)return;p.variants=p.variants.filter(v=>v.id!==variantId);saveCheckoutServices();rerenderActivePage();}
+  function buildCheckoutAddonsPayload() {return globalThis.UStoreServiceAddons.payload(checkoutServices,flowKind);}
+  function renderCheckoutServices(tariffPrice) {
+    if(flowKind!=='NEW_SHOP')return '';
+    const s=checkoutServices;
+    const field=(p,key,label,type='text')=>`<label class="plat-field-pro"><span>${label}</span><input type="${type}" ${type==='number'?'min="0"':''} value="${escapeHtml(String(p[key]??''))}" onchange="updateCatalogProduct('${p.id}','${key}',this.value)"></label>`;
+    return `<section class="plat-services" aria-label="Qo‘shimcha xizmatlar"><div class="plat-payment-section-title"><span>${pIcon('diamond',18)}</span><div><b>Qo‘shimcha xizmatlar</b><small>Ixtiyoriy. Sizga qulayini tanlang.</small></div></div>
+      <section class="plat-service-card ${s.catalogSelected?'is-selected':''}">
+        <label class="plat-service-choice"><input type="checkbox" ${s.catalogSelected?'checked':''} onchange="setCatalogSetupSelected(this.checked)"><span><b>Do‘kon va mahsulotlarni biz kiritamiz</b><small>Bir martalik · tanlangan tarifning 30 foizi</small></span><strong>${money(Math.round(tariffPrice*.3))}</strong></label>
+        ${s.catalogSelected?`<div class="plat-service-disclosure"><p>Do‘kon ma’lumotlari va quyidagi mahsulotlarni bir marta kiritib beramiz.</p><p class="notice warn">Mahsulot rasmlarini keyin Shop App’da o‘zingiz yuklaysiz.</p>
+        ${s.products.map((p,i)=>`<section class="plat-catalog-product"><div class="plat-service-row"><b>${i+1}-mahsulot</b><button type="button" class="plat-admin-text-btn" onclick="removeCatalogProduct('${p.id}')">Olib tashlash</button></div>
+          <div class="plat-service-fields">${field(p,'name','Nomi')}${field(p,'description','Tavsifi')}${field(p,'price','Narxi','number')}${field(p,'quantity','Soni','number')}${field(p,'colors','Ranglar (ixtiyoriy)')}${field(p,'sizes','O‘lchamlar (ixtiyoriy)')}</div>
+          ${(p.variants||[]).map(v=>`<div class="plat-service-variant">${[['color','Rang'],['size','O‘lcham'],['price','Narxi'],['quantity','Soni']].map(([key,label])=>`<label class="plat-field-pro"><span>${label}</span><input type="${['price','quantity'].includes(key)?'number':'text'}" value="${escapeHtml(String(v[key]??''))}" onchange="updateCatalogVariant('${p.id}','${v.id}','${key}',this.value)"></label>`).join('')}<button type="button" class="plat-admin-text-btn" onclick="removeCatalogVariant('${p.id}','${v.id}')">Olib tashlash</button></div>`).join('')}
+          <button type="button" class="secondary" onclick="addCatalogVariant('${p.id}')">+ Variant qo‘shish</button></section>`).join('')}
+        <button type="button" class="secondary" onclick="addCatalogProduct()">+ Mahsulot qo‘shish</button></div>`:''}
+      </section>
+      <section class="plat-service-card ${s.domainSelected?'is-selected':''}">
+        <label class="plat-service-choice"><input type="checkbox" ${s.domainSelected?'checked':''} onchange="setManagedDomainSelected(this.checked)"><span><b>Domenni biz olib, ulab beramiz</b><small>Yiliga 50 000 so‘m</small></span><strong>${money(50000*Number(s.years))}</strong></label>
+        ${s.domainSelected?`<div class="plat-service-disclosure"><p>To‘lov tasdiqlangach domenni sotib olib ulaymiz. Band bo‘lsa boshqa nomni siz bilan kelishamiz.</p><div class="plat-service-fields"><label class="plat-field-pro"><span>Domen nomi</span><input type="text" value="${escapeHtml(s.domain)}" placeholder="dokon.uz" maxlength="253" onchange="updateManagedDomain('domain',this.value)"></label><label class="plat-field-pro"><span>Muddati</span><select onchange="updateManagedDomain('years',this.value)">${Array.from({length:10},(_,i)=>`<option value="${i+1}" ${Number(s.years)===i+1?'selected':''}>${i+1} yil</option>`).join('')}</select></label></div></div>`:''}
+      </section></section>`;
+  }
   function resetSubscriptionFlow() {
+    checkoutServices = globalThis.UStoreServiceAddons.empty();
+    serviceSubmissionKey = null;
+    resumedSubmittedRequestId = null;
     flowKind = null;
     flowShopId = null;
     flowTariffId = null;
@@ -1926,12 +1970,16 @@
     newShopOwnerTelegramId = String(r.ownerTelegramId || currentTelegramUserId() || '');
     newShopBotName = r.requestedBotName || '';
     newShopBotBio = r.requestedBotBio || '';
+    const restored=globalThis.UStoreServiceAddons.empty();
+    for(const a of r.addons||[]){if(a.code==='CATALOG_SETUP'){restored.catalogSelected=true;restored.products=a.details.products||[];}if(a.code==='MANAGED_DOMAIN'){restored.domainSelected=true;restored.domain=a.details.domain||'';restored.years=a.details.years||1;}}
+    checkoutServices=restoreCheckoutServices(restored);
     saveNewShopLocalDraft();
     preparedNewShopRequestId = r.id;
     preparedNewShopPaymentDeadlineAt = r.paymentDeadlineAt || null;
     selectedMyRequestId = r.id;
+    resumedSubmittedRequestId = r.submitted ? r.id : null;
     openPage('PAYMENT');
-    ensureNewShopPaymentDraft(false).catch(() => {});
+    if(!resumedSubmittedRequestId)ensureNewShopPaymentDraft(false).catch(() => {});
   }
   // 2026-08-28, 054-migratsiya: "Plan change preview" (spec 7-bo'lim) —
   // tarif ALMASHTIRISH oldidan (EXTEND emas — narx o'zgarmasa konvertatsiya
@@ -2090,6 +2138,7 @@
   }
 
   function renderPaymentBody() {
+    if(resumedSubmittedRequestId)return renderResumedServicePayment();
     if (flowKind === 'NEW_SHOP' && flowTariffId && !preparedNewShopRequestId && !preparingNewShopDraft) {
       setTimeout(() => ensureNewShopPaymentDraft().catch((e) => {
         connectError = "To'lov arizasini tayyorlab bo'lmadi. Internetni tekshirib qayta urinib ko'ring.";
@@ -2126,8 +2175,10 @@
       : `<div class="plat-checkout-shop"><span class="plat-shop-avatar ${shopAvatarClass(shop)}">${shopAvatarHtml(shop)}</span><div><b>${escapeHtml(shop.shopName || shop.botUsername || shop.publicCode)}</b><small>${flowUpgradeAction === 'EXTEND' ? `${escapeHtml(currentTariff)} · ${shopLeft === null ? 'muddat noma’lum' : shopLeft <= 0 ? 'muddati tugagan' : shopLeft + ' kun qoldi'}` : `${escapeHtml(currentTariff)} → ${escapeHtml(tariff.name)}`}</small></div></div>`;
 
     return `
+      <div class="plat-service-checkout-layout"><div class="plat-service-checkout-main">
       ${contextIntro}
       ${flowKind === 'NEW_SHOP' ? renderNewShopRequestIdentity() : ''}
+      ${renderCheckoutServices(totalPrice)}
       <section class="plat-payment-period is-compact"><div class="plat-payment-period-label"><b>Obuna davri</b><small>Oylik yoki yillik variant.</small></div>${renderBillingToggle()}</section>
 
       ${flowUpgradeAction === 'EXTEND' && shop ? `<section class="plat-renew-summary" aria-label="Obuna uzaytirish ma'lumotlari">
@@ -2166,16 +2217,18 @@
         </label>
       </section>
 
-      <section class="plat-payment-total is-professional">
+      </div><aside class="plat-service-checkout-summary"><section class="plat-payment-total is-professional">
         <div><span>Tarif</span><b>${escapeHtml(tariff.name)}</b></div>
+        <div><span>Tarif narxi</span><b>${money(totalPrice)}</b></div>
+        ${globalThis.UStoreServiceAddons.quote(checkoutServices,flowKind,totalPrice).lines.map(line=>`<div><span>${escapeHtml(line.label)}</span><b>${money(line.price)}</b></div>`).join('')}
         <div><span>Davr</span><b>${isAnnual ? '12 oy' : (flowKind === 'NEW_SHOP' ? '30 kun + 7 kun bonus' : '30 kun')}</b></div>
         ${selectedPaymentMethodType ? `<div><span>To'lov usuli</span><b class="plat-total-method">${paymentProviderBadge(selectedPaymentMethodType, true)} ${escapeHtml(paymentProviderName(selectedPaymentMethodType))}</b></div>` : ''}
-        <div class="is-total"><span>Jami to'lov</span><strong>${money(totalPrice)}</strong></div>
+        <div class="is-total"><span>Jami to'lov</span><strong>${money(globalThis.UStoreServiceAddons.quote(checkoutServices,flowKind,totalPrice).totalPrice)}</strong></div>
       </section>
       <button class="primary plat-payment-submit ${readyToConfirm ? '' : 'plat-btn-dimmed'}" ${readyToConfirm ? 'onclick="submitSubscriptionRequest()"' : 'disabled'}>
         ${submittingRequest ? '<span class="spinner"></span> Tasdiqlanmoqda...' : selectedPaymentMethodType ? `${pIcon('check',16)} To'lovni tasdiqlash` : `${pIcon('wallet',16)} To'lov usulini tanlang`}
       </button>
-      ${renderExternalPaymentWarningModal()}
+      </aside></div>${renderExternalPaymentWarningModal()}
     `;
   }
   function selectCardPayment() {
@@ -2185,6 +2238,16 @@
     pendingExternalPaymentMethodId = null;
     externalPaymentWarningChecked = false;
     rerenderActivePage();
+  }
+  function renderResumedServicePayment() {
+    const r=myRequests.find(x=>x.id===resumedSubmittedRequestId);
+    if(!r)return `<div class="plat-admin-empty"><b>Ariza yuklanmadi</b><button onclick="openMyRequests()">Arizalarga qaytish</button></div>`;
+    if(!paymentInfo)ensurePaymentInfoLoaded().then(()=>{if(activePage==='PAYMENT')rerenderActivePage();});
+    const method=platformPaymentMethods.find(m=>m.id===r.paymentMethodId);
+    return `<section class="plat-payment-card"><h2>${escapeHtml(r.requestedShopName||'Do‘kon')}</h2><p>Ariza ma’lumotlari saqlangan. To‘lovni yakunlang.</p><div class="plat-service-row"><span>${escapeHtml(r.tariffName)}</span><b>${money(r.tariffPrice)}</b></div><p>${r.billingPeriod==='ANNUAL'?'Yillik':'Oylik'} · ${escapeHtml(paymentProviderName(r.paymentMethod))}</p>${r.paymentMethod==='CARD'&&paymentInfo?.cardNumber?`<p id="plat-card-number">${escapeHtml(paymentInfo.cardNumber)}</p><button class="secondary" onclick="copyPlatformCardNumber()">Karta raqamini nusxalash</button>`:method?`<button class="secondary" onclick="openExternalPaymentDirect('${method.id}')">To‘lov sahifasini ochish</button>`:''}</section>
+      ${renderSubscriptionAddonDetails(r)}<section class="plat-payment-total"><div class="is-total"><span>Jami to‘lov</span><strong>${money(r.totalPrice??r.tariffPrice)}</strong></div></section>
+      <section class="plat-payment-card"><label>Chek (ixtiyoriy)<input type="file" onchange="onReceiptPicked(event)"></label>${receiptFile?`<p>${escapeHtml(receiptFile.name)}</p>`:''}</section>
+      <button class="primary" ${submittingRequest?'disabled':''} onclick="submitSubscriptionRequest()">${submittingRequest?'Tasdiqlanmoqda...':'To‘ladim, tekshiruvga yuborish'}</button>`;
   }
   function renderExternalPaymentMethodRow(m) { return renderPaymentMethodChoice(m); }
   async function openExternalPaymentDirect(methodId) {
@@ -2287,6 +2350,19 @@
   }
   async function submitSubscriptionRequest() {
     if (submittingRequest) return;
+    if(resumedSubmittedRequestId){
+      submittingRequest=true;
+      try {
+        if(receiptFile)await callPlatformApi('platform_attach_request_receipt',{requestId:resumedSubmittedRequestId,receiptImageUpload:{base64:await fileToBase64(receiptFile),mimeType:receiptFile.type,fileName:receiptFile.name},source:'PAYMENT_PAGE'});
+        await callPlatformApi('platform_confirm_payment_claim',{requestId:resumedSubmittedRequestId});
+        lastSubmittedRequestId=resumedSubmittedRequestId;lastSubmittedHadReceipt=!!receiptFile;paymentClaimConfirmed=true;
+        await loadMyRequests(false);openPage('REQUEST_SENT');
+      }catch(e){showToast(e.message||'To‘lovni tasdiqlab bo‘lmadi.','error');}
+      finally{submittingRequest=false;rerenderActivePage();}
+      return;
+    }
+    const serviceError=globalThis.UStoreServiceAddons.validate(checkoutServices,flowKind);
+    if(serviceError){showToast(serviceError,'warning');return;}
     if (flowKind === 'NEW_SHOP') {
       newShopName = String(document.getElementById('plat-new-shop-name')?.value || newShopName || '').trim();
       newShopOwnerTelegramId = String(document.getElementById('plat-new-shop-owner')?.value || newShopOwnerTelegramId || '').replace(/\D/g,'').slice(0,15);
@@ -2322,6 +2398,8 @@
         paymentMethod: selectedPaymentMethodType,
         paymentMethodId: selectedPaymentMethodId || undefined,
         consentAccepted: true,
+        addons: buildCheckoutAddonsPayload(),
+        submissionKey: serviceSubmissionKey || (serviceSubmissionKey=globalThis.UStoreServiceAddons.secureUuid()),
         shopName: flowKind === 'NEW_SHOP' ? newShopName.trim() : undefined,
         ownerTelegramId: flowKind === 'NEW_SHOP' ? newShopOwnerTelegramId : undefined,
         botName: flowKind === 'NEW_SHOP' ? (newShopBotName.trim() || undefined) : undefined,
@@ -3323,8 +3401,10 @@
         activeCount: 0,
         frozenCount: 0,
         latestShopAt: null,
+        shopNames: [],
       };
       owner.shopCount += 1;
+      owner.shopNames.push(shop.shopName || shop.botUsername || shop.publicCode || 'Do‘kon');
       if (shop.status === 'ACTIVE') owner.activeCount += 1;
       if (shop.status === 'FROZEN') owner.frozenCount += 1;
       if (!owner.latestShopAt || new Date(shop.createdAt || 0) > new Date(owner.latestShopAt || 0)) owner.latestShopAt = shop.createdAt || null;
@@ -3342,7 +3422,7 @@
         ${owners.map((owner) => `
           <button type="button" class="plat-admin-owner-card" onclick="openAdminOwnerShops('${escapeHtml(owner.ownerId)}')">
             <span class="plat-admin-owner-icon">${pIcon('user',19)}</span>
-            <span class="plat-admin-owner-copy"><b>ID ${escapeHtml(owner.ownerId)}</b><small>${owner.shopCount} ta do'kon · ${owner.activeCount} ta faol${owner.frozenCount ? ` · ${owner.frozenCount} ta muzlatilgan` : ''}</small></span>
+            <span class="plat-admin-owner-copy"><b>ID ${escapeHtml(owner.ownerId)}</b><small>${owner.shopCount} ta do'kon · ${owner.activeCount} ta faol${owner.frozenCount ? ` · ${owner.frozenCount} ta muzlatilgan` : ''}</small><small>${escapeHtml(owner.shopNames.join(' · '))}</small></span>
             <span class="plat-admin-owner-count">${owner.shopCount}</span>
             ${pIcon('arrowRight',16)}
           </button>
@@ -4394,7 +4474,7 @@
     const secondary = requestSecondaryStatus(r);
     return `<button class="plat-my-request-card" onclick="openMyRequestDetails('${r.id}')">
       <span class="plat-my-request-card-icon">${pIcon(r.kind === 'NEW_SHOP' ? 'shop' : 'diamond',18)}</span>
-      <span class="plat-my-request-card-main"><span class="plat-my-request-card-top"><b>${escapeHtml(requestTypeLabel(r))}</b><span class="plat-request-status-stack"><em class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</em>${secondary?`<em class="plat-request-secondary-pill is-${secondary.tone}">${escapeHtml(secondary.label)}</em>`:''}</span></span><strong>${escapeHtml(shopName)}</strong><small>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'} · ${money(r.tariffPrice)}</small><span>${formatDateTime(r.createdAt)}</span></span>
+      <span class="plat-my-request-card-main"><span class="plat-my-request-card-top"><b>${escapeHtml(requestTypeLabel(r))}</b><span class="plat-request-status-stack"><em class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</em>${secondary?`<em class="plat-request-secondary-pill is-${secondary.tone}">${escapeHtml(secondary.label)}</em>`:''}</span></span><strong>${escapeHtml(shopName)}</strong><small>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'} · ${money(r.totalPrice??r.tariffPrice)}</small><span>${formatDateTime(r.createdAt)}</span></span>
       <span class="plat-my-request-chevron">${pIcon('arrowRight',16)}</span>
     </button>`;
   }
@@ -4467,10 +4547,11 @@
     const history = requestHistoryById[r.id] || [];
     return `<div class="plat-application-detail-hero"><div><span class="plat-admin-eyebrow">${escapeHtml(requestTypeLabel(r))}</span><h2>${escapeHtml(requestShopName(r))}</h2><p>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</p></div><span class="plat-request-status-stack"><span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span>${secondary?`<span class="plat-request-secondary-pill is-${secondary.tone}">${escapeHtml(secondary.label)}</span>`:''}</span></div>
       ${renderRequestStepProgress(r)}
+      ${renderSubscriptionAddonDetails(r)}
       ${isPaymentDraft ? `<section class="plat-payment-draft-resume"><span>${pIcon('wallet',20)}</span><div><h3>To'lov hali tasdiqlanmagan</h3><p>Telegram oynasi yopilib qolgan bo'lsa ham shu arizadan to'lovni davom ettirishingiz mumkin.</p><small>Ariza ${escapeHtml(paymentDraftTimeLeftLabel(r.paymentDeadlineAt))} ichida avtomatik o'chadi.</small><button class="primary" onclick="resumeNewShopPayment('${r.id}')">${pIcon('arrowRight',16)} To'lovni davom ettirish</button></div></section>` : ''}
       ${needsReceipt ? `<section class="plat-receipt-attention is-detail"><span class="plat-receipt-attention-icon">${pIcon('file',20)}</span><div><h3>To'lovni tasdiqlash uchun chek kerak</h3><p>To'lovingizni aniqlay olmadik. Tekshiruvni davom ettirish uchun to'lov chekini yuboring.</p></div></section>` : ''}
       <section class="plat-application-info-grid">
-        <div><small>Ariza ID</small><b class="is-code">${escapeHtml(r.id)}</b></div><div><small>Summa</small><b>${money(r.tariffPrice)}</b></div>
+        <div><small>Ariza ID</small><b class="is-code">${escapeHtml(r.id)}</b></div><div><small>Summa</small><b>${money(r.totalPrice??r.tariffPrice)}</b></div>
         <div><small>Yaratildi</small><b>${formatDateTime(r.createdAt)}</b></div><div><small>To'lov usuli</small><b>${r.paymentMethod ? escapeHtml(paymentProviderName(r.paymentMethod)) : 'Hali tanlanmagan'}</b></div>
         ${r.kind === 'NEW_SHOP' ? `<div><small>Owner Telegram ID</small><b>${escapeHtml(r.ownerTelegramId || '—')}</b></div><div><small>Do'kon nomi</small><b>${escapeHtml(r.requestedShopName || 'Hali kiritilmagan')}</b></div>` : ''}
         ${r.hasReceipt ? `<div><small>Chek yuborilgan joy</small><b>${escapeHtml(receiptSourceLabel(r.receiptSource))}</b></div><div><small>Chek vaqti</small><b>${formatDateTime(r.receiptUploadedAt)}</b></div>` : ''}
@@ -4723,7 +4804,7 @@
     return `
       <div class="plat-admin-request-card" role="button" tabindex="0" onclick="openRequestDetails('${r.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openRequestDetails('${r.id}');}">
         <span class="plat-admin-request-top"><span><b>${escapeHtml(r.requesterFirstName || r.requesterTelegramId)}</b><small>${escapeHtml(identity)}</small></span><span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span></span>
-        <span class="plat-admin-request-mid"><span><small>${escapeHtml(requestTypeLabel(r))}</small><b>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</b>${r.paymentMethod ? `<em class="plat-request-method">${paymentProviderBadge(r.paymentMethod, true)} ${escapeHtml(paymentProviderName(r.paymentMethod))}</em>` : ''}</span><strong>${money(r.tariffPrice)}</strong></span>
+        <span class="plat-admin-request-mid"><span><small>${escapeHtml(requestTypeLabel(r))}</small><b>${escapeHtml(r.tariffName)} · ${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</b>${r.paymentMethod ? `<em class="plat-request-method">${paymentProviderBadge(r.paymentMethod, true)} ${escapeHtml(paymentProviderName(r.paymentMethod))}</em>` : ''}</span><strong>${money(r.totalPrice??r.tariffPrice)}</strong></span>
         ${paymentNotice}
         <span class="plat-admin-request-foot"><small>${pIcon('clock',13)} ${escapeHtml(claimed)}</small><span class="plat-admin-request-foot-actions">${r.status === 'NEW' && r.paymentClaimedAt && !r.hasReceipt && !r.receiptRequestedAt ? `<button onclick="requestReceiptForRequest('${r.id}')">Chek so'rash</button>` : ''}${pIcon('arrowRight',16)}</span></span>
       </div>`;
@@ -4782,6 +4863,21 @@
       <p>Bu ariza bo'yicha boshqa amal talab qilinmaydi.</p>
     </section>`;
   }
+  function renderSubscriptionAddonDetails(r) {
+    if(!r.addons?.length)return '';
+    const labels={CATALOG_SETUP:'Do‘kon va mahsulotlarni kiritish',MANAGED_DOMAIN:'Domen sotib olish va ulash'};
+    const statuses={PENDING:'Navbatda',IN_PROGRESS:'Bajarilmoqda',COMPLETED:'Bajarildi',CANCELLED:'Bekor qilingan'};
+    return `<section class="plat-admin-section plat-addon-details"><h2>Qo‘shimcha xizmatlar</h2><div class="plat-service-row"><span>Tarif</span><b>${money(r.tariffPrice)}</b></div>${r.addons.map(a=>`<section class="plat-catalog-product"><div class="plat-service-row"><b>${labels[a.code]||escapeHtml(a.code)}</b><strong>${money(a.totalPrice)}</strong></div><p>${statuses[a.status]||escapeHtml(a.status)}</p>
+      ${a.code==='MANAGED_DOMAIN'?`<p><b>${escapeHtml(a.details.domain||'')}</b> · ${Number(a.details.years)} yil</p>`:`<p class="muted">Mahsulot rasmlarini do‘kon egasi Shop App’da yuklaydi.</p>${(a.details.products||[]).map(p=>`<details><summary>${escapeHtml(p.name)} · ${Number(p.quantity)} dona · ${money(p.price)}</summary><p>${escapeHtml(p.description||'')}</p><p>Ranglar: ${escapeHtml(p.colors||'—')} · O‘lchamlar: ${escapeHtml(p.sizes||'—')}</p>${(p.variants||[]).map(v=>`<p>${escapeHtml(v.color||'—')} / ${escapeHtml(v.size||'—')} · ${Number(v.quantity)} dona · ${money(v.price)}</p>`).join('')}</details>`).join('')}`}
+      ${isAdminMode&&isSuperAdmin&&r.status==='APPROVED'&&['PENDING','IN_PROGRESS'].includes(a.status)?`<div class="plat-service-row"><button class="secondary" onclick="updateSubscriptionAddonStatus('${a.id}','${a.status}','${a.status==='PENDING'?'IN_PROGRESS':'COMPLETED'}')">${a.status==='PENDING'?'Boshlash':'Bajarildi'}</button></div><label class="plat-field-pro"><span>Bekor qilish sababi</span><input id="addon-reason-${a.id}" type="text" maxlength="1000"></label><button class="secondary" onclick="updateSubscriptionAddonStatus('${a.id}','${a.status}','CANCELLED')">Xizmatni bekor qilish</button>`:''}
+      </section>`).join('')}<div class="plat-service-row"><b>Jami to‘lov</b><strong>${money(r.totalPrice??r.tariffPrice)}</strong></div></section>`;
+  }
+  async function updateSubscriptionAddonStatus(addonId,expectedStatus,nextStatus) {
+    const reason=nextStatus==='CANCELLED'?document.getElementById('addon-reason-'+addonId)?.value.trim():null;
+    if(nextStatus==='CANCELLED'&&!reason)return showToast('Bekor qilish sababini kiriting.','warning');
+    try {await callPlatformApi('platform_admin_update_addon_status',{addonId,expectedStatus,nextStatus,reason});await loadRequests();await loadRequestHistory(selectedRequestId);rerenderActivePage();}
+    catch(e){showToast(e.message||'Xizmat holatini saqlab bo‘lmadi.','error');}
+  }
   function renderRequestDetailsBody() {
     const r = requests.find((x)=>x.id===selectedRequestId);
     if (!r) return `<div class="plat-admin-empty"><span>${pIcon('info',24)}</span><b>So'rov topilmadi</b><small>Ro'yxatga qaytib qayta urinib ko'ring.</small></div>`;
@@ -4796,12 +4892,13 @@
         <span class="plat-request-status-pill is-${ds.tone}">${escapeHtml(ds.label)}</span>
       </div>
       ${renderRequestNextAction(r)}
+      ${renderSubscriptionAddonDetails(r)}
       <section class="plat-admin-section">
         <div class="plat-admin-section-head"><div><span class="plat-admin-eyebrow">Ariza</span><h2>So'rov ma'lumotlari</h2></div></div>
         <div class="plat-admin-detail-grid">
           ${isNewShop ? `<div><small>Do'kon nomi</small><b>${escapeHtml(r.requestedShopName || '—')}</b></div><div><small>Owner Telegram ID</small><b>${escapeHtml(r.ownerTelegramId || '—')}</b></div><div><small>Ariza yuboruvchi</small><b>Telegram ID ${escapeHtml(r.requestedByUserId || r.requesterTelegramId)}</b></div>` : ''}
           <div><small>Tarif</small><b>${escapeHtml(r.tariffName)}</b></div><div><small>Davr</small><b>${r.billingPeriod==='ANNUAL'?'Yillik':'Oylik'}</b></div>
-          <div><small>Summa</small><b>${money(r.tariffPrice)}</b></div><div><small>Obuna muddati</small><b>${escapeHtml(String(r.durationDays || 30))} kun</b></div>
+          <div><small>Summa</small><b>${money(r.totalPrice??r.tariffPrice)}</b></div><div><small>Obuna muddati</small><b>${escapeHtml(String(r.durationDays || 30))} kun</b></div>
           <div><small>To'lov usuli</small><b class="plat-admin-payment-method-value">${r.paymentMethod ? `${paymentProviderBadge(r.paymentMethod, true)} ${escapeHtml(paymentProviderName(r.paymentMethod))}` : '—'}</b></div><div><small>So'rov yaratildi</small><b>${formatDateTime(r.createdAt)}</b></div>
           <div><small>So'rov ID</small><b class="is-code">${escapeHtml(r.id)}</b></div><div><small>Tekshirish vaqti</small><b>${r.paymentClaimedAt ? formatDateTime(r.paymentClaimedAt) : 'Hali tasdiqlanmagan'}</b></div>
         </div>
@@ -4838,7 +4935,7 @@
       <section class="plat-provision-summary">
         <div><small>Do'kon nomi</small><b>${escapeHtml(r.requestedShopName || '—')}</b></div><div><small>Owner Telegram ID</small><b>${escapeHtml(r.ownerTelegramId || '—')}</b></div>
         <div><small>Tarif</small><b>${escapeHtml(r.tariffName)}</b></div><div><small>Davr</small><b>${r.billingPeriod === 'ANNUAL' ? 'Yillik' : 'Oylik'}</b></div>
-        <div><small>To'langan summa</small><b>${money(r.tariffPrice)}</b></div><div><small>Obuna muddati</small><b>${escapeHtml(String(r.durationDays || 30))} kun</b></div>
+        <div><small>To'langan summa</small><b>${money(r.totalPrice??r.tariffPrice)}</b></div><div><small>Obuna muddati</small><b>${escapeHtml(String(r.durationDays || 30))} kun</b></div>
         <div><small>Bonus kunlar</small><b>+7 kun</b></div><div><small>Ariza ID</small><b class="is-code">${escapeHtml(r.id)}</b></div>
       </section>
       <section class="plat-provision-token-card"><div class="plat-application-section-title"><span>${pIcon('bot',17)}</span><div><b>Bot profili avtomatik sozlanadi</b><small>Token tekshirilgach nom, bio/description va JPG profil rasmi Telegram botga avtomatik qo'llanadi. @username o'zgarmaydi.</small></div></div><div class="plat-provision-bot-profile"><div><small>Bot nomi</small><b>${escapeHtml(r.requestedBotName || 'Kiritilmagan')}</b></div><div><small>Bio / tavsif</small><b>${escapeHtml(r.requestedBotBio || 'Kiritilmagan')}</b></div>${r.hasBotPhoto?`<button type="button" class="secondary" onclick="viewBotPhoto('${r.id}')">${pIcon('image',15)} Rasmni ko'rish</button>`:`<small>Profil rasmi kiritilmagan</small>`}</div></section>
@@ -5510,6 +5607,19 @@
   window.loadPlatformShopDomains = loadPlatformShopDomains;
   window.platformShopDomainAction = platformShopDomainAction;
   window.openShopDetailsFromDashboard = openShopDetailsFromDashboard;
+  window.updateSubscriptionAddonStatus = updateSubscriptionAddonStatus;
+  window.openActiveShopsFromDashboard = openActiveShopsFromDashboard;
+  window.openAdminOwnersFromDashboard = openAdminOwnersFromDashboard;
+  window.openAdminOwnerShops = openAdminOwnerShops;
+  window.setCatalogSetupSelected = setCatalogSetupSelected;
+  window.setManagedDomainSelected = setManagedDomainSelected;
+  window.updateManagedDomain = updateManagedDomain;
+  window.addCatalogProduct = addCatalogProduct;
+  window.removeCatalogProduct = removeCatalogProduct;
+  window.updateCatalogProduct = updateCatalogProduct;
+  window.addCatalogVariant = addCatalogVariant;
+  window.removeCatalogVariant = removeCatalogVariant;
+  window.updateCatalogVariant = updateCatalogVariant;
   window.openRequestsFilteredFromDashboard = openRequestsFilteredFromDashboard;
   window.applyTariffFromShopDetails = applyTariffFromShopDetails;
   window.setGrantDaysPreset = setGrantDaysPreset;

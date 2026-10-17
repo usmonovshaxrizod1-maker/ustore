@@ -22,6 +22,8 @@ import { approveTelegramWebChallenge } from "../_shared/web-telegram-auth.ts";
 import { changeLogin, issueInitialCredentials, resetCredentialsForTelegram, setCredentialsPasswordForTelegram, resolveSession } from "../_shared/web-auth.ts";
 import { handlePlatformDomainAction } from "../_shared/shop-domains.ts";
 import { CATEGORY_ICON_IDS } from "../_shared/category-icons.ts";
+import { normalizeSubscriptionAddons,stableSubscriptionInput } from "../_shared/subscription-addons.ts";
+import { handlePlatformBotCheckout } from "../_shared/platform-bot-checkout-handler.ts";
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
 
@@ -1011,6 +1013,12 @@ function mapSubscriptionRequest(r: any) {
     tariffId: r.tariff_id,
     tariffName: r.tariff_name_snapshot,
     tariffPrice: Number(r.tariff_price_snapshot),
+    submitted: !!r.web_submission_key,
+    totalPrice: Number(r.total_price_snapshot ?? r.tariff_price_snapshot),
+    addons: (r.subscription_request_addons || []).map((a: any) => ({
+      id:a.id,code:a.code,quantity:a.quantity,unitPrice:Number(a.unit_price),totalPrice:Number(a.total_price),
+      details:a.details || {},status:a.status,startedAt:a.started_at,completedAt:a.completed_at,
+    })),
     tariffProductLimit: r.tariff_product_limit_snapshot,
     billingPeriod: r.billing_period || "MONTHLY",
     durationDays: Number(r.duration_days || 30),
@@ -1042,7 +1050,7 @@ function mapSubscriptionRequest(r: any) {
   };
 }
 
-const SUBSCRIPTION_REQUEST_SELECT = "id,requester_telegram_id,requested_by_user_id,owner_telegram_id,requested_shop_name,requester_username,requester_first_name,kind,shop_id,tariff_id,tariff_name_snapshot,tariff_price_snapshot,tariff_product_limit_snapshot,billing_period,duration_days,upgrade_action,status,receipt_storage_path,receipt_uploaded_at,receipt_source,payment_method,payment_method_id,payment_claimed_at,payment_deadline_at,receipt_requested_at,reject_reason,reviewed_at,reviewed_by,created_at,applied_shop_id,applied_at,requested_bot_name,requested_bot_bio,bot_photo_storage_path,bot_photo_uploaded_at";
+const SUBSCRIPTION_REQUEST_SELECT = "id,requester_telegram_id,requested_by_user_id,owner_telegram_id,requested_shop_name,requester_username,requester_first_name,kind,shop_id,tariff_id,tariff_name_snapshot,tariff_price_snapshot,total_price_snapshot,web_submission_key,subscription_request_addons(*),tariff_product_limit_snapshot,billing_period,duration_days,upgrade_action,status,receipt_storage_path,receipt_uploaded_at,receipt_source,payment_method,payment_method_id,payment_claimed_at,payment_deadline_at,receipt_requested_at,reject_reason,reviewed_at,reviewed_by,created_at,applied_shop_id,applied_at,requested_bot_name,requested_bot_bio,bot_photo_storage_path,bot_photo_uploaded_at";
 
 async function listMySubscriptionRequests(db: any, tgId: string, limit = 100): Promise<any[]> {
   await purgeExpiredPaymentDrafts(db);
@@ -1107,7 +1115,7 @@ Deno.serve(async (req: Request) => {
 
     async function attachTelegramReceiptToRequest(requestId: string, senderId: string, telegramFileId: string): Promise<boolean> {
       const { data: reqRow, error: reqErr } = await db.from("subscription_requests")
-        .select("id,status,requested_by_user_id,requester_telegram_id,receipt_storage_path,payment_claimed_at,payment_deadline_at,kind,upgrade_action,billing_period,tariff_name_snapshot,tariff_price_snapshot,requested_shop_name")
+        .select("id,status,requested_by_user_id,requester_telegram_id,receipt_storage_path,payment_claimed_at,payment_deadline_at,kind,upgrade_action,billing_period,tariff_name_snapshot,tariff_price_snapshot,total_price_snapshot,requested_shop_name")
         .eq("id", requestId).maybeSingle();
       if (reqErr) throw reqErr;
       if (!reqRow || String(reqRow.requested_by_user_id || reqRow.requester_telegram_id) !== senderId || reqRow.status !== "NEW") return false;
@@ -1135,7 +1143,7 @@ Deno.serve(async (req: Request) => {
           if (!SUPER_ADMIN_ID) return;
           const { data: signed } = await db.storage.from("payment-receipts").createSignedUrl(stored.path, 300);
           const kindLabel = reqRow.kind === "NEW_SHOP" ? "Yangi do'kon" : reqRow.upgrade_action === "EXTEND" ? "Obunani uzaytirish" : "Tarifni o'zgartirish";
-          const caption = `🧾 Chek Telegram bot orqali yuborildi\n${kindLabel}${reqRow.requested_shop_name ? ` · ${reqRow.requested_shop_name}` : ""}\n${reqRow.tariff_name_snapshot} — ${reqRow.tariff_price_snapshot} so'm\nSo'rov ID: ${requestId}`;
+          const caption = `🧾 Chek Telegram bot orqali yuborildi\n${kindLabel}${reqRow.requested_shop_name ? ` · ${reqRow.requested_shop_name}` : ""}\n${reqRow.tariff_name_snapshot} — ${reqRow.total_price_snapshot ?? reqRow.tariff_price_snapshot} so'm\nSo'rov ID: ${requestId}`;
           if (signed?.signedUrl) await telegramApi(PLATFORM_BOT_TOKEN, "sendPhoto", { chat_id: SUPER_ADMIN_ID, photo: signed.signedUrl, caption });
         } catch (e) { console.error("telegram receipt admin notify error", e); }
       })());
@@ -1143,6 +1151,11 @@ Deno.serve(async (req: Request) => {
     }
 
     if (callback?.id) {
+      if(String(callback.data||'').startsWith('shop:')){
+        try {await handlePlatformBotCheckout(db,PLATFORM_BOT_TOKEN,body,TERMS_VERSION,PRIVACY_VERSION,SUPER_ADMIN_ID);}
+        catch(e){console.error('platform bot checkout callback failed',e);}
+        return json({ok:true});
+      }
       const senderId = String(callback?.from?.id || "");
       const data = String(callback?.data || "");
       if (senderId && data.startsWith("receipt_req:")) {
@@ -1241,6 +1254,10 @@ Deno.serve(async (req: Request) => {
       }
       return json({ ok: true });
     }
+    if(chatId){
+      try {if(await handlePlatformBotCheckout(db,PLATFORM_BOT_TOKEN,body,TERMS_VERSION,PRIVACY_VERSION,SUPER_ADMIN_ID))return json({ok:true});}
+      catch(e){console.error('platform bot checkout message failed',e);}
+    }
     if (chatId && isStartCommand) {
       try {
         await telegramApi(PLATFORM_BOT_TOKEN, "sendMessage", {
@@ -1248,7 +1265,7 @@ Deno.serve(async (req: Request) => {
           text: "👋 <b>UStorE</b>\n\nWeb sayt va Telegram Mini App orqali savdo qiladigan do‘koningizni bitta joydan boshqaring. Boshlash uchun pastdagi tugmani bosing. Telegram ID'ingizni bilish uchun /id yuborishingiz mumkin.",
           parse_mode: "HTML",
           reply_markup: {
-            inline_keyboard: [[{ text: "UStorE boshqaruv panelini ochish", web_app: { url: PLATFORM_MINI_APP_URL } }]],
+            inline_keyboard: [[{ text: "UStorE boshqaruv panelini ochish", web_app: { url: PLATFORM_MINI_APP_URL } }],[{text:'Yangi do‘kon sotib olish',callback_data:'shop:new'}]],
           },
         });
       } catch (e) { console.error("platform /start send error", e); }
@@ -2093,6 +2110,7 @@ Deno.serve(async (req: Request) => {
         }
 
         if (existing) {
+          if(existing.web_submission_key)return json({error:'submission_draft_conflict',requestId:existing.id},409);
           const deadline = existing.payment_deadline_at || new Date(new Date(existing.created_at).getTime() + 60 * 60 * 1000).toISOString();
           if (new Date(deadline).getTime() <= Date.now()) {
             await db.from("subscription_requests").delete().eq("id", existing.id);
@@ -2105,7 +2123,7 @@ Deno.serve(async (req: Request) => {
               requested_bot_bio: requestedBotBio,
               tariff_id: tariff.id,
               tariff_name_snapshot: tariff.name,
-              tariff_price_snapshot: priceSnapshot,
+              tariff_price_snapshot: priceSnapshot, total_price_snapshot: priceSnapshot,
               tariff_product_limit_snapshot: tariff.product_limit,
               billing_period: billingPeriod,
               duration_days: durationDays,
@@ -2131,7 +2149,7 @@ Deno.serve(async (req: Request) => {
           shop_id: null,
           tariff_id: tariff.id,
           tariff_name_snapshot: tariff.name,
-          tariff_price_snapshot: priceSnapshot,
+          tariff_price_snapshot: priceSnapshot, total_price_snapshot: priceSnapshot,
           tariff_product_limit_snapshot: tariff.product_limit,
           billing_period: billingPeriod,
           duration_days: durationDays,
@@ -2152,13 +2170,17 @@ Deno.serve(async (req: Request) => {
         // ishonilmaydi — server ham talab qiladi va TASHqi so'rov emas,
         // shu bitta chaqiruv ichida rozilikni yozadi.
         if (payload.consentAccepted !== true) return json({ error: "consent_required" }, 400);
-        const webSubmissionKey = requestedClientMode === "web" ? String(payload.submissionKey || "") : null;
+        let normalizedAddonChoices;
+        try { normalizedAddonChoices = normalizeSubscriptionAddons(payload.addons,{kind:String(payload.kind || ''),tariffPriceSnapshot:0}).items.map(({code,details})=>({code,details})); }
+        catch(e:any) { return json({error:e.message},400); }
+        const webSubmissionKey = requestedClientMode === "web" || normalizedAddonChoices.length ? String(payload.submissionKey || "") : null;
         const webSubmissionInput = [payload.kind||null,payload.shopId||null,payload.tariffId||null,payload.requestId||null,payload.billingPeriod||"monthly",payload.upgradeAction||null,payload.paymentMethod||null,payload.paymentMethodId||null,payload.shopName||null,payload.ownerTelegramId||null,payload.botName||null,payload.botBio||null];
+        if (normalizedAddonChoices.length) webSubmissionInput.push(normalizedAddonChoices as any);
         if (webSubmissionKey !== null) {
           if (!/^[a-zA-Z0-9:_-]{16,200}$/.test(webSubmissionKey)) return json({error:"invalid_submission_key"},400);
           const {data:prior,error:priorError}=await db.from("subscription_requests").select("id,status,web_submission_input,receipt_storage_path,payment_claimed_at").eq("requester_telegram_id",tgId).eq("web_submission_key",webSubmissionKey).maybeSingle();
           if(priorError)throw priorError;
-          if(prior){if(JSON.stringify(prior.web_submission_input)!==JSON.stringify(webSubmissionInput))return json({error:"submission_payload_conflict"},409);return json({ok:true,requestId:prior.id,status:prior.status,replayed:true,hasReceipt:Boolean(prior.receipt_storage_path),paymentClaimedAt:prior.payment_claimed_at});}
+          if(prior){if(stableSubscriptionInput(prior.web_submission_input)!==stableSubscriptionInput(webSubmissionInput))return json({error:"submission_payload_conflict"},409);if(requestedClientMode==="web")return json({ok:true,requestId:prior.id,status:prior.status,replayed:true,hasReceipt:Boolean(prior.receipt_storage_path),paymentClaimedAt:prior.payment_claimed_at});}
         }
         const kind = String(payload.kind || "");
         if (kind !== "NEW_SHOP" && kind !== "UPGRADE") return json({ error: "invalid_kind" }, 400);
@@ -2214,6 +2236,7 @@ Deno.serve(async (req: Request) => {
         }
         const durationDays = billingPeriod === "ANNUAL" ? 365 : 30;
         const priceSnapshot = billingPeriod === "ANNUAL" ? Number(tariff.price) * 10 : Number(tariff.price);
+        const serviceAddons = normalizeSubscriptionAddons(payload.addons,{kind,tariffPriceSnapshot:priceSnapshot});
         let upgradeAction: string | null = null;
         if (kind === "UPGRADE") {
           const requestedAction = String(payload.upgradeAction || "").toUpperCase();
@@ -2226,12 +2249,37 @@ Deno.serve(async (req: Request) => {
 
         if (webSubmissionKey !== null) {
           const values={kind,shop_id:shopId,tariff_id:tariff.id,tariff_name_snapshot:tariff.name,tariff_price_snapshot:priceSnapshot,tariff_product_limit_snapshot:tariff.product_limit,billing_period:billingPeriod,duration_days:durationDays,upgrade_action:upgradeAction,payment_method:paymentMethod,payment_method_id:paymentMethodId,owner_telegram_id:ownerTelegramId,requested_shop_name:requestedShopName,requested_bot_name:kind==="NEW_SHOP"?String(payload.botName||"").trim().slice(0,64)||null:null,requested_bot_bio:kind==="NEW_SHOP"?String(payload.botBio||"").trim().slice(0,500)||null:null};
-          const {data:submitted,error:submitError}=await db.rpc("ustore_submit_web_subscription",{p_user:tgId,p_key:webSubmissionKey,p_input:webSubmissionInput,p_values:values,p_prepared_id:payload.requestId||null});
+          const {data:submitted,error:submitError}=await db.rpc("ustore_submit_web_subscription",{p_user:tgId,p_key:webSubmissionKey,p_input:webSubmissionInput,p_values:{...values,total_price_snapshot:serviceAddons.totalPrice,addons:serviceAddons.items},p_prepared_id:payload.requestId||null});
           if(submitError){const message=String(submitError.message||"");if(message.includes("conflict")||message==="request_already_pending"||message==="submission_draft_expired")return json({error:message},409);throw submitError;}
           if(!submitted.replayed){
             try{await appendSubscriptionRequestHistory(db,submitted.requestId,"REQUEST_SUBMITTED","USER",tgId,{kind,tariffId:tariff.id,billingPeriod,paymentMethod});await db.from("platform_consent_log").insert({user_telegram_id:tgId,shop_id:shopId,terms_version:TERMS_VERSION,privacy_version:PRIVACY_VERSION,source:`subscription_request:${kind}`});}catch(e){console.error("web submission history",e);}
           }
-          return json({ok:true,...submitted});
+          // Mini App uploads already travel in this call; Web attaches separately.
+          if (requestedClientMode !== 'web' && submitted.status === 'NEW') {
+            const updates: Record<string,unknown> = {};
+            if (payload.receiptImageUpload && !submitted.hasReceipt) {
+              const stored = await storeSubscriptionReceipt(db,submitted.requestId,tgId,payload.receiptImageUpload);
+              Object.assign(updates,{receipt_storage_path:stored.path,receipt_uploaded_at:new Date().toISOString(),receipt_source:'PAYMENT_PAGE',payment_claimed_at:new Date().toISOString()});
+            }
+            if (payload.botPhotoUpload) {
+              const photo = await storeSubscriptionReceipt(db,submitted.requestId,tgId,payload.botPhotoUpload);
+              Object.assign(updates,{bot_photo_storage_path:photo.path,bot_photo_uploaded_at:new Date().toISOString()});
+            }
+            if (Object.keys(updates).length) {
+              const {error}=await db.from('subscription_requests').update(updates).eq('id',submitted.requestId);
+              if(error)throw error;
+              if(updates.receipt_storage_path){
+                if(!submitted.paymentClaimedAt)await appendSubscriptionRequestHistory(db,submitted.requestId,'PAYMENT_CLAIMED','USER',tgId,{source:'PAYMENT_PAGE'});
+                await appendSubscriptionRequestHistory(db,submitted.requestId,'RECEIPT_UPLOADED','USER',tgId,{source:'PAYMENT_PAGE'});
+                EdgeRuntime.waitUntil((async()=>{
+                  try {if(!SUPER_ADMIN_ID)return;const {data:signed}=await db.storage.from('payment-receipts').createSignedUrl(String(updates.receipt_storage_path),300);
+                    if(signed?.signedUrl)await telegramApi(PLATFORM_BOT_TOKEN,'sendPhoto',{chat_id:SUPER_ADMIN_ID,photo:signed.signedUrl,caption:`Yangi do‘kon to‘lovi\n${requestedShopName}\n${tariff.name} · Jami ${serviceAddons.totalPrice} so‘m\nAriza: ${submitted.requestId}`});
+                  }catch(e){console.error('service receipt admin notification failed',e);}
+                })());
+              }
+            }
+          }
+          return json({ok:true,...submitted,addons:serviceAddons.items});
         }
 
         await purgeExpiredPaymentDrafts(db);
@@ -2284,7 +2332,7 @@ Deno.serve(async (req: Request) => {
             requested_bot_bio: kind === "NEW_SHOP" ? finalRequestedBotBio : preparedReq.requested_bot_bio,
             tariff_id: tariff.id,
             tariff_name_snapshot: tariff.name,
-            tariff_price_snapshot: priceSnapshot,
+            tariff_price_snapshot: priceSnapshot, total_price_snapshot: priceSnapshot,
             tariff_product_limit_snapshot: tariff.product_limit,
             billing_period: billingPeriod,
             duration_days: durationDays,
@@ -2301,7 +2349,7 @@ Deno.serve(async (req: Request) => {
             owner_telegram_id: ownerTelegramId, requested_shop_name: requestedShopName,
             requested_bot_name: kind === "NEW_SHOP" ? finalRequestedBotName : null, requested_bot_bio: kind === "NEW_SHOP" ? finalRequestedBotBio : null,
             kind, shop_id: shopId, tariff_id: tariff.id,
-            tariff_name_snapshot: tariff.name, tariff_price_snapshot: priceSnapshot, tariff_product_limit_snapshot: tariff.product_limit,
+            tariff_name_snapshot: tariff.name, tariff_price_snapshot: priceSnapshot, total_price_snapshot: priceSnapshot, tariff_product_limit_snapshot: tariff.product_limit,
             billing_period: billingPeriod, duration_days: durationDays, upgrade_action: upgradeAction,
             payment_method: paymentMethod, payment_method_id: paymentMethodId,
             payment_claimed_at: paymentClaimedAt,
@@ -2417,7 +2465,7 @@ Deno.serve(async (req: Request) => {
         const requestId = String(payload.requestId || "");
         if (!requestId) return json({ error: "request_id_required" }, 400);
         const { data: reqRow, error: reqErr } = await db.from("subscription_requests")
-          .select("id,requester_telegram_id,status,payment_claimed_at,payment_deadline_at,tariff_name_snapshot,tariff_price_snapshot,payment_method")
+          .select("id,requester_telegram_id,status,payment_claimed_at,payment_deadline_at,tariff_name_snapshot,tariff_price_snapshot,total_price_snapshot,payment_method")
           .eq("id", requestId).maybeSingle();
         if (reqErr) throw reqErr;
         if (!reqRow || String(reqRow.requester_telegram_id) !== String(tgId)) return json({ error: "not_found" }, 404);
@@ -2439,7 +2487,7 @@ Deno.serve(async (req: Request) => {
               if (SUPER_ADMIN_ID) {
                 await telegramApi(PLATFORM_BOT_TOKEN, "sendMessage", {
                   chat_id: SUPER_ADMIN_ID,
-                  text: `🧾 To'lov tasdiqlandi (chek ixtiyoriy)\n${reqRow.tariff_name_snapshot} — ${reqRow.tariff_price_snapshot} so'm\nUsul: ${reqRow.payment_method || 'Noma’lum'}\nSo'rov ID: ${requestId}\nShu vaqt atrofidagi tushumni tekshiring; kerak bo'lsa chek so'rang.`,
+                  text: `🧾 To'lov tasdiqlandi (chek ixtiyoriy)\n${reqRow.tariff_name_snapshot} — ${reqRow.total_price_snapshot ?? reqRow.tariff_price_snapshot} so'm\nUsul: ${reqRow.payment_method || 'Noma’lum'}\nSo'rov ID: ${requestId}\nShu vaqt atrofidagi tushumni tekshiring; kerak bo'lsa chek so'rang.`,
                 });
               }
             } catch (e) { console.error("payment claim notify error", e); }
@@ -2489,7 +2537,7 @@ Deno.serve(async (req: Request) => {
         const requestId = String(payload.requestId || "");
         if (!requestId) return json({ error: "request_id_required" }, 400);
         const { data: reqRow, error: reqErr } = await db.from("subscription_requests")
-          .select("id,requester_telegram_id,requester_first_name,status,receipt_storage_path,payment_claimed_at,payment_deadline_at,kind,upgrade_action,billing_period,tariff_name_snapshot,tariff_price_snapshot,requested_shop_name")
+          .select("id,requester_telegram_id,requester_first_name,status,receipt_storage_path,payment_claimed_at,payment_deadline_at,kind,upgrade_action,billing_period,tariff_name_snapshot,tariff_price_snapshot,total_price_snapshot,requested_shop_name")
           .eq("id", requestId).maybeSingle();
         if (reqErr) throw reqErr;
         if (!reqRow || String(reqRow.requester_telegram_id) !== String(tgId)) return json({ error: "not_found" }, 404);
@@ -2529,7 +2577,7 @@ Deno.serve(async (req: Request) => {
             const periodLabel = reqRow.billing_period === "ANNUAL" ? "Yillik (2 oy bepul)" : "Oylik";
             await telegramApi(PLATFORM_BOT_TOKEN, "sendPhoto", {
               chat_id: SUPER_ADMIN_ID, photo: signed.signedUrl,
-              caption: `🧾 Chek biriktirildi · ${receiptSource === "MY_REQUESTS" ? "Arizalarim" : "To'lov oynasi"}\n${reqRow.requester_first_name || tgId}\n${reqRow.tariff_name_snapshot} — ${reqRow.tariff_price_snapshot} so'm\n${periodLabel}\n${kindLabel}${reqRow.requested_shop_name ? ` · ${reqRow.requested_shop_name}` : ""}\nSo'rov ID: ${requestId}`,
+              caption: `🧾 Chek biriktirildi · ${receiptSource === "MY_REQUESTS" ? "Arizalarim" : "To'lov oynasi"}\n${reqRow.requester_first_name || tgId}\n${reqRow.tariff_name_snapshot} — ${reqRow.total_price_snapshot ?? reqRow.tariff_price_snapshot} so'm\n${periodLabel}\n${kindLabel}${reqRow.requested_shop_name ? ` · ${reqRow.requested_shop_name}` : ""}\nSo'rov ID: ${requestId}`,
             });
           } catch (e) { console.error("attach receipt admin notify error", e); }
         })());
@@ -2573,6 +2621,15 @@ Deno.serve(async (req: Request) => {
         const { data, error } = await q;
         if (error) throw error;
         return json({ requests: (data || []).map(mapSubscriptionRequest) });
+      }
+
+      case "platform_admin_update_addon_status": {
+        requirePlatformSuperAdmin();
+        const {data,error}=await db.rpc('ustore_update_subscription_addon',{
+          p_id:payload.addonId,p_expected:payload.expectedStatus,p_next:payload.nextStatus,p_actor:tgId,p_reason:payload.reason || null,
+        });
+        if(error){const message=String(error.message || 'addon_update_failed');return json({error:message},message==='addon_status_conflict'?409:400);}
+        return json(data);
       }
 
       case "platform_get_subscription_receipt_url": {
@@ -3389,7 +3446,7 @@ Deno.serve(async (req: Request) => {
         const since = periodDays ? new Date(Date.now() - periodDays * 24 * 3600 * 1000).toISOString() : null;
 
         let approvedQuery = db.from("subscription_requests")
-          .select("kind,upgrade_action,billing_period,tariff_name_snapshot,tariff_price_snapshot,reviewed_at")
+          .select("kind,upgrade_action,billing_period,tariff_name_snapshot,tariff_price_snapshot,total_price_snapshot,reviewed_at")
           .eq("status", "APPROVED").order("reviewed_at", { ascending: true }).limit(5000);
         if (since) approvedQuery = approvedQuery.gte("reviewed_at", since);
         const { data: approvedRows, error: apErr } = await approvedQuery;
@@ -3400,7 +3457,7 @@ Deno.serve(async (req: Request) => {
         const newShopCount = rows.filter((r: any) => r.kind === "NEW_SHOP").length;
         const renewalCount = rows.filter((r: any) => r.kind === "UPGRADE" && r.upgrade_action === "EXTEND").length;
         const planChangeCount = rows.filter((r: any) => r.kind === "UPGRADE" && r.upgrade_action === "CHANGE").length;
-        const revenue = rows.reduce((sum: number, r: any) => sum + Number(r.tariff_price_snapshot || 0), 0);
+        const revenue = rows.reduce((sum: number, r: any) => sum + Number(r.total_price_snapshot ?? r.tariff_price_snapshot ?? 0), 0);
 
         const byPeriod: Record<string, { count: number; revenue: number }> = {
           MONTHLY: { count: 0, revenue: 0 }, ANNUAL: { count: 0, revenue: 0 },
@@ -3408,14 +3465,14 @@ Deno.serve(async (req: Request) => {
         for (const r of rows) {
           const key = r.billing_period === "ANNUAL" ? "ANNUAL" : "MONTHLY";
           byPeriod[key].count += 1;
-          byPeriod[key].revenue += Number(r.tariff_price_snapshot || 0);
+          byPeriod[key].revenue += Number(r.total_price_snapshot ?? r.tariff_price_snapshot ?? 0);
         }
 
         const tariffMap = new Map<string, { count: number; revenue: number }>();
         for (const r of rows) {
           const name = r.tariff_name_snapshot || "Noma'lum";
           const entry = tariffMap.get(name) || { count: 0, revenue: 0 };
-          entry.count += 1; entry.revenue += Number(r.tariff_price_snapshot || 0);
+          entry.count += 1; entry.revenue += Number(r.total_price_snapshot ?? r.tariff_price_snapshot ?? 0);
           tariffMap.set(name, entry);
         }
         const byTariff = Array.from(tariffMap.entries())
@@ -3428,7 +3485,7 @@ Deno.serve(async (req: Request) => {
           if (!r.reviewed_at) continue;
           const day = String(r.reviewed_at).slice(0, 10);
           const entry = dayMap.get(day) || { count: 0, revenue: 0 };
-          entry.count += 1; entry.revenue += Number(r.tariff_price_snapshot || 0);
+          entry.count += 1; entry.revenue += Number(r.total_price_snapshot ?? r.tariff_price_snapshot ?? 0);
           dayMap.set(day, entry);
         }
         const salesTimeline = Array.from(dayMap.entries())

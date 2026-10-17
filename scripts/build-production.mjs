@@ -70,6 +70,7 @@ copyTree(path.join(root,'platform'), path.join(webDist,'platform-ui'));
 const platformFrameEntry = path.join(webDist,'platform-ui','index.html');
 fs.writeFileSync(platformFrameEntry, fs.readFileSync(platformFrameEntry,'utf8')
   .replaceAll('../web/shared/miniapp-frame-bridge.js','../shared/miniapp-frame-bridge.js')
+  .replaceAll('../web/shared/subscription-service-addons.js','../shared/subscription-service-addons.js')
   .replaceAll('../web/shared/platform-landing-image.js','../shared/platform-landing-image.js'));
 
 copyFile(path.join(root, 'config.public.js'), path.join(webDist, 'config.public.js'));

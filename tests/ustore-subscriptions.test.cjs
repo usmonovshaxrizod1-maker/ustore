@@ -1262,7 +1262,7 @@ test('every function called from an inline on* handler in platform-app.js is exp
   const calls = new Set();
   let m;
   while ((m = handlerRe.exec(platformApp))) {
-    const body = m[1];
+    const body = m[1].replace(/\$\{[^}]*\}/g, '');
     // bare identifier immediately followed by "(" and NOT preceded by a "."
     // (so method calls like event.preventDefault() / this.value are skipped)
     const callRe = /(?<![.\w$])([a-zA-Z_$][\w$]*)\(/g;
@@ -1470,11 +1470,11 @@ test('loadDashboardSummary() is actually wired into onTabEnter("dashboard") and 
 // + sales-timeline bar chart), chosen by the user as the next backlog item.
 // ---------------------------------------------------------------------------
 
-test('platform_admin_analytics_summary computes every number from REAL data (approved subscription_requests + shops.status/created_at) — no hardcoded/fabricated figures — and money math uses tariff_price_snapshot (never a live tariff price join, so past reports never silently drift when a tariff is later re-priced)', () => {
+test('platform_admin_analytics_summary computes every number from REAL data (approved subscription_requests + shops.status/created_at) — no hardcoded/fabricated figures — and money math uses the total snapshot with legacy tariff fallback (never a live tariff price join, so past reports never silently drift when a tariff is later re-priced)', () => {
   const block = actionBlock('platform_admin_analytics_summary');
   assert.match(block, /requirePlatformSuperAdmin\(\);/);
   assert.match(block, /\.eq\("status", "APPROVED"\)/, 'revenue/count must only ever come from actually-approved (real money) requests');
-  assert.match(block, /Number\(r\.tariff_price_snapshot \|\| 0\)/, 'must use the snapshot, not a live tariff price join');
+  assert.match(block, /Number\(r\.total_price_snapshot \?\? r\.tariff_price_snapshot \?\? 0\)/, 'must use the snapshot, not a live tariff price join');
   assert.match(block, /newShopCount = rows\.filter\(\(r: any\) => r\.kind === "NEW_SHOP"\)\.length;/);
   assert.match(block, /renewalCount = rows\.filter\(\(r: any\) => r\.kind === "UPGRADE" && r\.upgrade_action === "EXTEND"\)\.length;/);
   assert.match(block, /planChangeCount = rows\.filter\(\(r: any\) => r\.kind === "UPGRADE" && r\.upgrade_action === "CHANGE"\)\.length;/);
@@ -1734,7 +1734,7 @@ test('root-cause scroll-jump fix: .plat-page-body — the ACTUAL scroll containe
   // openPage/closePage/tab switches must still intentionally reset scroll to
   // top on a genuine navigation (preserve:false) — the fix must not make
   // every navigation "stick" at the previous page's scroll position.
-  assert.match(platformApp, /function openPage\(pageId\) \{ activePage = pageId; render\(\{ preserve: false, scrollTop: true \}\); \}/);
+  assert.match(platformApp, /function openPage\(pageId\) \{ activePage = pageId; render\(\{ preserve: false, scrollTop: true \}\);/);
   assert.match(platformApp, /function closePage\(\) \{ activePage = null; render\(\{ preserve: false, scrollTop: true \}\); \}/);
 });
 

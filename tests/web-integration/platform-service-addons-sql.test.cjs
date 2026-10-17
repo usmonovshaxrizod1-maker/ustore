@@ -49,6 +49,7 @@ async function createPreMigrationDatabase() {
     create unique index subscription_web_submission_key_idx
       on public.subscription_requests(requester_telegram_id,web_submission_key)
       where web_submission_key is not null;
+    create table subscription_request_history(id bigserial primary key,request_id uuid references subscription_requests(id),event_type text,actor_type text,actor_telegram_id bigint,metadata jsonb);
   `);
   await db.exec(fs.readFileSync(addonMigrationPath(), 'utf8'));
   return db;
@@ -81,6 +82,15 @@ async function submit(db, key, input, values = submissionValues()) {
     ['123456', key, JSON.stringify(input), JSON.stringify(values), null],
   )).rows[0].result;
 }
+test('expired unpaid bot request cannot block a new purchase and its add-ons cascade',async()=>{
+ const db=await createPreMigrationDatabase();try{
+  const first=await submit(db,'expired-service-key-0001',{kind:'NEW_SHOP'});
+  await db.query("update subscription_requests set payment_deadline_at=now()-interval '2 hours' where id=$1",[first.requestId]);
+  const next=await submit(db,'fresh-service-key-0002',{kind:'NEW_SHOP'});
+  assert.notEqual(first.requestId,next.requestId);
+  assert.equal((await db.query('select count(*)::int n from subscription_request_addons where request_id=$1',[first.requestId])).rows[0].n,0);
+ }finally{await db.close()}
+});
 
 test('service add-ons are written atomically and an identical replay stays idempotent', async () => {
   const db = await createPreMigrationDatabase();
@@ -119,6 +129,25 @@ test('changed replay conflicts and database constraints protect duplicate add-on
   } finally {
     await db.close();
   }
+});
+
+test('fulfilment requires approved payment, enforces transitions and audits each mutation once', async () => {
+  const db=await createPreMigrationDatabase();
+  try {
+    const request=await submit(db,'service-addon-status-001',{kind:'NEW_SHOP'});
+    const id=(await db.query('select id from subscription_request_addons where request_id=$1 limit 1',[request.requestId])).rows[0].id;
+    const update=(expected,next,reason=null)=>db.query('select ustore_update_subscription_addon($1,$2,$3,$4,$5)',[id,expected,next,99,reason]);
+    await assert.rejects(update('PENDING','IN_PROGRESS'),/payment_not_approved/);
+    await db.query("update subscription_requests set status='APPROVED' where id=$1",[request.requestId]);
+    await assert.rejects(update('PENDING','COMPLETED'),/invalid_addon_transition/);
+    await assert.rejects(update(null,'COMPLETED'),/status_conflict/);
+    await update('PENDING','IN_PROGRESS');
+    await assert.rejects(update('PENDING','IN_PROGRESS'),/status_conflict/);
+    await assert.rejects(update('IN_PROGRESS','CANCELLED'),/cancel_reason_required/);
+    await update('IN_PROGRESS','COMPLETED');
+    assert.equal((await db.query('select count(*)::int n from subscription_request_history')).rows[0].n,2);
+    await assert.rejects(update('COMPLETED','IN_PROGRESS'),/invalid_addon_transition/);
+  } finally {await db.close();}
 });
 
 test('legacy totals are backfilled, add-ons cascade, RLS is enabled and public roles cannot execute the RPC', async () => {
