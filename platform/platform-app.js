@@ -286,6 +286,7 @@
 
   // Obuna sotib olish oqimi (mijoz tarafi)
   let flowKind = null;        // 'NEW_SHOP' | 'UPGRADE'
+  let checkoutWizardStep = 1; // 1: Do'kon va bot ma'lumotlari, 2: Tarif va xizmatlar, 3: To'lov
   let flowTariffId = null;
   let flowShopId = null;      // UPGRADE uchun
   let flowUpgradeAction = null; // 'EXTEND' | 'CHANGE' | null
@@ -1773,6 +1774,7 @@
       domains: [''],
       years: 1,
     };
+    checkoutWizardStep = 1;
     saveCheckoutServices();
     if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
     openPage('PAYMENT');
@@ -1841,6 +1843,7 @@
       </section></section>`;
   }
   function resetSubscriptionFlow() {
+    checkoutWizardStep = 1;
     checkoutServices = globalThis.UStoreServiceAddons.empty();
     serviceSubmissionKey = null;
     resumedSubmittedRequestId = null;
@@ -1870,6 +1873,7 @@
     flowKind = 'NEW_SHOP';
     flowOriginTab = origin || 'home';
     flowReturnPage = 'TARIFFS';
+    checkoutWizardStep = 1;
     openPage('TARIFFS');
   }
   function startNewShopWithTariff(tariffId) {
@@ -1881,6 +1885,7 @@
     flowOriginTab = origin || 'home';
     flowTariffId = tariffId;
     flowReturnPage = 'TARIFFS';
+    checkoutWizardStep = 1;
     openPage('PAYMENT');
   }
   function selectTariffAndContinue(tariffId) {
@@ -1889,6 +1894,7 @@
     selectedPaymentMethodType = null;
     selectedPaymentMethodId = null;
     externalPaymentOpened = false;
+    checkoutWizardStep = 1;
     if (flowShopId && flowUpgradeAction === 'CHANGE') {
       flowKind = 'UPGRADE';
       openPage('PAYMENT');
@@ -1957,6 +1963,7 @@
     selectedPaymentMethodId = null;
     externalPaymentOpened = false;
     consentAccepted = false;
+    checkoutWizardStep = 1;
     openPage('PAYMENT');
   }
   function startChangeWithSelectedTariff(shopId) {
@@ -1971,9 +1978,11 @@
     selectedPaymentMethodId = null;
     externalPaymentOpened = false;
     consentAccepted = false;
+    checkoutWizardStep = 1;
     openPage('PAYMENT');
   }
   function paymentBackAction() {
+    if (checkoutWizardStep > 1) return `goToCheckoutStep(${checkoutWizardStep - 1})`;
     if (flowKind === 'ADDON_SERVICE') return `openPage('${flowReturnPage || 'MY_SHOP_DETAILS'}')`;
     if (flowReturnPage === 'MY_REQUEST_DETAILS' && preparedNewShopRequestId) return `openMyRequestDetails('${preparedNewShopRequestId}')`;
     if (flowReturnPage === 'SUBSCRIPTION_TARGET') return `openPage('SUBSCRIPTION_TARGET')`;
@@ -1981,6 +1990,58 @@
     if (flowReturnPage === 'MY_SHOP_SUB_PAYMENTS') return `openPage('MY_SHOP_SUB_PAYMENTS')`;
     if (flowReturnPage === 'PAYMENT_HISTORY') return `switchTab('subscription')`;
     return `openPage('TARIFFS')`;
+  }
+  function goToCheckoutStep(targetStep) {
+    targetStep = Math.max(1, Math.min(3, Number(targetStep) || 1));
+    if (targetStep === checkoutWizardStep) return;
+
+    // 1-bosqichdan keyingisiga o'tish tekshiruvi
+    if (checkoutWizardStep === 1 && targetStep > 1) {
+      if (flowKind === 'NEW_SHOP') {
+        const nameEl = document.getElementById('plat-new-shop-name');
+        const ownerEl = document.getElementById('plat-new-shop-owner');
+        if (nameEl) newShopName = String(nameEl.value || '').trimStart().slice(0, 80);
+        if (ownerEl) newShopOwnerTelegramId = String(ownerEl.value || '').replace(/\D/g, '').slice(0, 15);
+        const botNameEl = document.getElementById('plat-new-shop-bot-name');
+        const botBioEl = document.getElementById('plat-new-shop-bot-bio');
+        if (botNameEl) newShopBotName = String(botNameEl.value || '').trimStart().slice(0, 64);
+        if (botBioEl) newShopBotBio = String(botBioEl.value || '').slice(0, 500);
+
+        if (newShopName.trim().length < 2) {
+          showToast("Iltimos, do‘kon nomini kamida 2 ta belgi qilib kiriting.", 'warning');
+          if (nameEl) nameEl.focus();
+          return;
+        }
+        if (!/^\d{5,15}$/.test(newShopOwnerTelegramId)) {
+          showToast("Do‘kon egasining Telegram ID sini to‘g‘ri kiriting (5-15 ta raqam).", 'warning');
+          if (ownerEl) ownerEl.focus();
+          return;
+        }
+        saveNewShopLocalDraft();
+        scheduleNewShopDraftSync();
+      }
+    }
+
+    // 2-bosqichdan to'lovga o'tish tekshiruvi (domen va xizmatlar)
+    if (checkoutWizardStep === 2 && targetStep > 2) {
+      if (checkoutServices?.domainSelected) {
+        const err = globalThis.UStoreServiceAddons.validate(checkoutServices, flowKind);
+        if (err) {
+          showToast(err, 'warning');
+          return;
+        }
+      }
+    }
+
+    checkoutWizardStep = targetStep;
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    if (activePage === 'PAYMENT') {
+      rerenderActivePage();
+      setTimeout(() => {
+        const body = document.querySelector('.plat-page-body');
+        if (body) body.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 10);
+    }
   }
   function tariffsBackAction() {
     if (flowReturnPage === 'MY_SHOP_DETAILS' && flowShopId) return `openMyShopManage('${flowShopId}')`;
@@ -2102,11 +2163,9 @@
     if (activePage === 'PAYMENT') rerenderActivePage();
   }
   function paymentPageTitle() {
-    if (flowKind === 'ADDON_SERVICE') return "Qo‘shimcha xizmatlar";
-    if (flowKind === 'NEW_SHOP') return "Yangi do'kon uchun obuna";
-    if (flowUpgradeAction === 'EXTEND') return 'Obunani uzaytirish';
-    if (flowUpgradeAction === 'CHANGE') return "Tarifni o'zgartirish";
-    return "Obuna uchun to'lov";
+    if (checkoutWizardStep === 1) return flowKind === 'NEW_SHOP' ? "1-qadam: Do‘kon va bot" : "1-qadam: Do‘kon";
+    if (checkoutWizardStep === 2) return flowKind === 'ADDON_SERVICE' ? "2-qadam: Xizmatlar" : "2-qadam: Tarif va xizmatlar";
+    return "3-qadam: To‘lov";
   }
   function renderTariffChangePreview(shop, tariff, isAnnual) {
     const key = `${shop.id}:${tariff.id}:${isAnnual ? 'ANNUAL' : 'MONTHLY'}`;
@@ -2278,6 +2337,35 @@
     `;
   }
 
+  function renderCheckoutStepper(step, kind, isAddon) {
+    return `
+      <nav class="plat-stepper-pro" aria-label="Buyurtma bosqichlari">
+        <div class="plat-step ${step === 1 ? 'is-active' : 'is-complete is-clickable'}" ${step > 1 ? 'onclick="goToCheckoutStep(1)" role="button" tabindex="0" title="1-bosqichga qaytish"' : ''}>
+          <span class="plat-step-num">${step > 1 ? pIcon('check',13) : '1'}</span>
+          <span class="plat-step-label">${kind === 'NEW_SHOP' ? '1. Do‘kon va bot' : '1. Do‘kon'}</span>
+        </div>
+        <div class="plat-step-line ${step > 1 ? 'is-complete' : ''}"></div>
+        <div class="plat-step ${step === 2 ? 'is-active' : step > 2 ? 'is-complete is-clickable' : ''}" ${step > 2 ? 'onclick="goToCheckoutStep(2)" role="button" tabindex="0" title="2-bosqichga qaytish"' : ''}>
+          <span class="plat-step-num">${step > 2 ? pIcon('check',13) : '2'}</span>
+          <span class="plat-step-label">${isAddon ? '2. Xizmatlar' : '2. Tarif va xizmatlar'}</span>
+        </div>
+        <div class="plat-step-line ${step > 2 ? 'is-complete' : ''}"></div>
+        <div class="plat-step ${step === 3 ? 'is-active' : ''}">
+          <span class="plat-step-num">3</span>
+          <span class="plat-step-label">3. To‘lov</span>
+        </div>
+      </nav>
+    `;
+  }
+  function renderExistingShopSummary(shop, currentTariff, shopLeft) {
+    return `
+      <section class="plat-payment-card plat-existing-shop-summary">
+        <div class="plat-payment-section-title"><span>${pIcon('shop',18)}</span><div><b>Do‘kon ma’lumotlari</b><small>Tanlangan do‘kon uchun obuna rasmiylashtirilmoqda.</small></div></div>
+        <div class="plat-checkout-shop"><span class="plat-shop-avatar">${pIcon('shop',20)}</span><div><b>${escapeHtml(shop?.shopName || shop?.botUsername || shop?.publicCode || 'Do‘kon')}</b><small>${escapeHtml(currentTariff || 'Tarifsiz')} · ${shopLeft === null ? 'muddat noma’lum' : shopLeft <= 0 ? 'muddati tugagan' : shopLeft + ' kun qoldi'}</small></div></div>
+      </section>
+    `;
+  }
+
   function renderPaymentBody() {
     if(resumedSubmittedRequestId)return renderResumedServicePayment();
     if (flowKind === 'NEW_SHOP' && flowTariffId && !preparedNewShopRequestId && !preparingNewShopDraft) {
@@ -2308,28 +2396,10 @@
     const readyToConfirm = !!selectedPaymentMethodType && consentAccepted && (!selectedExternal || externalPaymentOpened) && !submittingRequest && newShopIdentityValid;
     const shopLeft = shop ? daysUntil(shop.subscriptionExpiresAt) : null;
     const currentTariff = shop ? (shop.tariffName || 'Tarifsiz') : null;
-
-    const stepperHtml = `
-      <nav class="plat-stepper-pro" aria-label="Buyurtma bosqichlari">
-        <div class="plat-step is-complete">
-          <span class="plat-step-num">${pIcon('check',13)}</span>
-          <span class="plat-step-label">${flowKind === 'NEW_SHOP' ? '1. Do‘kon' : '1. Do‘kon tanlandi'}</span>
-        </div>
-        <div class="plat-step-line is-complete"></div>
-        <div class="plat-step ${flowKind === 'NEW_SHOP' ? 'is-active' : 'is-complete'}">
-          <span class="plat-step-num">${flowKind === 'NEW_SHOP' ? '2' : pIcon('check',13)}</span>
-          <span class="plat-step-label">${isAddonService ? '2. Xizmatlar' : '2. Tarif va xizmatlar'}</span>
-        </div>
-        <div class="plat-step-line is-active"></div>
-        <div class="plat-step is-active">
-          <span class="plat-step-num">3</span>
-          <span class="plat-step-label">3. To‘lov</span>
-        </div>
-      </nav>
-    `;
+    const stepperHtml = renderCheckoutStepper(checkoutWizardStep, flowKind, isAddonService);
 
     const contextIntro = flowKind === 'NEW_SHOP'
-      ? `<div class="plat-checkout-intro"><span>${pIcon('shop',19)}</span><div><b>Yangi do‘kon uchun obuna</b><small>Tarif va davrni tekshiring, so‘ng to‘lov usulini tanlang.</small></div></div>`
+      ? `<div class="plat-checkout-intro"><span>${pIcon('shop',19)}</span><div><b>Yangi do‘kon uchun obuna</b><small>Do‘kon va bot ma’lumotlarini kiriting, so‘ng xizmatlar va to‘lovga o‘tasiz.</small></div></div>`
       : isAddonService
         ? `<div class="plat-checkout-intro"><span>${pIcon('bolt',19)}</span><div><b>Qo‘shimcha xizmatlar buyurtmasi</b><small>${escapeHtml(shop?.shopName || shop?.botUsername || 'Do‘kon')} uchun xizmatni tasdiqlang va to‘lovni bajaring.</small></div></div>`
         : flowUpgradeAction === 'EXTEND'
@@ -2360,38 +2430,71 @@
     return `
       <div class="plat-service-checkout-layout"><div class="plat-service-checkout-main">
       ${stepperHtml}
-      ${contextIntro}
-      ${flowKind === 'NEW_SHOP' ? renderNewShopRequestIdentity() : ''}
-      ${renderCheckoutServices(tariffPrice)}
-      ${!isAddonService ? `<section class="plat-payment-period is-compact"><div class="plat-payment-period-label"><b>Obuna davri</b><small>Oylik yoki yillik variant.</small></div>${renderBillingToggle()}</section>` : ''}
-      ${planSection}
-      ${flowKind === 'UPGRADE' && flowUpgradeAction === 'CHANGE' && shop ? renderTariffChangePreview(shop, tariff, isAnnual) : ''}
 
-      <section class="plat-payment-card plat-payment-methods-card">
-        <div class="plat-payment-section-title"><span>${pIcon('wallet',18)}</span><div><b>To'lov usulini tanlang</b><small>Faqat faol usullar ko'rsatiladi.</small></div></div>
-        ${hasMethods ? `<div class="plat-payment-method-grid">
-          ${hasCard ? `<button type="button" class="plat-payment-method-choice ${selectedPaymentMethodType === 'CARD' ? 'selected' : ''}" onclick="selectCardPayment()">${paymentProviderBadge('CARD')}<span><b>Karta orqali</b><small>${selectedPaymentMethodType === 'CARD' ? 'Karta rekvizitlari quyida' : "Karta raqamini ko'rish"}</small></span><em>${selectedPaymentMethodType === 'CARD' ? pIcon('check',16) : '›'}</em></button>` : ''}
-          ${externalMethods.map(renderPaymentMethodChoice).join('')}
-        </div>` : `<div class="plat-payment-empty-methods"><span>${pIcon('wallet',20)}</span><div><b>Hozircha to'lov usuli mavjud emas</b><small>Administrator to'lov usulini faollashtirgach shu yerda ko'rinadi.</small></div></div>`}
-        ${selectedPaymentMethodType === 'CARD' && hasCard ? `<div class="plat-payment-bank-card is-selected"><div><small>Karta raqami</small><span id="plat-card-number" class="plat-card-number">${escapeHtml(paymentInfo.cardNumber)}</span>${paymentInfo.cardHolder ? `<small class="plat-card-holder">${escapeHtml(paymentInfo.cardHolder)}</small>` : ''}</div><button class="plat-copy-btn" onclick="copyPlatformCardNumber()">${pIcon('copy',14)} Nusxa olish</button></div>` : ''}
-        ${selectedExternalMethod ? renderPaymentResponsiveBox(selectedExternalMethod) : ''}
-        ${selectedExternal && externalPaymentOpened ? `<div class="plat-payment-return-hint">${pIcon('check',15)}<span><b>${escapeHtml(paymentProviderName(selectedPaymentMethodType))} oynasi ochildi.</b><small>To'lovni bajargach UStorE'ga qayting va pastdagi “To'lovni tasdiqlash” tugmasini bosing.</small></span></div>` : ''}
-      </section>
+      <!-- 1-BOSQICH: Do'kon va bot ma'lumotlari -->
+      <div class="plat-wizard-step-pane ${checkoutWizardStep === 1 ? 'is-active' : 'hidden'}" id="plat-step-pane-1">
+        ${contextIntro}
+        ${flowKind === 'NEW_SHOP' ? renderNewShopRequestIdentity() : renderExistingShopSummary(shop, currentTariff, shopLeft)}
+        <div class="plat-wizard-actions">
+          <button type="button" class="primary plat-wizard-next-btn plat-wizard-next-step1 ${newShopIdentityValid ? '' : 'plat-btn-dimmed'}" onclick="goToCheckoutStep(2)">
+            <span>Davom etish (2-bosqich: Tarif va xizmatlar)</span> ${pIcon('arrowRight',16)}
+          </button>
+        </div>
+      </div>
 
-      <section class="plat-payment-card plat-receipt-compact">
-        <div class="plat-payment-section-title"><span>${pIcon('upload',18)}</span><div><b>Chek biriktirish <em>ixtiyoriy</em></b><small>JPG, PNG yoki WEBP · maksimal 6 MB</small></div></div>
-        <input type="file" id="plat-receipt-input" class="hidden" onchange="onReceiptPicked(event)">
-        ${receiptFile ? `<div class="plat-upload-selected">${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" alt="Chek preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(receiptFile.name)}</b><small>${Math.max(1, Math.round(receiptFile.size / 1024))} KB</small></div><button class="secondary" onclick="document.getElementById('plat-receipt-input').click()" aria-label="Almashtirish" title="Almashtirish">${pIcon('upload',14)}</button><button class="plat-upload-remove" onclick="clearReceiptFile()" aria-label="Chekni olib tashlash">×</button></div>` : `<button class="plat-upload-zone is-compact is-icon-only" onclick="document.getElementById('plat-receipt-input').click()" aria-label="Fayldan chek tanlash" title="Fayldan chek tanlash"><span>${pIcon('upload',20)}</span></button>`}
-        <p class="plat-receipt-hint">To'lovda aniqlik kerak bo'lsa, administrator chekni keyinroq so'rashi mumkin.</p>
-        ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
-      </section>
+      <!-- 2-BOSQICH: Tarif va xizmatlar -->
+      <div class="plat-wizard-step-pane ${checkoutWizardStep === 2 ? 'is-active' : 'hidden'}" id="plat-step-pane-2">
+        ${!isAddonService ? `<section class="plat-payment-period is-compact"><div class="plat-payment-period-label"><b>Obuna davri</b><small>Oylik yoki yillik variant.</small></div>${renderBillingToggle()}</section>` : ''}
+        ${planSection}
+        ${flowKind === 'UPGRADE' && flowUpgradeAction === 'CHANGE' && shop ? renderTariffChangePreview(shop, tariff, isAnnual) : ''}
+        ${renderCheckoutServices(tariffPrice)}
+        <div class="plat-wizard-actions plat-wizard-nav-split">
+          <button type="button" class="secondary plat-wizard-back-btn" onclick="goToCheckoutStep(1)">
+            ${pIcon('arrowLeft',16)} <span>← Orqaga (1-bosqich)</span>
+          </button>
+          <button type="button" class="primary plat-wizard-next-btn" onclick="goToCheckoutStep(3)">
+            <span>To‘lovga o‘tish (3-bosqich)</span> ${pIcon('arrowRight',16)}
+          </button>
+        </div>
+      </div>
 
-      <section class="plat-payment-card plat-payment-consent">
-        <label class="plat-checkbox-row">
-          <input type="checkbox" id="plat-consent-checkbox" ${consentAccepted ? 'checked' : ''} onchange="setConsentAccepted(this.checked)">
-          <span>Men UStorE <a href="#" onclick="event.preventDefault(); openTermsPage('PAYMENT');">Foydalanish shartlari</a> va <a href="#" onclick="event.preventDefault(); openPrivacyPage('PAYMENT');">Maxfiylik siyosati</a> bilan tanishdim va roziman.</span>
-        </label>
-      </section>
+      <!-- 3-BOSQICH: Toza to'lovlar qismi -->
+      <div class="plat-wizard-step-pane ${checkoutWizardStep === 3 ? 'is-active' : 'hidden'}" id="plat-step-pane-3">
+        <section class="plat-payment-card plat-payment-methods-card">
+          <div class="plat-payment-section-title"><span>${pIcon('wallet',18)}</span><div><b>To'lov usulini tanlang</b><small>Faqat faol usullar ko'rsatiladi.</small></div></div>
+          ${hasMethods ? `<div class="plat-payment-method-grid">
+            ${hasCard ? `<button type="button" class="plat-payment-method-choice ${selectedPaymentMethodType === 'CARD' ? 'selected' : ''}" onclick="selectCardPayment()">${paymentProviderBadge('CARD')}<span><b>Karta orqali</b><small>${selectedPaymentMethodType === 'CARD' ? 'Karta rekvizitlari quyida' : "Karta raqamini ko'rish"}</small></span><em>${selectedPaymentMethodType === 'CARD' ? pIcon('check',16) : '›'}</em></button>` : ''}
+            ${externalMethods.map(renderPaymentMethodChoice).join('')}
+          </div>` : `<div class="plat-payment-empty-methods"><span>${pIcon('wallet',20)}</span><div><b>Hozircha to'lov usuli mavjud emas</b><small>Administrator to'lov usulini faollashtirgach shu yerda ko'rinadi.</small></div></div>`}
+          ${selectedPaymentMethodType === 'CARD' && hasCard ? `<div class="plat-payment-bank-card is-selected"><div><small>Karta raqami</small><span id="plat-card-number" class="plat-card-number">${escapeHtml(paymentInfo.cardNumber)}</span>${paymentInfo.cardHolder ? `<small class="plat-card-holder">${escapeHtml(paymentInfo.cardHolder)}</small>` : ''}</div><button class="plat-copy-btn" onclick="copyPlatformCardNumber()">${pIcon('copy',14)} Nusxa olish</button></div>` : ''}
+          ${selectedExternalMethod ? renderPaymentResponsiveBox(selectedExternalMethod) : ''}
+          ${selectedExternal && externalPaymentOpened ? `<div class="plat-payment-return-hint">${pIcon('check',15)}<span><b>${escapeHtml(paymentProviderName(selectedPaymentMethodType))} oynasi ochildi.</b><small>To'lovni bajargach UStorE'ga qayting va pastdagi “To'lovni tasdiqlash” tugmasini bosing.</small></span></div>` : ''}
+        </section>
+
+        <section class="plat-payment-card plat-receipt-compact">
+          <div class="plat-payment-section-title"><span>${pIcon('upload',18)}</span><div><b>Chek biriktirish <em>ixtiyoriy</em></b><small>JPG, PNG yoki WEBP · maksimal 6 MB</small></div></div>
+          <input type="file" id="plat-receipt-input" class="hidden" onchange="onReceiptPicked(event)">
+          ${receiptFile ? `<div class="plat-upload-selected">${receiptPreviewUrl ? `<img src="${receiptPreviewUrl}" alt="Chek preview">` : `<span>${pIcon('file',20)}</span>`}<div><b>${escapeHtml(receiptFile.name)}</b><small>${Math.max(1, Math.round(receiptFile.size / 1024))} KB</small></div><button class="secondary" onclick="document.getElementById('plat-receipt-input').click()" aria-label="Almashtirish" title="Almashtirish">${pIcon('upload',14)}</button><button class="plat-upload-remove" onclick="clearReceiptFile()" aria-label="Chekni olib tashlash">×</button></div>` : `<button class="plat-upload-zone is-compact is-icon-only" onclick="document.getElementById('plat-receipt-input').click()" aria-label="Fayldan chek tanlash" title="Fayldan chek tanlash"><span>${pIcon('upload',20)}</span></button>`}
+          <p class="plat-receipt-hint">To'lovda aniqlik kerak bo'lsa, administrator chekni keyinroq so'rashi mumkin.</p>
+          ${connectError ? `<div class="notice error">${escapeHtml(connectError)}</div>` : ''}
+        </section>
+
+        <section class="plat-payment-card plat-payment-consent">
+          <label class="plat-checkbox-row">
+            <input type="checkbox" id="plat-consent-checkbox" ${consentAccepted ? 'checked' : ''} onchange="setConsentAccepted(this.checked)">
+            <span>Men UStorE <a href="#" onclick="event.preventDefault(); openTermsPage('PAYMENT');">Foydalanish shartlari</a> va <a href="#" onclick="event.preventDefault(); openPrivacyPage('PAYMENT');">Maxfiylik siyosati</a> bilan tanishdim va roziman.</span>
+          </label>
+        </section>
+
+        <div class="plat-wizard-actions plat-wizard-nav-split">
+          <button type="button" class="secondary plat-wizard-back-btn" onclick="goToCheckoutStep(2)">
+            ${pIcon('arrowLeft',16)} <span>← Orqaga (2-bosqich)</span>
+          </button>
+          <button type="button" class="primary plat-payment-submit ${readyToConfirm ? '' : 'plat-btn-dimmed'}" ${readyToConfirm ? 'onclick="submitSubscriptionRequest()"' : 'disabled'}>
+            ${submittingRequest ? '<span class="spinner"></span> Tasdiqlanmoqda...' : selectedPaymentMethodType ? `${pIcon('check',16)} To'lovni tasdiqlash` : `${pIcon('wallet',16)} To'lov usulini tanlang`}
+          </button>
+        </div>
+      </div>
 
       </div><aside class="plat-service-checkout-summary"><section class="plat-payment-total is-professional">
         ${!isAddonService && tariff ? `<div><span>Tarif</span><b>${escapeHtml(tariff.name)}</b></div><div><span>Tarif narxi</span><b>${money(tariffPrice)}</b></div>` : ''}
@@ -2401,9 +2504,19 @@
         ${selectedPaymentMethodType ? `<div><span>To'lov usuli</span><b class="plat-total-method">${paymentProviderBadge(selectedPaymentMethodType, true)} ${escapeHtml(paymentProviderName(selectedPaymentMethodType))}</b></div>` : ''}
         <div class="is-total"><span>Jami to'lov</span><strong>${money(totalPrice)}</strong></div>
       </section>
-      <button class="primary plat-payment-submit ${readyToConfirm ? '' : 'plat-btn-dimmed'}" ${readyToConfirm ? 'onclick="submitSubscriptionRequest()"' : 'disabled'}>
-        ${submittingRequest ? '<span class="spinner"></span> Tasdiqlanmoqda...' : selectedPaymentMethodType ? `${pIcon('check',16)} To'lovni tasdiqlash` : `${pIcon('wallet',16)} To'lov usulini tanlang`}
-      </button>
+      ${checkoutWizardStep === 1 ? `
+        <button type="button" class="primary plat-wizard-sidebar-btn plat-wizard-next-step1 ${newShopIdentityValid ? '' : 'plat-btn-dimmed'}" onclick="goToCheckoutStep(2)">
+          <span>Davom etish (2-bosqich)</span> ${pIcon('arrowRight',16)}
+        </button>
+      ` : checkoutWizardStep === 2 ? `
+        <button type="button" class="primary plat-wizard-sidebar-btn" onclick="goToCheckoutStep(3)">
+          <span>To‘lovga o‘tish (3-bosqich)</span> ${pIcon('arrowRight',16)}
+        </button>
+      ` : `
+        <button class="primary plat-payment-submit ${readyToConfirm ? '' : 'plat-btn-dimmed'}" ${readyToConfirm ? 'onclick="submitSubscriptionRequest()"' : 'disabled'}>
+          ${submittingRequest ? '<span class="spinner"></span> Tasdiqlanmoqda...' : selectedPaymentMethodType ? `${pIcon('check',16)} To'lovni tasdiqlash` : `${pIcon('wallet',16)} To'lov usulini tanlang`}
+        </button>
+      `}
       </aside></div>${renderExternalPaymentWarningModal()}
     `;
   }
@@ -3050,6 +3163,7 @@
     selectedPaymentMethodId = null;
     externalPaymentOpened = false;
     consentAccepted = false;
+    checkoutWizardStep = 1;
     openPage('PAYMENT');
   }
   function startUpgradeFor(shopId) {
@@ -5931,6 +6045,7 @@
   window.openRequestDetails = openRequestDetails;
   window.viewReceipt = viewReceipt;
   window.viewBotPhoto = viewBotPhoto;
+  window.goToCheckoutStep = goToCheckoutStep;
   window.approveRequest = approveRequest;
   window.openRejectPrompt = openRejectPrompt;
   window.submitReject = submitReject;

@@ -14,53 +14,56 @@
    (eski nomlarni butunlay olib tashlash) ataylab Bosqich 3'ga qoldirilgan —
    hozir maqsad yagona manba, hajmni kamaytirish emas. */
 :root {
-  /* Fon / sirt */
-  --c-bg: #F6F8FB;
-  --c-bg-2: #F9FAFC;
-  --c-page-bg: #F6F8FB;
+  /* Fon / sirt — High-Contrast Canvas */
+  --c-bg: #F1F5F9;
+  --c-bg-2: #F8FAFC;
+  --c-page-bg: #F1F5F9;
   --c-surface: #FFFFFF;
   --c-surface-elevated: #FFFFFF;
-  /* UStorE ko'k (asosiy accent) */
-  --c-primary: #2684FF;
-  --c-primary-hover: #1672E8;
-  --c-primary-active: #0F63D5;
-  --c-primary-soft: #EAF3FF;
-  --c-primary-softer: #F3F8FF;
-  --c-primary-border: #CFE3FF;
-  /* Matn */
-  --c-text: #172033;
-  --c-heading: #111827;
-  --c-text-secondary: #667085;
-  --c-text-muted: #98A2B3;
-  --c-text-disabled: #B5BDC9;
-  /* Chegaralar */
-  --c-border: #E4E9F0;
-  --c-border-soft: #EDF1F5;
-  --c-border-strong: #D7DEE8;
+  /* UStorE ko'k (asosiy accent) — Electric Royal Blue */
+  --c-primary: #2563EB;
+  --c-primary-hover: #1D4ED8;
+  --c-primary-active: #1E40AF;
+  --c-primary-soft: #EFF6FF;
+  --c-primary-softer: #F8FAFC;
+  --c-primary-border: #BFDBFE;
+  /* Matn — High Readability Slate */
+  --c-text: #1E293B;
+  --c-heading: #0F172A;
+  --c-text-secondary: #475569;
+  --c-text-muted: #64748B;
+  --c-text-disabled: #94A3B8;
+  /* Chegaralar — Distinct Structure Borders */
+  --c-border: #E2E8F0;
+  --c-border-soft: #EDF2F7;
+  --c-border-strong: #CBD5E1;
   /* Status */
-  --c-success-text: #16803C; --c-success-bg: #ECFDF3; --c-success-border: #C6F1D5;
-  --c-warning-text: #B54708; --c-warning-bg: #FFF7E8; --c-warning-border: #FCE4B2;
-  --c-danger-text: #C4320A;  --c-danger-bg: #FFF1EE;  --c-danger-border: #FFD5CC;
-  --c-info-text: #175CD3;    --c-info-bg: #EFF6FF;    --c-info-border: #CFE2FF;
-  --c-frozen-text: #475467;  --c-frozen-bg: #F2F4F7;  --c-frozen-border: #D0D5DD;
+  --c-success-text: #059669; --c-success-bg: #ECFDF5; --c-success-border: #A7F3D0;
+  --c-warning-text: #D97706; --c-warning-bg: #FFFBEB; --c-warning-border: #FDE68A;
+  --c-danger-text: #DC2626;  --c-danger-bg: #FEF2F2;  --c-danger-border: #FECACA;
+  --c-info-text: #2563EB;    --c-info-bg: #EFF6FF;    --c-info-border: #BFDBFE;
+  --c-frozen-text: #475569;  --c-frozen-bg: #F1F5F9;  --c-frozen-border: #CBD5E1;
   /* Radius scale (7-band) */
-  --r-sm: 8px; --r-input: 10px; --r-btn: 10px; --r-card-sm: 12px;
-  --r-card: 14px; --r-hero: 16px; --r-modal: 18px; --r-pill: 999px;
+  --r-sm: 8px; --r-input: 12px; --r-btn: 12px; --r-card-sm: 14px;
+  --r-card: 18px; --r-hero: 20px; --r-modal: 20px; --r-pill: 999px;
   /* Spacing scale (7-band) */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
   --sp-6: 24px; --sp-7: 32px; --sp-8: 40px; --sp-9: 48px;
-  /* Shadow scale (9-band) */
-  --sh-sm: 0 1px 2px rgba(16,24,40,.04);
-  --sh-card: 0 4px 14px rgba(16,24,40,.055);
-  --sh-elevated: 0 10px 30px rgba(16,24,40,.10);
-  --sh-modal: 0 20px 50px rgba(16,24,40,.16);
+  /* Shadow scale (9-band) — Multi-layer clean elevation for distinct card separation */
+  --sh-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --sh-card: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px -4px rgba(15, 23, 42, 0.05);
+  --sh-elevated: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 16px 32px -4px rgba(15, 23, 42, 0.08);
+  --sh-modal: 0 20px 40px -10px rgba(15, 23, 42, 0.18);
   --plat-header-h: 64px;
 }
 
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   background: var(--c-bg);
   color: var(--c-text);
   min-height: 100vh;
@@ -106,53 +109,57 @@ header.top .badge {
 .billz-toggle-btn.status-ACTIVE { background: var(--c-success-bg); color: var(--c-success-text); }
 
 button.primary {
-  width: 100%; min-height: 44px; padding: 0 16px; border-radius: var(--r-btn); border: none;
-  background: var(--c-primary); color: #fff; font-weight: 600; font-size: 14px; cursor: pointer;
+  width: 100%; min-height: 48px; padding: 0 18px; border-radius: var(--r-btn); border: 1px solid #1D4ED8;
+  background: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
-  box-shadow: var(--sh-sm);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25), 0 1px 2px rgba(15, 23, 42, 0.05);
 }
-button.primary:hover { background: var(--c-primary-hover); }
-button.primary:active { background: var(--c-primary-active); transform: scale(0.98); }
-button.primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+button.primary:hover { background: linear-gradient(180deg, #1D4ED8 0%, #1E40AF 100%); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
+button.primary:active { background: #1E40AF; transform: scale(0.985); }
+button.primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
 /* 5-band: rozilik checkbox'i belgilanmaguncha "So'rov yuborish" VIZUAL
    jihatdan o'chirilgan ko'rinadi, lekin native disabled EMAS — bosilganda
    "rozilik bildiring" xabari chiqishi kerak, disabled tugma esa umuman
    click hodisasini chaqirmaydi. */
 button.primary.plat-btn-dimmed { opacity: 0.5; }
 button.secondary {
-  width: 100%; min-height: 44px; padding: 0 16px; border-radius: var(--r-btn); border: 1px solid var(--c-border-strong);
-  background: var(--c-surface); color: #344054; font-weight: 600; font-size: 13px; cursor: pointer; margin-top: 8px;
-  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
-  transition: background 0.15s ease, transform 0.12s ease;
+  width: 100%; min-height: 46px; padding: 0 16px; border-radius: var(--r-btn); border: 1.5px solid var(--c-border-strong);
+  background: var(--c-surface); color: var(--c-text); font-weight: 650; font-size: 13.5px; cursor: pointer; margin-top: 8px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
 }
-button.secondary:hover { background: #F9FAFB; }
-button.secondary:active { transform: scale(0.98); }
+button.secondary:hover { background: #F8FAFC; border-color: #94A3B8; }
+button.secondary:active { transform: scale(0.985); }
 button.danger {
-  width: 100%; min-height: 44px; padding: 0 16px; border-radius: var(--r-btn); border: none;
-  background: #D92D20; color: #fff; font-weight: 600; font-size: 14px; cursor: pointer;
+  width: 100%; min-height: 46px; padding: 0 16px; border-radius: var(--r-btn); border: none;
+  background: #DC2626; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   transition: background .15s ease, transform .12s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
-button.danger:hover { background: #B42318; }
-button.danger:active { transform: scale(0.98); }
+button.danger:hover { background: #B91C1C; }
+button.danger:active { transform: scale(0.985); }
 
-label { display: block; font-size: 13px; font-weight: 600; color: #344055; margin: 12px 0 6px; }
+label { display: block; font-size: 13px; font-weight: 700; color: #1E293B; margin: 12px 0 6px; }
 input[type="text"], input[type="password"] {
-  width: 100%; min-height: 44px; padding: 0 12px; border-radius: var(--r-input); border: 1px solid var(--c-border-strong);
-  background: var(--c-surface); color: var(--c-text); font-size: 14px; font-family: monospace;
+  width: 100%; min-height: 46px; padding: 0 14px; border-radius: var(--r-input); border: 1.5px solid var(--c-border-strong);
+  background: var(--c-surface); color: var(--c-text); font-size: 14px; font-family: inherit; font-weight: 500;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
-input:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(38,132,255,.12); }
+input:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
 
 /* 2026-08-28: tarif "Xususiyatlar" ko'p qatorli maydoni — inputlar bilan
    bir xil ramka/rang, faqat matn uchun oddiy shrift va vertikal resize. */
 textarea {
-  width: 100%; padding: 8px 12px; border-radius: var(--r-input); border: 1px solid var(--c-border-strong);
-  background: var(--c-surface); color: var(--c-text); font-size: 13px; font-family: inherit; line-height: 1.5;
+  width: 100%; padding: 10px 14px; border-radius: var(--r-input); border: 1.5px solid var(--c-border-strong);
+  background: var(--c-surface); color: var(--c-text); font-size: 13.5px; font-family: inherit; line-height: 1.5;
   resize: vertical; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
-textarea:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(38,132,255,.12); }
+textarea:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
 
 .notice { font-size: 12px; padding: 8px 12px; border-radius: var(--r-input); margin-top: 8px; }
 .notice.error { background: var(--c-danger-bg); color: var(--c-danger-text); border: 1px solid var(--c-danger-border); }
@@ -854,10 +861,10 @@ button.plat-admin-kpi-card:active { transform: scale(0.98); }
    Admin selectors are intentionally untouched.
    ============================================================ */
 :root {
-  --u-bg:#f6f8fc; --u-card:#ffffff; --u-text:#111b31; --u-muted:var(--c-text-secondary);
-  --u-border:#e4eaf3; --u-blue:#2684FF; --u-blue-soft:#eef4ff;
-  --u-green:#18a365; --u-green-soft:#ecf9f2; --u-amber:#d97706; --u-amber-soft:#fff7e8;
-  --u-violet:#7357d9; --u-violet-soft:#f4f0ff; --u-red:#dc4c55; --u-red-soft:#fff0f1;
+  --u-bg:#F1F5F9; --u-card:#ffffff; --u-text:#1E293B; --u-muted:#64748B;
+  --u-border:#E2E8F0; --u-blue:#2563EB; --u-blue-soft:#EFF6FF;
+  --u-green:#059669; --u-green-soft:#ECFDF5; --u-amber:#D97706; --u-amber-soft:#FFFBEB;
+  --u-violet:#7C3AED; --u-violet-soft:#F5F3FF; --u-red:#DC2626; --u-red-soft:#FEF2F2;
   --u-shadow:var(--sh-card);
 }
 body { background:var(--u-bg); }
@@ -1144,25 +1151,30 @@ body { background:var(--u-bg); }
    2026-08-28. Current light/premium design preserved.
    ============================================================ */
 :root {
-  --u-blue: #2684FF;
-  --u-blue-soft: #f1f6ff;
-  --plat2-primary: #2684FF;
-  --plat2-primary-pressed: #0F63D5;
-  --plat2-primary-soft: #f1f6ff;
+  --u-blue: #2563EB;
+  --u-blue-soft: #EFF6FF;
+  --plat2-primary: #2563EB;
+  --plat2-primary-pressed: #1D4ED8;
+  --plat2-primary-soft: #EFF6FF;
 }
 button.primary,
 a.primary {
   min-height: 48px;
-  border-radius: 16px;
-  background: #2684FF;
-  box-shadow: var(--sh-card);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%);
+  border: 1px solid #1D4ED8;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25), 0 1px 2px rgba(15, 23, 42, 0.05);
   font-weight: 700;
+  color: #fff;
 }
+button.primary:hover,
+a.primary:hover { background: linear-gradient(180deg, #1D4ED8 0%, #1E40AF 100%); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35); }
 button.primary:active,
-a.primary:active { background:#0F63D5; }
-button.secondary { border-radius: 14px; border-color:#d9e5f5; background:#fbfdff; }
-.plat-billing-opt.active { background:#2684FF; box-shadow:var(--sh-card); }
-.plat-tariff-select { min-height: 52px !important; border-radius: 16px !important; }
+a.primary:active { background: #1E40AF; transform: scale(0.985); }
+button.secondary { border-radius: 14px; border: 1.5px solid #CBD5E1; background: #FFFFFF; color: #1E293B; font-weight: 650; }
+button.secondary:hover { background: #F8FAFC; border-color: #94A3B8; }
+.plat-billing-opt.active { background: #2563EB; color: #fff; box-shadow: var(--sh-card); }
+.plat-tariff-select { min-height: 50px !important; border-radius: 14px !important; }
 
 /* flow intro */
 .plat-flow-intro { display:flex;align-items:flex-start;gap:12px;padding:12px 16px;margin-bottom:12px;background:#fff;border:1px solid var(--u-border);border-radius:18px;box-shadow:var(--u-shadow); }
@@ -1285,11 +1297,11 @@ a.plat-shop-open-main { width:100%;display:flex;align-items:center;justify-conte
 .plat-tariff-preview.is-loading .spinner { border-color:rgba(37,99,235,0.25); border-top-color:var(--u-blue); }
 .plat-payment-summary-line { display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:8px;border-top:1px solid var(--u-border);font-size:12px;color:var(--u-muted); }
 .plat-payment-summary-line b { color:var(--u-text); }
-.plat-payment-card { padding:16px;margin-bottom:12px;border:1px solid var(--u-border);border-radius:18px;background:#fff;box-shadow:var(--u-shadow); }
-.plat-payment-section-title { display:flex;align-items:flex-start;gap:8px;margin-bottom:12px; }
-.plat-payment-section-title>span { width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--u-blue-soft);color:var(--u-blue);flex:none; }
-.plat-payment-section-title b { display:block;font-size:12px;color:var(--u-text); }
-.plat-payment-section-title small { display:block;margin-top:2px;font-size:12px;color:var(--u-muted); }
+.plat-payment-card { padding:20px;margin-bottom:14px;border:1px solid var(--c-border);border-radius:18px;background:#fff;box-shadow:var(--sh-card); }
+.plat-payment-section-title { display:flex;align-items:flex-start;gap:10px;margin-bottom:14px; }
+.plat-payment-section-title>span { width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--c-primary-soft);color:var(--c-primary);flex:none; }
+.plat-payment-section-title b { display:block;font-size:14px;font-weight:750;color:var(--c-heading); }
+.plat-payment-section-title small { display:block;margin-top:3px;font-size:12.5px;line-height:1.4;color:var(--c-text-secondary); }
 .plat-payment-unavailable { display:flex;gap:8px;padding:12px;border-radius:12px;background:var(--c-warning-bg);border:1px solid var(--c-warning-border);color:var(--c-warning-text); }
 .plat-payment-unavailable>span { flex:none; }
 .plat-payment-unavailable b { display:block;font-size:11px; }
@@ -2557,10 +2569,10 @@ html { overflow-anchor: none; }
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border, #e2e8f0);
+  border: 1px solid var(--c-border, #e2e8f0);
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .plat-step {
   display: flex;
@@ -2570,17 +2582,28 @@ html { overflow-anchor: none; }
   font-weight: 650;
   color: #94a3b8;
   white-space: nowrap;
+  user-select: none;
 }
 .plat-step.is-active {
   color: var(--c-primary, #2563eb);
   font-weight: 750;
 }
 .plat-step.is-complete {
-  color: #10b981;
+  color: #059669;
+}
+.plat-step.is-clickable {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.plat-step.is-clickable:hover {
+  opacity: 0.82;
+}
+.plat-step.is-clickable:hover .plat-step-num {
+  transform: scale(1.08);
 }
 .plat-step-num {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -2590,6 +2613,7 @@ html { overflow-anchor: none; }
   background: #f1f5f9;
   color: #64748b;
   flex-shrink: 0;
+  transition: transform 0.15s ease;
 }
 .plat-step.is-active .plat-step-num {
   background: var(--c-primary, #2563eb);
@@ -2613,6 +2637,47 @@ html { overflow-anchor: none; }
 }
 .plat-step-line.is-active {
   background: var(--c-primary, #2563eb);
+}
+
+/* Checkout Wizard Step Panes & Actions */
+.plat-wizard-step-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: platStepFade 0.22s ease-out;
+}
+@keyframes platStepFade {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.plat-wizard-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #E2E8F0;
+}
+.plat-wizard-nav-split {
+  justify-content: space-between;
+}
+.plat-wizard-back-btn {
+  width: auto !important;
+  min-width: 140px;
+  margin-top: 0 !important;
+  min-height: 48px !important;
+}
+.plat-wizard-next-btn {
+  flex: 1;
+  min-height: 48px !important;
+  font-size: 14.5px !important;
+  font-weight: 750 !important;
+}
+.plat-wizard-sidebar-btn {
+  width: 100% !important;
+  min-height: 48px !important;
+  font-size: 14.5px !important;
+  font-weight: 750 !important;
 }
 
 /* 2. Catalog Setup 4-point Informational Guide */
