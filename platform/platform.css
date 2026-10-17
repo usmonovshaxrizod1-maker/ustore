@@ -2544,18 +2544,23 @@ html { overflow-anchor: none; }
    Platform 2.0: Stepper, Service Add-ons & Responsive Payment Methods
    ====================================================================== */
 
-/* 1. Checkout 3-step progress stepper */
+/* 1. Checkout 3-step progress stepper (Pinned / Sticky) */
 .plat-stepper-pro {
+  position: sticky;
+  top: 0;
+  z-index: 25;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 12px 18px;
-  background: var(--c-surface, #fff);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border, #e2e8f0);
   border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
-  margin-bottom: 8px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  margin-bottom: 12px;
 }
 .plat-step {
   display: flex;
@@ -2973,3 +2978,31 @@ html { overflow-anchor: none; }
   }
 }
 
+/* Multi-column Bento Grid for Identity & Services on Desktop/Tablet */
+.plat-identity-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .plat-identity-fields-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}
+
+@media (min-width: 900px) {
+  .plat-services {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .plat-services > .plat-payment-section-title {
+    grid-column: 1 / -1;
+  }
+  .plat-services > .plat-service-card {
+    height: 100%;
+  }
+}
