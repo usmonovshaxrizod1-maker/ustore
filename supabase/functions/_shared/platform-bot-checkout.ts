@@ -5,7 +5,7 @@ export function advanceBotCheckout(state:BotCheckoutState,text:string,action?:st
   const numeric=(integer=false)=>{if(!/^\d+(?:\.\d{1,2})?$/.test(text.trim()))throw Error('Narx yoki sonni musbat raqam bilan kiriting.');const v=Number(text);if(!Number.isFinite(v)||v>1e10||(integer&&!Number.isInteger(v)))throw Error('Narx yoki son noto‘g‘ri.');return v;};
   if(action){
     if(s.step==='SERVICES'){
-      if(action==='catalog'){d.catalogSelected=true;s.step='PRODUCT_NAME';return s;}
+      if(action==='catalog'){d.catalogSelected=true;s.step='SERVICES';return s;}
       if(action==='catalog_off'){d.catalogSelected=false;return s;}
       if(action==='domain'){d.domainSelected=true;s.step='DOMAIN_NAME';return s;}
       if(action==='domain_off'){d.domainSelected=false;return s;}
@@ -33,7 +33,7 @@ export function advanceBotCheckout(state:BotCheckoutState,text:string,action?:st
     case 'VARIANT_SIZE':d.currentVariant.size=text==='/skip'?'':clean(100);s.step='VARIANT_PRICE';break;
     case 'VARIANT_PRICE':d.currentVariant.price=numeric();s.step='VARIANT_QUANTITY';break;
     case 'VARIANT_QUANTITY':d.currentVariant.quantity=numeric(true);if(d.currentProduct.variants.length>=100)throw Error('100 ta variant chegarasi.');d.currentProduct.variants.push(d.currentVariant);delete d.currentVariant;s.step='VARIANT_CHOICE';break;
-    case 'DOMAIN_NAME':{const domain=clean(253).toLowerCase();if(!/^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain))throw Error('Domenni dokon.uz shaklida kiriting.');d.domain=domain;s.step='DOMAIN_YEARS';break;}
+    case 'DOMAIN_NAME':{const domain=clean(253).toLowerCase();const full=domain.endsWith('.uz')?domain:`${domain}.uz`;if(!/^(?=.{4,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.uz$/.test(full))throw Error('Domenni dokon.uz shaklida kiriting.');d.domain=full;d.domains=[full];s.step='DOMAIN_YEARS';break;}
     case 'DOMAIN_YEARS':{const years=Number(text);if(!/^\d+$/.test(text)||!Number.isInteger(years)||years<1||years>10)throw Error('Muddati 1 dan 10 yilgacha bo‘lsin.');d.years=years;s.step='SERVICES';break;}
     default:throw Error('Oxirgi xabardagi tugmani tanlang.');
   }
@@ -41,7 +41,7 @@ export function advanceBotCheckout(state:BotCheckoutState,text:string,action?:st
 }
 export function botCheckoutAddons(data:Record<string,any>):any[] {
   const items=[];
-  if(data.catalogSelected)items.push({code:'CATALOG_SETUP',details:{products:data.products||[]}});
-  if(data.domainSelected)items.push({code:'MANAGED_DOMAIN',details:{domain:data.domain,years:data.years}});
+  if(data.catalogSelected)items.push({code:'CATALOG_SETUP',details:{requested:true}});
+  if(data.domainSelected)items.push({code:'MANAGED_DOMAIN',details:{domain:data.domain,domains:data.domains||[data.domain],years:data.years}});
   return items;
 }

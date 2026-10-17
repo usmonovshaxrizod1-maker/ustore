@@ -1,15 +1,9 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript'),vm=require('node:vm');
 function model(){const source=fs.readFileSync('supabase/functions/_shared/platform-bot-checkout.ts','utf8');const exports={};vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,structuredClone});return exports;}
-test('bot collects structured product and variant data with explicit finish',()=>{
+test('bot collects structured service choices with direct catalog toggle',()=>{
  const {advanceBotCheckout}=model();let s={step:'SHOP_NAME',data:{products:[]}};
  s=advanceBotCheckout(s,'Sinov');assert.equal(s.step,'SERVICES');
- s=advanceBotCheckout(s,'','catalog');assert.equal(s.step,'PRODUCT_NAME');
- for(const value of ['Ko‘ylak','Tavsif','10000','2','Qora','M'])s=advanceBotCheckout(s,value);
- assert.equal(s.step,'VARIANT_CHOICE');s=advanceBotCheckout(s,'','variant');
- for(const value of ['Qora','M','11000','1'])s=advanceBotCheckout(s,value);
- assert.equal(s.step,'VARIANT_CHOICE');s=advanceBotCheckout(s,'','product_done');
- assert.equal(s.data.products[0].variants.length,1);assert.equal(s.step,'PRODUCT_CHOICE');
- s=advanceBotCheckout(s,'','products_done');assert.equal(s.step,'SERVICES');
+ s=advanceBotCheckout(s,'','catalog');assert.equal(s.step,'SERVICES');assert.equal(s.data.catalogSelected,true);
  s=advanceBotCheckout(s,'','domain');s=advanceBotCheckout(s,'SINOV.UZ');s=advanceBotCheckout(s,'2');
  assert.equal(s.step,'SERVICES');assert.equal(s.data.domain,'sinov.uz');assert.equal(s.data.years,2);
 });

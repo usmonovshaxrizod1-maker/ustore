@@ -845,7 +845,7 @@ test('the receipt picker on the payment page uses a single, unrestricted file in
   // widened from 4200 to 8700 (function itself is ~8.6k chars) so the
   // doesNotMatch check below still covers the WHOLE function, not a
   // truncated prefix that could hide a re-introduced accept="image/*".
-  const payBlock = platformApp.slice(payStart, payStart + 8700);
+  const payBlock = platformApp.slice(payStart, payStart + 12000);
   assert.match(payBlock, /<input type="file" id="plat-receipt-input" class="hidden" onchange="onReceiptPicked\(event\)">/);
   assert.doesNotMatch(payBlock, /accept="image\/\*"/, 'must never force accept=image/* — that silently redirects to the Gallery app on mobile');
 });
@@ -1809,7 +1809,7 @@ test('task 2: platform_upsert_payment_method supports an optional device-uploade
   // frontend: the draft picker + payload shape that actually calls this action.
   const draftPickStart = platformApp.indexOf('function onPaymentMethodLogoPicked(event)');
   assert.ok(draftPickStart >= 0, 'onPaymentMethodLogoPicked must exist as the file-input handler');
-  assert.match(platformApp, /callPlatformApi\('platform_upsert_payment_method', \{ id: paymentMethodDraft\.id \|\| undefined, methodType, displayName, paymentUrl, logoImageUpload, removeLogo: paymentMethodLogoRemove, isActive \}\);/);
+  assert.match(platformApp, /callPlatformApi\('platform_upsert_payment_method', \{ id: paymentMethodDraft\.id \|\| undefined, methodType, displayName, paymentUrl, logoImageUpload, removeLogo: paymentMethodLogoRemove,(?: qrImageUpload, removeQr: paymentMethodQrRemove,)? isActive \}\);/);
 });
 
 test('task 3: a NEW_SHOP payment draft is resumable from Arizalarim within its 1-hour window — the resume card is gated on kind+status+unclaimed, the countdown label degrades gracefully, and resumeNewShopPayment() independently re-verifies the deadline (never trusts a stale cached row) before restoring the checkout flow state', () => {

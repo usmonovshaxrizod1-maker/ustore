@@ -818,6 +818,7 @@ async function signedPlatformAssetUrl(db: any, path: string | null, ttlSeconds =
 async function platformAssetPathStillReferenced(db: any, path: string): Promise<boolean> {
   const checks: Array<[string, string]> = [
     ["platform_payment_methods", "logo_storage_path"],
+    ["platform_payment_methods", "qr_storage_path"],
     ["notification_templates", "image_storage_path"],
   ];
   for (const [table, column] of checks) {
@@ -3686,7 +3687,7 @@ Deno.serve(async (req: Request) => {
         // User checkout: only active methods. Custom uploaded logo is private;
         // return a short-lived signed URL. Frontend has a code-drawn fallback.
         const { data, error } = await db.from("platform_payment_methods")
-          .select("id,method_type,display_name,payment_url,logo_storage_path")
+          .select("id,method_type,display_name,payment_url,logo_storage_path,qr_storage_path")
           .eq("is_active", true).order("sort_order").order("created_at");
         if (error) throw error;
         const methods = await Promise.all((data || []).map(async (m: any) => ({
@@ -3696,6 +3697,8 @@ Deno.serve(async (req: Request) => {
           paymentUrl: m.payment_url,
           logoUrl: await signedPlatformAssetUrl(db, m.logo_storage_path || null, 3600),
           hasCustomLogo: !!m.logo_storage_path,
+          qrUrl: await signedPlatformAssetUrl(db, m.qr_storage_path || null, 3600),
+          hasCustomQr: !!m.qr_storage_path,
         })));
         return json({ methods });
       }
@@ -3703,7 +3706,7 @@ Deno.serve(async (req: Request) => {
       case "platform_admin_list_payment_methods": {
         requirePlatformSuperAdmin();
         const { data, error } = await db.from("platform_payment_methods")
-          .select("id,method_type,display_name,payment_url,is_active,sort_order,logo_storage_path")
+          .select("id,method_type,display_name,payment_url,is_active,sort_order,logo_storage_path,qr_storage_path")
           .order("sort_order").order("created_at");
         if (error) throw error;
         const methods = await Promise.all((data || []).map(async (m: any) => ({
@@ -3715,6 +3718,8 @@ Deno.serve(async (req: Request) => {
           sortOrder: m.sort_order,
           logoUrl: await signedPlatformAssetUrl(db, m.logo_storage_path || null, 3600),
           hasCustomLogo: !!m.logo_storage_path,
+          qrUrl: await signedPlatformAssetUrl(db, m.qr_storage_path || null, 3600),
+          hasCustomQr: !!m.qr_storage_path,
         })));
         return json({ methods });
       }
@@ -3732,12 +3737,14 @@ Deno.serve(async (req: Request) => {
         const sortOrder = Number.isFinite(Number(payload.sortOrder)) ? Math.trunc(Number(payload.sortOrder)) : 0;
 
         let currentLogoPath: string | null = null;
+        let currentQrPath: string | null = null;
         if (id) {
           const { data: current, error: currentErr } = await db.from("platform_payment_methods")
-            .select("logo_storage_path").eq("id", id).maybeSingle();
+            .select("logo_storage_path,qr_storage_path").eq("id", id).maybeSingle();
           if (currentErr) throw currentErr;
           if (!current) return json({ error: "payment_method_not_found" }, 404);
           currentLogoPath = current.logo_storage_path || null;
+          currentQrPath = current.qr_storage_path || null;
         }
 
         let nextLogoPath = payload.removeLogo === true ? null : currentLogoPath;
@@ -3752,13 +3759,26 @@ Deno.serve(async (req: Request) => {
           }
         }
 
-        const row = {
+        let nextQrPath = payload.removeQr === true ? null : currentQrPath;
+        let newlyUploadedQrPath: string | null = null;
+        if (payload.qrImageUpload) {
+          try {
+            const stored = await storePlatformAsset(db, "payment-methods", (id || methodType) + "-qr", payload.qrImageUpload);
+            nextQrPath = stored.path;
+            newlyUploadedQrPath = stored.path;
+          } catch (e: any) {
+            return json({ error: e?.message === "image_too_large" ? "image_too_large" : "invalid_image_file" }, 400);
+          }
+        }
+
+        const row: Record<string, any> = {
           method_type: methodType,
           display_name: displayName,
           payment_url: paymentUrl,
           is_active: isActive,
           sort_order: sortOrder,
           logo_storage_path: nextLogoPath,
+          qr_storage_path: nextQrPath,
           updated_at: new Date().toISOString(),
           updated_by: tgId,
         };
@@ -3767,18 +3787,23 @@ Deno.serve(async (req: Request) => {
           const { error } = await db.from("platform_payment_methods").update(row).eq("id", id);
           if (error) {
             if (newlyUploadedLogoPath) await cleanupPlatformAssetIfUnreferenced(db, newlyUploadedLogoPath, "failed-payment-logo");
+            if (newlyUploadedQrPath) await cleanupPlatformAssetIfUnreferenced(db, newlyUploadedQrPath, "failed-payment-qr");
             throw error;
           }
         } else {
           const { data: inserted, error: insertErr } = await db.from("platform_payment_methods").insert(row).select("id").single();
           if (insertErr) {
             if (newlyUploadedLogoPath) await cleanupPlatformAssetIfUnreferenced(db, newlyUploadedLogoPath, "failed-payment-logo");
+            if (newlyUploadedQrPath) await cleanupPlatformAssetIfUnreferenced(db, newlyUploadedQrPath, "failed-payment-qr");
             throw insertErr;
           }
           finalId = inserted.id;
         }
         if (currentLogoPath && currentLogoPath !== nextLogoPath) {
           EdgeRuntime.waitUntil(cleanupPlatformAssetIfUnreferenced(db, currentLogoPath, "old-payment-logo").catch(() => {}));
+        }
+        if (currentQrPath && currentQrPath !== nextQrPath) {
+          EdgeRuntime.waitUntil(cleanupPlatformAssetIfUnreferenced(db, currentQrPath, "old-payment-qr").catch(() => {}));
         }
         return json({ ok: true, id: finalId });
       }

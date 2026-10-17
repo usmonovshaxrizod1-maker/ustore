@@ -26,24 +26,25 @@ test('catalog uses selected period price, rounds whole UZS and ignores client pr
   assert.equal(result.totalPrice,260001);
   assert.equal(normalize([catalog],{...context,tariffPriceSnapshot:2000010}).items[0].totalPrice,600003);
 });
-test('domain years and normalized names use the fixed annual price',()=>{
+test('domain years, up to 7 alternative .uz domains and normalized names use the fixed annual price',()=>{
   const normalize = load();
   for(const years of [1,10]) {
     const r = normalize([{code:'MANAGED_DOMAIN',details:{domain:'  SINOV.UZ ',years}}],context);
     assert.equal(r.items[0].details.domain,'sinov.uz');
     assert.equal(r.addonsTotal,50000*years);
   }
+  const multi = normalize([{code:'MANAGED_DOMAIN',details:{domains:['d1.uz','d2.uz','d3.uz'],years:2}}],context);
+  assert.deepEqual(multi.items[0].details.domains,['d1.uz','d2.uz','d3.uz']);
+  assert.equal(multi.items[0].details.domain,'d1.uz');
   for(const years of [0,11,1.5,'2x']) assert.throws(()=>normalize([{code:'MANAGED_DOMAIN',details:{domain:'sinov.uz',years}}],context),/domain_years/);
-  for(const domain of ['https://sinov.uz','a','-a.uz','a..uz','a.uz/path']) assert.throws(()=>normalize([{code:'MANAGED_DOMAIN',details:{domain,years:1}}],context),/domain_name/);
+  for(const domain of ['https://sinov.uz','a','-a.uz','a..uz','a.com']) assert.throws(()=>normalize([{code:'MANAGED_DOMAIN',details:{domain,years:1}}],context),/domain_name/);
 });
-test('invalid catalog, duplicate codes and upgrades fail before persistence',()=>{
+test('duplicate codes and invalid kinds fail before persistence, addon service allowed',()=>{
   const normalize = load();
   assert.throws(()=>normalize([catalog],{...context,kind:'UPGRADE'}),/new_shop_only/);
   assert.throws(()=>normalize([catalog,catalog],context),/duplicate/);
-  for(const product of [{name:'',price:0,quantity:1},{name:'A',price:-1,quantity:1},{name:'A',price:1,quantity:-1},{name:'A',price:1,quantity:1,variants:[{price:-1,quantity:1}]}]) {
-    assert.throws(()=>normalize([{code:'CATALOG_SETUP',details:{products:[product]}}],context),/catalog_/);
-  }
-  assert.throws(()=>normalize([{code:'CATALOG_SETUP',details:{products:[]}}],context),/catalog_products/);
+  const standalone = normalize([catalog],{...context,kind:'ADDON_SERVICE'});
+  assert.equal(standalone.items[0].totalPrice,60000);
   assert.equal(normalize([],{...context,kind:'UPGRADE'}).totalPrice,200001);
 });
 test('API prices add-ons on the server, maps legacy totals and atomically audits admin transitions',()=>{

@@ -30,7 +30,7 @@ export function normalizeSubscriptionAddons(input: unknown, context: { kind: str
   const tariffPrice = context.tariffPriceSnapshot;
   if (!Number.isFinite(tariffPrice) || tariffPrice < 0 || tariffPrice > 1e11) throw new Error('invalid_tariff_price');
   const choices = list(input ?? [], 2, 'invalid_subscription_addons');
-  if (choices.length && context.kind !== 'NEW_SHOP') throw new Error('addons_new_shop_only');
+  if (choices.length && !['NEW_SHOP', 'ADDON_SERVICE', 'EXISTING_SHOP'].includes(context.kind)) throw new Error('addons_new_shop_only');
   const seen = new Set<string>();
   const items: SubscriptionAddon[] = choices.map((choice) => {
     if (!choice || typeof choice !== 'object') throw new Error('invalid_subscription_addons');
@@ -39,32 +39,24 @@ export function normalizeSubscriptionAddons(input: unknown, context: { kind: str
     seen.add(code);
     const details = choice.details || {};
     if (code === 'CATALOG_SETUP') {
-      const products = list(details.products, 100, 'catalog_products_required').map((product, index) => {
-        if (!product || typeof product !== 'object') throw new Error(`catalog_product_${index + 1}_invalid`);
-        const name = text(product.name, 200);
-        if (!name) throw new Error(`catalog_product_${index + 1}_name_required`);
-        return {
-          name, description: text(product.description, 3000),
-          price: amount(product.price, `catalog_product_${index + 1}_price_invalid`),
-          quantity: amount(product.quantity, `catalog_product_${index + 1}_quantity_invalid`, true),
-          colors: text(product.colors, 500), sizes: text(product.sizes, 500),
-          variants: list(product.variants ?? [], 100, 'catalog_variants_invalid').map((variant) => ({
-            color: text(variant?.color, 100), size: text(variant?.size, 100),
-            price: amount(variant?.price, `catalog_product_${index + 1}_variant_price_invalid`),
-            quantity: amount(variant?.quantity, `catalog_product_${index + 1}_variant_quantity_invalid`, true),
-          })),
-        };
-      });
-      if (!products.length) throw new Error('catalog_products_required');
       const unitPrice = Math.round(tariffPrice * 30 / 100);
-      return {code,quantity:1,unitPrice,totalPrice:unitPrice,details:{products}};
+      return {code,quantity:1,unitPrice,totalPrice:unitPrice,details:{requested:true}};
     }
     if (code === 'MANAGED_DOMAIN') {
-      const domain = text(details.domain, 253).toLowerCase();
-      if (!/^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) throw new Error('domain_name_invalid');
+      const rawDomains = Array.isArray(details.domains) && details.domains.length ? details.domains : [details.domain];
+      const validDomains = rawDomains
+        .map((d) => text(d, 253).toLowerCase())
+        .filter(Boolean)
+        .slice(0, 7);
+      if (!validDomains.length) throw new Error('domain_name_invalid');
+      for (const d of validDomains) {
+        if (!/^(?=.{4,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.uz$/.test(d)) {
+          throw new Error('domain_name_invalid');
+        }
+      }
       const years = Number(details.years);
       if (!Number.isInteger(years) || years < 1 || years > 10) throw new Error('domain_years_invalid');
-      return {code,quantity:years,unitPrice:50000,totalPrice:50000*years,details:{domain,years}};
+      return {code,quantity:years,unitPrice:50000,totalPrice:50000*years,details:{domain:validDomains[0],domains:validDomains,years}};
     }
     throw new Error('unknown_subscription_addon');
   });

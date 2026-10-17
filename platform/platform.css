@@ -643,7 +643,9 @@ select:focus { outline: none; border-color: var(--c-primary); box-shadow: 0 0 0 
 .plat-shop-avatar.is-logo { width: 66px; height: 30px; border-radius: 8px; background: #fff; border: 1px solid var(--plat2-border, var(--c-border)); }
 .plat-shop-avatar-fallback { font-size: 16px; }
 .plat-shop-avatar-lg { width: 52px; height: 52px; border-radius: 14px; }
-.plat-shop-avatar-lg.is-logo { width: 96px; height: 40px; border-radius: 10px; }
+.plat-shop-avatar-lg.is-logo { width: 100px; height: 42px; border-radius: 10px; }
+.plat-shop-detail-avatar.is-logo { width:100px;height:42px; }
+.plat-dashboard-shop-tabs.is-two .plat-shop-avatar.is-logo { width: 56px; height: 24px; }
 
 .plat-shop-card-v2 { padding: 12px; }
 .plat-shop-card-v2-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
@@ -2537,3 +2539,437 @@ html { overflow-anchor: none; }
 .plat-service-checkout-layout,.plat-service-checkout-main,.plat-service-checkout-summary{min-width:0}
 .plat-service-checkout-main,.plat-service-checkout-summary{display:grid;gap:16px;align-content:start}
 @media(min-width:1100px){.plat-service-checkout-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,340px);gap:24px;align-items:start}.plat-service-checkout-summary{position:sticky;top:16px}}
+
+/* ======================================================================
+   Platform 2.0: Stepper, Service Add-ons & Responsive Payment Methods
+   ====================================================================== */
+
+/* 1. Checkout 3-step progress stepper */
+.plat-stepper-pro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 18px;
+  background: var(--c-surface, #fff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
+  margin-bottom: 8px;
+}
+.plat-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 650;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+.plat-step.is-active {
+  color: var(--c-primary, #2563eb);
+  font-weight: 750;
+}
+.plat-step.is-complete {
+  color: #10b981;
+}
+.plat-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  background: #f1f5f9;
+  color: #64748b;
+  flex-shrink: 0;
+}
+.plat-step.is-active .plat-step-num {
+  background: var(--c-primary, #2563eb);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+.plat-step.is-complete .plat-step-num {
+  background: #d1fae5;
+  color: #059669;
+}
+.plat-step-line {
+  flex: 1;
+  height: 2px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  margin: 0 4px;
+  min-width: 12px;
+}
+.plat-step-line.is-complete {
+  background: #10b981;
+}
+.plat-step-line.is-active {
+  background: var(--c-primary, #2563eb);
+}
+
+/* 2. Catalog Setup 4-point Informational Guide */
+.plat-guide-card {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #f8fafc, #ffffff);
+  border: 1px solid #cbd5e1;
+  margin-top: 14px;
+  display: grid;
+  gap: 14px;
+}
+.plat-guide-intro {
+  display: grid;
+  gap: 8px;
+}
+.plat-guide-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+.plat-guide-intro p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: #334155;
+}
+.plat-guide-list {
+  display: grid;
+  gap: 12px;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 14px;
+}
+.plat-guide-item {
+  display: grid;
+  gap: 3px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+}
+.plat-guide-item b {
+  color: #0f172a;
+  font-size: 13.5px;
+}
+.plat-guide-warn {
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* 3. Managed .UZ Domain multi-input list */
+.plat-domain-guide-text {
+  margin: 10px 0 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #475569;
+}
+.plat-domain-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.plat-domain-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+.plat-domain-row .plat-field-pro {
+  flex: 1;
+  margin: 0;
+}
+.plat-domain-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.plat-domain-input-wrap input {
+  width: 100%;
+  padding-right: 48px !important;
+  font-weight: 600;
+}
+.plat-domain-suffix {
+  position: absolute;
+  right: 12px;
+  color: #64748b;
+  font-weight: 700;
+  font-size: 13px;
+  pointer-events: none;
+}
+.plat-domain-del-btn {
+  height: 42px;
+  width: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #dc2626;
+  border-radius: 12px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.plat-domain-del-btn:hover {
+  background: #fee2e2;
+}
+.plat-add-domain-btn {
+  width: 100% !important;
+  border-style: dashed !important;
+  margin-bottom: 12px;
+  font-weight: 650;
+}
+.plat-domain-years-field {
+  margin-top: 6px;
+}
+
+/* 4. Responsive Payment Box (Desktop / Tablet / Mobile) */
+.plat-payment-responsive-box {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 20px;
+  margin-top: 14px;
+  padding: 18px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+.plat-payment-qr-frame {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  flex-shrink: 0;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.plat-payment-qr-img {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #ffffff;
+}
+.plat-payment-qr-meta {
+  display: grid;
+  gap: 3px;
+  max-width: 170px;
+}
+.plat-payment-qr-meta b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: #0f172a;
+}
+.plat-payment-qr-meta small {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #64748b;
+}
+.plat-payment-action-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+}
+.plat-payment-device-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.plat-dev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  font-size: 11px;
+  font-weight: 650;
+  border-radius: 8px;
+  background: #e2e8f0;
+  color: #475569;
+}
+.plat-payment-app-btn {
+  width: 100% !important;
+  min-height: 48px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  border-radius: 14px !important;
+}
+.plat-payment-direct-link-wrap {
+  display: grid;
+  gap: 3px;
+}
+.plat-payment-direct-link-wrap small {
+  font-size: 11px;
+  color: #64748b;
+}
+.plat-link-out {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-primary, #2563eb);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.plat-link-out:hover {
+  text-decoration: underline;
+}
+
+/* 5. Standalone Add-on Orders in Shop Management */
+.plat-shop-addons-card {
+  margin-top: 16px;
+}
+.plat-shop-addons-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+.plat-shop-addon-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  transition: all 0.2s ease;
+}
+.plat-shop-addon-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+.plat-shop-addon-info {
+  display: grid;
+  gap: 6px;
+}
+.plat-shop-addon-info b {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  color: #0f172a;
+}
+.plat-shop-addon-info p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #64748b;
+}
+.plat-addon-price {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--c-primary, #2563eb);
+}
+.plat-addon-price small {
+  font-weight: 500;
+  font-size: 11.5px;
+  color: #64748b;
+}
+.plat-addon-btn {
+  width: 100% !important;
+  min-height: 40px;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+/* Micro-interactions & animations */
+.plat-payment-submit:active,
+.plat-payment-app-btn:active,
+.plat-addon-btn:active,
+.plat-payment-method-choice:active {
+  transform: scale(0.98);
+  transition: transform 0.08s ease;
+}
+
+/* Responsive Media Queries for Payment Box & Add-ons */
+@media (min-width: 1024px) {
+  .plat-dev-badge.is-desktop {
+    background: #dbeafe;
+    color: #1e40af;
+    font-weight: 750;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .plat-dev-badge.is-tablet {
+    background: #dbeafe;
+    color: #1e40af;
+    font-weight: 750;
+  }
+  .plat-payment-responsive-box {
+    gap: 16px;
+    padding: 16px;
+  }
+  .plat-payment-qr-img {
+    width: 140px;
+    height: 140px;
+  }
+}
+
+@media (max-width: 767px) {
+  .plat-stepper-pro {
+    padding: 10px 12px;
+    gap: 4px;
+  }
+  .plat-step-label {
+    font-size: 11px;
+  }
+  .plat-payment-responsive-box {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 14px;
+  }
+  .plat-payment-action-column {
+    width: 100%;
+  }
+  .plat-payment-app-btn {
+    order: -1;
+  }
+  .plat-dev-badge.is-mobile {
+    background: #dbeafe;
+    color: #1e40af;
+    font-weight: 750;
+  }
+  .plat-shop-addons-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+}
+

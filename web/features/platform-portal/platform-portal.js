@@ -169,20 +169,78 @@ function checkoutServicesView(doc,state,controller){
   const input=(label,value,onChange,type='text')=>{const f=el(doc,'label','uw-field');f.append(el(doc,'span','',label));const i=doc.createElement('input');i.type=type;i.value=value??'';if(type==='number')i.min='0';i.addEventListener('change',()=>onChange(type==='number'?(i.value===''?'':Number(i.value)):i.value));f.append(i);return f;};
   const tariff=state.tariffs.find(t=>t.id===c.tariffId);const price=Number(tariff?.price||0)*(c.billingPeriod==='annual'?10:1);
   const choice=(key,title,subtitle,amount)=>{const card=el(doc,'section',`uw-platform-service-card ${s[key]?'is-selected':''}`);const label=el(doc,'label','uw-platform-service-choice');const check=doc.createElement('input');check.type='checkbox';check.checked=s[key]===true;check.addEventListener('change',()=>patch({[key]:check.checked}));const copy=el(doc,'span');copy.append(el(doc,'strong','',title),el(doc,'small','',subtitle));label.append(check,copy,el(doc,'strong','',money(amount)));card.append(label);section.append(card);return card;};
-  const catalog=choice('catalogSelected','Do‘kon va mahsulotlarni biz kiritamiz','Bir martalik · tanlangan davr tarifi narxining 30 foizi',Math.round(price*.3));
-  if(s.catalogSelected){catalog.append(el(doc,'p','uw-muted','Quyidagi ma’lumotlarni bir marta kiritib beramiz. Mahsulot rasmlarini keyin Shop App’da o‘zingiz yuklaysiz.'));
-    const products=s.products||[];
-    const changeProduct=(id,data)=>patch({products:products.map(p=>p.id===id?{...p,...data}:p)});
-    for(const [index,p] of products.entries()){
-      const card=el(doc,'section','uw-platform-catalog-product');const head=el(doc,'div','uw-platform-inline-actions');head.append(el(doc,'h4','',`${index+1}-mahsulot`),createButton({label:'Olib tashlash',variant:'ghost',size:'sm',onClick:()=>patch({products:products.filter(x=>x.id!==p.id)})},doc));card.append(head);const grid=el(doc,'div','uw-platform-form-grid');
-      for(const [key,label,type] of [['name','Mahsulot nomi','text'],['description','Tavsifi','text'],['price','Narxi','number'],['quantity','Soni','number'],['colors','Ranglar (ixtiyoriy)','text'],['sizes','O‘lchamlar (ixtiyoriy)','text']])grid.append(input(label,p[key],v=>changeProduct(p.id,{[key]:v}),type));card.append(grid);
-      for(const v of p.variants||[]){const variants=el(doc,'div','uw-platform-form-grid uw-platform-variant');for(const [key,label,type] of [['color','Rang','text'],['size','O‘lcham','text'],['price','Variant narxi','number'],['quantity','Variant soni','number']])variants.append(input(label,v[key],value=>changeProduct(p.id,{variants:p.variants.map(x=>x.id===v.id?{...x,[key]:value}:x)}),type));variants.append(createButton({label:'Variantni olib tashlash',variant:'ghost',onClick:()=>changeProduct(p.id,{variants:p.variants.filter(x=>x.id!==v.id)})},doc));card.append(variants);}
-      card.append(createButton({label:'+ Variant qo‘shish',variant:'secondary',onClick:()=>changeProduct(p.id,{variants:[...(p.variants||[]),{id:secureUuidV4(),color:'',size:'',price:p.price,quantity:0}]})},doc));catalog.append(card);
+  const catalog=choice('catalogSelected','Do‘kon va tovarlarni to‘ldirib berish','Bir martalik · tanlangan davr tarifi narxining 30 foizi',Math.round(price*.3));
+  if(s.catalogSelected){
+    const guide=el(doc,'div','uw-platform-guide-card');
+    const intro=el(doc,'div','uw-platform-guide-intro');
+    intro.append(el(doc,'p','','Do‘koningizni savdoga to‘liq tayyor holatga keltirib beramiz. Mutaxassislarimiz barcha ma’lumotlarni sozlab berishi uchun to‘lovdan so‘ng quyidagi ma’lumotlarni taqdim etishingiz kerak bo‘ladi:'));
+    guide.append(intro);
+    const list=el(doc,'div','uw-platform-guide-list');
+    for(const [title,desc] of [
+      ['1. Do‘kon ma’lumotlari:','Do‘kon nomi, logotipi, telefon raqamlari, ijtimoiy tarmoq profillari (Instagram, Telegram, Facebook), agar mavjud bo‘lsa savdo nuqtasi manzili va joylashuv havolasi.'],
+      ['2. Tovarlar va mahsulotlar ro‘yxati:','Kiritilishi kerak bo‘lgan barcha tovarlar ro‘yxati (nomi, tavsifi, rang va o‘lchamlari, soni va narxlari). Eslatma: Tovarlar rasmlari keyinchalik Shop App ilovasida yuklanadi.'],
+      ['3. Yetkazib berish va to‘lov parametrlari:','Yetkazib berish hududlari, 4 xil yetkazib berish turi va narxlari hamda to‘lov usullari (naqd, karta, Click, Payme).'],
+      ['4. Bajarish muddati:','Ariza tasdiqlangandan so‘ng 72 soatgacha to‘ldirib beriladi (navbatlar ko‘paygan vaqtda muddat biroz uzayishi mumkin).']
+    ]){
+      const item=el(doc,'div','uw-platform-guide-item');
+      item.append(el(doc,'strong','',title),el(doc,'span','',desc));
+      list.append(item);
     }
-    catalog.append(createButton({label:'+ Mahsulot qo‘shish',variant:'secondary',disabled:products.length>=100,onClick:()=>patch({products:[...products,{id:secureUuidV4(),name:'',description:'',price:0,quantity:0,colors:'',sizes:'',variants:[]}]})},doc));
+    guide.append(list);
+    catalog.append(guide);
   }
-  const domain=choice('domainSelected','Domenni biz olib, ulab beramiz','Yiliga 50 000 so‘m',50000*Number(s.years));
-  if(s.domainSelected){domain.append(el(doc,'p','uw-muted','To‘lovdan keyin domenni sotib olib ulaymiz. Nom band bo‘lsa, boshqa nomni siz bilan kelishamiz.'));const fields=el(doc,'div','uw-platform-form-grid');fields.append(input('Domen, masalan dokon.uz',s.domain,value=>patch({domain:value})));const label=el(doc,'label','uw-field');label.append(el(doc,'span','','Muddati'));const select=doc.createElement('select');for(let year=1;year<=10;year++){const option=el(doc,'option','',`${year} yil`);option.value=String(year);option.selected=year===Number(s.years);select.append(option);}select.addEventListener('change',()=>patch({years:Number(select.value)}));label.append(select);fields.append(label);domain.append(fields);}
+  const domain=choice('domainSelected','UStorE orqali domen sotib olish va ulash','Yiliga 50 000 so‘m · Faqat rasmiy .uz domenlari',50000*Number(s.years||1));
+  if(s.domainSelected){
+    domain.append(el(doc,'p','uw-muted','O‘zingizga ma’qul .uz domenlarini ustuvorlik tartibida kiriting. 1-tanlov band bo‘lsa, keyingi bo‘sh variant ro‘yxatdan o‘tkaziladi (jami 7 tagacha).'));
+    const domainsList=Array.isArray(s.domains)&&s.domains.length?s.domains:[s.domain||''];
+    const updateDomain=(idx,val)=>{
+      const next=[...domainsList];
+      let clean=String(val||'').trim().toLowerCase();
+      if(clean.endsWith('.uz'))clean=clean.slice(0,-3);
+      clean=clean.replace(/[^a-z0-9-]/g,'');
+      next[idx]=clean?clean+'.uz':'';
+      patch({domains:next,domain:next[0]||''});
+    };
+    const domainWrap=el(doc,'div','uw-platform-domain-list');
+    for(const [idx,d] of domainsList.entries()){
+      const row=el(doc,'div','uw-platform-domain-row');
+      const val=d?d.replace(/\.uz$/i,''):'';
+      const label=idx===0?'1-tanlov (Asosiy domen)':`${idx+1}-muqobil variant`;
+      const f=el(doc,'label','uw-field');
+      f.append(el(doc,'span','',label));
+      const inpWrap=el(doc,'div','uw-platform-domain-input-wrap');
+      const inp=doc.createElement('input');
+      inp.type='text';inp.value=val;inp.placeholder=idx===0?'masalan, dokon-nomi':'muqobil-nom';inp.maxLength=60;
+      inp.addEventListener('input',()=>updateDomain(idx,inp.value));
+      const suffix=el(doc,'span','uw-platform-domain-suffix','.uz');
+      inpWrap.append(inp,suffix);
+      f.append(inpWrap);
+      row.append(f);
+      if(idx>0){
+        row.append(createButton({label:'×',variant:'ghost',size:'sm',onClick:()=>{
+          const next=domainsList.filter((_,i)=>i!==idx);
+          patch({domains:next,domain:next[0]||''});
+        }},doc));
+      }
+      domainWrap.append(row);
+    }
+    domain.append(domainWrap);
+    if(domainsList.length<7){
+      domain.append(createButton({label:`+ Yana muqobil domen qo‘shish (${domainsList.length}/7)`,variant:'secondary',size:'sm',onClick:()=>patch({domains:[...domainsList,'']})},doc));
+    }
+    const label=el(doc,'label','uw-field');
+    label.append(el(doc,'span','','Domen muddati'));
+    const select=doc.createElement('select');
+    for(let year=1;year<=10;year++){
+      const option=el(doc,'option','',`${year} yil (${money(50000*year)})`);
+      option.value=String(year);
+      option.selected=year===Number(s.years||1);
+      select.append(option);
+    }
+    select.addEventListener('change',()=>patch({years:Number(select.value)}));
+    label.append(select);
+    domain.append(label);
+  }
   return section;
 }
 function checkoutServicesSummary(doc,state){
