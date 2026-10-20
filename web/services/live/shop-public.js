@@ -26,10 +26,11 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
   if (!/^\d+$/.test(locator)) throw new TypeError('botId raqam bo‘lishi kerak');
   if (typeof fetchImpl !== 'function') throw new TypeError('fetch kerak');
   let guestBootCache = null;
+  let startupCatalog = null;
 
   async function request(action, payload = {}) {
     const headers = { 'content-type': 'application/json' };
-    const token = tokenStore?.get?.();
+    const token = tokenStore?.get?.() || '';
     if (token) headers.authorization = `UStoreSession ${token}`;
     let response, body;
     try {
@@ -37,6 +38,9 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
     } catch (_) {
       return fail('NETWORK_ERROR', 'Shop serveriga ulanib bo‘lmadi.', { retryable: true });
     }
+    // A slow response from a previous account must not update the current
+    // session or become its cached catalogue (which can include admin rows).
+    if ((tokenStore?.get?.() || '') !== token) return fail('SESSION_EXPIRED', 'Sessiya o‘zgardi.');
     if (!response.ok || body?.error) return normalizedError(body, response.status);
     if (body?.webSession?.replacementToken && tokenStore?.set) tokenStore.set(body.webSession.replacementToken);
     return ok(body || {});
@@ -49,10 +53,12 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
     return ok({ products: Array.isArray(result.data.products) ? result.data.products : [], categories: Array.isArray(result.data.categories) ? result.data.categories : [] });
   }
   function catalogData() {
-    if (catalogInflight) return catalogInflight;
+    const token = tokenStore?.get?.() || '';
+    if (catalogInflight?.token === token) return catalogInflight.promise;
     const pending = fetchCatalogData();
-    catalogInflight = pending;
-    const clear = () => { if (catalogInflight === pending) catalogInflight = null; };
+    const entry = { token, promise: pending };
+    catalogInflight = entry;
+    const clear = () => { if (catalogInflight === entry) catalogInflight = null; };
     void pending.then(clear, clear);
     return pending;
   }
@@ -64,6 +70,24 @@ export function createLiveShopPublicAdapters({ endpoint, botId, fetchImpl = glob
   }
 
   return Object.freeze({
+    preloadCatalog() {
+      const token = tokenStore?.get?.() || '';
+      // Authenticated boot may rotate its session. Let that finish before the
+      // admin-aware catalogue request; never warm it as a public guest.
+      if (token) { startupCatalog = null; return; }
+      if (startupCatalog?.token === token && Date.now() - startupCatalog.at < 30000) return;
+      // Start after tenant resolution, alongside context boot. Memory-only,
+      // one-use and scoped to this runtime's shop and exact browser session.
+      startupCatalog = { token, at: Date.now(), promise: catalogData() };
+    },
+    async takeStartupCatalog() {
+      const cached = startupCatalog;
+      startupCatalog = null;
+      if (!cached || cached.token !== (tokenStore?.get?.() || '') || Date.now() - cached.at >= 30000) return null;
+      const result = await cached.promise;
+      if (!result.ok || cached.token !== (tokenStore?.get?.() || '') || Date.now() - cached.at >= 30000) return null;
+      return result.data;
+    },
     takeGuestBoot() {
       if (tokenStore?.get?.()) return null;
       const cached = guestBootCache;

@@ -10,9 +10,9 @@ const walk=(d)=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>e.isDirectory(
 const files=walk(web).filter(f=>!['PERFORMANCE_AUDIT.json'].includes(path.basename(f)));
 const rows=files.map(f=>{const b=fs.readFileSync(f);return {file:path.relative(web,f).split(path.sep).join('/'),bytes:b.length,gzipBytes:zlib.gzipSync(b,{level:9}).length};});
 const js=rows.filter(r=>r.file.endsWith('.js')), css=rows.filter(r=>r.file.endsWith('.css')), images=rows.filter(r=>/\.(?:png|jpe?g|webp|gif|svg|avif)$/i.test(r.file));
-const staticRx=/\b(?:import|export)\s+(?:[^;'"()]*?\s+from\s*)?['"](\.{1,2}\/[^'"]+)['"]/g;
+const staticRx=/\b(?:import|export)\s*(?:[^;'"()]*?\bfrom\s*)?['"](\.{1,2}\/[^'"]+)['"]/g;
 const seen=new Set();
-function visit(rel){ if(seen.has(rel)) return; seen.add(rel); const abs=path.join(web,rel); if(!fs.existsSync(abs)) return; const src=fs.readFileSync(abs,'utf8'); for(const m of src.matchAll(staticRx)){let t=path.posix.normalize(path.posix.join(path.posix.dirname(rel),m[1])); if(!path.posix.extname(t))t+='.js'; visit(t);} }
+function visit(rel){ if(seen.has(rel)) return; seen.add(rel); const abs=path.join(web,rel); if(!fs.existsSync(abs)) return; const src=fs.readFileSync(abs,'utf8'); for(const m of src.matchAll(staticRx)){let t=path.posix.normalize(path.posix.join(path.posix.dirname(rel),m[1].split(/[?#]/)[0])); if(!path.posix.extname(t))t+='.js'; visit(t);} }
 visit('app.js');
 visit('config.public.js');
 const initialJs=rows.filter(r=>seen.has(r.file));

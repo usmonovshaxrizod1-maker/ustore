@@ -20,7 +20,14 @@
   <link rel="stylesheet" href="./ustore.css?v=334">
   <link rel="stylesheet" href="./shop-welcome.css?v=20261009t1">
   <script src="./shop-welcome.js?v=20261009t1"></script>
-  <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    // The web frame authenticates through its parent, never the Telegram SDK.
+    // Keep SDK execution ordered before local defer scripts for real Mini Apps.
+    if (new URLSearchParams(location.search).get('web_frame') !== '1' ||
+        window.parent === window || /(?:^#|&)tgWebAppData=/.test(location.hash)) {
+      document.write('<script defer src="https://telegram.org/js/telegram-web-app.js"><\/script>');
+    }
+  </script>
   <script async src="https://unpkg.com/lucide@latest" onload="window.safeCreateIcons?.()"></script>
   <script id="ustore-storage-sdk" async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" onerror="this.dataset.failed='true'"></script>
   <!-- PERFORMANCE ROUND 1 (2026-09-03): Leaflet CSS/JS bu yerdan olib

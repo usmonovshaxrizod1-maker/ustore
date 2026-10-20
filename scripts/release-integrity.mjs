@@ -10,6 +10,19 @@ export function inspectRelease(root) {
   const manifest = json('dist/BUILD_MANIFEST.json');
   const files = manifest.files;
   if (!files || !Object.keys(files).length) throw Error('empty_build_manifest');
+  const bundled = new Set(manifest.webBundle?.outputs || []);
+  if (bundled.size) {
+    const sources = manifest.webBundle?.sources;
+    if (!sources?.['web/app.js'] || !sources?.['scripts/build-production.mjs'] || !sources?.['package-lock.json']) throw Error('unbound_web_bundle');
+    for (const rel of bundled) {
+      if ((rel !== 'web/app.js' && !/^web\/chunks\/[^/]+\.js$/.test(rel)) || !files[rel]) throw Error(`invalid_bundle_output:${rel}`);
+    }
+    // Compiled assets differ from their source. Verify every source input and
+    // build configuration instead of incorrectly requiring byte-for-byte copy.
+    for (const [rel, expected] of Object.entries(sources)) {
+      if (rel.includes('..') || path.isAbsolute(rel) || hash(read(rel)) !== expected) throw Error(`source_build_mismatch:${rel}`);
+    }
+  }
   for (const [rel, expected] of Object.entries(files)) {
     if (rel.includes('..') || path.isAbsolute(rel) || hash(read(`dist/${rel}`)) !== expected) throw Error(`artifact_mismatch:${rel}`);
     // The production build intentionally overlays root files on the preview
@@ -19,7 +32,7 @@ export function inspectRelease(root) {
     const sourceBytes = rel === 'web/index.html' || rel === 'web/404.html'
       ? Buffer.from(productionWebEntry(read('web/index.html').toString('utf8')))
       : fs.existsSync(path.join(root,source)) ? read(source) : null;
-    if (!['BUILD_AUDIT.json','PERFORMANCE_AUDIT.json'].includes(rel) && sourceBytes && hash(sourceBytes) !== expected) throw Error(`source_build_mismatch:${rel}`);
+    if (!bundled.has(rel) && !['BUILD_AUDIT.json','PERFORMANCE_AUDIT.json'].includes(rel) && sourceBytes && hash(sourceBytes) !== expected) throw Error(`source_build_mismatch:${rel}`);
   }
   for (const full of walk(path.join(root,'dist'))) {
     const rel=path.relative(path.join(root,'dist'),full).split(path.sep).join('/');

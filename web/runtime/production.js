@@ -90,5 +90,5 @@ export async function createProductionShopRuntime({
     platform: createLivePlatformAdapter({ endpoint: authRuntime.endpoints.platform, fetchImpl, tokenStore: authRuntime.tokenStore }),
   };
   const services = createLiveServiceProvider({ runtime: 'production', liveAdapters });
-  return { ok: true, data: Object.freeze({ ...authRuntime, tenantResolver, tenant, services, takeBoot: publicAdapters.takeBoot, takeGuestBoot: publicAdapters.takeGuestBoot }) };
+  return { ok: true, data: Object.freeze({ ...authRuntime, tenantResolver, tenant, services, takeBoot: publicAdapters.takeBoot, takeGuestBoot: publicAdapters.takeGuestBoot, preloadCatalog: publicAdapters.preloadCatalog, takeStartupCatalog: publicAdapters.takeStartupCatalog }) };
 }

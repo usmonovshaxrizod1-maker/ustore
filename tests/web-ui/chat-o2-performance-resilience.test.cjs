@@ -38,7 +38,7 @@ test('O2 route modules remain lazy and platform routes get a delayed slow-networ
   assert.match(app, /function armSlowRouteState\(/);
   assert.match(app, /delay = 320/);
   assert.match(app, /launchView\(/);
-  assert.match(app, /Biznesingiz uchun platforma tayyorlanmoqda/);
+  assert.match(read('shop-welcome.js'), /Biznesingiz uchun platforma tayyorlanmoqda/);
 });
 
 test('O2 home network failure is distinct from a legitimate empty catalog and offers retry', async () => {

@@ -202,3 +202,32 @@ test('guest campaign browsing uses public projections without a session', async 
     global.document = oldDocument;
   }
 });
+
+test('frame consumes the early catalogue without fetching it twice and waits for real APP_READY', async () => {
+  const browser = fakeBrowser();
+  const oldWindow = global.window, oldDocument = global.document;
+  global.window = browser.window; global.document = browser.document;
+  let host;
+  try {
+    const { createMiniAppFrameHost } = await import(pathToFileURL(path.join(root, 'web/shared/frame-host.js')).href);
+    host = createMiniAppFrameHost({
+      kind: 'shop', tenant: { botId: '123456' }, viewerKey: '123e4567-e89b-42d3-a456-426614174000',
+      runtime: {
+        endpoints: { shop: 'https://db.example/functions/v1/shop-api' }, tokenStore: { get: () => '' },
+        takeGuestBoot: () => ({ shopContact: { name: 'Shop' } }),
+        takeStartupCatalog: async () => ({ products: [{ id: 'early-product' }], categories: [] }),
+      },
+      fetchImpl: async () => { throw new Error('duplicate startup request'); },
+    });
+    await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'HELLO' });
+    const { nonce } = browser.sent[0].message;
+    await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'REQUEST', nonce, id: 'catalog', action: 'get_catalog' });
+    assert.equal(browser.sent.at(-1).message.ok, true);
+    assert.equal(browser.sent.at(-1).message.data.products[0].id, 'early-product');
+    assert.match(host.element.className, /is-loading/);
+    await browser.message(miniOrigin, { bridge: 'ustore-miniapp-v1', kind: 'shop', type: 'APP_READY', nonce });
+    assert.match(host.element.className, /is-ready/);
+  } finally {
+    host?.destroy(); global.window = oldWindow; global.document = oldDocument;
+  }
+});

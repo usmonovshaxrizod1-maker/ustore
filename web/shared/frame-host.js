@@ -114,6 +114,11 @@ export function createMiniAppFrameHost({ kind, route = '/', tenant = null, viewe
       const cached = runtime.takeGuestBoot?.();
       if (cached) return { ...cached, botUsername: cached.botUsername || String(tenant?.botUsername || '').replace(/^@/, '') || null };
     }
+    if (kind === 'shop' && action === 'get_catalog' && !Object.keys(payload || {}).length) {
+      const cached = await runtime.takeStartupCatalog?.();
+      if (!alive || token !== String(runtime.tokenStore.get() || '')) throw new Error('session_changed');
+      if (cached) return cached;
+    }
     // A visitor can browse public campaigns before signing in. These public
     // projections never contain another customer's private promo codes.
     if (kind === 'shop' && !token && action === 'get_marketing_campaigns') {

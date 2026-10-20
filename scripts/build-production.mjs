@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { productionWebEntry } from './web-entry-paths.mjs';
+import { build } from 'esbuild';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -61,6 +62,22 @@ function webFilter(full, entry) {
   return true;
 }
 copyTree(webSource, webDist, webFilter);
+// Collapse the native-module startup waterfall. Lazy routes stay split; their
+// hashed chunk names prevent old/new deployments mixing dependency versions.
+const webBundle = await build({
+  absWorkingDir: root,
+  entryPoints: [path.join(webSource, 'app.js')],
+  outdir: webDist,
+  bundle: true,
+  splitting: true,
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2022',
+  minify: true,
+  chunkNames: 'chunks/[name]-[hash]',
+  legalComments: 'eof',
+  metafile: true,
+});
 // Lazy admin assets must also exist when dist/web is hosted as the origin root.
 for(const name of ['ustore-image-io.js','excel-import.js','shop-welcome.css','shop-welcome.js','shop-welcome-art.svg'])copyFile(path.join(root,name),path.join(webDist,name));
 copyTree(path.join(root,'vendor'),path.join(webDist,'vendor'));
@@ -117,6 +134,13 @@ const manifest = {
   format: 1,
   source: 'ASTRA-9c',
   roots: { miniApp: '.', premiumWeb: 'web', platform: 'platform', webPlatformFrame: 'web/platform-ui' },
+  webBundle: {
+    sources: Object.fromEntries([...new Set([
+      ...Object.keys(webBundle.metafile.inputs).map(name => name.split(/[?#]/)[0]),
+      'scripts/build-production.mjs', 'package.json', 'package-lock.json',
+    ])].sort().map(name => [name, sha256(fs.readFileSync(path.resolve(root, name)))])),
+    outputs: Object.keys(webBundle.metafile.outputs).map(name => path.relative(dist, path.resolve(root, name)).split(path.sep).join('/')).sort(),
+  },
   files: Object.fromEntries(files.sort().map((f) => [path.relative(dist,f).split(path.sep).join('/'), sha256(fs.readFileSync(f))])),
 };
 const audit = {

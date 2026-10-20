@@ -12,6 +12,9 @@ test('release rejects tampered artifacts, stale migration ledger and mismatched 
   for(const rel of ['web','scripts','supabase','config.public.js','config.public.example.js','package.json']) fs.cpSync(path.join(root,rel),path.join(dir,rel),{recursive:true});
   for(const name of fs.readdirSync(root)) if(fs.statSync(path.join(root,name)).isFile())fs.copyFileSync(path.join(root,name),path.join(dir,name));
   for(const name of ['platform','vendor'])fs.cpSync(path.join(root,name),path.join(dir,name),{recursive:true});
+  // The production builder uses the project's pinned bundler. The isolated
+  // release fixture needs the same installed dependencies, without reinstalling.
+  fs.symlinkSync(path.join(root,'node_modules'),path.join(dir,'node_modules'),process.platform==='win32'?'junction':'dir');
   cp.execFileSync(process.execPath,['scripts/build-production.mjs'],{cwd:dir});
   cp.execFileSync(process.execPath,['scripts/measure-production.mjs'],{cwd:dir});
   cp.execFileSync(process.execPath,['scripts/release-10a-audit.mjs'],{cwd:dir});
@@ -27,6 +30,8 @@ test('release rejects tampered artifacts, stale migration ledger and mismatched 
   const report=JSON.parse(outcome.stdout);assert.equal(report.status,'BLOCKED_EXTERNAL');assert.ok(report.missingExternal.includes('release.deployedMigrationMax_current'));assert.ok(report.missingExternal.includes('matching_10b_prerequisites'));
   const f=path.join(dir,'dist/web/app.js');const original=fs.readFileSync(f);
   fs.appendFileSync(f,'\n//tamper');assert.throws(()=>inspectRelease(dir),/artifact_mismatch/);fs.writeFileSync(f,original);
+  const source=path.join(dir,'web/app.js'),sourceOriginal=fs.readFileSync(source);
+  fs.appendFileSync(source,'\n//stale bundle');assert.throws(()=>inspectRelease(dir),/source_build_mismatch:web\/app\.js/);fs.writeFileSync(source,sourceOriginal);
   fs.appendFileSync(path.join(dir,'supabase/migrations/105_review_cart_merge_replay.sql'),'\n-- changed');assert.throws(()=>inspectRelease(dir),/migration_ledger_mismatch/);
  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

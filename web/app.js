@@ -387,7 +387,11 @@ function loadLoginFeatureModule() {
   // a manual GitHub Pages upload. Refresh this auth module as a release unit.
   if (!loginFeatureModulePromise) {
     loginFeatureModulePromise = import('./features/auth/login.js?v=20261011login1')
-      .catch(() => import(`./features/auth/login.js?v=20261011login1&retry=${Date.now()}`))
+      .catch(() => {
+        // Keep the cache-busting fallback as a runtime URL, not a build glob.
+        const retryUrl = './features/auth/login.js?v=20261011login1&retry=' + Date.now();
+        return import(retryUrl);
+      })
       .catch((error) => { loginFeatureModulePromise = null; throw error; });
   }
   return loginFeatureModulePromise;
@@ -1003,6 +1007,9 @@ async function renderRoute(routeState, reason = 'refresh') {
     try {
       if (tenantBrand.shopName || tenantBrand.logoUrl) globalThis.localStorage?.setItem?.(`ustore:shop:brand:${location.hostname.toLowerCase()}`, JSON.stringify({ name:tenantBrand.shopName || shopHint, logoUrl:tenantBrand.logoUrl || null }));
     } catch (_) {}
+    // Catalogue and boot are independent reads after the domain is verified.
+    // Do not add catalogue requests to navigation inside an existing frame.
+    if (!sharedFrame) shopRuntime.preloadCatalog();
     const contextResult=await refreshContext(epoch); if(epoch!==renderEpoch)return;
     if(!contextResult.ok){mount(stateView('error','Do‘kon ochilmadi',contextResult.error?.message||'Kontekst yuklanmadi.','Qayta urinish',()=>renderRoute(routeState)));return;}
     const welcome = root.querySelector('.ustore-welcome');
