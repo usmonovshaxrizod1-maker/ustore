@@ -34,3 +34,10 @@
 @media(min-width:1024px){.ustore-welcome__glass{width:clamp(165px,13vw,190px);height:clamp(165px,13vw,190px)}.ustore-welcome__title{font-size:clamp(42px,4vw,52px)}.ustore-welcome__content{max-width:620px}}
 @media(max-height:500px){.ustore-welcome__content{transform:none}.ustore-welcome__glass{width:92px;height:92px;border-radius:22px}.ustore-welcome__title{font-size:clamp(22px,5vh,28px);margin-top:12px}.ustore-welcome__dots{margin-top:10px}}
 @media(prefers-reduced-motion:reduce){.ustore-welcome{transition:none}.ustore-welcome__glass::after,.ustore-welcome__dots i{animation:none}.ustore-welcome__dots i:first-child{opacity:1}}
+
+/* Match the quieter platform palette without changing individual shop covers. */
+.ustore-welcome--platform{--ustore-welcome-accent:#3f629f;--ustore-welcome-title-accent:#315184;background:#f2f5fa;color:#2b384e}
+.ustore-welcome--platform .ustore-welcome__art{opacity:.48;filter:saturate(.55)}
+.ustore-welcome--platform .ustore-welcome__name,
+.ustore-welcome--platform .ustore-welcome__monogram{color:#25344a}
+.ustore-welcome--platform .ustore-welcome__foot{color:#576579}

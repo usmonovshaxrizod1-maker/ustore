@@ -1,0 +1,58 @@
+/* UStorE platform palette only. Shop domains retain their own branding. */
+:is(.uw-platform-home, .uw-platform-portal, .uw-platform-admin, .uw-platform-auth-shell) {
+  --uw-color-canvas: #f7f8fb;
+  --uw-color-surface-subtle: #f4f6f9;
+  --uw-color-border: #e1e6ee;
+  --uw-color-border-strong: #cbd4e2;
+  --uw-color-text: #2b384e;
+  --uw-color-text-muted: #576579;
+  --uw-color-link: #315184;
+  --uw-color-primary: #3f629f;
+  --uw-color-primary-hover: #315184;
+  --uw-color-primary-soft: #eaf0f8;
+  --uw-color-focus: #3f629f;
+  --uw-focus-ring: 0 0 0 3px rgb(63 98 159 / 20%);
+  --uw-shadow-sm: 0 1px 3px rgb(42 58 83 / 5%);
+  --uw-shadow-md: 0 10px 30px rgb(42 58 83 / 8%);
+  --uw-shadow-lg: 0 18px 42px rgb(42 58 83 / 11%);
+}
+
+/* Public site: keep the current composition, soften its most vivid layers. */
+.uw-platform-home { background: linear-gradient(180deg, #fafbfd 0, #f7f8fb 36rem, var(--uw-color-canvas) 100%); }
+.uw-platform-brand__mark { background: #3f629f; box-shadow: 0 4px 12px rgb(63 98 159 / 16%); }
+.uw-platform-eyebrow { border-color: #d4dfec; background: #edf2f8; color: #315184; }
+.uw-platform-showcase { border-color: #d9e2ee; background: linear-gradient(145deg, #f1f4f9, #fff 58%, #f3f5fa); box-shadow: 0 18px 42px rgb(42 58 83 / 9%); }
+.uw-platform-showcase__caption > span,
+.uw-platform-benefit > span,
+.uw-platform-visual__icon { color: #3f629f; }
+.uw-platform-visual__icon { background: #eaf0f8; }
+.uw-platform-showcase__controls > button { border-color: #d9e2ee; color: #315184; }
+.uw-platform-showcase__controls > button:hover { background: #edf2f8; }
+.uw-platform-showcase__dots button.is-active { background: #3f629f; }
+.uw-platform-pricing { background: linear-gradient(180deg, transparent, #f2f5fa 24%, #f7f8fb 100%); }
+.uw-platform-plan[data-popular="true"] { border-color: #b7c9df; box-shadow: 0 12px 30px rgb(42 58 83 / 9%); }
+.uw-platform-plan__badge,
+.uw-platform-plan__limit { background: #eaf0f8; border-color: #d4dfec; }
+.uw-platform-plan__badge,
+.uw-platform-plan__limit strong { color: #315184; }
+.uw-platform-billing button[aria-pressed="true"] { background: #3f629f; box-shadow: 0 2px 8px rgb(63 98 159 / 16%); }
+.uw-platform-final-cta__inner { background: linear-gradient(135deg, #334a70, #415e88); box-shadow: var(--uw-shadow-lg); }
+.uw-platform-final-cta p { color: #e1e8f3; }
+.uw-platform-final-cta .uw-button--primary { color: #2b384e; }
+.uw-platform-auth-shell { background: radial-gradient(circle at 50% 0, rgb(218 228 243 / 55%), transparent 30rem), var(--uw-color-canvas); }
+
+/* Seller portal and central admin: quieter selection without losing state cues. */
+.uw-platform-portal__nav a.is-active,
+.uw-platform-admin__nav a.is-active { background: #eaf0f8; color: #315184; }
+.uw-platform-mini-icon { background: #eaf0f8; color: #3f629f; }
+.uw-platform-shop-switcher button.is-active,
+.uw-platform-plan-choice.is-selected,
+.uw-platform-payment-choice.is-selected,
+.uw-platform-service-card.is-selected { border-color: #aabed9; background: #f1f4f9; box-shadow: none; }
+.uw-platform-message.is-user,
+.uw-platform-change-preview { background: #eaf0f8; color: #315184; }
+.uw-platform-service-choice input { accent-color: #3f629f; }
+.uw-platform-service-summary { border-color: #d4dfec; background: #f3f6fa; }
+.uw-platform-summary-line.is-total,
+.uw-platform-pay-link { color: #315184; }
+.uw-platform-admin__mark { background: #334a70; }
