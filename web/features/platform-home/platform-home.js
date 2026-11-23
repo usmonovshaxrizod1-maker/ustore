@@ -82,7 +82,19 @@ function makeShowcase(doc, items = []) {
   const root = doc.createElement('div');root.className='uw-platform-showcase uw-platform-photo-showcase';
   root.setAttribute('role','region');root.setAttribute('aria-label','UStorE reklama slayderi');root.setAttribute('aria-roledescription','carousel');
   const slides = Array.isArray(items)?items.slice(0,10):[];
-  if (!slides.length) {root.className += ' is-empty';root.setAttribute('aria-label','Reklama slayderida hozircha rasm yo‘q');return {element:root,destroy:()=>{}};}
+  if (!slides.length) {
+    root.className += ' is-empty';
+    root.setAttribute('aria-label','UStorE imkoniyatlari');
+    const preview = doc.createElement('div'); preview.className = 'uw-platform-showcase__fallback';
+    for (const [title, detail] of [['Web do‘kon','Mahsulotlar va katalog'],['Telegram bot + Mini App','Mijoz uchun qulay xarid'],['Boshqaruv','Buyurtma va ombor bir joyda']]) {
+      const card = doc.createElement('div'); card.className = 'uw-platform-showcase__fallback-card';
+      const heading = doc.createElement('strong'); heading.textContent = title;
+      const description = doc.createElement('span'); description.textContent = detail;
+      card.append(heading, description); preview.append(card);
+    }
+    root.append(preview);
+    return {element:root,destroy:()=>{}};
+  }
   const viewport=doc.createElement('div');viewport.className='uw-platform-showcase__viewport';
   const track=doc.createElement('div');track.className='uw-platform-showcase__track';
   slides.forEach((item,i)=>{const slide=doc.createElement('div');slide.className='uw-platform-showcase__slide uw-platform-photo-slide';slide.setAttribute('aria-label',`${i+1}/${slides.length}`);const img=doc.createElement('img');img.src=item.imageUrl;img.alt=`UStorE reklama rasmi ${i+1}`;img.loading=i===0?'eager':'lazy';img.decoding='async';img.width=600;img.height=600;slide.append(img);track.append(slide);});
@@ -168,9 +180,9 @@ export function createPlatformHomeView({ controller, state = controller?.getStat
   const hero = doc.createElement('section'); hero.className = 'uw-platform-hero';
   const heroInner = doc.createElement('div'); heroInner.className = 'uw-platform-container uw-platform-hero__inner';
   const heroCopy = doc.createElement('div'); heroCopy.className = 'uw-platform-hero__copy';
-  const eyebrow = doc.createElement('span'); eyebrow.className = 'uw-platform-eyebrow'; eyebrow.textContent = 'Web + Telegram Mini App savdo platformasi';
-  const h1 = doc.createElement('h1'); h1.textContent = 'Bitta do‘kon. Ikki kanal.';
-  const intro = doc.createElement('p'); intro.textContent = 'Web sayt va Telegram Mini App orqali soting. Mahsulot, buyurtma, ombor, marketing va to‘lovlarni bitta UStorE boshqaruv markazidan yuriting.';
+  const eyebrow = doc.createElement('span'); eyebrow.className = 'uw-platform-eyebrow'; eyebrow.textContent = 'WEB SAYT · TELEGRAM BOT · MINI APP';
+  const h1 = doc.createElement('h1'); h1.textContent = 'O‘z internet-do‘koningizni oching.';
+  const intro = doc.createElement('p'); intro.textContent = 'Web sayt, Telegram bot va Mini App orqali soting. Mahsulotlar, buyurtmalar va omborni bir joydan boshqaring.';
   const heroActions = doc.createElement('div'); heroActions.className = 'uw-platform-hero__actions';
   heroActions.append(
     createButton({ label: 'Do‘kon ochishni boshlash', size: 'lg', onClick: () => onLogin?.({ intent: 'new-shop' }) }, doc),

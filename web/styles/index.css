@@ -6,6 +6,7 @@
 
 @import url('./features.css?v=20261009landing2');
 @import url('./platform-tone.css?v=20261106a');
+@import url('./platform-atelier.css?v=20261123a');
 
 /* The Mini App itself renders every Shop/Platform screen in the browser. */
 .uw-miniapp-host { width: 100%; min-height: 100dvh; margin: 0; padding: 0; }

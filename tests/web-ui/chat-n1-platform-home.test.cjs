@@ -46,7 +46,8 @@ test('N1 landing renders existing product explanation and tariff data without in
   const picked=[]; const logins=[];
   const view=createPlatformHomeView({controller,state:controller.getState(),onLogin:(m)=>logins.push(m||{}),onChoosePlan:(t)=>picked.push(t.id)},new Doc());
   const all=texts(view.element).join(' | ');
-  assert.match(all,/Bitta do‘kon\. Ikki kanal\./);
+  assert.match(all,/O‘z internet-do‘koningizni oching\./);
+  assert.match(all,/WEB SAYT · TELEGRAM BOT · MINI APP/);
   assert.match(all,/199[\s\u00a0]?000 so‘m/);
   assert.match(all,/500 tagacha mahsulot/);
   assert.match(all,/Ommabop/);

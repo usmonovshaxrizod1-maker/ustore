@@ -1414,9 +1414,9 @@
     return `
       <section class="plat-landing-hero">
         <div class="plat-landing-hero-copy">
-          <span class="plat-eyebrow">${pIcon('bolt', 13)} Web + Telegram Mini App savdo platformasi</span>
-          <h1>Bitta do‘kon. <span>Ikki kanal.</span></h1>
-          <p>Web sayt va Telegram Mini App orqali soting. Mahsulot, buyurtma, ombor, marketing va to‘lovlarni bitta UStorE boshqaruv markazidan yuriting.</p>
+          <span class="plat-eyebrow">${pIcon('bolt', 13)} WEB SAYT · TELEGRAM BOT · MINI APP</span>
+          <h1>O‘z internet-do‘koningizni oching.</h1>
+          <p>Web sayt, Telegram bot va Mini App orqali soting. Mahsulotlar, buyurtmalar va omborni bir joydan boshqaring.</p>
           <div class="plat-landing-hero-actions">
             <button class="primary" onclick="startNewShopFlow()">${pIcon('shop', 17)} Do'kon ochish</button>
             <button class="secondary" onclick="document.getElementById('plat-why-ustore').scrollIntoView({behavior:'smooth'})">${pIcon('bolt', 15)} Imkoniyatlarni ko'rish</button>

@@ -1,0 +1,91 @@
+/* Platform Mini App and browser mode share the seller visual language. */
+@font-face { font-family: 'UStore Editorial'; src: url('../vendor/wordmark-fonts/font-cormorant-garamond.woff2') format('woff2'); font-display: swap; }
+:root {
+  --c-bg: #fbfaf7; --c-bg-2: #fbfaf7; --c-page-bg: #fbfaf7;
+  --c-surface: #eaf0f6; --c-surface-elevated: #fffdf8;
+  --c-primary: #304462; --c-primary-hover: #253a59; --c-primary-active: #1d2b4a;
+  --c-primary-soft: #f8edcf; --c-primary-softer: #f6f1e5; --c-primary-border: #d8c8a4;
+  --c-text: #1d2b43; --c-heading: #1d2b4a; --c-text-secondary: #526078; --c-text-muted: #58667b;
+  --c-border: #c9cfda; --c-border-soft: #d8d8d5; --c-border-strong: #aeb8c8;
+  --c-info-text: #304462; --c-info-bg: #f8edcf; --c-info-border: #e7d3a1;
+  --u-bg: #fbfaf7; --u-card: #eaf0f6; --u-text: #1d2b43; --u-muted: #526078;
+  --u-border: #d8d8d5; --u-blue: #304462; --u-blue-soft: #f8edcf;
+  --plat2-bg: #fbfaf7;
+  --sh-card: 0 8px 20px rgb(29 43 74 / 10%), 0 2px 5px rgb(29 43 74 / 5%);
+  --sh-elevated: 0 13px 28px rgb(29 43 74 / 13%);
+}
+body, body.ustore-browser-mode #app { background: #fbfaf7; color: #1d2b43; }
+.plat-header, .plat-admin-mode .plat-header {
+  border: 0; background: linear-gradient(105deg, #1d2b4a, #304462);
+  color: #fffdf8; box-shadow: 0 5px 20px rgb(29 43 74 / 14%);
+}
+.plat-header-title { color: #f6dfa0; }
+.plat-header-btn { color: #fffdf8; }
+.plat-header-btn:hover { background: rgb(255 255 255 / 10%); }
+#plat-person-btn { background: #f6dfa0; color: #1d2b4a; border-radius: 50%; }
+body.ustore-browser-mode .plat-desktop-nav button { color: #e7e9ee; }
+body.ustore-browser-mode .plat-desktop-nav button.active { color: #f6dfa0; background: rgb(246 223 160 / 12%); }
+.plat-bottom-nav, .plat-admin-mode .plat-bottom-nav {
+  border: 0; background: #fffdf8; box-shadow: 0 -5px 18px rgb(29 43 74 / 13%);
+}
+.plat-nav-btn.active { color: #1d2b4a; background: #f8edcf; }
+button.primary, a.primary, .plat-shop-pro-actions a.primary {
+  border-color: #f6dfa0; background: #f6dfa0; color: #1d2b4a;
+  box-shadow: 0 5px 12px rgb(89 70 35 / 14%);
+}
+button.primary:hover, a.primary:hover { border-color: #f2d384; background: #f2d384; box-shadow: 0 8px 17px rgb(89 70 35 / 17%); }
+.card, .plat-shop-list-card, .plat-user-mode .plat-shop-list-card, .plat-shop-detail-hero, .plat-shop-detail-card,
+.plat-shop-detail-hero-pro, .plat-checkout-plan, .plat-credential-card,
+.plat-user-mode .plat-pricing-card, .plat-profile-hero, .plat-profile-list,
+.plat-guide-card, .plat-benefit-card, .plat-sub-card {
+  border: 0; background: #eaf0f6; box-shadow: var(--sh-card);
+}
+.plat-shop-list-card:hover, .plat-user-mode .plat-shop-list-card:hover,
+.plat-user-mode .plat-pricing-card:hover { border: 0; box-shadow: var(--sh-elevated); }
+.plat-next-action.is-action,
+.plat-next-action.is-waiting,
+.plat-next-action.is-done {
+  border: 0;
+  background: #e9edf2;
+  box-shadow: var(--sh-card);
+}
+.plat-next-action.is-done { background: #e8eee8; }
+.plat-checkout-intro, .plat-credential-login, .plat-credential-secret { border: 0; background: #e9edf2; }
+.plat-user-mode .plat-pricing-card.is-recommended,
+.plat-user-mode .plat-pricing-card.selected { border: 0; background: #f8edcf; box-shadow: 0 12px 26px rgb(29 43 74 / 14%); }
+.plat-user-mode .plat-pricing-period-toggle .plat-billing-opt.active { background: #304462; color: #fffdf8; box-shadow: none; }
+.plat-profile-hero { background: #eaf0f6; }
+.plat-profile-stats, .plat-profile-list > div, .plat-profile-list > button { background: #eaf0f6; }
+.plat-landing-hero {
+  position: relative; isolation: isolate; overflow: hidden;
+  background: linear-gradient(155deg, #1d2b4a, #304462 66%, #243754);
+  border: 0; box-shadow: 0 15px 32px rgb(29 43 74 / 17%);
+}
+.plat-landing-hero::before {
+  content: ''; position: absolute; z-index: -1; inset: 9% 0 0;
+  background: linear-gradient(90deg, transparent 18%, rgb(246 223 160 / 8%) 25%, transparent 31%, transparent 47%, rgb(246 223 160 / 19%) 54%, transparent 60%, transparent 80%, rgb(246 223 160 / 8%) 85%, transparent 89%);
+  mask-image: linear-gradient(0deg, transparent, #000 25%, #000 75%, transparent);
+}
+.plat-landing-hero::after {
+  content: ''; position: absolute; z-index: -1; left: 6%; right: 6%; bottom: 9%; height: 8rem;
+  border: 1px solid rgb(246 223 160 / 40%); border-radius: 50%; transform: rotate(-9deg);
+}
+.plat-landing-hero h1 { color: #fff8e9; font-family: 'UStore Editorial', Georgia, serif; font-weight: 650; letter-spacing: -.035em; }
+.plat-landing-hero h1 span { color: inherit; }
+.plat-landing-hero p { color: #e7e8e3; }
+.plat-landing-hero .plat-eyebrow { border-color: rgb(246 223 160 / 55%); background: rgb(29 43 74 / 40%); color: #fff4d8; }
+.plat-landing-hero .secondary { border-color: rgb(246 223 160 / 55%); background: rgb(255 253 248 / 8%); color: #fffdf8; }
+.plat-showcase { border: 0; background: #fffdf8; box-shadow: 0 20px 45px rgb(10 20 39 / 28%); }
+.plat-landing-section .plat-benefit-card { background: #eaf0f6; }
+@media (min-width: 1024px) {
+  body.ustore-browser-mode .plat-landing-hero { grid-template-columns: 1fr; justify-items: center; gap: 2rem; padding: 3rem; text-align: center; }
+  body.ustore-browser-mode .plat-landing-hero-copy { max-width: 56rem; padding: 0; }
+  body.ustore-browser-mode .plat-landing-hero h1 { margin-inline: auto; font-size: clamp(3.5rem, 5vw, 5.7rem); line-height: .95; }
+  body.ustore-browser-mode .plat-landing-hero-actions { justify-content: center; }
+  body.ustore-browser-mode .plat-showcase { width: min(100%, 56rem); }
+}
+@media (max-width: 767px) {
+  .plat-landing-hero { grid-template-columns: 1fr; gap: 1.4rem; padding: 1.7rem 1.1rem; }
+  .plat-landing-hero h1 { font-size: clamp(2.5rem, 10vw, 3.7rem); line-height: .96; }
+  .plat-landing-hero-actions { display: grid; }
+}
